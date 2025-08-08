@@ -9,7 +9,7 @@ import { MomentumMacros } from '@/components/momentum/MomentumMacros';
 import { MomentumMovement } from '@/components/momentum/MomentumMovement';
 import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { useDataRefresh, triggerDataRefresh } from '@/hooks/useDataRefresh';
+import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
 import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
@@ -18,6 +18,9 @@ import HotSwipeActionCard, { HotAction } from '@/components/momentum/HotSwipeAct
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { supabaseRequest } from '@/lib/supabaseRequest';
+import BlurImage from '@/components/media/BlurImage';
+
 interface TodayMeal {
   id: string;
   user_id: string;
@@ -49,398 +52,232 @@ const MomentumXPBar: React.FC<{ xp: number; goal?: number; loading?: boolean }>=
       try {
         const prefersReduced = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         if (!prefersReduced && 'vibrate' in navigator) {
-          // 10ms micro-vibration
-          // @ts-ignore - vibrate may not exist in some environments
-          navigator.vibrate && navigator.vibrate(10);
+          navigator.vibrate(50); // Light vibration
         }
-      } catch {}
-      const prevStage = Math.floor(prev / perStage);
-      const currStage = Math.floor(xp / perStage);
-      if (currStage > prevStage) {
-        setGlowIndex(currStage - 1);
-        const t = setTimeout(() => setGlowIndex(null), 700);
-        return () => clearTimeout(t);
+      } catch (e) {
+        // Vibration not supported/failed, silent fail
       }
-      const t2 = setTimeout(() => setRecentGain(0), 1200);
-      return () => clearTimeout(t2);
+
+      // Determine which stage completed (if any)
+      const oldStage = Math.min(Math.floor(prev / perStage), stages - 1);
+      const newStage = Math.min(Math.floor(xp / perStage), stages - 1);
+      if (newStage > oldStage) {
+        setGlowIndex(newStage);
+        setTimeout(() => setGlowIndex(null), 2000); // glow for 2s
+      }
+
+      setTimeout(() => setRecentGain(0), 3000); // show gain for 3s
     }
     prevXpRef.current = xp;
-  }, [xp, perStage]);
-
-  useEffect(() => { prevXpRef.current = xp; }, [xp]);
-
-  const currentSegment = Math.min(stages - 1, Math.max(0, Math.floor(xp / perStage)));
-  const segmentFill = (seg: number) => {
-    const start = seg * perStage;
-    return Math.max(0, Math.min(1, (xp - start) / perStage));
-  };
+  }, [xp, perStage, stages]);
 
   if (loading) {
     return (
-      <div className="sticky top-0 z-20 py-3 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" role="progressbar" aria-label="XP lädt">
-        <div className="container mx-auto px-4">
-          <div className="h-2 md:h-3 w-full rounded-full bg-secondary motion-safe:animate-pulse" />
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border/60 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Skeleton className="w-4 h-4 rounded-full" />
+          <div className="flex-1">
+            <Skeleton className="h-3 w-full rounded-full" />
+          </div>
+          <Skeleton className="w-16 h-6 rounded-full" />
         </div>
       </div>
     );
   }
+
   return (
-    <div className="sticky top-0 z-20 py-3 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" role="progressbar" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={Math.round(xp)} aria-label={`XP-Fortschritt: ${Math.round(xp)} von ${goal} XP`}>
-      <div className="container mx-auto px-4">
-        <div className="relative h-2 md:h-3 w-full overflow-hidden rounded-full bg-secondary">
-          {Array.from({ length: stages }).map((_, i) => {
-            const fill = segmentFill(i);
-            const leftPct = (i * 100) / stages;
-            const widthPct = 100 / stages;
-            const flameLeft = `calc(${leftPct}% + ${Math.max(0, Math.min(1, fill)) * widthPct}% - 8px)`;
-            return (
-              <div key={i} className="absolute inset-y-0" style={{ left: `${leftPct}%`, width: `${widthPct}%` }}>
-                <div className="h-full w-full bg-secondary" />
-                <div
+    <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border/60 px-4 py-3">
+      <div className="flex items-center gap-3">
+        <Flame className="w-4 h-4 text-orange-500 shrink-0" />
+        <div className="flex-1 relative" role="progressbar" aria-valuenow={xp} aria-valuemax={goal} aria-label={`XP Progress: ${xp} von ${goal}`}>
+          <div className="flex gap-1">
+            {Array.from({ length: stages }).map((_, i) => {
+              const stageStart = i * perStage;
+              const stageEnd = (i + 1) * perStage;
+              const stageProgress = Math.max(0, Math.min(perStage, xp - stageStart)) / perStage;
+              const isGlowing = glowIndex === i;
+              return (
+                <div 
+                  key={i} 
                   className={cn(
-                    'absolute inset-y-0 left-0',
-                    fill > 0 ? 'bg-gradient-to-r from-primary via-primary/80 to-primary/60' : 'bg-transparent'
+                    "flex-1 h-3 rounded-full bg-secondary relative overflow-hidden",
+                    isGlowing && "animate-pulse shadow-lg shadow-primary/50"
                   )}
-                  style={{ width: `${fill * 100}%` }}
-                />
-                {glowIndex === i && (
-                  <div className="absolute inset-0 rounded-sm" style={{ boxShadow: '0 0 12px hsl(var(--primary) / 0.7) inset, 0 0 14px hsl(var(--primary) / 0.6)' }} />
-                )}
-                {i === currentSegment && fill > 0 && (
-                  <Flame className="absolute -top-3 h-4 w-4 text-primary motion-safe:transition-[left] duration-200 motion-reduce:transition-none" style={{ left: flameLeft }} />
-                )}
-                {/* stage tick (separator) */}
-                {i > 0 && (
-                  <div className="absolute right-0 top-0 h-full w-px bg-border/60" />
-                )}
-              </div>
-            );
-          })}
+                >
+                  <div 
+                    className={cn(
+                      "h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out rounded-full",
+                      isGlowing && "shadow-md shadow-primary/30"
+                    )}
+                    style={{ width: `${stageProgress * 100}%` }}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-          <div className="opacity-80">▸ {Math.max(0, goal - Math.round(xp))} XP bis Ziel</div>
+        <div className="shrink-0 flex items-center gap-1">
           {recentGain > 0 && (
-            <div className="ml-2 inline-flex items-center rounded-full border border-border/50 bg-background px-2 py-0.5 text-[11px] text-foreground shadow-sm motion-safe:animate-fade-in">
-              +{recentGain} XP
-            </div>
+            <span className="text-xs text-green-600 font-medium animate-in slide-in-from-right-2 duration-300">
+              +{recentGain}
+            </span>
           )}
+          <span className="text-sm font-medium bg-secondary px-2 py-1 rounded-full tabular-nums">
+            {Math.round(xp)}<span className="text-muted-foreground">/{goal}</span>
+          </span>
         </div>
       </div>
     </div>
   );
 };
 
-// North Star calorie ring + collapsible meal list
-const CalorieNorthStar: React.FC<{ remaining: number; goal: number; todayKcal: number; meals: TodayMeal[]; loading: boolean; onChanged?: () => void; }>= ({ remaining, goal, todayKcal, meals, loading, onChanged }) => {
-  const [open, setOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [titleDraft, setTitleDraft] = useState('');
-  const [kcalDraft, setKcalDraft] = useState<string>('');
-  const pct = Math.max(0, Math.min(1, (goal - remaining) / goal));
-  const angle = pct * 360;
-
-  const startEdit = (m: TodayMeal) => {
-    setEditingId(m.id);
-    setTitleDraft(m.title || '');
-    setKcalDraft(String(Math.round(m.kcal || 0)));
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setTitleDraft('');
-    setKcalDraft('');
-  };
-
-  const saveEdit = async () => {
-    if (!editingId) return;
-    const calories = Number(kcalDraft);
-    if (Number.isNaN(calories)) {
-      toast.error('Bitte gültige Kalorienzahl eingeben');
-      return;
-    }
-    const { error } = await supabase
-      .from('meals')
-      .update({ text: titleDraft, calories })
-      .eq('id', editingId);
-    if (error) {
-      console.error('Update meal failed', error);
-      toast.error('Speichern fehlgeschlagen');
-      return;
-    }
-    toast.success('Gespeichert');
-    triggerDataRefresh();
-    onChanged?.();
-    cancelEdit();
-  };
-
-  return (
-    <Card>
-      <CardContent className="pt-5">
-        <div className="flex flex-col items-center">
-          <div className="relative h-40 w-40">
-            <div
-              aria-hidden
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: `conic-gradient(hsl(var(--primary)) ${angle}deg, hsl(var(--secondary)) ${angle}deg)`
-              }}
-            />
-            <div className="absolute inset-[10%] rounded-full bg-background border border-border/60 flex items-center justify-center text-center">
-              <div>
-                <div className="text-2xl font-semibold tabular-nums">{Math.round(remaining)} kcal</div>
-                <div className="text-xs text-muted-foreground">von {Math.round(goal)} kcal</div>
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen(v => !v)}
-            className="mt-3 inline-flex items-center text-sm text-primary hover:underline"
-            aria-expanded={open}
-            aria-controls="meal-list"
-          >
-            {open ? <><ChevronUp className="mr-1 h-4 w-4" /> Mahlzeiten</> : <><ChevronDown className="mr-1 h-4 w-4" /> Mahlzeiten</>}
-          </button>
-        </div>
-
-        <div id="meal-list" className={cn('transition-all', open ? 'mt-4' : 'h-0 overflow-hidden')}
-          style={{ maxHeight: open ? 400 : 0 }}
-        >
-          {loading ? (
-            <div className="space-y-3">
-              <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
-              <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
-              <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
-            </div>
-          ) : (
-            <div className="divide-y divide-border/60 max-h-64 overflow-auto pr-1">
-              {meals.length === 0 && (
-                <div className="text-sm text-muted-foreground py-6 text-center">Keine Einträge für heute.</div>
-              )}
-              {meals.slice(0, 20).map((m) => {
-                const isEditing = editingId === m.id;
-                return (
-                  <div key={m.id} className="flex items-center gap-3 py-3">
-                    <div className="h-12 w-12 rounded-md bg-secondary overflow-hidden flex items-center justify-center">
-                      {m.image_url ? (
-                        <img
-                          src={m.image_url}
-                          alt={`Mahlzeit Foto – ${m.title || 'Mahlzeit'}`}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <Utensils className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            value={titleDraft}
-                            onChange={(e) => setTitleDraft(e.target.value)}
-                            className="w-full h-9 px-2 rounded-md border border-border/60 bg-background text-sm"
-                            placeholder="Titel"
-                          />
-                        </div>
-                      ) : (
-                        <div className="text-sm truncate">{m.title || 'Mahlzeit'}</div>
-                      )}
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 flex items-center gap-2">
-                      {isEditing ? (
-                        <>
-                          <input
-                            inputMode="numeric"
-                            value={kcalDraft}
-                            onChange={(e) => setKcalDraft(e.target.value)}
-                            className="w-20 h-9 px-2 rounded-md border border-border/60 bg-background text-sm tabular-nums text-right"
-                            aria-label="Kalorien"
-                          />
-                          <span className="text-sm">kcal</span>
-                          <button aria-label="Speichern" className="p-3 rounded-md bg-primary text-primary-foreground" onClick={saveEdit}>
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button aria-label="Abbrechen" className="p-3 rounded-md border border-border/60" onClick={cancelEdit}>
-                            <XIcon className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <div className="shrink-0 text-sm font-medium tabular-nums">{Math.round(m.kcal || 0)} kcal</div>
-                          <button aria-label="Bearbeiten" className="p-3 rounded-md border border-border/60" onClick={() => startEdit(m)}>
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              <button className="w-full py-3 text-sm text-primary hover:underline" onClick={() => openMeal()}>+ Mahlzeit hinzufügen</button>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-          <div>
-            <div className="text-xs text-muted-foreground">Heute</div>
-            <div className="text-sm font-medium tabular-nums">{Math.round(todayKcal)} kcal</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Rest</div>
-            <div className="text-sm font-medium tabular-nums">{Math.round(remaining)} kcal</div>
-          </div>
-          <div>
-            <div className="text-xs text-muted-foreground">Ziel</div>
-            <div className="text-sm font-medium tabular-nums">{Math.round(goal)} kcal</div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
 const MomentumPage: React.FC = () => {
   const { user } = useAuth();
-  const plus = usePlusData();
-  const [meals, setMeals] = useState<TodayMeal[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const DAY_CUTOFF_HOUR = 3; // Optionaler Tageswechsel um 03:00
-  const formatYmdBerlin = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
-  const berlinHour = (d: Date) => Number(new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', hour12: false }).format(d));
-  const dateStr = useMemo(() => {
-    const h = berlinHour(currentDate);
-    if (h < DAY_CUTOFF_HOUR) {
-      const prev = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
-      return formatYmdBerlin(prev);
-    }
-    return formatYmdBerlin(currentDate);
-  }, [currentDate]);
-
-  const kcalGoal = useMemo(() => plus.goals?.calories ?? 0, [plus.goals]);
-  const totals = useMemo(() => {
-    const sum = (key: keyof TodayMeal) => meals.reduce((s, m) => s + Number(m[key] || 0), 0);
-    return {
-      kcal: sum('kcal'),
-      protein: sum('protein'),
-      carbs: sum('carbs'),
-      fat: sum('fat'),
-    };
-  }, [meals]);
-  const todayKcal = totals.kcal;
-  const remaining = Math.max(0, kcalGoal - todayKcal);
-  const xpProgress = Math.min(100, Math.round(((todayKcal > 0 ? todayKcal : 0) / Math.max(1, kcalGoal)) * 100));
-  const ringsLoading = loading || !plus.goals;
-
+  
+  // Set page title for SEO
   useEffect(() => {
-    document.title = 'Momentum 2.0 – XP, Kalorien, Makros | GetLeanAI+';
-    const desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
-    if (desc) desc.content = 'Mobile‑First Momentum Board mit XP‑Leiste, Kalorien‑Nordstern und schneller Mahlzeiten‑Übersicht.';
-    let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (canonical) canonical.href = `${window.location.origin}/momentum`;
+    document.title = 'Momentum – GetLeanAI';
+    const meta = document.querySelector('meta[name="viewport"]') as HTMLMetaElement;
+    if (!meta) {
+      const newMeta = document.createElement('meta');
+      newMeta.name = 'viewport';
+      newMeta.content = 'width=device-width, initial-scale=1';
+      document.head.appendChild(newMeta);
+    }
   }, []);
 
-const fetchMeals = useCallback(async () => {
-  if (!user) return;
-  setLoading(true);
-  setError(null);
-  try {
-    // Load meals for selected date
-    const { data, error } = await supabase
-      .from('meals')
-      .select('id,user_id,created_at,text,calories,protein,carbs,fats,quality_score,meal_type')
-      .eq('user_id', user.id)
-      .eq('date', dateStr)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
+  // Date state
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  
+  // Data state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [meals, setMeals] = useState<TodayMeal[]>([]);
+  const [userData, setUserData] = useState<any>(null);
+  const [dailyGoals, setDailyGoals] = useState<any>(null);
 
-    // Map to TodayMeal shape
-    const mapped: TodayMeal[] = (data || []).map((r: any) => ({
-      id: r.id,
-      user_id: r.user_id,
-      ts: r.created_at,
-      title: r.text,
-      kcal: r.calories,
-      protein: r.protein,
-      carbs: r.carbs,
-      fat: r.fats,
-      quality_score: r.quality_score,
-      meal_type: r.meal_type || null,
-    }));
-
-    // Attach first image if available
-    let mealsWithImages: TodayMeal[] = mapped;
-    const ids = mapped.map((d) => d.id).filter(Boolean);
-    if (ids.length > 0) {
-      const { data: imgRows, error: imgErr } = await supabase
-        .from('meal_images')
-        .select('meal_id, image_url')
-        .in('meal_id', ids);
-      if (!imgErr && imgRows) {
-        const firstImageMap = new Map<string, string>();
-        for (const row of imgRows) {
-          if (!firstImageMap.has(row.meal_id)) {
-            firstImageMap.set(row.meal_id, row.image_url);
-          }
-        }
-        mealsWithImages = mapped.map((m) => ({ ...m, image_url: firstImageMap.get(m.id) || null }));
-      }
-    }
-
-    setMeals(mealsWithImages);
-  } catch (e) {
-    console.error('Failed to load meals', e);
-    setError('Live-Daten nicht verfügbar');
-  } finally {
-    setLoading(false);
-  }
-}, [user?.id, dateStr]);
-
-useEffect(() => {
-  fetchMeals();
-}, [fetchMeals]);
-
-useDataRefresh(fetchMeals);
-
-// Build Hot Actions
-const hotActions: HotAction[] = (() => {
-  const actions: HotAction[] = [];
-  const perStage = 20;
-  const currStage = Math.floor(xpProgress / perStage) + 1;
-  const toNext = perStage - (xpProgress % perStage || 0);
-  // Protein suggestion
-  const pGoal = plus.goals?.protein || 0; const pUsed = totals.protein;
-  if (pGoal > 0 && pUsed < pGoal) {
-    actions.push({
-      id: 'protein',
-      title: '+30 g Protein (+10 XP) →',
-      subtitle: `dir fehlen ${Math.max(1, Math.round((toNext / perStage) * 100))}% bis Stage ${Math.min(5, currStage + 1)}`,
-      onTap: () => openMeal(),
-    });
-  }
-  // Walk suggestion
-  actions.push({ id: 'walk', title: '10‑Min Walk (+5 XP) →', subtitle: `Stage‑Boost in ${toNext} XP`, onTap: () => openWorkout({ recommendedType: 'walking' }) });
-  // Hydration suggestion
-  actions.push({ id: 'water', title: '+300 ml Wasser (+5 XP) →', subtitle: `Stage‑Boost in ${toNext} XP` });
-  return actions;
-})();
-  const [mealsOpen, setMealsOpen] = useState(false);
+  // Edit state for meals
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
   const [mealTitleDraft, setMealTitleDraft] = useState('');
   const [mealKcalDraft, setMealKcalDraft] = useState<string>('');
 
-  const startEditMeal = (m: TodayMeal) => {
-    setEditingMealId(m.id);
-    setMealTitleDraft(m.title || '');
-    setMealKcalDraft(String(Math.round(m.kcal || 0)));
+  // Navigation functions
+  const goToPreviousDay = () => {
+    const yesterday = new Date(currentDate);
+    yesterday.setDate(yesterday.getDate() - 1);
+    setCurrentDate(yesterday);
+  };
+
+  const goToNextDay = () => {
+    const tomorrow = new Date(currentDate);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setCurrentDate(tomorrow);
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+
+  // Format date for API
+  const formatDate = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const dateStr = formatDate(currentDate);
+  const isToday = dateStr === formatDate(new Date());
+
+  // Fetch meals
+  const fetchMeals = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    try {
+      // Use v_today_meals view for current day only
+      if (isToday) {
+        const { data, error } = await supabase
+          .from('v_today_meals')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('ts', { ascending: false });
+        
+        if (error) throw error;
+        setMeals(data || []);
+      } else {
+        // For other dates, use meals table with date filter
+        const { data, error } = await supabase
+          .from('meals')
+          .select('id,user_id,created_at,text,calories,protein,carbs,fats,quality_score,meal_type')
+          .eq('user_id', user.id)
+          .eq('date', dateStr)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Map to TodayMeal shape for consistency
+        const mapped: TodayMeal[] = (data || []).map((r: any) => ({
+          id: r.id,
+          user_id: r.user_id,
+          ts: r.created_at,
+          title: r.text,
+          kcal: r.calories || 0,
+          protein: r.protein || 0,
+          carbs: r.carbs || 0,
+          fat: r.fats || 0,
+          quality_score: r.quality_score || null
+        }));
+        setMeals(mapped);
+      }
+    } catch (err) {
+      console.error('Error fetching meals:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load meals');
+    } finally {
+      setLoading(false);
+    }
+  }, [user, dateStr, isToday]);
+
+  // Fetch user data and goals
+  const fetchUserData = useCallback(async () => {
+    if (!user) return;
+    try {
+      const [userDataResult, goalsResult] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single(),
+        supabase
+          .from('daily_goals')
+          .select('*')
+          .eq('user_id', user.id)
+          .single()
+      ]);
+      
+      if (userDataResult.error) throw userDataResult.error;
+      if (goalsResult.error) throw goalsResult.error;
+      
+      setUserData(userDataResult.data);
+      setDailyGoals(goalsResult.data);
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+    }
+  }, [user]);
+
+  // Load data on mount and when dependencies change
+  useEffect(() => {
+    fetchMeals();
+  }, [fetchMeals]);
+
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
+
+  // Note: Data refresh would be handled by useDataRefresh hook if needed
+
+  // Meal editing functions
+  const startEditMeal = (meal: TodayMeal) => {
+    setEditingMealId(meal.id);
+    setMealTitleDraft(meal.title || '');
+    setMealKcalDraft(String(meal.kcal || 0));
   };
 
   const cancelEditMeal = () => {
@@ -451,216 +288,320 @@ const hotActions: HotAction[] = (() => {
 
   const saveEditMeal = async () => {
     if (!editingMealId) return;
-    const calories = Number(mealKcalDraft);
-    if (Number.isNaN(calories)) {
-      toast.error('Bitte gültige Kalorienzahl eingeben');
-      return;
+    
+    try {
+      const kcal = parseFloat(mealKcalDraft) || 0;
+      
+      const { error } = await supabase
+        .from('meals')
+        .update({
+          text: mealTitleDraft.trim() || null,
+          calories: kcal
+        })
+        .eq('id', editingMealId);
+      
+      if (error) throw error;
+
+      // Update local state
+      setMeals(prev => prev.map(m => 
+        m.id === editingMealId 
+          ? { ...m, title: mealTitleDraft.trim() || null, kcal: kcal }
+          : m
+      ));
+
+      toast.success('Mahlzeit aktualisiert');
+      cancelEditMeal();
+      triggerDataRefresh();
+    } catch (err) {
+      console.error('Error updating meal:', err);
+      toast.error('Fehler beim Speichern');
     }
-    const { error } = await supabase
-      .from('meals')
-      .update({ text: mealTitleDraft, calories })
-      .eq('id', editingMealId);
-    if (error) {
-      console.error('Update meal failed', error);
-      toast.error('Speichern fehlgeschlagen');
-      return;
-    }
-    toast.success('Gespeichert');
-    triggerDataRefresh();
-    cancelEditMeal();
   };
+
+  // Calculate totals
+  const totalKcal = meals.reduce((sum, m) => sum + (m.kcal || 0), 0);
+  const totalProtein = meals.reduce((sum, m) => sum + (m.protein || 0), 0);
+  const totalCarbs = meals.reduce((sum, m) => sum + (m.carbs || 0), 0);
+  const totalFat = meals.reduce((sum, m) => sum + (m.fat || 0), 0);
+
+  // Goals
+  const kcalGoal = dailyGoals?.calories || 2000;
+  const proteinGoal = dailyGoals?.protein || 150;
+  const carbsGoal = dailyGoals?.carbs || 200;
+  const fatGoal = dailyGoals?.fats || 67;
+
+  const remaining = kcalGoal - totalKcal;
+
+  // Calculate XP (simplified)
+  const xpFromMeals = Math.min(100, (totalKcal / kcalGoal) * 60);
+  const totalXP = Math.round(xpFromMeals);
+
+  // Generate hot actions
+  const hotActions: HotAction[] = [];
+  
+  if (remaining > kcalGoal * 0.1) {
+    hotActions.push({
+      id: 'add-meal',
+      title: 'Mahlzeit hinzufügen',
+      subtitle: `Noch ${Math.round(remaining)} kcal heute`,
+      onTap: () => openMeal()
+    });
+  }
+
+  if (meals.length === 0) {
+    hotActions.push({
+      id: 'first-meal',
+      title: 'Erste Mahlzeit tracken',
+      subtitle: 'Starte deinen Tag!',
+      onTap: () => openMeal()
+    });
+  }
+
+  // Group meals by time
+  const groupedMeals = useMemo(() => {
+    const groups: { [key: string]: TodayMeal[] } = {};
+    
+    meals.forEach(meal => {
+      const date = new Date(meal.ts);
+      const timeLabel = (() => {
+        const hour = date.getHours();
+        if (hour < 10) return 'Frühstück';
+        if (hour < 14) return 'Mittagessen';
+        if (hour < 18) return 'Nachmittag';
+        return 'Abendessen';
+      })();
+      
+      if (!groups[timeLabel]) groups[timeLabel] = [];
+      groups[timeLabel].push(meal);
+    });
+
+    return Object.entries(groups).map(([label, meals]) => ({
+      label,
+      meals,
+      totalKcal: meals.reduce((sum, m) => sum + (m.kcal || 0), 0)
+    }));
+  }, [meals]);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-muted-foreground">Nicht angemeldet</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
-      <main>
-{/* Sticky XP bar */}
-<MomentumXPBar xp={xpProgress} loading={loading} />
+      <div className="min-h-screen bg-background">
+        <main className="container mx-auto px-4 pt-0 pb-6 max-w-4xl">
+          <h1 className="sr-only">Momentum Dashboard</h1>
+          
+          {/* XP Bar */}
+          <MomentumXPBar xp={totalXP} goal={100} loading={loading} />
 
-<div className="container mx-auto px-4 py-4 max-w-md space-y-4">
-  {/* Date navigation */}
-  <DateNavigation currentDate={currentDate} onDateChange={(d) => { setCurrentDate(d); }} />
+          {/* Date Navigation */}
+          <DateNavigation 
+            currentDate={currentDate}
+            onDateChange={setCurrentDate}
+          />
 
-  {/* Hot Actions */}
-  <HotSwipeActionCard actions={hotActions} />
+          {/* Hot Actions */}
+          {hotActions.length > 0 && (
+            <div className="mb-6">
+              <HotSwipeActionCard actions={hotActions} />
+            </div>
+          )}
 
-  {/* Übersicht: Kalorien + Makros in einer Karte */}
-  {ringsLoading ? (
-    <Skeleton className="h-56 w-full rounded-xl" aria-label="Kalorien & Makro Übersicht lädt" />
-  ) : (
-    <OverviewRingsCard
-      calories={{ remaining, goal: kcalGoal || 1, today: todayKcal }}
-      macros={{
-        protein: { used: totals.protein, goal: plus.goals?.protein || 0 },
-        carbs: { used: totals.carbs, goal: plus.goals?.carbs || 0 },
-        fats: { used: totals.fat, goal: plus.goals?.fats || 0 },
-      }}
-    />
-  )}
-
-  {/* Mahlzeitenliste (eingeklappt, unter der Übersicht) */}
-  <Card>
-    <CardContent className="pt-4">
-      <div className="flex justify-center">
-        <button
-          type="button"
-          onClick={() => setMealsOpen(v => !v)}
-          className="inline-flex items-center text-sm text-primary hover:underline min-h-11 px-4 py-2"
-          aria-expanded={mealsOpen}
-          aria-controls="mini-meal-list"
-        >
-          {mealsOpen ? (<><ChevronUp className="mr-1 h-4 w-4" /> Mahlzeiten</>) : (<><ChevronDown className="mr-1 h-4 w-4" /> Mahlzeiten</>)}
-        </button>
-      </div>
-
-      <div id="mini-meal-list" className={cn('transition-all', mealsOpen ? 'mt-4' : 'h-0 overflow-hidden')} style={{ maxHeight: mealsOpen ? 400 : 0 }}>
-        {error ? (
-          <div className="py-6 text-center space-y-2">
-            <div className="text-sm text-muted-foreground">Live‑Daten nicht verfügbar.</div>
-            <button className="inline-flex items-center rounded-md border border-border/60 px-3 py-2 text-sm" onClick={fetchMeals} aria-label="Erneut versuchen">Retry</button>
+          {/* Overview Rings */}
+          <div className="mb-6">
+            <OverviewRingsCard 
+              calories={{ remaining: remaining, goal: kcalGoal, today: totalKcal }}
+              macros={{
+                protein: { used: totalProtein, goal: proteinGoal },
+                carbs: { used: totalCarbs, goal: carbsGoal },
+                fats: { used: totalFat, goal: fatGoal }
+              }}
+            />
           </div>
-        ) : loading ? (
-          <div className="space-y-3">
-            <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
-            <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
-            <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
-          </div>
-        ) : (
-          <div className="max-h-64 overflow-auto pr-1">
-            {(() => {
-              if (meals.length === 0) {
-                return (
-                  <div className="py-6 text-center space-y-3">
-                    <div className="text-sm text-muted-foreground">Noch nix geloggt.</div>
-                    <div className="flex justify-center gap-2">
-                      <button className="rounded-md border border-border/60 px-3 py-2 text-sm" onClick={() => toast.info('Foto-Upload kommt bald')} aria-label="Foto hochladen">Foto</button>
-                      <button className="rounded-md border border-border/60 px-3 py-2 text-sm" onClick={() => toast.info('Lebensmittelsuche kommt bald')} aria-label="Lebensmittelsuche öffnen">Suche</button>
-                      <button className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm" onClick={() => openMeal()} aria-label="Schnell Mahlzeit hinzufügen">Quick‑Add</button>
-                    </div>
-                  </div>
-                );
-              }
-              const normalize = (t?: string | null) => {
-                const v = (t || '').toLowerCase();
-                if (v.includes('breakfast') || v.includes('früh')) return 'breakfast';
-                if (v.includes('lunch') || v.includes('mittag')) return 'lunch';
-                if (v.includes('dinner') || v.includes('abend')) return 'dinner';
-                return 'snack';
-              };
-              const sections = [
-                { key: 'breakfast', label: 'Frühstück' },
-                { key: 'lunch', label: 'Mittagessen' },
-                { key: 'dinner', label: 'Abendessen' },
-                { key: 'snack', label: 'Snacks & Andere' },
-              ] as const;
-              const items = [...meals].sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
-              const byType = new Map<string, TodayMeal[]>();
-              items.forEach((m) => {
-                const k = normalize(m.meal_type);
-                if (!byType.has(k)) byType.set(k, []);
-                byType.get(k)!.push(m);
-              });
-              return (
-                <>
-                  {sections.map((s) => {
-                    const list = byType.get(s.key) || [];
-                    if (list.length === 0) return null;
-                    return (
-                      <div key={s.key} className="py-2 first:pt-0">
-                        <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{s.label}</div>
-                        <div className="divide-y divide-border/60">
-                          {list.map((m) => {
-                            const isEditing = editingMealId === m.id;
-                            return (
-                              <div key={m.id} className="flex items-center gap-3 py-3">
-                                <div className="h-12 w-12 rounded-md bg-secondary overflow-hidden flex items-center justify-center">
-                                  {m.image_url ? (
-                                    <img src={m.image_url} alt={`Mahlzeit Foto – ${m.title || 'Mahlzeit'}`} className="h-full w-full object-cover" loading="lazy" />
-                                  ) : (
-                                    <Utensils className="h-5 w-5 text-muted-foreground" />
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  {isEditing ? (
-                                    <div className="flex items-center gap-2">
-                                      <input
-                                        value={mealTitleDraft}
-                                        onChange={(e) => setMealTitleDraft(e.target.value)}
-                                        className="w-full h-9 px-2 rounded-md border border-border/60 bg-background text-sm"
-                                        placeholder="Titel"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="text-sm truncate">{m.title || 'Mahlzeit'}</div>
-                                  )}
-                                  {/* Makro-Badges */}
-                                  <div className="mt-1 flex flex-wrap gap-1">
-                                    <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
-                                      <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--fats))' }} />
-                                      P {Math.round(m.protein || 0)}g
-                                    </span>
-                                    <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
-                                      <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--muted-foreground))' }} />
-                                      C {Math.round(m.carbs || 0)}g
-                                    </span>
-                                    <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
-                                      <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs))' }} />
-                                      F {Math.round(m.fat || 0)}g
-                                    </span>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </div>
-                                </div>
-                                <div className="shrink-0 flex items-center gap-2">
-                                  {isEditing ? (
-                                    <>
-                                      <input
-                                        inputMode="numeric"
-                                        value={mealKcalDraft}
-                                        onChange={(e) => setMealKcalDraft(e.target.value)}
-                                        className="w-20 h-9 px-2 rounded-md border border-border/60 bg-background text-sm tabular-nums text-right"
-                                        aria-label="Kalorien"
-                                      />
-                                      <span className="text-sm">kcal</span>
-                                      <button aria-label="Speichern" className="p-3 rounded-md bg-primary text-primary-foreground" onClick={saveEditMeal}>
-                                        <Check className="w-4 h-4" />
-                                      </button>
-                                      <button aria-label="Abbrechen" className="p-3 rounded-md border border-border/60" onClick={cancelEditMeal}>
-                                        <XIcon className="w-4 h-4" />
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="shrink-0 text-sm font-medium tabular-nums">{Math.round(m.kcal || 0)} kcal</div>
-                                      <button aria-label="Bearbeiten" className="p-3 rounded-md border border-border/60" onClick={() => startEditMeal(m)}>
-                                        <Pencil className="w-4 h-4" />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+
+          {/* Meals List */}
+          <Card className="mb-6">
+            <CardContent className="py-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold">Mahlzeiten ({meals.length})</h2>
+                <div className="text-sm text-muted-foreground">
+                  {Math.round(totalKcal)} / {Math.round(kcalGoal)} kcal
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 p-4 border border-border/60 rounded-lg">
+                      <Skeleton className="w-24 h-24 rounded-lg" />
+                      <div className="flex-1">
+                        <Skeleton className="h-5 w-32 mb-2" />
+                        <Skeleton className="h-4 w-24 mb-2" />
+                        <div className="flex gap-2">
+                          <Skeleton className="h-6 w-16" />
+                          <Skeleton className="h-6 w-16" />
+                          <Skeleton className="h-6 w-16" />
                         </div>
                       </div>
-                    );
-                  })}
-                  <button className="w-full py-3 text-sm text-primary hover:underline" onClick={() => openMeal()}>+ Mahlzeit hinzufügen</button>
-                </>
-              );
-            })()}
-          </div>
-        )}
+                      <Skeleton className="w-20 h-10" />
+                    </div>
+                  ))}
+                </div>
+              ) : error ? (
+                <div className="text-center py-8">
+                  <div className="text-destructive mb-2">Fehler beim Laden</div>
+                  <div className="text-sm text-muted-foreground mb-4">{error}</div>
+                  <button 
+                    onClick={fetchMeals}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
+                  >
+                    Erneut versuchen
+                  </button>
+                </div>
+              ) : meals.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-muted-foreground mb-2">Noch keine Mahlzeiten heute</div>
+                  <div className="text-sm text-muted-foreground mb-4">Tippe auf + um zu starten</div>
+                  <button 
+                    onClick={() => openMeal()}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm"
+                  >
+                    Erste Mahlzeit hinzufügen
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {groupedMeals.map(group => (
+                    <div key={group.label}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-base font-medium">{group.label}</h3>
+                        <div className="text-sm text-muted-foreground">
+                          {Math.round(group.totalKcal)} kcal
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        {group.meals.map(m => {
+                          const isEditing = editingMealId === m.id;
+                          return (
+                            <div key={m.id} className="flex items-center gap-4 p-4 border border-border/60 rounded-lg bg-background hover:bg-accent/50 transition-colors">
+                              <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden shrink-0">
+                                {m.image_url && (
+                                  <BlurImage
+                                    src={m.image_url}
+                                    alt={m.title || 'Meal image'}
+                                    w={96}
+                                    h={96}
+                                    className="w-full h-full object-cover"
+                                    sizes="96px"
+                                  />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {isEditing ? (
+                                  <input
+                                    value={mealTitleDraft}
+                                    onChange={(e) => setMealTitleDraft(e.target.value)}
+                                    className="w-full h-9 px-3 rounded-md border border-border/60 bg-background text-sm mb-2"
+                                    placeholder="Mahlzeit-Titel"
+                                    aria-label="Mahlzeit-Titel"
+                                  />
+                                ) : (
+                                  <div className="text-base font-medium mb-2 truncate">
+                                    {m.title || 'Unbenannte Mahlzeit'}
+                                  </div>
+                                )}
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                                    <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--protein))' }} />
+                                    P {Math.round(m.protein || 0)}g
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                                    <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--muted-foreground))' }} />
+                                    C {Math.round(m.carbs || 0)}g
+                                  </span>
+                                  <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                                    <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs))' }} />
+                                    F {Math.round(m.fat || 0)}g
+                                  </span>
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-2">
+                                {isEditing ? (
+                                  <>
+                                    <input
+                                      inputMode="numeric"
+                                      value={mealKcalDraft}
+                                      onChange={(e) => setMealKcalDraft(e.target.value)}
+                                      className="w-20 h-9 px-2 rounded-md border border-border/60 bg-background text-sm tabular-nums text-right"
+                                      aria-label="Kalorien"
+                                    />
+                                    <span className="text-sm">kcal</span>
+                                    <button 
+                                      aria-label="Speichern" 
+                                      className="w-11 h-11 rounded-md bg-primary text-primary-foreground flex items-center justify-center" 
+                                      onClick={saveEditMeal}
+                                    >
+                                      <Check className="w-4 h-4" />
+                                    </button>
+                                    <button 
+                                      aria-label="Abbrechen" 
+                                      className="w-11 h-11 rounded-md border border-border/60 flex items-center justify-center" 
+                                      onClick={cancelEditMeal}
+                                    >
+                                      <XIcon className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="shrink-0 text-sm font-medium tabular-nums">{Math.round(m.kcal || 0)} kcal</div>
+                                    <button 
+                                      aria-label="Bearbeiten" 
+                                      className="w-11 h-11 rounded-md border border-border/60 flex items-center justify-center" 
+                                      onClick={() => startEditMeal(m)}
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <button 
+                    className="w-full py-3 text-sm text-primary hover:underline" 
+                    onClick={() => openMeal()}
+                  >
+                    + Mahlzeit hinzufügen
+                  </button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Movement */}
+          <MomentumMovement date={currentDate} />
+        </main>
+
+        <QuickAddFAB 
+          statuses={{ 
+            meal: remaining > kcalGoal * 0.05 ? (meals.length > 0 ? 'partial' : 'due') : 'ok', 
+            workout: 'partial' 
+          }} 
+        />
       </div>
-    </CardContent>
-  </Card>
-
-  {/* Stufe 3: Bewegung (Schritte + Workouts) */}
-  <MomentumMovement date={currentDate} />
-</div>
-
-<QuickAddFAB statuses={{ meal: remaining > kcalGoal * 0.05 ? (meals.length > 0 ? 'partial' : 'due') : 'ok', workout: 'partial' }} />
-      </main>
     </ErrorBoundary>
   );
 };
