@@ -328,6 +328,45 @@ useEffect(() => {
 
 useDataRefresh(fetchMeals);
 
+  // Collapsible meals below overview card
+  const [mealsOpen, setMealsOpen] = useState(false);
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
+  const [mealTitleDraft, setMealTitleDraft] = useState('');
+  const [mealKcalDraft, setMealKcalDraft] = useState<string>('');
+
+  const startEditMeal = (m: TodayMeal) => {
+    setEditingMealId(m.id);
+    setMealTitleDraft(m.title || '');
+    setMealKcalDraft(String(Math.round(m.kcal || 0)));
+  };
+
+  const cancelEditMeal = () => {
+    setEditingMealId(null);
+    setMealTitleDraft('');
+    setMealKcalDraft('');
+  };
+
+  const saveEditMeal = async () => {
+    if (!editingMealId) return;
+    const calories = Number(mealKcalDraft);
+    if (Number.isNaN(calories)) {
+      toast.error('Bitte gültige Kalorienzahl eingeben');
+      return;
+    }
+    const { error } = await supabase
+      .from('meals')
+      .update({ text: mealTitleDraft, calories })
+      .eq('id', editingMealId);
+    if (error) {
+      console.error('Update meal failed', error);
+      toast.error('Speichern fehlgeschlagen');
+      return;
+    }
+    toast.success('Gespeichert');
+    triggerDataRefresh();
+    cancelEditMeal();
+  };
+
   return (
     <ErrorBoundary>
       <main>
@@ -357,6 +396,117 @@ useDataRefresh(fetchMeals);
       fats: { used: totals.fat, goal: plus.goals?.fats || 0 },
     }}
   />
+
+  {/* Mahlzeitenliste (eingeklappt, unter der Übersicht) */}
+  <Card>
+    <CardContent className="pt-4">
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={() => setMealsOpen(v => !v)}
+          className="inline-flex items-center text-sm text-primary hover:underline"
+          aria-expanded={mealsOpen}
+          aria-controls="mini-meal-list"
+        >
+          {mealsOpen ? (<><ChevronUp className="mr-1 h-4 w-4" /> Mahlzeiten</>) : (<><ChevronDown className="mr-1 h-4 w-4" /> Mahlzeiten</>)}
+        </button>
+      </div>
+
+      <div id="mini-meal-list" className={cn('transition-all', mealsOpen ? 'mt-4' : 'h-0 overflow-hidden')} style={{ maxHeight: mealsOpen ? 400 : 0 }}>
+        {loading ? (
+          <div className="space-y-3">
+            <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
+            <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
+            <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
+          </div>
+        ) : (
+          <div className="divide-y divide-border/60 max-h-64 overflow-auto pr-1">
+            {meals.length === 0 && (
+              <div className="text-sm text-muted-foreground py-6 text-center">Keine Einträge für heute.</div>
+            )}
+            {meals.slice(0, 20).map((m) => {
+              const isEditing = editingMealId === m.id;
+              return (
+                <div key={m.id} className="flex items-center gap-3 py-3">
+                  <div className="h-12 w-12 rounded-md bg-secondary overflow-hidden flex items-center justify-center">
+                    {m.image_url ? (
+                      <img src={m.image_url} alt={`Mahlzeit Foto – ${m.title || 'Mahlzeit'}`} className="h-full w-full object-cover" loading="lazy" />
+                    ) : (
+                      <Utensils className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={mealTitleDraft}
+                          onChange={(e) => setMealTitleDraft(e.target.value)}
+                          className="w-full h-9 px-2 rounded-md border border-border/60 bg-background text-sm"
+                          placeholder="Titel"
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-sm truncate">{m.title || 'Mahlzeit'}</div>
+                    )}
+
+                    {/* Makro-Badges unter dem Titel */}
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--fats))' }}></span>
+                        P {Math.round(m.protein || 0)}g
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--muted-foreground))' }}></span>
+                        C {Math.round(m.carbs || 0)}g
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs))' }}></span>
+                        F {Math.round(m.fat || 0)}g
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 flex items-center gap-2">
+                    {isEditing ? (
+                      <>
+                        <input
+                          inputMode="numeric"
+                          value={mealKcalDraft}
+                          onChange={(e) => setMealKcalDraft(e.target.value)}
+                          className="w-20 h-9 px-2 rounded-md border border-border/60 bg-background text-sm tabular-nums text-right"
+                          aria-label="Kalorien"
+                        />
+                        <span className="text-sm">kcal</span>
+                        <button aria-label="Speichern" className="p-2 rounded-md bg-primary text-primary-foreground" onClick={saveEditMeal}>
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button aria-label="Abbrechen" className="p-2 rounded-md border border-border/60" onClick={cancelEditMeal}>
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="shrink-0 text-sm font-medium tabular-nums">{Math.round(m.kcal || 0)} kcal</div>
+                        <button aria-label="Bearbeiten" className="p-2 rounded-md border border-border/60" onClick={() => startEditMeal(m)}>
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <button className="w-full py-3 text-sm text-primary hover:underline">+ Mahlzeit hinzufügen</button>
+          </div>
+        )}
+      </div>
+    </CardContent>
+  </Card>
 
   {/* Stufe 3: Bewegung (Schritte + Workouts) */}
   <MomentumMovement date={currentDate} />

@@ -112,9 +112,24 @@ export const MealList = ({ meals, onMealUpdate, selectedDate }: MealListProps) =
                 <div className="flex items-center gap-2 flex-1">
                   <span className="text-lg">{getMealTypeEmoji(meal.meal_type)}</span>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-sm">
+<h3 className="font-semibold text-sm">
                       {meal.text} ({getMealTypeLabel(meal.meal_type)})
                     </h3>
+                    {/* Makro-Badges unter dem Titel */}
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--fats))' }}></span>
+                        P {Math.round(meal.protein)}g
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--muted-foreground))' }}></span>
+                        C {Math.round(meal.carbs)}g
+                      </span>
+                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs))' }}></span>
+                        F {Math.round(meal.fats)}g
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       {formatTime(meal.created_at)}
