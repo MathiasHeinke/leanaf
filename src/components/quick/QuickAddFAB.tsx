@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { QuickActionsMenu, ActionType } from "./QuickActionsMenu";
 import { toast } from "@/components/ui/sonner";
 import { quickAddBus } from "./quickAddBus";
@@ -73,14 +73,7 @@ export const QuickAddFAB: React.FC = () => {
           aria-pressed={menuOpen}
           className="rounded-full w-16 h-16 md:w-16 md:h-16 grid place-items-center bg-background text-foreground border border-border shadow-lg transition-all duration-200 hover:scale-105"
         >
-          <span className="relative inline-block">
-            <Plus
-              className={`${menuOpen ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'} absolute inset-0 m-auto w-7 h-7 transition-all duration-200`}
-            />
-            <Minus
-              className={`${menuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'} relative w-6 h-6 transition-all duration-200`}
-            />
-          </span>
+          <Plus className="w-7 h-7" />
         </button>
       </div>
 

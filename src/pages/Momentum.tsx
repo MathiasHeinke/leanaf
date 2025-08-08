@@ -13,6 +13,7 @@ import { useDataRefresh, triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
 import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
+import { openMeal } from '@/components/quick/quickAddBus';
 
 interface TodayMeal {
   id: string;
@@ -216,7 +217,7 @@ const CalorieNorthStar: React.FC<{ remaining: number; goal: number; todayKcal: n
                   </div>
                 );
               })}
-              <button className="w-full py-3 text-sm text-primary hover:underline">+ Mahlzeit hinzufügen</button>
+              <button className="w-full py-3 text-sm text-primary hover:underline" onClick={() => openMeal()}>+ Mahlzeit hinzufügen</button>
             </div>
           )}
         </div>
@@ -501,7 +502,7 @@ useDataRefresh(fetchMeals);
                 </div>
               );
             })}
-            <button className="w-full py-3 text-sm text-primary hover:underline">+ Mahlzeit hinzufügen</button>
+            <button className="w-full py-3 text-sm text-primary hover:underline" onClick={() => openMeal()}>+ Mahlzeit hinzufügen</button>
           </div>
         )}
       </div>
