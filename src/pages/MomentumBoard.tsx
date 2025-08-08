@@ -17,6 +17,16 @@ const MomentumBoard: React.FC = () => {
   const enabled = isEnabled('feature_plus_dashboard');
   const data = usePlusData();
 
+  // Tagesmission Dynamik aus Daten ableiten
+  const macrosDone = typeof (data as any)?.proteinDelta === 'number' ? ((data as any).proteinDelta <= 0) : false;
+  const sleepLogged = Boolean((data as any)?.sleepLoggedToday || (((data as any)?.sleepDurationToday ?? 0) > 0));
+  const supplementsLogged = Boolean((data as any)?.supplementsLoggedToday);
+  const stepsToday = (data as any)?.stepsToday ?? 0;
+  const stepsTarget = (data as any)?.stepsTarget ?? 7000;
+  const workoutLogged = Boolean((data as any)?.workoutLoggedToday || stepsToday >= stepsTarget);
+  const hydrationLogged = (((data as any)?.hydrationMlToday ?? 0) >= 1500);
+  const missionCompletedCount = [macrosDone, sleepLogged, supplementsLogged, workoutLogged, hydrationLogged].filter(Boolean).length;
+
   // Page-level SEO: title, description, canonical
   useEffect(() => {
     document.title = 'Momentum-Board – Defizit, Protein, Schritte | GetLeanAI+';
@@ -57,7 +67,7 @@ const MomentumBoard: React.FC = () => {
           <h1 className="text-3xl md:text-4xl">Momentum-Board</h1>
           <p className="text-muted-foreground mt-1">Dein tägliches Momentum: Defizit, Protein, Schritte & mehr.</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full border border-border/40 px-2.5 py-1 text-xs bg-secondary/60">🔥 Tagesmission aktiv</span>
+            <span className="inline-flex items-center rounded-full border border-border/40 px-2.5 py-1 text-xs bg-secondary/60">🔥 {missionCompletedCount >= 3 ? 'Tagesmission erfüllt' : 'Tagesmission aktiv'} ({missionCompletedCount}/5)</span>
             <span className="inline-flex items-center rounded-full border border-border/40 px-2.5 py-1 text-xs">Level & Rewards</span>
           </div>
         </header>
