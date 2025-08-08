@@ -20,6 +20,7 @@ export default {
 		extend: {
 			fontFamily: {
 				sans: ['InterVariable', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+				display: ['"Plus Jakarta Sans"', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
