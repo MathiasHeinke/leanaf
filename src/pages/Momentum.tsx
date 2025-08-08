@@ -17,7 +17,7 @@ import { openMeal, openWorkout } from '@/components/quick/quickAddBus';
 import HotSwipeActionCard, { HotAction } from '@/components/momentum/HotSwipeActionCard';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
-
+import { Skeleton } from '@/components/ui/skeleton';
 interface TodayMeal {
   id: string;
   user_id: string;
@@ -313,7 +313,17 @@ const MomentumPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const dateStr = useMemo(() => currentDate.toISOString().slice(0, 10), [currentDate]);
+  const DAY_CUTOFF_HOUR = 3; // Optionaler Tageswechsel um 03:00
+  const formatYmdBerlin = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  const berlinHour = (d: Date) => Number(new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', hour12: false }).format(d));
+  const dateStr = useMemo(() => {
+    const h = berlinHour(currentDate);
+    if (h < DAY_CUTOFF_HOUR) {
+      const prev = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
+      return formatYmdBerlin(prev);
+    }
+    return formatYmdBerlin(currentDate);
+  }, [currentDate]);
 
   const kcalGoal = useMemo(() => plus.goals?.calories ?? 0, [plus.goals]);
   const totals = useMemo(() => {
@@ -328,6 +338,7 @@ const MomentumPage: React.FC = () => {
   const todayKcal = totals.kcal;
   const remaining = Math.max(0, kcalGoal - todayKcal);
   const xpProgress = Math.min(100, Math.round(((todayKcal > 0 ? todayKcal : 0) / Math.max(1, kcalGoal)) * 100));
+  const ringsLoading = loading || !plus.goals;
 
   useEffect(() => {
     document.title = 'Momentum 2.0 – XP, Kalorien, Makros | GetLeanAI+';
@@ -473,14 +484,18 @@ const hotActions: HotAction[] = (() => {
   <HotSwipeActionCard actions={hotActions} />
 
   {/* Übersicht: Kalorien + Makros in einer Karte */}
-  <OverviewRingsCard
-    calories={{ remaining, goal: kcalGoal || 1, today: todayKcal }}
-    macros={{
-      protein: { used: totals.protein, goal: plus.goals?.protein || 0 },
-      carbs: { used: totals.carbs, goal: plus.goals?.carbs || 0 },
-      fats: { used: totals.fat, goal: plus.goals?.fats || 0 },
-    }}
-  />
+  {ringsLoading ? (
+    <Skeleton className="h-56 w-full rounded-xl" aria-label="Kalorien & Makro Übersicht lädt" />
+  ) : (
+    <OverviewRingsCard
+      calories={{ remaining, goal: kcalGoal || 1, today: todayKcal }}
+      macros={{
+        protein: { used: totals.protein, goal: plus.goals?.protein || 0 },
+        carbs: { used: totals.carbs, goal: plus.goals?.carbs || 0 },
+        fats: { used: totals.fat, goal: plus.goals?.fats || 0 },
+      }}
+    />
+  )}
 
   {/* Mahlzeitenliste (eingeklappt, unter der Übersicht) */}
   <Card>

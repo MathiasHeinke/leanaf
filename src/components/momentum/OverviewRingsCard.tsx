@@ -32,7 +32,7 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
   return (
     <Card>
       <CardContent className="pt-5">
-        <p className="sr-only" aria-live="polite">{`${Math.round(calories.remaining)} kcal Rest, ${Math.round(pct*100)}% des Ziels erreicht`}</p>
+        <p className="sr-only" aria-live="polite">{overshootKcal > 0 ? `Überschuss +${Math.round(overshootKcal)} kcal, ${Math.round(pct*100)}% des Ziels` : `${Math.round(calories.remaining)} kcal Rest, ${Math.round(pct*100)}% des Ziels erreicht`}</p>
         <div className="grid grid-cols-2 gap-4">
           {/* Left: Calories ring (thicker, blue, subtle glow) */}
           <div className="relative mx-auto h-44 w-44">
@@ -45,11 +45,11 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
               }}
             />
             {/* Inner cutout for thicker stroke */}
-            <div className="absolute inset-[16%] rounded-full bg-background border border-border/60" />
+            <div className="absolute inset-[16%] rounded-full bg-background border" style={{ borderColor: overshootKcal > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--border) / 0.6)' }} />
             {/* Center label */}
             <div className="absolute inset-[26%] rounded-full bg-transparent flex items-center justify-center text-center">
               <div>
-                <div className="text-xl font-semibold tabular-nums">{Math.round(calories.remaining)} kcal</div>
+                <div className="text-xl font-semibold tabular-nums">{overshootKcal > 0 ? `Überschuss +${Math.round(overshootKcal)} kcal` : `${Math.round(calories.remaining)} kcal Rest`}</div>
                 <div className="text-xs text-muted-foreground">Ziel {Math.round(calories.goal)} kcal</div>
               </div>
             </div>
@@ -75,6 +75,9 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
               className="absolute inset-0 rounded-full"
               style={{ background: `conic-gradient(hsl(var(--fats) / 0.5) ${Math.round(pPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(pPct*360)}deg)` }}
             />
+            {macros.protein.goal > 0 && macros.protein.used > macros.protein.goal && (
+              <div className="absolute inset-0 rounded-full border" style={{ borderColor: 'hsl(var(--destructive))' }} />
+            )}
             <div className="absolute inset-[8%] rounded-full bg-background border border-border/50" />
 
             {/* Middle = Carbs (medium) */}
@@ -83,6 +86,9 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
                 className="absolute inset-0 rounded-full"
                 style={{ background: `conic-gradient(hsl(var(--muted-foreground) / 0.45) ${Math.round(cPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(cPct*360)}deg)` }}
               />
+              {macros.carbs.goal > 0 && macros.carbs.used > macros.carbs.goal && (
+                <div className="absolute inset-0 rounded-full border" style={{ borderColor: 'hsl(var(--destructive))' }} />
+              )}
               <div className="absolute inset-[12%] rounded-full bg-background border border-border/50" />
             </div>
 
@@ -92,6 +98,9 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
                 className="absolute inset-0 rounded-full"
                 style={{ background: `conic-gradient(hsl(var(--carbs) / 0.5) ${Math.round(fPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(fPct*360)}deg)` }}
               />
+              {macros.fats.goal > 0 && macros.fats.used > macros.fats.goal && (
+                <div className="absolute inset-0 rounded-full border" style={{ borderColor: 'hsl(var(--destructive))' }} />
+              )}
               <div className="absolute inset-[24%] rounded-full bg-background border border-border/50" />
             </div>
 
