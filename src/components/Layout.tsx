@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
-import { QuickAddFAB } from "@/components/quick/QuickAddFAB";
+import QuickAddButton from "@/components/quick/QuickAddFAB";
 
 
 
