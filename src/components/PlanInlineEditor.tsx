@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -6,6 +6,8 @@ import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Dumbbell, Save, X, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SetDetail {
   weight?: string;
@@ -51,7 +53,29 @@ export const PlanInlineEditor: React.FC<PlanInlineEditorProps> = ({ initialPlan,
   const day = plan.structure.weekly_structure[0];
   const [isSaving, setIsSaving] = useState(false);
   const [askedMore, setAskedMore] = useState(false);
+  const [exerciseOptions, setExerciseOptions] = useState<{ name: string; category?: string }[]>([]);
 
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('exercises')
+          .select('name, category')
+          .order('name', { ascending: true })
+          .limit(200);
+        if (!error && data && isMounted) {
+          const uniqueByName = Array.from(
+            new Map(data.map((x: any) => [x.name, { name: x.name, category: x.category }])).values()
+          );
+          setExerciseOptions(uniqueByName);
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { isMounted = false; };
+  }, []);
   // Ensure each exercise has 3 set rows (default)
   const normalizedExercises = useMemo(() => {
     return (day?.exercises || []).map((ex) => {
@@ -149,12 +173,29 @@ export const PlanInlineEditor: React.FC<PlanInlineEditorProps> = ({ initialPlan,
             <div key={idx} className="rounded-lg border bg-background/50">
               <div className="flex items-center gap-2 p-3 border-b">
                 <Label className="text-xs w-16">Übung</Label>
-                <Input
-                  value={ex.name}
-                  onChange={(e) => updateExercise(idx, { name: e.target.value })}
-                  placeholder="z.B. Bankdrücken"
-                  className="text-sm"
-                />
+                <div className="flex-1">
+                  <Select
+                    value={exerciseOptions.find(o => o.name === ex.name)?.name ?? undefined}
+                    onValueChange={(val) => {
+                      if (val === '__manual__') {
+                        const custom = window.prompt('Übung manuell eingeben');
+                        if (custom && custom.trim().length > 1) updateExercise(idx, { name: custom.trim() });
+                      } else {
+                        updateExercise(idx, { name: val });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-full text-sm">
+                      <SelectValue placeholder={ex.name || 'Übung auswählen'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__manual__">Freitext eingeben…</SelectItem>
+                      {exerciseOptions.map((opt) => (
+                        <SelectItem key={opt.name} value={opt.name}>{opt.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button variant="ghost" size="sm" onClick={() => removeExercise(idx)} className="ml-auto text-destructive">
                   <X className="w-4 h-4" />
                 </Button>

@@ -410,56 +410,15 @@ if (enableAdvancedFeatures) {
     setIsCreatingPlan(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-enhanced-training-plan', {
-        body: {
-          userProfile: userProfile || {},
-          goals: [userProfile?.goal || 'Hypertrophy'],
-          planName: 'Nächster Trainingstag',
-          coachId: coach?.id || 'sascha',
-          useAI: false,
-          mode: 'next_day',
-          lookbackDays: 28
-        }
-      });
-      if (error) throw error;
-
-      const mapToInline = (plan: any) => {
-        const firstDay = (plan?.days || []).find((d: any) => !d.isRestDay) || (plan?.days || [])[0];
-        const exercises = (firstDay?.exercises || []).map((ex: any) => ({
-          name: ex.exerciseName,
-          sets: Array.isArray(ex.sets) ? ex.sets.length : 3,
-          reps: ex.sets?.[0]?.targetRepsRange || String(ex.sets?.[0]?.targetReps || '8-12'),
-          weight: '',
-          rpe: ex.sets?.[0]?.targetRPE ?? 7,
-          rest_seconds: ex.sets?.[0]?.restSeconds ?? 120,
-          sets_detail: (ex.sets || []).slice(0,3).map((s: any) => ({
-            weight: '',
-            reps: s.targetRepsRange || String(s.targetReps || ''),
-            rpe: s.targetRPE ?? 7
-          }))
-        }));
-        return {
-          name: plan.name || 'Nächster Trainingstag',
-          goal: plan.planType || 'custom',
-          daysPerWeek: 1,
-          structure: {
-            weekly_structure: [
-              { day: firstDay?.dayName || 'Training', focus: firstDay?.focus || '', exercises }
-            ],
-            principles: plan.scientificBasis?.appliedPrinciples || []
-          },
-          analysis: plan.scientificBasis?.methodology || ''
-        };
-      };
-
-      const inline = mapToInline(data?.plan || data);
+      // Use local history-based generator to ensure it reflects actual training data
+      const inline = await generateNextDayPlan(user.id, 28);
       setPendingPlanData(inline);
 
       // Add assistant confirmation message
       const assistantMessage: EnhancedChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: '✅ Ich habe deinen nächsten Trainingstag basierend auf deinen letzten Einheiten erstellt. Du kannst ihn unten noch anpassen und speichern.',
+        content: '✅ Ich habe deinen nächsten Trainingstag basierend auf deinen letzten Einheiten erstellt. Du kannst ihn unten anpassen und speichern.',
         created_at: new Date().toISOString(),
         coach_personality: coach?.id || 'lucy',
         coach_name: coach?.name || 'Coach',
@@ -475,23 +434,43 @@ if (enableAdvancedFeatures) {
     } finally {
       setIsCreatingPlan(false);
     }
-  }, [user?.id, coach, isChatLoading, userProfile, isCreatingPlan]);
+  }, [user?.id, coach, isChatLoading, isCreatingPlan]);
 
   // ============= PLAN HANDLERS =============
   const handleSavePlan = useCallback(async (planData: any) => {
     if (!user?.id) return;
     try {
+      // Map inline editor structure to workout_plans.exercises JSON
+      const day = planData?.structure?.weekly_structure?.[0];
+      const exercises = (day?.exercises || [])
+        .filter((ex: any) => ex?.name && ex.name.trim().length > 1)
+        .map((ex: any) => ({
+          name: ex.name,
+          sets: ex.sets ?? 3,
+          reps: ex.reps ?? '8-12',
+          rpe: ex.rpe ?? 7,
+          rest_seconds: ex.rest_seconds ?? 120,
+          sets_detail: (ex.sets_detail || []).slice(0, 3)
+        }));
+
+      const estimatedDuration = exercises.length * 8; // ~8 Min pro Übung
+
       const { error } = await supabase
-        .from('workout_plan_drafts')
+        .from('workout_plans')
         .insert({
-          user_id: user.id,
-          name: planData.name,
-          goal: planData.goal,
-          days_per_wk: planData.daysPerWeek,
-          structure_json: planData.structure,
-          notes: planData.analysis || null,
+          name: planData.name || 'Nächster Trainingstag',
+          category: 'kraft',
+          description: planData.analysis || day?.focus || null,
+          exercises: exercises as any,
+          created_by: user.id,
+          estimated_duration_minutes: estimatedDuration,
+          is_public: false,
+          target_frequency: planData.daysPerWeek || 1,
+          status: 'draft',
+          plan_type: 'custom'
         });
       if (error) throw error;
+
       toast.success('Trainingsplan gespeichert!');
       // nicht schließen – wir wollen die Nachfrage anzeigen
     } catch (error) {
