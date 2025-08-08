@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePlusData } from '@/hooks/usePlusData';
@@ -14,6 +14,8 @@ import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
 import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
 import { openMeal } from '@/components/quick/quickAddBus';
+import confetti from 'canvas-confetti';
+import { useNavigate } from 'react-router-dom';
 
 interface TodayMeal {
   id: string;
@@ -28,37 +30,81 @@ interface TodayMeal {
   image_url?: string | null; // optional Vorschaubild aus meal_images
 }
 
-// Sticky XP bar with 5 stages
+// Sticky XP bar with 5 stages + stage glow + XP chip
 const MomentumXPBar: React.FC<{ xp: number; goal?: number }>= ({ xp, goal = 100 }) => {
   const stages = 5;
   const perStage = goal / stages;
+  const prevXpRef = useRef<number>(xp);
+  const [recentGain, setRecentGain] = useState<number>(0);
+  const [glowIndex, setGlowIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const prev = prevXpRef.current;
+    const delta = Math.max(0, Math.round(xp - prev));
+    if (delta > 0) {
+      setRecentGain(delta);
+      const prevStage = Math.floor(prev / perStage);
+      const currStage = Math.floor(xp / perStage);
+      if (currStage > prevStage) {
+        setGlowIndex(currStage - 1);
+        const t = setTimeout(() => setGlowIndex(null), 700);
+        return () => clearTimeout(t);
+      }
+      const t2 = setTimeout(() => setRecentGain(0), 1200);
+      return () => clearTimeout(t2);
+    }
+    prevXpRef.current = xp;
+  }, [xp, perStage]);
+
+  useEffect(() => { prevXpRef.current = xp; }, [xp]);
+
+  const currentSegment = Math.min(stages - 1, Math.max(0, Math.floor(xp / perStage)));
+  const segmentFill = (seg: number) => {
+    const start = seg * perStage;
+    return Math.max(0, Math.min(1, (xp - start) / perStage));
+  };
+
   return (
     <div className="sticky top-0 z-20 py-3 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="relative h-2 md:h-3 w-full overflow-hidden rounded-full bg-secondary">
           {Array.from({ length: stages }).map((_, i) => {
-            const start = i * perStage;
-            const end = (i + 1) * perStage;
-            const fill = Math.max(0, Math.min(1, (xp - start) / perStage));
+            const fill = segmentFill(i);
+            const leftPct = (i * 100) / stages;
+            const widthPct = 100 / stages;
+            // flame position within current segment
+            const flameLeft = `calc(${leftPct}% + ${Math.max(0, Math.min(1, fill)) * widthPct}% - 8px)`;
             return (
-              <div key={i} className="absolute inset-y-0" style={{ left: `${(i*100)/stages}%`, width: `${100/stages}%` }}>
-                <div className="h-full w-full rounded-none bg-secondary" />
+              <div key={i} className="absolute inset-y-0" style={{ left: `${leftPct}%`, width: `${widthPct}%` }}>
+                {/* base (empty) */}
+                <div className="h-full w-full bg-secondary" />
+                {/* filled part */}
                 <div
                   className={cn(
-                    'absolute inset-y-0 left-0 rounded-none',
+                    'absolute inset-y-0 left-0',
                     fill > 0 ? 'bg-gradient-to-r from-primary via-primary/80 to-primary/60' : 'bg-transparent'
                   )}
-                  style={{ width: `${fill*100}%` }}
+                  style={{ width: `${fill * 100}%` }}
                 />
-                {fill >= 1 && (
-                  <Flame className="absolute -right-3 -top-2 h-4 w-4 text-primary" />
+                {/* stage glow when just completed */}
+                {glowIndex === i && (
+                  <div className="absolute inset-0 rounded-sm" style={{ boxShadow: '0 0 12px hsl(var(--primary) / 0.7) inset, 0 0 14px hsl(var(--primary) / 0.6)' }} />
+                )}
+                {/* moving flame in current segment */}
+                {i === currentSegment && fill > 0 && (
+                  <Flame className="absolute -top-3 h-4 w-4 text-primary transition-[left] duration-200" style={{ left: flameLeft }} />
                 )}
               </div>
             );
           })}
         </div>
-        <div className="mt-2 text-right text-xs text-muted-foreground">
-          ▸ {Math.max(0, goal - xp)} XP bis Ziel
+        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+          <div className="opacity-80">▸ {Math.max(0, goal - Math.round(xp))} XP bis Ziel</div>
+          {recentGain > 0 && (
+            <div className="ml-2 inline-flex items-center rounded-full border border-border/50 bg-background px-2 py-0.5 text-[11px] text-foreground shadow-sm animate-fade-in">
+              +{recentGain} XP
+            </div>
+          )}
         </div>
       </div>
     </div>
