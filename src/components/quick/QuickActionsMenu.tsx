@@ -45,22 +45,25 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ open, onSele
     transition={{ type: "spring", stiffness: 260, damping: 24 }}
     className="pointer-events-auto absolute right-4 bottom-24 md:right-6 md:bottom-28 flex flex-col items-end gap-3"
   >
-    {actions.map((a, idx) => (
-      <motion.button
-        key={a.key}
-        initial={{ scale: 0.8, opacity: 0, y: 10 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0, y: 8 }}
-        transition={{ delay: 0.02 * idx, type: "spring", stiffness: 300, damping: 22 }}
-        onClick={() => onSelect(a.key)}
-        className="glass-card rounded-full shadow-lg border border-border/40 hover:scale-105 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring w-14 h-14 flex items-center justify-center"
-        aria-label={a.label}
-      >
-        <a.Icon className="w-6 h-6 text-foreground" />
-      </motion.button>
-    ))}
+      {actions.map((a, idx) => {
+        const Icon = a.Icon;
+        return (
+          <motion.button
+            key={a.key}
+            initial={{ scale: 0.8, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 8 }}
+            transition={{ delay: 0.02 * idx, type: "spring", stiffness: 300, damping: 22 }}
+            onClick={() => onSelect(a.key)}
+            className="glass-card rounded-full shadow-lg border border-border/40 hover:scale-105 transition-transform focus:outline-none focus-visible:ring-2 focus-visible:ring-ring w-14 h-14 flex items-center justify-center"
+            aria-label={a.label}
+          >
+            <Icon className="w-6 h-6 text-foreground" />
+          </motion.button>
+        );
+      })}
+    </motion.div>
   </motion.div>
-</motion.div>
       )}
     </AnimatePresence>
   );
