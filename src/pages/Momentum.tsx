@@ -13,7 +13,7 @@ import { useDataRefresh, triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
 import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
-import { openMeal } from '@/components/quick/quickAddBus';
+import { openMeal, openWorkout } from '@/components/quick/quickAddBus';
 import HotSwipeActionCard, { HotAction } from '@/components/momentum/HotSwipeActionCard';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
@@ -393,7 +393,7 @@ const hotActions: HotAction[] = (() => {
     });
   }
   // Walk suggestion
-  actions.push({ id: 'walk', title: '10‑Min Walk (+5 XP) →', subtitle: `Stage‑Boost in ${toNext} XP`, onTap: () => quickAddBus.emit({ type: 'workout', payload: { recommendedType: 'walking' } }) });
+  actions.push({ id: 'walk', title: '10‑Min Walk (+5 XP) →', subtitle: `Stage‑Boost in ${toNext} XP`, onTap: () => openWorkout({ recommendedType: 'walking' }) });
   // Hydration suggestion
   actions.push({ id: 'water', title: '+300 ml Wasser (+5 XP) →', subtitle: `Stage‑Boost in ${toNext} XP` });
   return actions;
@@ -574,7 +574,7 @@ const hotActions: HotAction[] = (() => {
   <MomentumMovement date={currentDate} />
 </div>
 
-<QuickAddFAB />
+<QuickAddFAB statuses={{ meal: remaining > kcalGoal * 0.05 ? (meals.length > 0 ? 'partial' : 'due') : 'ok', workout: 'partial' }} />
       </main>
     </ErrorBoundary>
   );

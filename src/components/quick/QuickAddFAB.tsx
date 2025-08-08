@@ -9,7 +9,7 @@ const QuickWorkoutModal = lazy(() => import("@/components/QuickWorkoutModal").th
 const QuickSleepModal = lazy(() => import("@/components/quick/QuickSleepModal"));
 const QuickSupplementsModal = lazy(() => import("@/components/quick/QuickSupplementsModal"));
 
-export const QuickAddFAB: React.FC = () => {
+export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' | 'partial' | 'due'>> }> = ({ statuses }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mealOpen, setMealOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
@@ -82,7 +82,7 @@ export const QuickAddFAB: React.FC = () => {
       </div>
 
       {/* Overlay menu */}
-      <QuickActionsMenu open={menuOpen} onSelect={handleSelect} onClose={() => setMenuOpen(false)} />
+      <QuickActionsMenu open={menuOpen} onSelect={handleSelect} onClose={() => setMenuOpen(false)} statuses={statuses} />
 
       {/* Meal flow (Sheet) */}
       <Suspense fallback={null}>

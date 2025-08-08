@@ -19,7 +19,7 @@ const actions: { key: ActionType; label: string; Icon: React.ComponentType<any> 
   { key: "coach", label: "Coach", Icon: MessageCircle },
 ];
 
-export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ open, onSelect, onClose }) => {
+export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ open, onSelect, onClose, statuses }) => {
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const touchStartY = useRef<number | null>(null);
 
