@@ -1,5 +1,6 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 export interface PlusGoals {
   calories?: number | null;
@@ -34,61 +35,64 @@ export const usePlusData = (): UsePlusDataResult => {
   const [goals, setGoals] = useState<PlusGoals | null>(null);
   const [last7, setLast7] = useState<PlusDaySummary[]>([]);
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        setLoading(true);
-        setError(undefined);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(undefined);
 
-        const { data: auth } = await supabase.auth.getUser();
-        const userId = auth.user?.id;
-        if (!userId) {
-          setError('Nicht angemeldet');
-          setLoading(false);
-          return;
-        }
-
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-        const fromStr = sevenDaysAgo.toISOString().slice(0, 10);
-
-        const [goalsRes, summariesRes] = await Promise.all([
-          supabase
-            .from('daily_goals')
-            .select('calories, protein, carbs, fats, calorie_deficit')
-            .eq('user_id', userId)
-            .maybeSingle(),
-          supabase
-            .from('daily_summaries')
-            .select('date, total_calories, total_protein, total_carbs, total_fats')
-            .eq('user_id', userId)
-            .gte('date', fromStr)
-            .lte('date', todayStr)
-            .order('date', { ascending: true }),
-        ]);
-
-        if (goalsRes.error) throw goalsRes.error;
-        if (summariesRes.error) throw summariesRes.error;
-
-        setGoals(goalsRes.data || null);
-        setLast7(
-          (summariesRes.data || []).map((r) => ({
-            date: r.date as string,
-            total_calories: Number(r.total_calories || 0),
-            total_protein: Number(r.total_protein || 0),
-            total_carbs: Number(r.total_carbs || 0),
-            total_fats: Number(r.total_fats || 0),
-          }))
-        );
-      } catch (e: any) {
-        setError(e?.message ?? 'Fehler beim Laden');
-      } finally {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) {
+        setError('Nicht angemeldet');
         setLoading(false);
+        return;
       }
-    };
-    run();
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      const fromStr = sevenDaysAgo.toISOString().slice(0, 10);
+
+      const [goalsRes, summariesRes] = await Promise.all([
+        supabase
+          .from('daily_goals')
+          .select('calories, protein, carbs, fats, calorie_deficit')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('daily_summaries')
+          .select('date, total_calories, total_protein, total_carbs, total_fats')
+          .eq('user_id', userId)
+          .gte('date', fromStr)
+          .lte('date', todayStr)
+          .order('date', { ascending: true }),
+      ]);
+
+      if (goalsRes.error) throw goalsRes.error;
+      if (summariesRes.error) throw summariesRes.error;
+
+      setGoals(goalsRes.data || null);
+      setLast7(
+        (summariesRes.data || []).map((r) => ({
+          date: r.date as string,
+          total_calories: Number(r.total_calories || 0),
+          total_protein: Number(r.total_protein || 0),
+          total_carbs: Number(r.total_carbs || 0),
+          total_fats: Number(r.total_fats || 0),
+        }))
+      );
+    } catch (e: any) {
+      setError(e?.message ?? 'Fehler beim Laden');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useDataRefresh(fetchData);
 
   const today = useMemo(() => {
     if (!last7.length) return null;

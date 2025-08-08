@@ -1,7 +1,7 @@
 import React, { useMemo, useState, Suspense, lazy } from "react";
 import { Button } from "@/components/ui/button";
 import { Dumbbell, Footprints, Utensils, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 export const MomentumFab: React.FC = () => {
   const [open, setOpen] = useState(false);

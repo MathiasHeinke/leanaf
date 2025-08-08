@@ -5,7 +5,7 @@ import { Footprints, Dumbbell, Timer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 
 interface MovementStats {
   steps: number;

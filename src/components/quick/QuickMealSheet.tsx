@@ -3,6 +3,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { Camera, Mic, SendHorizontal, X } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 
 interface QuickMealSheetProps {
   open: boolean;
@@ -26,23 +29,52 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     removeImage,
   } = useGlobalMealInput();
 
+  const { user } = useAuth();
+
   const onCloseAll = () => {
     resetForm();
     onOpenChange(false);
   };
 
-  const onSubmit = async () => {
-    await handleSubmitMeal();
-    if (!isAnalyzing) {
-      // We don't persist here yet – show a lightweight confirmation for now
-      if (showConfirmationDialog && analyzedMealData) {
-        toast.success("Analyse abgeschlossen – Review folgt");
-        closeDialog();
-        onOpenChange(false);
+  const persistAnalyzedMeal = async () => {
+    try {
+      if (!user) {
+        toast.error("Bitte zuerst anmelden");
+        return;
       }
+      if (!analyzedMealData) {
+        toast.error("Keine Analysedaten verfügbar");
+        return;
+      }
+
+      const { error } = await supabase.from('meals').insert({
+        user_id: user.id,
+        text: analyzedMealData.title,
+        calories: Math.round(analyzedMealData.calories || 0),
+        protein: Math.round(analyzedMealData.protein || 0),
+        carbs: Math.round(analyzedMealData.carbs || 0),
+        fats: Math.round(analyzedMealData.fats || 0)
+      });
+
+      if (error) throw error;
+
+      toast.success("Mahlzeit gespeichert");
+      triggerDataRefresh();
+      closeDialog();
+      onCloseAll();
+    } catch (e: any) {
+      toast.error(e?.message || "Speichern fehlgeschlagen");
     }
   };
 
+  const onSubmit = async () => {
+    await handleSubmitMeal();
+    if (!isAnalyzing) {
+      if (showConfirmationDialog && analyzedMealData) {
+        // Confirmation UI wird unten angezeigt
+      }
+    }
+  };
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl border-border/40 glass-card pb-6">
@@ -127,10 +159,8 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
                 Bearbeiten
               </button>
               <button
-                onClick={() => {
-                  toast.success("Mahlzeit gespeichert (Demo)");
-                  closeDialog();
-                  onCloseAll();
+                onClick={async () => {
+                  await persistAnalyzedMeal();
                 }}
                 className="h-9 px-3 rounded-lg bg-primary text-primary-foreground"
               >

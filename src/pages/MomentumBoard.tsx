@@ -10,6 +10,7 @@ import { NextBestActionCard } from '@/components/plus/NextBestActionCard';
 import { MiniJournalQuick } from '@/components/plus/MiniJournalQuick';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
 
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
@@ -71,6 +72,7 @@ const MomentumBoard: React.FC = () => {
           <div><MiniJournalQuick /></div>
         </div>
       </div>
+      <QuickAddFAB />
     </main>
   );
 };
