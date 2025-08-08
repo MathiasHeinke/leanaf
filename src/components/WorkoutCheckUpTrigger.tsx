@@ -76,7 +76,7 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
           <div className="flex-1">
             <h3 className="font-semibold text-destructive">Profil-Laden fehlgeschlagen</h3>
             <p className="text-sm text-destructive/80">
-              {error}
+              {typeof error === 'string' ? error : (error as any)?.message ?? JSON.stringify(error)}
             </p>
           </div>
           <Button onClick={refreshProfile} variant="outline" size="sm">

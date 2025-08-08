@@ -113,7 +113,7 @@ export const DailySummaryCharts: React.FC<DailySummaryChartsProps> = ({ timeRang
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
-          <p className="text-muted-foreground">Fehler beim Laden der Daten: {error}</p>
+          <p className="text-muted-foreground">Fehler beim Laden der Daten: {typeof error === 'string' ? error : (error as any)?.message ?? JSON.stringify(error)}</p>
         </CardContent>
       </Card>
     );

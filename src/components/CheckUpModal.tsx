@@ -176,7 +176,7 @@ export const CheckUpModal: React.FC<CheckUpModalProps> = ({
           
           {error && (
             <div className="mt-2 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-destructive">{typeof error === 'string' ? error : (error as any)?.message ?? JSON.stringify(error)}</p>
             </div>
           )}
         </DialogHeader>

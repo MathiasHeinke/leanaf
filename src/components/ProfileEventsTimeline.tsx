@@ -185,7 +185,7 @@ export const ProfileEventsTimeline: React.FC<ProfileEventsTimelineProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground">{typeof error === 'string' ? error : (error as any)?.message ?? JSON.stringify(error)}</p>
         </CardContent>
       </Card>
     );
