@@ -45,6 +45,7 @@ export const GlobalHeader = ({
       case '/profile': return 'Profil';
       case '/coach': return 'Coaching';
       case '/training': return 'Workout';
+      case '/plus': return 'Momentum-Board';
       case '/analyse': return 'Analyse';
       case '/achievements': return 'Erfolge';
       case '/science': return 'Wissenschaft';

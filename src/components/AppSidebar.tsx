@@ -23,7 +23,8 @@ import {
   Info,
   Mail,
   History as HistoryIcon,
-  Brain
+  Brain,
+  Flame
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -52,6 +53,7 @@ const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Coaching", url: "/coach", icon: MessageCircle },
   { title: "Workout", url: "/training", icon: Dumbbell },
+  { title: "Momentum", url: "/plus", icon: Flame },
   { title: "Transformation", url: "/transformation", icon: TrendingUp },
   { title: "History", url: "/history", icon: HistoryIcon },
   { title: "Analyse", url: "/analyse", icon: BarChart3 },
