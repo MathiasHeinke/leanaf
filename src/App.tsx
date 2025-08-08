@@ -20,6 +20,7 @@ import Onboarding from "./pages/Onboarding";
 import CoachPage from "./pages/Coach";
 import TrainingPlus from "./pages/TrainingPlus";
 import MomentumBoard from "./pages/MomentumBoard";
+import Momentum from "./pages/Momentum";
 import HistoryPage from "./pages/History";
 import AnalysePage from "./pages/Analyse";
 import BackupAnalysePage from "./pages/BackupAnalysePage";
@@ -68,6 +69,7 @@ const App = () => (
                       <Route path="/coach/:coachId" element={<CoachPage />} />
                       <Route path="/training" element={<TrainingPlus />} />
                       <Route path="/plus" element={<MomentumBoard />} />
+                      <Route path="/momentum" element={<Momentum />} />
                       <Route path="/transformation" element={<TransformationJourneyPage />} />
                       <Route path="/history" element={<HistoryPage />} />
                       <Route path="/analyse" element={<AnalysePage />} />
