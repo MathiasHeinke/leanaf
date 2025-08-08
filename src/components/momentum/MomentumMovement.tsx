@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, Suspense, lazy } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Footprints, Dumbbell, Timer } from "lucide-react";
@@ -89,13 +89,16 @@ export const MomentumMovement: React.FC = () => {
       </CardContent>
 
       {/* Quick add via existing modal */}
-      {openQuick && (
-        <QuickWorkoutModal isOpen={openQuick} onClose={() => setOpenQuick(false)} contextData={{ recommendedType: 'walking' }} />
-      )}
+      <Suspense fallback={null}>
+        {openQuick && (
+          <QuickWorkoutModal isOpen={openQuick} onClose={() => setOpenQuick(false)} contextData={{ recommendedType: 'walking' }} />
+        )}
+      </Suspense>
     </Card>
   );
 };
 
 // Lazy import to avoid initial bundle increase
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { QuickWorkoutModal } = require("@/components/QuickWorkoutModal");
+const QuickWorkoutModal = lazy(() =>
+  import("@/components/QuickWorkoutModal").then((m) => ({ default: m.QuickWorkoutModal }))
+);

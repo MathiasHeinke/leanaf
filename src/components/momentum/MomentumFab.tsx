@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, Suspense, lazy } from "react";
 import { Button } from "@/components/ui/button";
 import { Dumbbell, Footprints, Utensils, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -47,13 +47,16 @@ export const MomentumFab: React.FC = () => {
         </Button>
       </div>
 
-      {modalType && (
-        <QuickWorkoutModal isOpen={!!modalType} onClose={closeModal} contextData={{ recommendedType: modalType }} />
-      )}
+      <Suspense fallback={null}>
+        {modalType && (
+          <QuickWorkoutModal isOpen={!!modalType} onClose={closeModal} contextData={{ recommendedType: modalType }} />
+        )}
+      </Suspense>
     </>
   );
 };
 
 // Lazy import to keep initial bundle light
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { QuickWorkoutModal } = require("@/components/QuickWorkoutModal");
+const QuickWorkoutModal = lazy(() =>
+  import("@/components/QuickWorkoutModal").then((m) => ({ default: m.QuickWorkoutModal }))
+);
