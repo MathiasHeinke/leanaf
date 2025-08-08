@@ -5,6 +5,7 @@ import { usePlusData } from '@/hooks/usePlusData';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChevronDown, ChevronUp, Flame, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { MomentumMacros } from '@/components/momentum/MomentumMacros';
 
 interface TodayMeal {
   id: string;
@@ -200,6 +201,9 @@ const MomentumPage: React.FC = () => {
           meals={meals}
           loading={loading}
         />
+
+        {/* Stufe 2: Makros Cluster (Ring default, Bars via macroBars) */}
+        <MomentumMacros data={plus} />
       </div>
     </main>
   );

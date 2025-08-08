@@ -19,8 +19,7 @@ export const useFeatureFlags = (): FeatureFlagHook => {
       // Get enabled feature flags
       const { data: enabledFlags, error } = await supabase
         .from('feature_flags')
-        .select('flag_name, is_enabled, rollout_percentage')
-        .eq('is_enabled', true);
+        .select('key, enabled_default, rollout_percentage');
 
       if (error) {
         console.error('Error fetching feature flags:', error);
@@ -29,9 +28,9 @@ export const useFeatureFlags = (): FeatureFlagHook => {
 
       // Convert to flag name -> boolean mapping
       const flagMap: Record<string, boolean> = {};
-      enabledFlags?.forEach(flag => {
-        // For now, enable all flags with rollout > 0
-        flagMap[flag.flag_name] = flag.rollout_percentage > 0;
+      enabledFlags?.forEach((flag: any) => {
+        // Enable when rollout > 0 or default enabled
+        flagMap[flag.key] = Boolean(flag.enabled_default) || Number(flag.rollout_percentage || 0) > 0;
       });
 
       setFlags(flagMap);

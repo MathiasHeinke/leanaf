@@ -1,0 +1,110 @@
+import React, { useMemo } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { UsePlusDataResult } from '@/hooks/usePlusData';
+import { Progress } from '@/components/ui/progress';
+
+interface Props {
+  data: UsePlusDataResult;
+}
+
+export const MomentumMacros: React.FC<Props> = ({ data }) => {
+  const { isEnabled } = useFeatureFlags();
+  const useBars = isEnabled('macroBars');
+
+  const goals = data.goals || {};
+  const t = data.today || null;
+
+  const protein = {
+    goal: goals.protein || 0,
+    used: t?.total_protein || 0,
+  };
+  const carbs = {
+    goal: goals.carbs || 0,
+    used: t?.total_carbs || 0,
+  };
+  const fats = {
+    goal: goals.fats || 0,
+    used: t?.total_fats || 0,
+  };
+
+  const pct = (used: number, goal: number) => {
+    if (!goal) return 0;
+    return Math.max(0, Math.min(1, used / goal));
+  };
+
+  const pPct = useMemo(() => pct(protein.used, protein.goal), [protein.used, protein.goal]);
+  const cPct = useMemo(() => pct(carbs.used, carbs.goal), [carbs.used, carbs.goal]);
+  const fPct = useMemo(() => pct(fats.used, fats.goal), [fats.used, fats.goal]);
+
+  return (
+    <Card>
+      <CardContent className="pt-5">
+        <div className="mb-3">
+          <div className="text-sm font-medium">Makros</div>
+          <div className="text-xs text-muted-foreground">Protein · Carbs · Fett</div>
+        </div>
+
+        {useBars ? (
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span>Protein</span>
+                <span className="tabular-nums">{Math.round(protein.used)}/{Math.round(protein.goal)} g</span>
+              </div>
+              <Progress value={pPct * 100} className="h-3" indicatorClassName="bg-primary" />
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span>Carbs</span>
+                <span className="tabular-nums">{Math.round(carbs.used)}/{Math.round(carbs.goal)} g</span>
+              </div>
+              <Progress value={cPct * 100} className="h-2.5" indicatorClassName="bg-accent" />
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span>Fett</span>
+                <span className="tabular-nums">{Math.round(fats.used)}/{Math.round(fats.goal)} g</span>
+              </div>
+              <Progress value={fPct * 100} className="h-2" indicatorClassName="bg-secondary-foreground" />
+            </div>
+          </div>
+        ) : (
+          <div className="relative mx-auto h-44 w-44">
+            {/* Outer = Protein */}
+            <div
+              className="absolute inset-0 rounded-full"
+              style={{ background: `conic-gradient(hsl(var(--primary)) ${pPct*360}deg, hsl(var(--secondary)) ${pPct*360}deg)` }}
+            />
+            <div className="absolute inset-[10%] rounded-full bg-background border border-border/60" />
+
+            {/* Middle = Carbs */}
+            <div className="absolute inset-[14%]">
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{ background: `conic-gradient(hsl(var(--accent)) ${cPct*360}deg, hsl(var(--secondary)) ${cPct*360}deg)` }}
+              />
+              <div className="absolute inset-[12%] rounded-full bg-background border border-border/60" />
+            </div>
+
+            {/* Inner = Fat */}
+            <div className="absolute inset-[28%]">
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{ background: `conic-gradient(hsl(var(--foreground)) ${fPct*360}deg, hsl(var(--secondary)) ${fPct*360}deg)` }}
+              />
+              <div className="absolute inset-[20%] rounded-full bg-background border border-border/60" />
+            </div>
+
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-xs text-muted-foreground">Heute</div>
+                <div className="text-sm tabular-nums">P {Math.round(protein.used)} · C {Math.round(carbs.used)} · F {Math.round(fats.used)}</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
