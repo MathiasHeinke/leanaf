@@ -7,6 +7,8 @@ import { Badge } from './ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Plus, Save, X, Dumbbell, Target } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Exercise {
   name: string;
@@ -51,6 +53,7 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
     days_per_wk: planData.days_per_wk,
     structure: planData.structure || { weekly_structure: [] }
   });
+  const [exerciseOptions, setExerciseOptions] = useState<{ name: string }[]>([]);
 
   useEffect(() => {
     setEditedPlan({
@@ -60,6 +63,22 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
       structure: planData.structure || { weekly_structure: [] }
     });
   }, [planData]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('exercises')
+          .select('name')
+          .order('name', { ascending: true })
+          .limit(300);
+        const unique = Array.from(new Map((data || []).map((x: any) => [x.name, { name: x.name }])).values());
+        setExerciseOptions(unique);
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, []);
 
   const addExercise = (dayIndex: number) => {
     const newStructure = { ...editedPlan.structure };
@@ -228,12 +247,27 @@ export const WorkoutPlanEditModal: React.FC<WorkoutPlanEditModalProps> = ({
                       <div key={exerciseIndex} className="grid grid-cols-1 md:grid-cols-6 gap-2 p-3 bg-background/50 rounded border">
                         <div className="md:col-span-2">
                           <Label className="text-xs">Übung</Label>
-                          <Input
-                            value={exercise.name}
-                            onChange={(e) => updateExercise(dayIndex, exerciseIndex, { name: e.target.value })}
-                            placeholder="z.B. Bankdrücken"
-                            className="text-sm"
-                          />
+                          <Select
+                            value={exercise.name || undefined}
+                            onValueChange={(val) => {
+                              if (val === '__manual__') {
+                                const custom = window.prompt('Übung manuell eingeben');
+                                if (custom && custom.trim()) updateExercise(dayIndex, exerciseIndex, { name: custom.trim() });
+                              } else {
+                                updateExercise(dayIndex, exerciseIndex, { name: val });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="w-full text-sm">
+                              <SelectValue placeholder={exercise.name || 'Übung auswählen'} />
+                            </SelectTrigger>
+                            <SelectContent className="z-[60]">
+                              <SelectItem value="__manual__">Freitext eingeben…</SelectItem>
+                              {exerciseOptions.map((opt) => (
+                                <SelectItem key={opt.name} value={opt.name}>{opt.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div>
                           <Label className="text-xs">Sätze</Label>

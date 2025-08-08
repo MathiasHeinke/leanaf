@@ -36,10 +36,10 @@ export const FloatingWorkoutTimer: React.FC<FloatingWorkoutTimerProps> = ({
       return "border-green-500 shadow-green-500/20 shadow-lg";
     } else if (isPaused) {
       // Paused state: orange border with slow pulse
-      return "border-orange-500 shadow-orange-500/40 shadow-lg animate-pulse";
+      return "border-orange-500 shadow-orange-500/40 shadow-lg";
     } else if (isRunning) {
-      // Running state: green border with pulse
-      return "border-green-500 shadow-green-500/40 shadow-lg animate-pulse";
+      // Running state: green border
+      return "border-green-500 shadow-green-500/40 shadow-lg";
     } else {
       // Stopped state: red border without pulse
       return "border-red-500 shadow-red-500/20 shadow-lg";

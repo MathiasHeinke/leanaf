@@ -95,20 +95,26 @@ async function buildAIContext(userId: string, coachId: string, userMessage: stri
     ctx.persona = await getCoachPersona(coachId);
     
     // Load memory and daily context in parallel
-    const [memoryData, dailyData, ragData] = await Promise.all([
+    const [memoryData, dailyData, trainingHistory, nutritionTrends, ragData] = await Promise.all([
       loadCoachMemory(userId, coachId, traceId),
       loadEnhancedDaily(userId, traceId),
+      loadTrainingHistory(userId, traceId, 42),
+      loadNutritionTrends(userId, traceId, 42),
       runEnhancedRag(userMessage, coachId, traceId, additionalContext)
     ]);
     
     ctx.memory = memoryData;
     ctx.daily = dailyData;
+    ctx.training = trainingHistory;
+    ctx.nutrition = nutritionTrends;
     ctx.ragChunks = ragData?.chunks || [];
     
     await traceEvent(traceId, 'context_complete', 'success', {
       hasPersona: !!ctx.persona,
       hasMemory: !!ctx.memory,
       hasDaily: !!ctx.daily,
+      hasTraining: !!ctx.training,
+      hasNutrition: !!ctx.nutrition,
       ragChunks: ctx.ragChunks.length
     });
     
@@ -442,6 +448,97 @@ async function loadEnhancedDaily(userId: string, traceId: string): Promise<any> 
   }
 }
 
+async function loadTrainingHistory(userId: string, traceId: string, days: number = 42): Promise<any> {
+  try {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+    const [{ data: sets }, { data: workouts }] = await Promise.all([
+      supabase.from('exercise_sets')
+        .select('session_id, created_at, weight_kg, reps')
+        .eq('user_id', userId)
+        .gte('created_at', since),
+      supabase.from('workouts')
+        .select('id, date, workout_type, duration_minutes, distance_km')
+        .eq('user_id', userId)
+        .gte('created_at', since)
+    ]);
+
+    const bySession: Record<string, { date: string; volume: number }> = {};
+    (sets || []).forEach(s => {
+      const sid = s.session_id || s.created_at;
+      const vol = (s.weight_kg || 0) * (s.reps || 0);
+      const d = (s.created_at || '').slice(0,10);
+      if (!bySession[sid]) bySession[sid] = { date: d, volume: 0 };
+      bySession[sid].volume += vol;
+    });
+
+    const sessions = Object.values(bySession);
+    const totalVolume = sessions.reduce((sum, s) => sum + s.volume, 0);
+    const avgPerWorkout = sessions.length ? totalVolume / sessions.length : 0;
+    const workoutsPerWeek = sessions.length / (days / 7);
+
+    const runningDays = (workouts || []).filter(w => (w.distance_km && Number(w.distance_km) > 0) || (w.workout_type && w.workout_type.toLowerCase() !== 'kraft')).length;
+
+    const result = {
+      days,
+      totalVolumeKg: totalVolume,
+      totalVolumeTons: totalVolume / 1000,
+      avgPerWorkoutKg: avgPerWorkout,
+      avgPerWorkoutTons: avgPerWorkout / 1000,
+      workoutsCount: sessions.length,
+      workoutsPerWeek: Number(workoutsPerWeek.toFixed(2)),
+      runningDays
+    };
+
+    await traceEvent(traceId, 'training_history_loaded', 'success', result);
+    return result;
+  } catch (error) {
+    await traceEvent(traceId, 'training_history_error', 'error', { error: error.message });
+    return null;
+  }
+}
+
+async function loadNutritionTrends(userId: string, traceId: string, days: number = 42): Promise<any> {
+  try {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0,10);
+    const [{ data: summaries }, { data: goals }] = await Promise.all([
+      supabase.from('daily_summaries')
+        .select('date, total_calories')
+        .eq('user_id', userId)
+        .gte('date', since)
+        .order('date', { ascending: true }),
+      supabase.from('daily_goals')
+        .select('calorie_goal')
+        .eq('user_id', userId)
+        .single()
+    ]);
+
+    const goal = goals?.calorie_goal || 0;
+    let deficitDays = 0, currentStreak = 0, maxStreak = 0;
+    let totalDeficit = 0, counted = 0;
+    (summaries || []).forEach((s: any) => {
+      if (goal > 0 && typeof s.total_calories === 'number') {
+        const delta = goal - s.total_calories;
+        if (delta > 0) {
+          deficitDays++;
+          currentStreak++;
+          totalDeficit += delta;
+          counted++;
+          if (currentStreak > maxStreak) maxStreak = currentStreak;
+        } else {
+          currentStreak = 0;
+        }
+      }
+    });
+
+    const avgDeficit = counted ? Math.round(totalDeficit / counted) : 0;
+    const result = { goal, deficitDays, avgDeficitPerDay: avgDeficit, maxDeficitStreak: maxStreak };
+    await traceEvent(traceId, 'nutrition_trends_loaded', 'success', result);
+    return result;
+  } catch (error) {
+    await traceEvent(traceId, 'nutrition_trends_error', 'error', { error: error.message });
+    return null;
+  }
+}
 async function runEnhancedRag(userMessage: string, coachId: string, traceId: string, additionalContext: any = {}): Promise<any> {
   try {
     // Validate input parameters
@@ -685,7 +782,7 @@ function buildPersonaPrompt(persona: any, coachId: string): string {
 }
 
 function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, userMessage: string, systemFlagsPrompt?: string): string {
-  const { persona, memory, daily, ragChunks } = ctx;
+  const { persona, memory, daily, training, nutrition, ragChunks } = ctx;
   
   // Base persona prompt
   let prompt = buildPersonaPrompt(persona, coachId) + '\n\n';
@@ -700,6 +797,9 @@ function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, user
     prompt += `=== PERSÖNLICHE DATEN ===\n`;
     if (memory.userName) {
       prompt += `• Name: ${memory.userName}\n`;
+    }
+    if (memory.demographics?.goal) {
+      prompt += `• Ziel: ${memory.demographics.goal}\n`;
     }
     prompt += `• Beziehung: ${memory.relationship || 'building_trust'} (Vertrauen: ${memory.trust || 1}/10)\n`;
     if (memory.preferences && Object.keys(memory.preferences).length > 0) {
@@ -721,29 +821,43 @@ function buildDynamicPrompt(requestType: string, ctx: any, coachId: string, user
   
   if (requestType === 'nutrition' || requestType === 'weight') {
     // For nutrition questions, focus on meals and calories
-    if (daily) {
-      prompt += `=== ERNÄHRUNG HEUTE ===\n`;
-      prompt += `• Kalorien: ${daily.totalCaloriesToday || 0} (${daily.caloriesLeft || 0} übrig)\n`;
-      prompt += `• Protein: ${daily.totalProteinToday || 0}g (${daily.proteinLeft || 0}g übrig)\n`;
-      if (daily.recentMeals && daily.recentMeals.length > 0) {
+    if (daily || nutrition) {
+      prompt += `=== ENERGIEBILANZ ===\n`;
+      if (daily) {
+        prompt += `• Heute: ${daily.totalCaloriesToday || 0} kcal (${daily.caloriesLeft || 0} übrig) · Protein: ${daily.totalProteinToday || 0}g\n`;
+      }
+      if (nutrition) {
+        prompt += `• Durchschnittliches Defizit (letzte ${nutrition.days || 42}T): ${nutrition.avgDeficitPerDay || 0} kcal/Tag\n`;
+        if (nutrition.maxDeficitStreak) prompt += `• Defizit-Streak: ${nutrition.maxDeficitStreak} Tage\n`;
+      }
+      if (daily?.currentWeight) prompt += `• Aktuelles Gewicht: ${daily.currentWeight}kg (${daily.weightTrend})\n`;
+      if (daily?.recentMeals?.length) {
         prompt += `• Letzte Mahlzeiten:\n`;
         daily.recentMeals.slice(0, 3).forEach((meal: any) => {
           prompt += `  - ${meal.time}: ${meal.name} (${meal.calories}kcal, ${meal.protein}g Protein)\n`;
         });
       }
-      if (daily.currentWeight) prompt += `• Aktuelles Gewicht: ${daily.currentWeight}kg (${daily.weightTrend})\n`;
       prompt += '\n';
     }
   }
   
   if (requestType === 'training') {
     // For training questions, focus on workouts
-    if (daily) {
+    if (daily || training) {
       prompt += `=== TRAINING STATUS ===\n`;
-      prompt += `• Letztes Training: ${daily.lastWorkout || 'Kein Training'}\n`;
-      prompt += `• Trainingsfrequenz: ${daily.trainingFrequency || 'niedrig'}\n`;
-      if (daily.recoveryScore) prompt += `• Recovery: ${daily.recoveryScore}/10\n`;
-      if (daily.activeStreaks && daily.activeStreaks.length > 0) {
+      if (daily) {
+        prompt += `• Letztes Training: ${daily.lastWorkout || 'Kein Training'}\n`;
+        prompt += `• Trainingsfrequenz (heute): ${daily.trainingFrequency || 'niedrig'}\n`;
+        if (daily.recoveryScore) prompt += `• Recovery: ${daily.recoveryScore}/10\n`;
+      }
+      if (training) {
+        const volT = (training.totalVolumeKg/1000).toFixed(1);
+        const avgT = (training.avgPerWorkoutKg/1000).toFixed(1);
+        prompt += `• Historie (letzte ${training.days}T): ${volT} t gesamt · ~${avgT} t/Workout · ~${training.workoutsPerWeek}/Woche\n`;
+        if (training.runningDays) prompt += `• Cardio: ${training.runningDays} Tage mit Laufen/Gehen\n`;
+        prompt += `• WICHTIG: Keine generischen Ganzkörper-Vorschläge, nutze Split basierend auf Historie\n`;
+      }
+      if (daily?.activeStreaks?.length) {
         prompt += `• Aktive Streaks: ${daily.activeStreaks.map((s: any) => `${s.type} (${s.current})`).join(', ')}\n`;
       }
       prompt += '\n';
