@@ -28,6 +28,7 @@ interface TodayMeal {
   carbs: number | null;
   fat: number | null;
   quality_score: number | null;
+  meal_type?: string | null;
   image_url?: string | null; // optional Vorschaubild aus meal_images
 }
 
@@ -324,7 +325,7 @@ const fetchMeals = useCallback(async () => {
     // Load meals for selected date
     const { data, error } = await supabase
       .from('meals')
-      .select('id,user_id,created_at,text,calories,protein,carbs,fats,quality_score')
+      .select('id,user_id,created_at,text,calories,protein,carbs,fats,quality_score,meal_type')
       .eq('user_id', user.id)
       .eq('date', dateStr)
       .order('created_at', { ascending: false });
@@ -341,6 +342,7 @@ const fetchMeals = useCallback(async () => {
       carbs: r.carbs,
       fat: r.fats,
       quality_score: r.quality_score,
+      meal_type: r.meal_type || null,
     }));
 
     // Attach first image if available
@@ -482,88 +484,121 @@ const hotActions: HotAction[] = (() => {
             <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
           </div>
         ) : (
-          <div className="divide-y divide-border/60 max-h-64 overflow-auto pr-1">
-            {meals.length === 0 && (
-              <div className="text-sm text-muted-foreground py-6 text-center">Keine Einträge für heute.</div>
-            )}
-            {meals.slice(0, 20).map((m) => {
-              const isEditing = editingMealId === m.id;
+          <div className="max-h-64 overflow-auto pr-1">
+            {(() => {
+              if (meals.length === 0) {
+                return <div className="text-sm text-muted-foreground py-6 text-center">Keine Einträge für heute.</div>;
+              }
+              const normalize = (t?: string | null) => {
+                const v = (t || '').toLowerCase();
+                if (v.includes('breakfast') || v.includes('früh')) return 'breakfast';
+                if (v.includes('lunch') || v.includes('mittag')) return 'lunch';
+                if (v.includes('dinner') || v.includes('abend')) return 'dinner';
+                return 'snack';
+              };
+              const sections = [
+                { key: 'breakfast', label: 'Frühstück' },
+                { key: 'lunch', label: 'Mittagessen' },
+                { key: 'dinner', label: 'Abendessen' },
+                { key: 'snack', label: 'Snacks & Andere' },
+              ] as const;
+              const items = [...meals].sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime());
+              const byType = new Map<string, TodayMeal[]>();
+              items.forEach((m) => {
+                const k = normalize(m.meal_type);
+                if (!byType.has(k)) byType.set(k, []);
+                byType.get(k)!.push(m);
+              });
               return (
-                <div key={m.id} className="flex items-center gap-3 py-3">
-                  <div className="h-12 w-12 rounded-md bg-secondary overflow-hidden flex items-center justify-center">
-                    {m.image_url ? (
-                      <img src={m.image_url} alt={`Mahlzeit Foto – ${m.title || 'Mahlzeit'}`} className="h-full w-full object-cover" loading="lazy" />
-                    ) : (
-                      <Utensils className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    {isEditing ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          value={mealTitleDraft}
-                          onChange={(e) => setMealTitleDraft(e.target.value)}
-                          className="w-full h-9 px-2 rounded-md border border-border/60 bg-background text-sm"
-                          placeholder="Titel"
-                        />
+                <>
+                  {sections.map((s) => {
+                    const list = byType.get(s.key) || [];
+                    if (list.length === 0) return null;
+                    return (
+                      <div key={s.key} className="py-2 first:pt-0">
+                        <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">{s.label}</div>
+                        <div className="divide-y divide-border/60">
+                          {list.map((m) => {
+                            const isEditing = editingMealId === m.id;
+                            return (
+                              <div key={m.id} className="flex items-center gap-3 py-3">
+                                <div className="h-12 w-12 rounded-md bg-secondary overflow-hidden flex items-center justify-center">
+                                  {m.image_url ? (
+                                    <img src={m.image_url} alt={`Mahlzeit Foto – ${m.title || 'Mahlzeit'}`} className="h-full w-full object-cover" loading="lazy" />
+                                  ) : (
+                                    <Utensils className="h-5 w-5 text-muted-foreground" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  {isEditing ? (
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        value={mealTitleDraft}
+                                        onChange={(e) => setMealTitleDraft(e.target.value)}
+                                        className="w-full h-9 px-2 rounded-md border border-border/60 bg-background text-sm"
+                                        placeholder="Titel"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm truncate">{m.title || 'Mahlzeit'}</div>
+                                  )}
+                                  {/* Makro-Badges */}
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                                      <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--fats))' }} />
+                                      P {Math.round(m.protein || 0)}g
+                                    </span>
+                                    <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                                      <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--muted-foreground))' }} />
+                                      C {Math.round(m.carbs || 0)}g
+                                    </span>
+                                    <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
+                                      <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs))' }} />
+                                      F {Math.round(m.fat || 0)}g
+                                    </span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                                <div className="shrink-0 flex items-center gap-2">
+                                  {isEditing ? (
+                                    <>
+                                      <input
+                                        inputMode="numeric"
+                                        value={mealKcalDraft}
+                                        onChange={(e) => setMealKcalDraft(e.target.value)}
+                                        className="w-20 h-9 px-2 rounded-md border border-border/60 bg-background text-sm tabular-nums text-right"
+                                        aria-label="Kalorien"
+                                      />
+                                      <span className="text-sm">kcal</span>
+                                      <button aria-label="Speichern" className="p-2 rounded-md bg-primary text-primary-foreground" onClick={saveEditMeal}>
+                                        <Check className="w-4 h-4" />
+                                      </button>
+                                      <button aria-label="Abbrechen" className="p-2 rounded-md border border-border/60" onClick={cancelEditMeal}>
+                                        <XIcon className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="shrink-0 text-sm font-medium tabular-nums">{Math.round(m.kcal || 0)} kcal</div>
+                                      <button aria-label="Bearbeiten" className="p-2 rounded-md border border-border/60" onClick={() => startEditMeal(m)}>
+                                        <Pencil className="w-4 h-4" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-sm truncate">{m.title || 'Mahlzeit'}</div>
-                    )}
-
-                    {/* Makro-Badges unter dem Titel */}
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
-                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--fats))' }}></span>
-                        P {Math.round(m.protein || 0)}g
-                      </span>
-                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
-                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--muted-foreground))' }}></span>
-                        C {Math.round(m.carbs || 0)}g
-                      </span>
-                      <span className="inline-flex items-center rounded-full border border-border/60 px-2 py-0.5 text-[10px] leading-none">
-                        <span className="mr-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs))' }}></span>
-                        F {Math.round(m.fat || 0)}g
-                      </span>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-
-                  <div className="shrink-0 flex items-center gap-2">
-                    {isEditing ? (
-                      <>
-                        <input
-                          inputMode="numeric"
-                          value={mealKcalDraft}
-                          onChange={(e) => setMealKcalDraft(e.target.value)}
-                          className="w-20 h-9 px-2 rounded-md border border-border/60 bg-background text-sm tabular-nums text-right"
-                          aria-label="Kalorien"
-                        />
-                        <span className="text-sm">kcal</span>
-                        <button aria-label="Speichern" className="p-2 rounded-md bg-primary text-primary-foreground" onClick={saveEditMeal}>
-                          <Check className="w-4 h-4" />
-                        </button>
-                        <button aria-label="Abbrechen" className="p-2 rounded-md border border-border/60" onClick={cancelEditMeal}>
-                          <XIcon className="w-4 h-4" />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="shrink-0 text-sm font-medium tabular-nums">{Math.round(m.kcal || 0)} kcal</div>
-                        <button aria-label="Bearbeiten" className="p-2 rounded-md border border-border/60" onClick={() => startEditMeal(m)}>
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
+                    );
+                  })}
+                  <button className="w-full py-3 text-sm text-primary hover:underline" onClick={() => openMeal()}>+ Mahlzeit hinzufügen</button>
+                </>
               );
-            })}
-            <button className="w-full py-3 text-sm text-primary hover:underline" onClick={() => openMeal()}>+ Mahlzeit hinzufügen</button>
+            })()}
           </div>
         )}
       </div>
