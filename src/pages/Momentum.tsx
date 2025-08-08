@@ -6,6 +6,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ChevronDown, ChevronUp, Flame, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MomentumMacros } from '@/components/momentum/MomentumMacros';
+import { MomentumMovement } from '@/components/momentum/MomentumMovement';
+import { MomentumFab } from '@/components/momentum/MomentumFab';
 
 interface TodayMeal {
   id: string;
@@ -204,7 +206,12 @@ const MomentumPage: React.FC = () => {
 
         {/* Stufe 2: Makros Cluster (Ring default, Bars via macroBars) */}
         <MomentumMacros data={plus} />
+
+        {/* Stufe 3: Bewegung (Schritte + Workouts) */}
+        <MomentumMovement />
       </div>
+
+      <MomentumFab />
     </main>
   );
 };
