@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { Camera, Mic, SendHorizontal, X } from "lucide-react";
