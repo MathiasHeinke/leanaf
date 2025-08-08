@@ -69,6 +69,9 @@ export const Layout = ({ children }: LayoutProps) => {
         <Footer />
       </div>
       
+      {/* Quick Add - global FAB */}
+      <QuickAddButton />
+      
       {/* Debug Panels */}
       <EnhancedSubscriptionDebugPanel 
         isOpen={showSubscriptionDebug} 
