@@ -3,12 +3,16 @@ import { Plus, X } from "lucide-react";
 import { QuickActionsMenu, ActionType } from "./QuickActionsMenu";
 import { QuickMealSheet } from "./QuickMealSheet";
 import { QuickWorkoutModal } from "@/components/QuickWorkoutModal";
+import { QuickSleepModal } from "@/components/quick/QuickSleepModal";
+import { QuickSupplementsModal } from "@/components/quick/QuickSupplementsModal";
 import { toast } from "@/components/ui/sonner";
 
 export const QuickAddFAB: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mealOpen, setMealOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
+  const [sleepOpen, setSleepOpen] = useState(false);
+  const [suppsOpen, setSuppsOpen] = useState(false);
 
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
 
@@ -23,10 +27,17 @@ export const QuickAddFAB: React.FC = () => {
       setWorkoutOpen(true);
       return;
     }
+    if (type === "sleep") {
+      setMenuOpen(false);
+      setSleepOpen(true);
+      return;
+    }
+    if (type === "supplements") {
+      setMenuOpen(false);
+      setSuppsOpen(true);
+      return;
+    }
 
-    // Stubs for now
-    if (type === "sleep") toast.info("Schlaf-Quick-Input kommt bald ✨");
-    if (type === "supplements") toast.info("Supplement-Stack kommt bald ✨");
     if (type === "coach") toast.info("Coach-Zugang kommt bald ✨");
     setMenuOpen(false);
   }, []);
@@ -54,7 +65,13 @@ export const QuickAddFAB: React.FC = () => {
       <QuickMealSheet open={mealOpen} onOpenChange={setMealOpen} />
 
       {/* Workout flow (existing modal) */}
-      <QuickWorkoutModal isOpen={workoutOpen} onClose={() => setWorkoutOpen(false)} />
+      <QuickWorkoutModal isOpen={workoutOpen} onClose={() => setWorkoutOpen(false)} contextData={{ recommendedType: 'walking' }} />
+
+      {/* Sleep flow */}
+      <QuickSleepModal isOpen={sleepOpen} onClose={() => setSleepOpen(false)} />
+
+      {/* Supplements flow */}
+      <QuickSupplementsModal isOpen={suppsOpen} onClose={() => setSuppsOpen(false)} />
     </>
   );
 };
