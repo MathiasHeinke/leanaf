@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { usePlusData } from '@/hooks/usePlusData';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronDown, ChevronUp, Flame, Utensils, Pencil, Check, X as XIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Flame, Utensils, Pencil, Check, X as XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MomentumMacros } from '@/components/momentum/MomentumMacros';
 import { MomentumMovement } from '@/components/momentum/MomentumMovement';
@@ -14,6 +14,7 @@ import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
 import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
 import { openMeal } from '@/components/quick/quickAddBus';
+import HotSwipeActionCard, { HotAction } from '@/components/momentum/HotSwipeActionCard';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
 
@@ -72,13 +73,10 @@ const MomentumXPBar: React.FC<{ xp: number; goal?: number }>= ({ xp, goal = 100 
             const fill = segmentFill(i);
             const leftPct = (i * 100) / stages;
             const widthPct = 100 / stages;
-            // flame position within current segment
             const flameLeft = `calc(${leftPct}% + ${Math.max(0, Math.min(1, fill)) * widthPct}% - 8px)`;
             return (
               <div key={i} className="absolute inset-y-0" style={{ left: `${leftPct}%`, width: `${widthPct}%` }}>
-                {/* base (empty) */}
                 <div className="h-full w-full bg-secondary" />
-                {/* filled part */}
                 <div
                   className={cn(
                     'absolute inset-y-0 left-0',
@@ -86,13 +84,15 @@ const MomentumXPBar: React.FC<{ xp: number; goal?: number }>= ({ xp, goal = 100 
                   )}
                   style={{ width: `${fill * 100}%` }}
                 />
-                {/* stage glow when just completed */}
                 {glowIndex === i && (
                   <div className="absolute inset-0 rounded-sm" style={{ boxShadow: '0 0 12px hsl(var(--primary) / 0.7) inset, 0 0 14px hsl(var(--primary) / 0.6)' }} />
                 )}
-                {/* moving flame in current segment */}
                 {i === currentSegment && fill > 0 && (
                   <Flame className="absolute -top-3 h-4 w-4 text-primary transition-[left] duration-200" style={{ left: flameLeft }} />
+                )}
+                {/* stage tick (separator) */}
+                {i > 0 && (
+                  <div className="absolute right-0 top-0 h-full w-px bg-border/60" />
                 )}
               </div>
             );
@@ -307,6 +307,7 @@ const MomentumPage: React.FC = () => {
   }, [meals]);
   const todayKcal = totals.kcal;
   const remaining = Math.max(0, kcalGoal - todayKcal);
+  const xpProgress = Math.min(100, Math.round(((todayKcal > 0 ? todayKcal : 0) / Math.max(1, kcalGoal)) * 100));
 
   useEffect(() => {
     document.title = 'Momentum 2.0 – XP, Kalorien, Makros | GetLeanAI+';
@@ -375,7 +376,28 @@ useEffect(() => {
 
 useDataRefresh(fetchMeals);
 
-  // Collapsible meals below overview card
+// Build Hot Actions
+const hotActions: HotAction[] = (() => {
+  const actions: HotAction[] = [];
+  const perStage = 20;
+  const currStage = Math.floor(xpProgress / perStage) + 1;
+  const toNext = perStage - (xpProgress % perStage || 0);
+  // Protein suggestion
+  const pGoal = plus.goals?.protein || 0; const pUsed = totals.protein;
+  if (pGoal > 0 && pUsed < pGoal) {
+    actions.push({
+      id: 'protein',
+      title: '+30 g Protein (+10 XP) →',
+      subtitle: `dir fehlen ${Math.max(1, Math.round((toNext / perStage) * 100))}% bis Stage ${Math.min(5, currStage + 1)}`,
+      onTap: () => openMeal(),
+    });
+  }
+  // Walk suggestion
+  actions.push({ id: 'walk', title: '10‑Min Walk (+5 XP) →', subtitle: `Stage‑Boost in ${toNext} XP`, onTap: () => quickAddBus.emit({ type: 'workout', payload: { recommendedType: 'walking' } }) });
+  // Hydration suggestion
+  actions.push({ id: 'water', title: '+300 ml Wasser (+5 XP) →', subtitle: `Stage‑Boost in ${toNext} XP` });
+  return actions;
+})();
   const [mealsOpen, setMealsOpen] = useState(false);
   const [editingMealId, setEditingMealId] = useState<string | null>(null);
   const [mealTitleDraft, setMealTitleDraft] = useState('');
@@ -418,21 +440,14 @@ useDataRefresh(fetchMeals);
     <ErrorBoundary>
       <main>
 {/* Sticky XP bar */}
-<MomentumXPBar xp={Math.min(100, Math.round(((todayKcal > 0 ? todayKcal : 0) / Math.max(1, kcalGoal)) * 100))} />
+<MomentumXPBar xp={xpProgress} />
 
 <div className="container mx-auto px-4 py-4 max-w-md space-y-4">
   {/* Date navigation */}
   <DateNavigation currentDate={currentDate} onDateChange={(d) => { setCurrentDate(d); }} />
 
-  {/* Hot‑Swipe placeholder */}
-  <Card>
-    <CardContent className="py-4">
-      <div className="flex items-center gap-3">
-        <Flame className="h-5 w-5 text-primary" />
-        <div className="text-sm">Hot‑Swipe‑Card – Vorschläge folgen</div>
-      </div>
-    </CardContent>
-  </Card>
+  {/* Hot Actions */}
+  <HotSwipeActionCard actions={hotActions} />
 
   {/* Übersicht: Kalorien + Makros in einer Karte */}
   <OverviewRingsCard
