@@ -4,6 +4,10 @@ import { usePlusData } from '@/hooks/usePlusData';
 import { StreakLevelHeader } from '@/components/plus/StreakLevelHeader';
 import { PlusDeficitRing } from '@/components/plus/PlusDeficitRing';
 import { PlusMacroDeltas } from '@/components/plus/PlusMacroDeltas';
+import { PlusTrainingSteps } from '@/components/plus/PlusTrainingSteps';
+import { PlusSupportTiles } from '@/components/plus/PlusSupportTiles';
+import { NextBestActionCard } from '@/components/plus/NextBestActionCard';
+import { MiniJournalQuick } from '@/components/plus/MiniJournalQuick';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -47,8 +51,12 @@ const MomentumBoard: React.FC = () => {
   return (
     <div className="container mx-auto px-4 pt-0 pb-6 max-w-5xl space-y-6">
       <StreakLevelHeader />
+      <NextBestActionCard data={data} />
       <PlusDeficitRing data={data} />
       <PlusMacroDeltas data={data} />
+      <PlusTrainingSteps data={data} />
+      <PlusSupportTiles data={data} />
+      <MiniJournalQuick />
     </div>
   );
 };
