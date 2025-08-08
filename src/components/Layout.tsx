@@ -7,7 +7,7 @@ import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
 import { QuickAddFAB } from "@/components/quick/QuickAddFAB";
-import { QuickAddFAB } from "@/components/quick/QuickAddFAB";
+
 
 
 interface LayoutProps {
