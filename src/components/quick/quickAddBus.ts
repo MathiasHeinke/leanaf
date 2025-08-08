@@ -10,7 +10,7 @@ class QuickAddBus {
 
   subscribe(cb: (action: QuickAction) => void) {
     this.listeners.add(cb);
-    return () => this.listeners.delete(cb);
+    return () => { this.listeners.delete(cb); };
   }
 
   emit(action: QuickAction) {
