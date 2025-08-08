@@ -20,19 +20,6 @@ export const AdminOnboardingAccess = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [forceShowOnboarding, isAdmin]);
 
-  if (!isAdmin) return null;
-
-  return (
-    <div className="fixed bottom-4 right-4 z-50">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={forceShowOnboarding}
-        className="bg-background/80 backdrop-blur-sm border-2 border-primary/20 hover:border-primary/40"
-        title="Admin: Onboarding anzeigen (Ctrl+Shift+O)"
-      >
-        🎯 Onboarding
-      </Button>
-    </div>
-  );
+  // Floating onboarding badge removed; keep admin keyboard shortcut (Ctrl+Shift+O)
+  return null;
 };

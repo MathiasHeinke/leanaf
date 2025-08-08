@@ -26,10 +26,18 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ open, onSele
   initial={{ opacity: 0 }}
   animate={{ opacity: 1 }}
   exit={{ opacity: 0 }}
-  className="pointer-events-none fixed inset-0 z-50"
+  className="pointer-events-auto fixed inset-0 z-50"
   role="dialog"
 >
-  {/* Actions cluster - bottom right, large thumb targets (no backdrop) */}
+  {/* Backdrop overlay - appears only when menu is open */}
+  <button
+    type="button"
+    aria-label="Overlay schließen"
+    onClick={onClose}
+    className="absolute inset-0 bg-background/60 backdrop-blur-sm"
+  />
+
+  {/* Actions cluster - bottom right, large thumb targets */}
   <motion.div
     initial={{ y: 24, opacity: 0 }}
     animate={{ y: 0, opacity: 1 }}
