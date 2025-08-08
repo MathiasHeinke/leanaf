@@ -12,6 +12,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useDataRefresh, triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
+import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
 
 interface TodayMeal {
   id: string;
@@ -347,17 +348,15 @@ useDataRefresh(fetchMeals);
     </CardContent>
   </Card>
 
-  {/* Stufe 1: Kalorien Nordstern */}
-  <CalorieNorthStar
-    remaining={remaining}
-    goal={kcalGoal || 1}
-    todayKcal={todayKcal}
-    meals={meals}
-    loading={loading}
+  {/* Übersicht: Kalorien + Makros in einer Karte */}
+  <OverviewRingsCard
+    calories={{ remaining, goal: kcalGoal || 1, today: todayKcal }}
+    macros={{
+      protein: { used: totals.protein, goal: plus.goals?.protein || 0 },
+      carbs: { used: totals.carbs, goal: plus.goals?.carbs || 0 },
+      fats: { used: totals.fat, goal: plus.goals?.fats || 0 },
+    }}
   />
-
-  {/* Stufe 2: Makros Cluster (Ring default, Bars via macroBars) */}
-  <MomentumMacros data={plus} usedOverride={{ protein: totals.protein, carbs: totals.carbs, fats: totals.fat }} />
 
   {/* Stufe 3: Bewegung (Schritte + Workouts) */}
   <MomentumMovement date={currentDate} />

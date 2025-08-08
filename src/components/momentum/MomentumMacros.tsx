@@ -60,21 +60,21 @@ const fats = {
                 <span>Protein</span>
                 <span className="tabular-nums">{Math.round(protein.used)}/{Math.round(protein.goal)} g</span>
               </div>
-              <Progress value={pPct * 100} className="h-3" indicatorClassName="bg-primary" />
+              <Progress value={pPct * 100} className="h-3" indicatorClassName="bg-[hsl(var(--fats))]" />
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
                 <span>Carbs</span>
                 <span className="tabular-nums">{Math.round(carbs.used)}/{Math.round(carbs.goal)} g</span>
               </div>
-              <Progress value={cPct * 100} className="h-2.5" indicatorClassName="bg-accent" />
+              <Progress value={cPct * 100} className="h-2.5" indicatorClassName="bg-[hsl(var(--muted-foreground))]" />
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
                 <span>Fett</span>
                 <span className="tabular-nums">{Math.round(fats.used)}/{Math.round(fats.goal)} g</span>
               </div>
-              <Progress value={fPct * 100} className="h-2" indicatorClassName="bg-secondary-foreground" />
+              <Progress value={fPct * 100} className="h-2" indicatorClassName="bg-[hsl(var(--carbs))]" />
             </div>
           </div>
         ) : (
@@ -83,7 +83,7 @@ const fats = {
               {/* Outer = Protein */}
               <div
                 className="absolute inset-0 rounded-full"
-                style={{ background: `conic-gradient(hsl(var(--primary) / 0.5) ${pPct*360}deg, hsl(var(--border) / 0.25) ${pPct*360}deg)` }}
+                style={{ background: `conic-gradient(hsl(var(--fats) / 0.5) ${pPct*360}deg, hsl(var(--border) / 0.25) ${pPct*360}deg)` }}
               />
               <div className="absolute inset-[10%] rounded-full bg-background border border-border/50" />
 
@@ -91,7 +91,7 @@ const fats = {
               <div className="absolute inset-[14%]">
                 <div
                   className="absolute inset-0 rounded-full"
-                  style={{ background: `conic-gradient(hsl(var(--accent) / 0.45) ${cPct*360}deg, hsl(var(--border) / 0.25) ${cPct*360}deg)` }}
+                  style={{ background: `conic-gradient(hsl(var(--muted-foreground) / 0.45) ${cPct*360}deg, hsl(var(--border) / 0.25) ${cPct*360}deg)` }}
                 />
                 <div className="absolute inset-[12%] rounded-full bg-background border border-border/50" />
               </div>
@@ -100,7 +100,7 @@ const fats = {
               <div className="absolute inset-[28%]">
                 <div
                   className="absolute inset-0 rounded-full"
-                  style={{ background: `conic-gradient(hsl(var(--foreground) / 0.35) ${fPct*360}deg, hsl(var(--border) / 0.25) ${fPct*360}deg)` }}
+                  style={{ background: `conic-gradient(hsl(var(--carbs) / 0.5) ${fPct*360}deg, hsl(var(--border) / 0.25) ${fPct*360}deg)` }}
                 />
                 <div className="absolute inset-[20%] rounded-full bg-background border border-border/50" />
               </div>
@@ -117,14 +117,14 @@ const fats = {
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--accent) / 0.7)' }} />
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--muted-foreground) / 0.7)' }} />
                   Carbs
                 </span>
                 <span className="tabular-nums">{Math.round(carbs.used)}/{Math.round(carbs.goal)} g</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--foreground) / 0.6)' }} />
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs) / 0.7)' }} />
                   Fett
                 </span>
                 <span className="tabular-nums">{Math.round(fats.used)}/{Math.round(fats.goal)} g</span>
