@@ -33,7 +33,7 @@ interface TodayMeal {
 }
 
 // Sticky XP bar with 5 stages + stage glow + XP chip
-const MomentumXPBar: React.FC<{ xp: number; goal?: number }>= ({ xp, goal = 100 }) => {
+const MomentumXPBar: React.FC<{ xp: number; goal?: number; loading?: boolean }>= ({ xp, goal = 100, loading = false }) => {
   const stages = 5;
   const perStage = goal / stages;
   const prevXpRef = useRef<number>(xp);
@@ -45,6 +45,15 @@ const MomentumXPBar: React.FC<{ xp: number; goal?: number }>= ({ xp, goal = 100 
     const delta = Math.max(0, Math.round(xp - prev));
     if (delta > 0) {
       setRecentGain(delta);
+      // Light haptic feedback if motion isn't reduced
+      try {
+        const prefersReduced = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (!prefersReduced && 'vibrate' in navigator) {
+          // 10ms micro-vibration
+          // @ts-ignore - vibrate may not exist in some environments
+          navigator.vibrate && navigator.vibrate(10);
+        }
+      } catch {}
       const prevStage = Math.floor(prev / perStage);
       const currStage = Math.floor(xp / perStage);
       if (currStage > prevStage) {
@@ -66,8 +75,17 @@ const MomentumXPBar: React.FC<{ xp: number; goal?: number }>= ({ xp, goal = 100 
     return Math.max(0, Math.min(1, (xp - start) / perStage));
   };
 
+  if (loading) {
+    return (
+      <div className="sticky top-0 z-20 py-3 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" role="progressbar" aria-label="XP lädt">
+        <div className="container mx-auto px-4">
+          <div className="h-2 md:h-3 w-full rounded-full bg-secondary motion-safe:animate-pulse" />
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="sticky top-0 z-20 py-3 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="sticky top-0 z-20 py-3 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60" role="progressbar" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={Math.round(xp)} aria-label={`XP-Fortschritt: ${Math.round(xp)} von ${goal} XP`}>
       <div className="container mx-auto px-4">
         <div className="relative h-2 md:h-3 w-full overflow-hidden rounded-full bg-secondary">
           {Array.from({ length: stages }).map((_, i) => {
@@ -89,7 +107,7 @@ const MomentumXPBar: React.FC<{ xp: number; goal?: number }>= ({ xp, goal = 100 
                   <div className="absolute inset-0 rounded-sm" style={{ boxShadow: '0 0 12px hsl(var(--primary) / 0.7) inset, 0 0 14px hsl(var(--primary) / 0.6)' }} />
                 )}
                 {i === currentSegment && fill > 0 && (
-                  <Flame className="absolute -top-3 h-4 w-4 text-primary transition-[left] duration-200" style={{ left: flameLeft }} />
+                  <Flame className="absolute -top-3 h-4 w-4 text-primary motion-safe:transition-[left] duration-200 motion-reduce:transition-none" style={{ left: flameLeft }} />
                 )}
                 {/* stage tick (separator) */}
                 {i > 0 && (
@@ -102,7 +120,7 @@ const MomentumXPBar: React.FC<{ xp: number; goal?: number }>= ({ xp, goal = 100 
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
           <div className="opacity-80">▸ {Math.max(0, goal - Math.round(xp))} XP bis Ziel</div>
           {recentGain > 0 && (
-            <div className="ml-2 inline-flex items-center rounded-full border border-border/50 bg-background px-2 py-0.5 text-[11px] text-foreground shadow-sm animate-fade-in">
+            <div className="ml-2 inline-flex items-center rounded-full border border-border/50 bg-background px-2 py-0.5 text-[11px] text-foreground shadow-sm motion-safe:animate-fade-in">
               +{recentGain} XP
             </div>
           )}
@@ -190,9 +208,9 @@ const CalorieNorthStar: React.FC<{ remaining: number; goal: number; todayKcal: n
         >
           {loading ? (
             <div className="space-y-3">
-              <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
-              <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
-              <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
+              <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
+              <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
+              <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
             </div>
           ) : (
             <div className="divide-y divide-border/60 max-h-64 overflow-auto pr-1">
@@ -245,17 +263,17 @@ const CalorieNorthStar: React.FC<{ remaining: number; goal: number; todayKcal: n
                             aria-label="Kalorien"
                           />
                           <span className="text-sm">kcal</span>
-                          <button aria-label="Speichern" className="p-2 rounded-md bg-primary text-primary-foreground" onClick={saveEdit}>
+                          <button aria-label="Speichern" className="p-3 rounded-md bg-primary text-primary-foreground" onClick={saveEdit}>
                             <Check className="w-4 h-4" />
                           </button>
-                          <button aria-label="Abbrechen" className="p-2 rounded-md border border-border/60" onClick={cancelEdit}>
+                          <button aria-label="Abbrechen" className="p-3 rounded-md border border-border/60" onClick={cancelEdit}>
                             <XIcon className="w-4 h-4" />
                           </button>
                         </>
                       ) : (
                         <>
                           <div className="shrink-0 text-sm font-medium tabular-nums">{Math.round(m.kcal || 0)} kcal</div>
-                          <button aria-label="Bearbeiten" className="p-2 rounded-md border border-border/60" onClick={() => startEdit(m)}>
+                          <button aria-label="Bearbeiten" className="p-3 rounded-md border border-border/60" onClick={() => startEdit(m)}>
                             <Pencil className="w-4 h-4" />
                           </button>
                         </>
@@ -293,6 +311,7 @@ const MomentumPage: React.FC = () => {
   const plus = usePlusData();
   const [meals, setMeals] = useState<TodayMeal[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const dateStr = useMemo(() => currentDate.toISOString().slice(0, 10), [currentDate]);
 
@@ -321,6 +340,7 @@ const MomentumPage: React.FC = () => {
 const fetchMeals = useCallback(async () => {
   if (!user) return;
   setLoading(true);
+  setError(null);
   try {
     // Load meals for selected date
     const { data, error } = await supabase
@@ -367,6 +387,7 @@ const fetchMeals = useCallback(async () => {
     setMeals(mealsWithImages);
   } catch (e) {
     console.error('Failed to load meals', e);
+    setError('Live-Daten nicht verfügbar');
   } finally {
     setLoading(false);
   }
@@ -442,7 +463,7 @@ const hotActions: HotAction[] = (() => {
     <ErrorBoundary>
       <main>
 {/* Sticky XP bar */}
-<MomentumXPBar xp={xpProgress} />
+<MomentumXPBar xp={xpProgress} loading={loading} />
 
 <div className="container mx-auto px-4 py-4 max-w-md space-y-4">
   {/* Date navigation */}
@@ -468,7 +489,7 @@ const hotActions: HotAction[] = (() => {
         <button
           type="button"
           onClick={() => setMealsOpen(v => !v)}
-          className="inline-flex items-center text-sm text-primary hover:underline"
+          className="inline-flex items-center text-sm text-primary hover:underline min-h-11 px-4 py-2"
           aria-expanded={mealsOpen}
           aria-controls="mini-meal-list"
         >
@@ -477,17 +498,31 @@ const hotActions: HotAction[] = (() => {
       </div>
 
       <div id="mini-meal-list" className={cn('transition-all', mealsOpen ? 'mt-4' : 'h-0 overflow-hidden')} style={{ maxHeight: mealsOpen ? 400 : 0 }}>
-        {loading ? (
+        {error ? (
+          <div className="py-6 text-center space-y-2">
+            <div className="text-sm text-muted-foreground">Live‑Daten nicht verfügbar.</div>
+            <button className="inline-flex items-center rounded-md border border-border/60 px-3 py-2 text-sm" onClick={fetchMeals} aria-label="Erneut versuchen">Retry</button>
+          </div>
+        ) : loading ? (
           <div className="space-y-3">
-            <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
-            <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
-            <div className="h-12 w-full rounded-md bg-secondary animate-pulse" />
+            <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
+            <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
+            <div className="h-12 w-full rounded-md bg-secondary motion-safe:animate-pulse" />
           </div>
         ) : (
           <div className="max-h-64 overflow-auto pr-1">
             {(() => {
               if (meals.length === 0) {
-                return <div className="text-sm text-muted-foreground py-6 text-center">Keine Einträge für heute.</div>;
+                return (
+                  <div className="py-6 text-center space-y-3">
+                    <div className="text-sm text-muted-foreground">Noch nix geloggt.</div>
+                    <div className="flex justify-center gap-2">
+                      <button className="rounded-md border border-border/60 px-3 py-2 text-sm" onClick={() => toast.info('Foto-Upload kommt bald')} aria-label="Foto hochladen">Foto</button>
+                      <button className="rounded-md border border-border/60 px-3 py-2 text-sm" onClick={() => toast.info('Lebensmittelsuche kommt bald')} aria-label="Lebensmittelsuche öffnen">Suche</button>
+                      <button className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm" onClick={() => openMeal()} aria-label="Schnell Mahlzeit hinzufügen">Quick‑Add</button>
+                    </div>
+                  </div>
+                );
               }
               const normalize = (t?: string | null) => {
                 const v = (t || '').toLowerCase();
@@ -572,17 +607,17 @@ const hotActions: HotAction[] = (() => {
                                         aria-label="Kalorien"
                                       />
                                       <span className="text-sm">kcal</span>
-                                      <button aria-label="Speichern" className="p-2 rounded-md bg-primary text-primary-foreground" onClick={saveEditMeal}>
+                                      <button aria-label="Speichern" className="p-3 rounded-md bg-primary text-primary-foreground" onClick={saveEditMeal}>
                                         <Check className="w-4 h-4" />
                                       </button>
-                                      <button aria-label="Abbrechen" className="p-2 rounded-md border border-border/60" onClick={cancelEditMeal}>
+                                      <button aria-label="Abbrechen" className="p-3 rounded-md border border-border/60" onClick={cancelEditMeal}>
                                         <XIcon className="w-4 h-4" />
                                       </button>
                                     </>
                                   ) : (
                                     <>
                                       <div className="shrink-0 text-sm font-medium tabular-nums">{Math.round(m.kcal || 0)} kcal</div>
-                                      <button aria-label="Bearbeiten" className="p-2 rounded-md border border-border/60" onClick={() => startEditMeal(m)}>
+                                      <button aria-label="Bearbeiten" className="p-3 rounded-md border border-border/60" onClick={() => startEditMeal(m)}>
                                         <Pencil className="w-4 h-4" />
                                       </button>
                                     </>

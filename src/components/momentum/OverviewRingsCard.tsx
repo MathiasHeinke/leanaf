@@ -32,6 +32,7 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
   return (
     <Card>
       <CardContent className="pt-5">
+        <p className="sr-only" aria-live="polite">{`${Math.round(calories.remaining)} kcal Rest, ${Math.round(pct*100)}% des Ziels erreicht`}</p>
         <div className="grid grid-cols-2 gap-4">
           {/* Left: Calories ring (thicker, blue, subtle glow) */}
           <div className="relative mx-auto h-44 w-44">
