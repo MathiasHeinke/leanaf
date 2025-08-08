@@ -410,15 +410,62 @@ if (enableAdvancedFeatures) {
     setIsCreatingPlan(true);
 
     try {
-      // Use local history-based generator to ensure it reflects actual training data
-      const inline = await generateNextDayPlan(user.id, 28);
-      setPendingPlanData(inline);
+      // Try to align the generated plan with what the Coach just suggested
+      const lastAssistantText = [...messages]
+        .reverse()
+        .find((m) => m.role === 'assistant')?.content?.toLowerCase() || '';
+
+      const detectSplit = (): 'upper' | 'lower' | 'full' | null => {
+        if (lastAssistantText.includes('oberkörper')) return 'upper';
+        if (lastAssistantText.includes('unterkörper')) return 'lower';
+        if (lastAssistantText.includes('ganzkörper')) return 'full';
+        return null;
+      };
+
+      const split = detectSplit();
+
+      if (split) {
+        const presets: Record<string, { day: string; focus: string; exercises: string[] }> = {
+          upper: { day: 'Oberkörper', focus: 'Oberkörper Stärke/Hypertrophie', exercises: ['Bankdrücken', 'Rudern', 'Schulterdrücken', 'Klimmzüge', 'Trizepsdrücken', 'Bizepscurls'] },
+          lower: { day: 'Unterkörper', focus: 'Unterkörper Kraft/Hypertrophie', exercises: ['Kniebeugen', 'Kreuzheben', 'Beinpresse', 'Ausfallschritte', 'Wadenheben'] },
+          full: { day: 'Ganzkörper', focus: 'Ganzkörper Grundübungen', exercises: ['Kniebeugen', 'Bankdrücken', 'Rudern', 'Schulterdrücken', 'Klimmzüge', 'Bauch'] },
+        };
+        const preset = presets[split];
+        const exercises = preset.exercises.map((name) => ({
+          name,
+          sets: 3,
+          reps: '8-12',
+          rpe: 7,
+          rest_seconds: 120,
+          sets_detail: [
+            { set_number: 1, weight: '', reps: '8-12', rpe: 7 },
+            { set_number: 2, weight: '', reps: '8-12', rpe: 7 },
+            { set_number: 3, weight: '', reps: '8-12', rpe: 7 },
+          ],
+        }));
+
+        const planDraft = {
+          name: `Nächster Trainingstag – ${preset.day}`,
+          goal: preset.focus,
+          analysis: `Plan basierend auf deiner letzten Anfrage (${preset.day}).`,
+          structure: {
+            weekly_structure: [
+              { day: preset.day, focus: preset.focus, exercises },
+            ],
+          },
+        };
+        setPendingPlanData(planDraft);
+      } else {
+        // Fallback: history-based generator
+        const inline = await generateNextDayPlan(user.id, 28);
+        setPendingPlanData(inline);
+      }
 
       // Add assistant confirmation message
       const assistantMessage: EnhancedChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: '✅ Ich habe deinen nächsten Trainingstag basierend auf deinen letzten Einheiten erstellt. Du kannst ihn unten anpassen und speichern.',
+        content: '✅ Ich habe deinen nächsten Trainingstag erstellt. Du kannst ihn unten anpassen und speichern.',
         created_at: new Date().toISOString(),
         coach_personality: coach?.id || 'lucy',
         coach_name: coach?.name || 'Coach',
@@ -426,7 +473,7 @@ if (enableAdvancedFeatures) {
         coach_color: coach?.color,
         coach_accent_color: coach?.accentColor
       };
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (err) {
       console.error('Error creating training plan:', err);
       toast.error('Fehler beim Erstellen des Trainingsplans');
@@ -434,7 +481,7 @@ if (enableAdvancedFeatures) {
     } finally {
       setIsCreatingPlan(false);
     }
-  }, [user?.id, coach, isChatLoading, isCreatingPlan]);
+  }, [user?.id, coach, isChatLoading, isCreatingPlan, messages]);
 
   // ============= PLAN HANDLERS =============
   const handleSavePlan = useCallback(async (planData: any) => {

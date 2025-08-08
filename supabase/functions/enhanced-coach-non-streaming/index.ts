@@ -763,6 +763,11 @@ function normalizeCoachId(coachId: string): string {
     return 'vita';
   }
   
+  // Sascha Weber variants
+  if (['sascha', 'sascha-weber', 'sascha_weber', 'weber'].includes(normalized)) {
+    return 'sascha';
+  }
+  
   return 'lucy'; // Safe fallback
 }
 
@@ -1186,7 +1191,10 @@ serve(async (req) => {
         coach_id: normalizedCoachId,
         tokens_used: tokensUsed,
         processing_time_ms: totalTime,
-        tools_triggered: toolTriggers.map(t => t.toolName)
+        tools_triggered: toolTriggers.map(t => t.toolName),
+        hasMemory: !!ctx?.memory,
+        hasDaily: !!ctx?.daily,
+        hasRag: (ctx?.ragChunks?.length || 0) > 0
       }
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
