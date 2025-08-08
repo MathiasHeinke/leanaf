@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { MomentumMacros } from '@/components/momentum/MomentumMacros';
 import { MomentumMovement } from '@/components/momentum/MomentumMovement';
 import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 interface TodayMeal {
   id: string;
@@ -180,39 +181,41 @@ const MomentumPage: React.FC = () => {
   }, [user?.id]);
 
   return (
-    <main>
-      {/* Sticky XP bar */}
-      <MomentumXPBar xp={Math.min(100, Math.round(((todayKcal>0? todayKcal : 0) / Math.max(1, kcalGoal)) * 100))} />
+    <ErrorBoundary>
+      <main>
+        {/* Sticky XP bar */}
+        <MomentumXPBar xp={Math.min(100, Math.round(((todayKcal>0? todayKcal : 0) / Math.max(1, kcalGoal)) * 100))} />
 
-      <div className="container mx-auto px-4 py-4 max-w-md space-y-4">
-        {/* Hot‑Swipe placeholder */}
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-3">
-              <Flame className="h-5 w-5 text-primary" />
-              <div className="text-sm">Hot‑Swipe‑Card – Vorschläge folgen</div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="container mx-auto px-4 py-4 max-w-md space-y-4">
+          {/* Hot‑Swipe placeholder */}
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex items-center gap-3">
+                <Flame className="h-5 w-5 text-primary" />
+                <div className="text-sm">Hot‑Swipe‑Card – Vorschläge folgen</div>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Stufe 1: Kalorien Nordstern */}
-        <CalorieNorthStar
-          remaining={remaining}
-          goal={kcalGoal || 1}
-          todayKcal={todayKcal}
-          meals={meals}
-          loading={loading}
-        />
+          {/* Stufe 1: Kalorien Nordstern */}
+          <CalorieNorthStar
+            remaining={remaining}
+            goal={kcalGoal || 1}
+            todayKcal={todayKcal}
+            meals={meals}
+            loading={loading}
+          />
 
-        {/* Stufe 2: Makros Cluster (Ring default, Bars via macroBars) */}
-        <MomentumMacros data={plus} />
+          {/* Stufe 2: Makros Cluster (Ring default, Bars via macroBars) */}
+          <MomentumMacros data={plus} />
 
-        {/* Stufe 3: Bewegung (Schritte + Workouts) */}
-        <MomentumMovement />
-      </div>
+          {/* Stufe 3: Bewegung (Schritte + Workouts) */}
+          <MomentumMovement />
+        </div>
 
-      <QuickAddFAB />
-    </main>
+        <QuickAddFAB />
+      </main>
+    </ErrorBoundary>
   );
 };
 
