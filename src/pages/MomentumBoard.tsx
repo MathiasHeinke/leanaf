@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { usePlusData } from '@/hooks/usePlusData';
-import { StreakLevelHeader } from '@/components/plus/StreakLevelHeader';
+import { BoardStickyHeader } from '@/components/plus/BoardStickyHeader';
 import { PlusDeficitRing } from '@/components/plus/PlusDeficitRing';
 import { PlusMacroDeltas } from '@/components/plus/PlusMacroDeltas';
 import { PlusTrainingSteps } from '@/components/plus/PlusTrainingSteps';
@@ -10,6 +10,7 @@ import { NextBestActionCard } from '@/components/plus/NextBestActionCard';
 import { MiniJournalQuick } from '@/components/plus/MiniJournalQuick';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import QuickAddFAB from '@/components/quick/QuickAddFAB';
 
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
@@ -50,27 +51,22 @@ const MomentumBoard: React.FC = () => {
 
   return (
     <main className="relative">
+      <BoardStickyHeader />
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-primary/20 via-background to-background blur-2xl" />
-      <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-0 pb-6 max-w-5xl font-display">
-        <header className="board-hero animate-fade-in mt-2 mb-5">
-          <h1 className="text-3xl md:text-4xl">Momentum-Board</h1>
-          <p className="text-muted-foreground mt-1">Dein tägliches Momentum: Defizit, Protein, Schritte & mehr.</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="inline-flex items-center rounded-full border border-border/40 px-2.5 py-1 text-xs bg-secondary/60">🔥 Tagesmission aktiv</span>
-            <span className="inline-flex items-center rounded-full border border-border/40 px-2.5 py-1 text-xs">Level & Rewards</span>
-          </div>
-        </header>
+      <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-2 pb-20 max-w-5xl font-display">
+        <section className="mt-2 mb-5 animate-fade-in">
+          <NextBestActionCard data={data} />
+        </section>
 
-        <div className="grid grid-cols-1 gap-5 md:gap-6 lg:gap-8 animate-fade-in">
-          <div><StreakLevelHeader /></div>
-          <div><NextBestActionCard data={data} /></div>
+        <section aria-label="Tagesmetriken" className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 lg:gap-8 animate-fade-in">
           <div><PlusDeficitRing data={data} /></div>
           <div><PlusMacroDeltas data={data} /></div>
           <div><PlusTrainingSteps data={data} /></div>
           <div><PlusSupportTiles data={data} /></div>
           <div><MiniJournalQuick /></div>
-        </div>
+        </section>
       </div>
+      <QuickAddFAB />
     </main>
   );
 };
