@@ -14,13 +14,13 @@ interface MovementStats {
   workoutMinutes: number;
 }
 
-export const MomentumMovement: React.FC = () => {
+export const MomentumMovement: React.FC<{ date: Date }> = ({ date }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<MovementStats>({ steps: 0, distanceKm: 0, workoutsCount: 0, workoutMinutes: 0 });
   const [openQuick, setOpenQuick] = useState(false);
 
-  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const dayStr = useMemo(() => date.toISOString().slice(0, 10), [date]);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -30,7 +30,7 @@ export const MomentumMovement: React.FC = () => {
         .from("workouts")
         .select("duration_minutes, steps, distance_km, did_workout")
         .eq("user_id", user.id)
-        .eq("date", todayStr)
+        .eq("date", dayStr)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -52,7 +52,7 @@ export const MomentumMovement: React.FC = () => {
   useEffect(() => {
     fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, todayStr]);
+  }, [user?.id, dayStr]);
 
   useDataRefresh(fetchStats);
 

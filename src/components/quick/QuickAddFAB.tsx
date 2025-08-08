@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, Minus } from "lucide-react";
 import { QuickActionsMenu, ActionType } from "./QuickActionsMenu";
 import { toast } from "@/components/ui/sonner";
 import { quickAddBus } from "./quickAddBus";
@@ -70,9 +70,9 @@ export const QuickAddFAB: React.FC = () => {
         <button
           onClick={toggleMenu}
           aria-label={menuOpen ? "Schnellmenü schließen" : "Schnellmenü öffnen"}
-          className="rounded-full w-16 h-16 md:w-16 md:h-16 glass-card border border-border/40 modern-shadow hover-lift flex items-center justify-center"
+className="rounded-full w-16 h-16 md:w-16 md:h-16 bg-background text-foreground border border-border shadow-lg transition-transform duration-200 hover:scale-105"
         >
-          {menuOpen ? <X className="w-6 h-6" /> : <Plus className="w-7 h-7" />}
+          {menuOpen ? <Minus className="w-6 h-6 transition-transform duration-200" /> : <Plus className="w-7 h-7 transition-transform duration-200" />}
         </button>
       </div>
 

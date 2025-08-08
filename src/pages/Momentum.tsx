@@ -11,6 +11,7 @@ import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useDataRefresh, triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
+import { DateNavigation } from '@/components/DateNavigation';
 
 interface TodayMeal {
   id: string;
@@ -243,9 +244,20 @@ const MomentumPage: React.FC = () => {
   const plus = usePlusData();
   const [meals, setMeals] = useState<TodayMeal[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const dateStr = useMemo(() => currentDate.toISOString().slice(0, 10), [currentDate]);
 
   const kcalGoal = useMemo(() => plus.goals?.calories ?? 0, [plus.goals]);
-  const todayKcal = useMemo(() => plus.today?.total_calories ?? 0, [plus.today]);
+  const totals = useMemo(() => {
+    const sum = (key: keyof TodayMeal) => meals.reduce((s, m) => s + Number(m[key] || 0), 0);
+    return {
+      kcal: sum('kcal'),
+      protein: sum('protein'),
+      carbs: sum('carbs'),
+      fat: sum('fat'),
+    };
+  }, [meals]);
+  const todayKcal = totals.kcal;
   const remaining = Math.max(0, kcalGoal - todayKcal);
 
   useEffect(() => {
@@ -260,15 +272,31 @@ const fetchMeals = useCallback(async () => {
   if (!user) return;
   setLoading(true);
   try {
+    // Load meals for selected date
     const { data, error } = await supabase
-      .from('v_today_meals')
-      .select('*')
+      .from('meals')
+      .select('id,user_id,created_at,text,calories,protein,carbs,fats,quality_score')
       .eq('user_id', user.id)
-      .order('ts', { ascending: false });
+      .eq('date', dateStr)
+      .order('created_at', { ascending: false });
     if (error) throw error;
 
-    let mealsWithImages: TodayMeal[] = data || [];
-    const ids = (data || []).map((d) => d.id).filter(Boolean);
+    // Map to TodayMeal shape
+    const mapped: TodayMeal[] = (data || []).map((r: any) => ({
+      id: r.id,
+      user_id: r.user_id,
+      ts: r.created_at,
+      title: r.text,
+      kcal: r.calories,
+      protein: r.protein,
+      carbs: r.carbs,
+      fat: r.fats,
+      quality_score: r.quality_score,
+    }));
+
+    // Attach first image if available
+    let mealsWithImages: TodayMeal[] = mapped;
+    const ids = mapped.map((d) => d.id).filter(Boolean);
     if (ids.length > 0) {
       const { data: imgRows, error: imgErr } = await supabase
         .from('meal_images')
@@ -281,58 +309,61 @@ const fetchMeals = useCallback(async () => {
             firstImageMap.set(row.meal_id, row.image_url);
           }
         }
-        mealsWithImages = (data || []).map((m) => ({ ...m, image_url: firstImageMap.get(m.id) || null }));
+        mealsWithImages = mapped.map((m) => ({ ...m, image_url: firstImageMap.get(m.id) || null }));
       }
     }
 
     setMeals(mealsWithImages);
   } catch (e) {
-    console.error('Failed to load today meals', e);
+    console.error('Failed to load meals', e);
   } finally {
     setLoading(false);
   }
-}, [user?.id]);
+}, [user?.id, dateStr]);
 
-  useEffect(() => {
-    fetchMeals();
-  }, [fetchMeals]);
+useEffect(() => {
+  fetchMeals();
+}, [fetchMeals]);
 
-  useDataRefresh(fetchMeals);
+useDataRefresh(fetchMeals);
 
   return (
     <ErrorBoundary>
       <main>
-        {/* Sticky XP bar */}
-        <MomentumXPBar xp={Math.min(100, Math.round(((todayKcal>0? todayKcal : 0) / Math.max(1, kcalGoal)) * 100))} />
+{/* Sticky XP bar */}
+<MomentumXPBar xp={Math.min(100, Math.round(((todayKcal > 0 ? todayKcal : 0) / Math.max(1, kcalGoal)) * 100))} />
 
-        <div className="container mx-auto px-4 py-4 max-w-md space-y-4">
-          {/* Hot‑Swipe placeholder */}
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex items-center gap-3">
-                <Flame className="h-5 w-5 text-primary" />
-                <div className="text-sm">Hot‑Swipe‑Card – Vorschläge folgen</div>
-              </div>
-            </CardContent>
-          </Card>
+<div className="container mx-auto px-4 py-4 max-w-md space-y-4">
+  {/* Date navigation */}
+  <DateNavigation currentDate={currentDate} onDateChange={(d) => { setCurrentDate(d); }} />
 
-          {/* Stufe 1: Kalorien Nordstern */}
-          <CalorieNorthStar
-            remaining={remaining}
-            goal={kcalGoal || 1}
-            todayKcal={todayKcal}
-            meals={meals}
-            loading={loading}
-          />
+  {/* Hot‑Swipe placeholder */}
+  <Card>
+    <CardContent className="py-4">
+      <div className="flex items-center gap-3">
+        <Flame className="h-5 w-5 text-primary" />
+        <div className="text-sm">Hot‑Swipe‑Card – Vorschläge folgen</div>
+      </div>
+    </CardContent>
+  </Card>
 
-          {/* Stufe 2: Makros Cluster (Ring default, Bars via macroBars) */}
-          <MomentumMacros data={plus} />
+  {/* Stufe 1: Kalorien Nordstern */}
+  <CalorieNorthStar
+    remaining={remaining}
+    goal={kcalGoal || 1}
+    todayKcal={todayKcal}
+    meals={meals}
+    loading={loading}
+  />
 
-          {/* Stufe 3: Bewegung (Schritte + Workouts) */}
-          <MomentumMovement />
-        </div>
+  {/* Stufe 2: Makros Cluster (Ring default, Bars via macroBars) */}
+  <MomentumMacros data={plus} usedOverride={{ protein: totals.protein, carbs: totals.carbs, fats: totals.fat }} />
 
-        <QuickAddFAB />
+  {/* Stufe 3: Bewegung (Schritte + Workouts) */}
+  <MomentumMovement date={currentDate} />
+</div>
+
+<QuickAddFAB />
       </main>
     </ErrorBoundary>
   );

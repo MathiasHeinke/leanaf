@@ -6,27 +6,35 @@ import { Progress } from '@/components/ui/progress';
 
 interface Props {
   data: UsePlusDataResult;
+  usedOverride?: { protein: number; carbs: number; fats: number };
+  label?: string;
 }
 
-export const MomentumMacros: React.FC<Props> = ({ data }) => {
+export const MomentumMacros: React.FC<Props> = ({ data, usedOverride, label }) => {
   const { isEnabled } = useFeatureFlags();
   const useBars = isEnabled('macroBars');
 
-  const goals = data.goals || {};
-  const t = data.today || null;
+const goals = data.goals || {};
+const t = data.today || null;
 
-  const protein = {
-    goal: goals.protein || 0,
-    used: t?.total_protein || 0,
-  };
-  const carbs = {
-    goal: goals.carbs || 0,
-    used: t?.total_carbs || 0,
-  };
-  const fats = {
-    goal: goals.fats || 0,
-    used: t?.total_fats || 0,
-  };
+const used = usedOverride || {
+  protein: t?.total_protein || 0,
+  carbs: t?.total_carbs || 0,
+  fats: t?.total_fats || 0,
+};
+
+const protein = {
+  goal: goals.protein || 0,
+  used: used.protein,
+};
+const carbs = {
+  goal: goals.carbs || 0,
+  used: used.carbs,
+};
+const fats = {
+  goal: goals.fats || 0,
+  used: used.fats,
+};
 
   const pct = (used: number, goal: number) => {
     if (!goal) return 0;
@@ -97,10 +105,10 @@ export const MomentumMacros: React.FC<Props> = ({ data }) => {
             </div>
 
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-xs text-muted-foreground">Heute</div>
-                <div className="text-sm tabular-nums">P {Math.round(protein.used)} · C {Math.round(carbs.used)} · F {Math.round(fats.used)}</div>
-              </div>
+<div className="text-center">
+  <div className="text-xs text-muted-foreground">{label || 'Heute'}</div>
+  <div className="text-sm tabular-nums">P {Math.round(protein.used)} · C {Math.round(carbs.used)} · F {Math.round(fats.used)}</div>
+</div>
             </div>
           </div>
         )}
