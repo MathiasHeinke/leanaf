@@ -1954,10 +1954,12 @@ export type Database = {
       feature_flags: {
         Row: {
           created_at: string
+          enabled_default: boolean
           flag_description: string | null
           flag_name: string
           id: string
           is_enabled: boolean
+          key: string | null
           metadata: Json | null
           rollout_percentage: number
           target_audience: Json | null
@@ -1965,10 +1967,12 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          enabled_default?: boolean
           flag_description?: string | null
           flag_name: string
           id?: string
           is_enabled?: boolean
+          key?: string | null
           metadata?: Json | null
           rollout_percentage?: number
           target_audience?: Json | null
@@ -1976,10 +1980,12 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          enabled_default?: boolean
           flag_description?: string | null
           flag_name?: string
           id?: string
           is_enabled?: boolean
+          key?: string | null
           metadata?: Json | null
           rollout_percentage?: number
           target_audience?: Json | null
