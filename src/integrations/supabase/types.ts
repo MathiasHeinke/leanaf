@@ -5560,7 +5560,7 @@ export type Database = {
           kcal?: number | null
           protein?: number | null
           quality_score?: number | null
-          title?: string | null
+          title?: never
           ts?: string | null
           user_id?: string | null
         }
@@ -5571,7 +5571,7 @@ export type Database = {
           kcal?: number | null
           protein?: number | null
           quality_score?: number | null
-          title?: string | null
+          title?: never
           ts?: string | null
           user_id?: string | null
         }
