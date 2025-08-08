@@ -2949,6 +2949,8 @@ export type Database = {
           protein: number | null
           quality_score: number | null
           text: string
+          title: string | null
+          ts: string | null
           updated_at: string
           user_id: string
         }
@@ -2971,6 +2973,8 @@ export type Database = {
           protein?: number | null
           quality_score?: number | null
           text: string
+          title?: string | null
+          ts?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2993,6 +2997,8 @@ export type Database = {
           protein?: number | null
           quality_score?: number | null
           text?: string
+          title?: string | null
+          ts?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -5532,6 +5538,42 @@ export type Database = {
           compliance_pct: number | null
           date: string | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      v_today_meals: {
+        Row: {
+          carbs: number | null
+          fat: number | null
+          id: string | null
+          kcal: number | null
+          protein: number | null
+          quality_score: number | null
+          title: string | null
+          ts: string | null
+          user_id: string | null
+        }
+        Insert: {
+          carbs?: number | null
+          fat?: number | null
+          id?: string | null
+          kcal?: number | null
+          protein?: number | null
+          quality_score?: number | null
+          title?: string | null
+          ts?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          carbs?: number | null
+          fat?: number | null
+          id?: string | null
+          kcal?: number | null
+          protein?: number | null
+          quality_score?: number | null
+          title?: string | null
+          ts?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
