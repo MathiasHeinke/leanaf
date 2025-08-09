@@ -37,9 +37,6 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
     
     // Check rate limiting on component mount
     const clientId = `${navigator.userAgent}_${window.location.href}`;
@@ -249,7 +246,7 @@ const Auth = () => {
             
             if (data.user) {
               toast.success(t('auth.signInSuccess'));
-              window.location.replace('/');
+              
             }
             break;
           }
