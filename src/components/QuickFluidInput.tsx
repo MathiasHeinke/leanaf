@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { getCurrentDateString } from "@/utils/dateHelpers";
 
+import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { de } from 'date-fns/locale';
 
 interface FluidOption {
@@ -219,6 +220,8 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       // Trigger parent update to refresh main page
       onFluidUpdate?.();
       
+      // Global refresh for header/mission
+      triggerDataRefresh();
     } catch (error) {
       console.error('Error adding fluid:', error);
       toast.error('Fehler beim Hinzufügen des Getränks');
@@ -294,6 +297,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       toast.success('Getränk gelöscht');
       loadTodaysFluids();
       onFluidUpdate?.();
+      triggerDataRefresh();
     } catch (error) {
       console.error('Error deleting fluid:', error);
       toast.error('Fehler beim Löschen des Getränks');
@@ -332,6 +336,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       setEditNotes('');
       loadTodaysFluids();
       onFluidUpdate?.();
+      triggerDataRefresh();
     } catch (error) {
       console.error('Error updating fluid:', error);
       toast.error('Fehler beim Aktualisieren des Getränks');

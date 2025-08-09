@@ -1,4 +1,4 @@
-import React, { useState, useCallback, Suspense, lazy } from "react";
+import React, { useState, useCallback, Suspense, lazy, useRef } from "react";
 import { Camera, Mic, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
@@ -8,17 +8,29 @@ const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").th
 export const MomentumBottomComposer: React.FC = () => {
   const [mealOpen, setMealOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const { inputText, setInputText } = useGlobalMealInput();
+  const { inputText, setInputText, uploadImages, handleVoiceRecord } = useGlobalMealInput();
+ 
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoTap = useCallback(() => {
-    setActiveTab("photo");
-    setMealOpen(true);
+    fileInputRef.current?.click();
   }, []);
 
-  const handleVoiceTap = useCallback(() => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length) {
+      await uploadImages(files);
+      setActiveTab("photo");
+      setMealOpen(true);
+      e.currentTarget.value = "";
+    }
+  }, [uploadImages]);
+ 
+  const handleVoiceTap = useCallback(async () => {
+    await handleVoiceRecord();
     setActiveTab("voice");
     setMealOpen(true);
-  }, []);
+  }, [handleVoiceRecord]);
 
   const handleTextTap = useCallback(() => {
     setActiveTab("text");
@@ -63,7 +75,14 @@ export const MomentumBottomComposer: React.FC = () => {
               <Mic className="h-5 w-5" />
             </Button>
 
-            {/* Text Input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileChange}
+            />
             <div className="flex-1 relative">
               <input
                 type="text"

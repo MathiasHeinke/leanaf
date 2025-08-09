@@ -20,6 +20,7 @@ import { QuickWeightCard } from '@/components/momentum/quick/QuickWeightCard';
 import { QuickSleepCard } from '@/components/momentum/quick/QuickSleepCard';
 import { QuickTrainingCard } from '@/components/momentum/quick/QuickTrainingCard';
 import { QuickMealsCard } from '@/components/momentum/quick/QuickMealsCard';
+import confetti from 'canvas-confetti';
 
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
@@ -103,9 +104,17 @@ const MomentumBoard: React.FC = () => {
           loading={flagsLoading}
           deltaBadge={xpDelta}
           onBurst={useCallback(() => {
-            // Burst animation for stage completion
-            console.log('🎆 Stage completed!');
-            // Can trigger confetti or other effects here
+            const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+            if (prefersReduced) return;
+            confetti({
+              particleCount: 60,
+              spread: 50,
+              startVelocity: 38,
+              gravity: 0.9,
+              scalar: 0.9,
+              ticks: 180,
+              origin: { y: 0.2 }
+            });
           }, [])}
         />
         

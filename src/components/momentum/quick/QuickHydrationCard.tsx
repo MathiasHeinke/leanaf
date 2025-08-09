@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 
 interface FluidFavorite {
   name: string;
@@ -53,7 +54,7 @@ export const QuickHydrationCard: React.FC = () => {
       
       const { data, error } = await supabase
         .from('user_fluids')
-        .select('custom_name, amount_ml, fluid_database(name)')
+        .select('custom_name, amount_ml, fluid_database!left(name)')
         .eq('user_id', user.id)
         .gte('consumed_at', sevenDaysAgo.toISOString())
         .not('custom_name', 'eq', 'Wasser')
@@ -113,6 +114,7 @@ export const QuickHydrationCard: React.FC = () => {
 
       toast.success(`${name} +${amount}ml hinzugefügt`);
       loadTodayIntake();
+      triggerDataRefresh();
     } catch (error) {
       console.error('Error adding fluid:', error);
       toast.error('Fehler beim Hinzufügen');

@@ -201,6 +201,8 @@ export const MomentumHeaderTriptych: React.FC<MomentumHeaderTriptychProps> = ({
             size="sm"
             variant="ghost"
             className="absolute top-1 right-1 h-6 w-6 p-0"
+            aria-label="Anzeigeslot wechseln"
+            title="Anzeigeslot wechseln"
             onClick={() => {
               const slots: typeof rightSlot[] = ['hydration', 'steps', 'training', 'sleep'];
               const currentIndex = slots.indexOf(rightSlot);
