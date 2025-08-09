@@ -1,6 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { usePlusData } from '@/hooks/usePlusData';
+import { MomentumXPBar } from '@/components/momentum/MomentumXPBar';
+import { MomentumHeaderTriptych } from '@/components/momentum/MomentumHeaderTriptych';
 import { StreakLevelHeader } from '@/components/plus/StreakLevelHeader';
 import { PlusDeficitRing } from '@/components/plus/PlusDeficitRing';
 import { PlusMacroDeltas } from '@/components/plus/PlusMacroDeltas';
@@ -23,6 +25,7 @@ const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
   const enabled = isEnabled('feature_plus_dashboard');
   const data = usePlusData();
+  const [xpDelta, setXpDelta] = useState<number>(0);
 
   // Tagesmission Dynamik aus Daten ableiten
   const macrosDone = typeof (data as any)?.proteinDelta === 'number' ? ((data as any).proteinDelta <= 0) : false;
@@ -33,6 +36,9 @@ const MomentumBoard: React.FC = () => {
   const workoutLogged = Boolean((data as any)?.workoutLoggedToday || stepsToday >= stepsTarget);
   const hydrationLogged = (((data as any)?.hydrationMlToday ?? 0) >= 1500);
   const missionCompletedCount = [macrosDone, sleepLogged, supplementsLogged, workoutLogged, hydrationLogged].filter(Boolean).length;
+
+  // XP calculation - simple mapping from mission progress
+  const currentXP = missionCompletedCount * 20; // 0-100 XP based on 5 missions
 
   // Page-level SEO: title, description, canonical
   useEffect(() => {
@@ -73,14 +79,30 @@ const MomentumBoard: React.FC = () => {
     <ErrorBoundary>
       <main className="relative">
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-primary/20 via-background to-background blur-2xl" />
+        
+        {/* XP Bar - Sticky */}
+        <MomentumXPBar 
+          xp={currentXP} 
+          goal={100} 
+          loading={flagsLoading}
+          deltaBadge={xpDelta}
+          onBurst={() => {
+            // TODO: Add burst animation
+            console.log('🎆 Stage completed!');
+          }}
+        />
+        
+        {/* Header Triptychon */}
+        <MomentumHeaderTriptych 
+          data={data}
+          missionCompletedCount={missionCompletedCount}
+          missionTotal={5}
+        />
+        
         <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-0 pb-6 max-w-5xl font-display">
           <header className="board-hero animate-fade-in mt-2 mb-5">
             <h1 className="text-3xl md:text-4xl">Momentum-Board</h1>
             <p className="text-muted-foreground mt-1">Dein tägliches Momentum: Defizit, Protein, Schritte & mehr.</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="inline-flex items-center rounded-full border border-border/40 px-2.5 py-1 text-xs bg-secondary/60">🔥 {missionCompletedCount >= 3 ? 'Tagesmission erfüllt' : 'Tagesmission aktiv'} ({missionCompletedCount}/5)</span>
-              <span className="inline-flex items-center rounded-full border border-border/40 px-2.5 py-1 text-xs">Level & Rewards</span>
-            </div>
           </header>
 
           <section aria-label="Schnellerfassung" className="mb-8">
