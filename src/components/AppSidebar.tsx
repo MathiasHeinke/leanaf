@@ -53,7 +53,7 @@ const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Coaching", url: "/coach", icon: MessageCircle },
   { title: "Workout", url: "/training", icon: Dumbbell },
-  { title: "Momentum", url: "/momentum", icon: Flame },
+  { title: "Momentum", url: "/momentum-board", icon: Flame },
   { title: "Transformation", url: "/transformation", icon: TrendingUp },
   { title: "History", url: "/history", icon: HistoryIcon },
   { title: "Analyse", url: "/analyse", icon: BarChart3 },
