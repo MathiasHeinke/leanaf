@@ -1708,11 +1708,13 @@ export type Database = {
       }
       exercise_sessions: {
         Row: {
+          coach_persona: string | null
           created_at: string
           date: string
           duration_minutes: number | null
           end_time: string | null
           id: string
+          metadata: Json
           notes: string | null
           overall_rpe: number | null
           session_name: string | null
@@ -1724,11 +1726,13 @@ export type Database = {
           workout_type: string | null
         }
         Insert: {
+          coach_persona?: string | null
           created_at?: string
           date?: string
           duration_minutes?: number | null
           end_time?: string | null
           id?: string
+          metadata?: Json
           notes?: string | null
           overall_rpe?: number | null
           session_name?: string | null
@@ -1740,11 +1744,13 @@ export type Database = {
           workout_type?: string | null
         }
         Update: {
+          coach_persona?: string | null
           created_at?: string
           date?: string
           duration_minutes?: number | null
           end_time?: string | null
           id?: string
+          metadata?: Json
           notes?: string | null
           overall_rpe?: number | null
           session_name?: string | null
@@ -1767,6 +1773,7 @@ export type Database = {
       }
       exercise_sets: {
         Row: {
+          client_event_id: string | null
           created_at: string
           date: string | null
           distance_m: number | null
@@ -1774,6 +1781,7 @@ export type Database = {
           exercise_id: string
           id: string
           notes: string | null
+          origin: string | null
           reps: number | null
           rest_seconds: number | null
           rpe: number | null
@@ -1784,6 +1792,7 @@ export type Database = {
           weight_kg: number | null
         }
         Insert: {
+          client_event_id?: string | null
           created_at?: string
           date?: string | null
           distance_m?: number | null
@@ -1791,6 +1800,7 @@ export type Database = {
           exercise_id: string
           id?: string
           notes?: string | null
+          origin?: string | null
           reps?: number | null
           rest_seconds?: number | null
           rpe?: number | null
@@ -1801,6 +1811,7 @@ export type Database = {
           weight_kg?: number | null
         }
         Update: {
+          client_event_id?: string | null
           created_at?: string
           date?: string | null
           distance_m?: number | null
@@ -1808,6 +1819,7 @@ export type Database = {
           exercise_id?: string
           id?: string
           notes?: string | null
+          origin?: string | null
           reps?: number | null
           rest_seconds?: number | null
           rpe?: number | null
