@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { usePlusData } from '@/hooks/usePlusData';
 import { MomentumXPBar } from '@/components/momentum/MomentumXPBar';
@@ -26,6 +26,7 @@ const MomentumBoard: React.FC = () => {
   const enabled = isEnabled('feature_plus_dashboard');
   const data = usePlusData();
   const [xpDelta, setXpDelta] = useState<number>(0);
+  const [previousMissions, setPreviousMissions] = useState<number>(0);
 
   // Tagesmission Dynamik aus Daten ableiten
   const macrosDone = typeof (data as any)?.proteinDelta === 'number' ? ((data as any).proteinDelta <= 0) : false;
@@ -39,6 +40,21 @@ const MomentumBoard: React.FC = () => {
 
   // XP calculation - simple mapping from mission progress
   const currentXP = missionCompletedCount * 20; // 0-100 XP based on 5 missions
+
+  // Live-Update: Detect mission changes and show XP delta
+  useEffect(() => {
+    if (!data.loading && previousMissions > 0 && missionCompletedCount > previousMissions) {
+      const xpGained = (missionCompletedCount - previousMissions) * 20;
+      setXpDelta(xpGained);
+      
+      // Clear delta after animation
+      setTimeout(() => setXpDelta(0), 3000);
+    }
+    
+    if (!data.loading) {
+      setPreviousMissions(missionCompletedCount);
+    }
+  }, [missionCompletedCount, data.loading, previousMissions]);
 
   // Page-level SEO: title, description, canonical
   useEffect(() => {
@@ -86,10 +102,11 @@ const MomentumBoard: React.FC = () => {
           goal={100} 
           loading={flagsLoading}
           deltaBadge={xpDelta}
-          onBurst={() => {
-            // TODO: Add burst animation
+          onBurst={useCallback(() => {
+            // Burst animation for stage completion
             console.log('🎆 Stage completed!');
-          }}
+            // Can trigger confetti or other effects here
+          }, [])}
         />
         
         {/* Header Triptychon */}
@@ -97,6 +114,7 @@ const MomentumBoard: React.FC = () => {
           data={data}
           missionCompletedCount={missionCompletedCount}
           missionTotal={5}
+          key={`header-${missionCompletedCount}-${currentXP}`} // Force re-render on changes
         />
         
         <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-0 pb-6 max-w-5xl font-display">

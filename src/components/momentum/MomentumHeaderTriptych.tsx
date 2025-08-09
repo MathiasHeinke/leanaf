@@ -32,35 +32,48 @@ export const MomentumHeaderTriptych: React.FC<MomentumHeaderTriptychProps> = ({
   const carbPercent = goals?.carbs ? Math.min(100, ((today?.total_carbs || 0) / goals.carbs) * 100) : 0;
   const fatPercent = goals?.fats ? Math.min(100, ((today?.total_fats || 0) / goals.fats) * 100) : 0;
 
-  // Right Slot Data
+  // Right Slot Data - now using real data from usePlusData
   const getRightSlotData = () => {
     switch (rightSlot) {
       case 'hydration':
+        const hydrationMl = (data as any)?.hydrationMlToday ?? 0;
+        const hydrationTarget = 2500;
+        const hydrationPercent = Math.min(100, (hydrationMl / hydrationTarget) * 100);
         return {
           icon: Droplets,
-          value: '1250/2500',
-          percent: 50,
+          value: `${Math.round(hydrationMl)}/2500`,
+          percent: hydrationPercent,
           unit: 'ml'
         };
       case 'steps':
+        const steps = (data as any)?.stepsToday ?? 0;
+        const stepsTarget = (data as any)?.stepsTarget ?? 7000;
+        const stepsPercent = Math.min(100, (steps / stepsTarget) * 100);
+        const stepsDisplay = steps >= 1000 ? `${(steps/1000).toFixed(1)}k` : steps.toString();
+        const targetDisplay = stepsTarget >= 1000 ? `${(stepsTarget/1000)}k` : stepsTarget.toString();
         return {
           icon: Footprints,
-          value: '4.2k/10k',
-          percent: 42,
+          value: `${stepsDisplay}/${targetDisplay}`,
+          percent: stepsPercent,
           unit: 'Schritte'
         };
       case 'training':
+        const workoutLogged = (data as any)?.workoutLoggedToday ?? false;
+        const sleepDuration = (data as any)?.sleepDurationToday ?? 0;
         return {
           icon: Dumbbell,
-          value: '45 Min',
-          percent: 100,
+          value: workoutLogged ? 'Erledigt' : 'Offen',
+          percent: workoutLogged ? 100 : 0,
           unit: 'Training'
         };
       case 'sleep':
+        const sleepHours = (data as any)?.sleepDurationToday ?? 0;
+        const sleepTarget = 8;
+        const sleepPercent = Math.min(100, (sleepHours / sleepTarget) * 100);
         return {
           icon: Moon,
-          value: '7.5h',
-          percent: 94,
+          value: sleepHours > 0 ? `${sleepHours.toFixed(1)}h` : 'Offen',
+          percent: sleepPercent,
           unit: 'Schlaf'
         };
       default:
