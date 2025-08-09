@@ -66,6 +66,20 @@ const MomentumBoard: React.FC = () => {
     if (canonical) canonical.href = `${window.location.origin}/momentum-board`;
   }, []);
 
+  const onBurst = useCallback(() => {
+    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (prefersReduced) return;
+    confetti({
+      particleCount: 60,
+      spread: 50,
+      startVelocity: 38,
+      gravity: 0.9,
+      scalar: 0.9,
+      ticks: 180,
+      origin: { y: 0.2 }
+    });
+  }, []);
+
   // Clean UI cards (white, minimal color) for quick inputs
   // integrated as a grid above the PLUS widgets
   
@@ -103,19 +117,7 @@ const MomentumBoard: React.FC = () => {
           goal={100} 
           loading={flagsLoading}
           deltaBadge={xpDelta}
-          onBurst={useCallback(() => {
-            const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-            if (prefersReduced) return;
-            confetti({
-              particleCount: 60,
-              spread: 50,
-              startVelocity: 38,
-              gravity: 0.9,
-              scalar: 0.9,
-              ticks: 180,
-              origin: { y: 0.2 }
-            });
-          }, [])}
+          onBurst={onBurst}
         />
         
         {/* Header Triptychon */}

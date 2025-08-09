@@ -50,7 +50,7 @@ export const QuickHydrationCard: React.FC = () => {
       const { data, error } = await supabase
         .from('fluid_database')
         .select('id, name, default_amount')
-        .order('usage_score', { ascending: false })
+        .order('name', { ascending: true })
         .limit(5);
 
       if (error) throw error;
