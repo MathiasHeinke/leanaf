@@ -70,11 +70,19 @@ export const QuickSleepCard: React.FC = () => {
     return 'text-red-600';
   };
 
+  const sleepTarget = 8; // hours
+  const currentSleep = todaysSleep?.sleep_hours || 0;
+  const progressPercent = Math.min(100, (currentSleep / sleepTarget) * 100);
+  const dataState = currentSleep === 0 ? 'empty' : 
+                   currentSleep >= sleepTarget ? 'done' : 'partial';
+
   return (
     <>
       <QuickCardShell
         title="Schlaf"
         icon={<Moon className="h-4 w-4" />}
+        dataState={dataState}
+        progressPercent={progressPercent}
         status={hasSleepData ? `${todaysSleep?.sleep_hours}h Schlaf` : 'Noch nicht erfasst'}
         statusIcon={hasSleepData ? <Sun className="h-3 w-3" /> : undefined}
         quickActions={hasSleepData ? [] : [

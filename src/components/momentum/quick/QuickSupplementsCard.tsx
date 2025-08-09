@@ -169,12 +169,18 @@ export const QuickSupplementsCard: React.FC = () => {
 
   const takenCount = getTotalTaken();
   const requiredCount = getTotalRequired();
+  const progressPercent = requiredCount > 0 ? (takenCount / requiredCount) * 100 : 0;
+  const dataState = requiredCount === 0 ? 'empty' : 
+                   takenCount === requiredCount ? 'done' : 
+                   takenCount > 0 ? 'partial' : 'empty';
 
   return (
     <>
       <QuickCardShell
         title="Supplemente"
         icon={<Pill className="h-4 w-4" />}
+        dataState={dataState}
+        progressPercent={progressPercent}
         status={`${takenCount} / ${requiredCount} heute`}
         detailsAction={{
           label: 'Details',

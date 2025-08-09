@@ -31,6 +31,9 @@ interface QuickCardShellProps {
   };
   children?: React.ReactNode;
   className?: string;
+  // New state system
+  dataState?: 'empty' | 'partial' | 'done';
+  progressPercent?: number;
 }
 
 export const QuickCardShell: React.FC<QuickCardShellProps> = ({
@@ -42,17 +45,48 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
   dropdownActions = [],
   detailsAction,
   children,
-  className
+  className,
+  dataState = 'empty',
+  progressPercent = 0
 }) => {
+  // State-based styling
+  const getStateStyles = () => {
+    switch (dataState) {
+      case 'done':
+        return {
+          cardClass: 'border-primary/40 bg-primary/5 dark:bg-primary/10',
+          iconClass: 'bg-primary/20 text-primary',
+          progressClass: 'bg-primary'
+        };
+      case 'partial':
+        return {
+          cardClass: 'border-amber-500/40 bg-amber-50 dark:bg-amber-950/20',
+          iconClass: 'bg-amber-500/20 text-amber-600 dark:text-amber-400',
+          progressClass: 'bg-amber-500'
+        };
+      default: // empty
+        return {
+          cardClass: 'border-border/40 bg-background',
+          iconClass: 'bg-muted text-muted-foreground',
+          progressClass: 'bg-muted'
+        };
+    }
+  };
+
+  const stateStyles = getStateStyles();
   return (
     <Card className={cn(
-      "bg-white dark:bg-neutral-950 border border-border/40 rounded-2xl shadow-sm p-6 animate-fade-in",
+      "rounded-2xl shadow-sm p-6 animate-fade-in transition-all duration-300 hover:shadow-md",
+      stateStyles.cardClass,
       className
     )}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
+          <div className={cn(
+            "h-8 w-8 rounded-xl flex items-center justify-center transition-all duration-300",
+            stateStyles.iconClass
+          )}>
             {icon}
           </div>
           <div>
@@ -121,6 +155,18 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
           )}
         </div>
       </div>
+
+      {/* Progress Bar (if progressPercent > 0) */}
+      {progressPercent > 0 && (
+        <div className="mb-4">
+          <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
+            <div 
+              className={cn("h-full rounded-full transition-all duration-500", stateStyles.progressClass)}
+              style={{ width: `${Math.min(100, progressPercent)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Body */}
       {children && (

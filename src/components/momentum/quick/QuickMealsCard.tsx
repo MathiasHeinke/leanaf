@@ -70,12 +70,18 @@ export const QuickMealsCard: React.FC = () => {
   const mealCount = todaysMeals.length;
   const totalCalories = getTotalCalories();
   const totalProtein = getTotalProtein();
+  const targetCalories = 1800; // Could be from user preferences
+  const progressPercent = totalCalories > 0 ? Math.min(100, (totalCalories / targetCalories) * 100) : 0;
+  const dataState = mealCount === 0 ? 'empty' : 
+                   progressPercent >= 80 ? 'done' : 'partial';
 
   return (
     <>
       <QuickCardShell
         title="Mahlzeiten"
         icon={<Utensils className="h-4 w-4" />}
+        dataState={dataState}
+        progressPercent={progressPercent}
         status={mealCount > 0 ? `${mealCount} Mahlzeit(en)` : 'Noch keine Mahlzeiten'}
         quickActions={[
           {

@@ -132,12 +132,16 @@ export const QuickHydrationCard: React.FC = () => {
   };
 
   const progressPercent = Math.min(100, (todayIntake / DAILY_GOAL) * 100);
+  const dataState = todayIntake === 0 ? 'empty' : 
+                   todayIntake >= DAILY_GOAL ? 'done' : 'partial';
 
   return (
     <>
       <QuickCardShell
         title="Flüssigkeit"
         icon={<Droplets className="h-4 w-4" />}
+        dataState={dataState}
+        progressPercent={progressPercent}
         status={`${todayIntake} / ${DAILY_GOAL} ml`}
         quickActions={[
           {

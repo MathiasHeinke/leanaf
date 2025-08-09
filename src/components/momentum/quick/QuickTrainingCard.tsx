@@ -98,11 +98,19 @@ export const QuickTrainingCard: React.FC = () => {
     }
   };
 
+  // Calculate state and progress
+  const dataState = hasWorkoutToday ? 'done' : 
+                   todaysWorkouts.length > 0 ? 'partial' : 'empty';
+  const progressPercent = hasWorkoutToday ? 100 : 
+                         todaysWorkouts.length > 0 ? 60 : 0;
+
   return (
     <>
       <QuickCardShell
         title="Training"
         icon={<Dumbbell className="h-4 w-4" />}
+        dataState={dataState}
+        progressPercent={progressPercent}
         status={hasWorkoutToday ? 
           (hasActiveWorkout ? `${todaysWorkouts.length} Einheit(en)` : 'Ruhetag') : 
           'Noch nicht erfasst'
