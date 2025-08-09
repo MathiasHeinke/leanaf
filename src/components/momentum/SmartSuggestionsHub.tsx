@@ -123,7 +123,9 @@ export const SmartSuggestionsHub: React.FC<SmartSuggestionsHubProps> = ({
         });
       }
 
-      setSuggestions(smartActions.slice(0, 5)); // Max 5 suggestions
+      // Deduplicate by id and limit
+      const unique = Array.from(new Map(smartActions.map(a => [a.id, a])).values());
+      setSuggestions(unique.slice(0, 5));
     } catch (error) {
       console.error('Error generating smart suggestions:', error);
     } finally {

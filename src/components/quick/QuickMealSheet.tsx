@@ -100,6 +100,92 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     if (hour < 18) return ['Apfel mit Nüssen', 'Protein-Shake', 'Joghurt'];
     return ['Lachs mit Gemüse', 'Gemüse-Pfanne', 'Suppe'];
   };
+  // Build suggestions from last 30 days, weighted by time of day
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  const currentTimeOfDay = () => {
+    const hour = new Date().getHours();
+    if (hour < 10) return 'breakfast';
+    if (hour < 14) return 'lunch';
+    if (hour < 18) return 'snack';
+    return 'dinner';
+  };
+
+  const normalize = (s: string) => s
+    .toLowerCase()
+    .replace(/:[\p{L}\p{N}_-]+:/gu, '') // strip emoji shortcodes
+    .replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '') // strip emojis
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ') // keep letters/numbers/spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const timeOfDayFrom = (mealType: string | null | undefined, ts?: string | null) => {
+    if (mealType) {
+      const t = mealType.toLowerCase();
+      if (t.includes('früh') || t.includes('breakfast')) return 'breakfast';
+      if (t.includes('mittag') || t.includes('lunch')) return 'lunch';
+      if (t.includes('abend') || t.includes('dinner')) return 'dinner';
+      if (t.includes('snack')) return 'snack';
+    }
+    const d = ts ? new Date(ts) : new Date();
+    const h = d.getHours();
+    if (h < 10) return 'breakfast';
+    if (h < 14) return 'lunch';
+    if (h < 18) return 'snack';
+    return 'dinner';
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      if (!open) return; // only load when sheet opens
+      if (!user) return;
+      try {
+        const from = new Date();
+        from.setDate(from.getDate() - 30);
+        const { data, error } = await supabase
+          .from('meals')
+          .select('text, created_at, meal_type')
+          .eq('user_id', user.id)
+          .gte('created_at', from.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(400);
+        if (error) throw error;
+
+        const map = new Map<string, { display: string; count: number; todHits: Record<string, number>; lastAt: number }>();
+        (data || []).forEach((m: any) => {
+          const title = (m.text || '').toString().trim();
+          if (!title) return;
+          const key = normalize(title);
+          const tod = timeOfDayFrom(m.meal_type, m.created_at);
+          const rec = map.get(key) || { display: title, count: 0, todHits: { breakfast: 0, lunch: 0, snack: 0, dinner: 0 }, lastAt: 0 };
+          rec.display = title.length <= rec.display.length ? title : rec.display; // prefer shorter readable title
+          rec.count += 1;
+          rec.todHits[tod] = (rec.todHits[tod] || 0) + 1;
+          rec.lastAt = Math.max(rec.lastAt, new Date(m.created_at).getTime());
+          map.set(key, rec);
+        });
+
+        const nowTod = currentTimeOfDay();
+        const ranked = Array.from(map.values())
+          .map(r => {
+            const todWeight = r.todHits[nowTod] || 0;
+            const score = r.count * 1.0 + todWeight * 0.75 + (r.lastAt / 1000_000_000_000); // slight recency tiebreaker
+            return { title: r.display, score };
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 3)
+          .map(r => r.title);
+
+        if (ranked.length > 0) setSuggestions(ranked);
+        else setSuggestions([]);
+      } catch (e) {
+        console.error('Failed to load meal suggestions', e);
+        setSuggestions([]);
+      }
+    };
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, user?.id]);
 
   const getSmartPlaceholder = () => {
     const hour = new Date().getHours();
@@ -108,7 +194,6 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     if (hour < 18) return 'Was gab es als Snack?';
     return 'Was gab es zum Abendessen?';
   };
-
   const onSubmit = async () => {
     await handleSubmitMeal();
     if (!isAnalyzing) {
@@ -138,7 +223,7 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
             {/* Smart Suggestions */}
             {inputText.length === 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
-                {getTimeBasedSuggestions().map((suggestion, idx) => (
+                {(suggestions.length > 0 ? suggestions : getTimeBasedSuggestions()).map((suggestion, idx) => (
                   <button
                     key={idx}
                     onClick={() => setInputText(suggestion)}
