@@ -13,7 +13,7 @@ import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
 import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
-import { WaterTrackingCard } from '@/components/momentum/WaterTrackingCard';
+import { WaterQuickSection } from '@/components/momentum/WaterQuickSection';
 import { SmartSuggestionsHub } from '@/components/momentum/SmartSuggestionsHub';
 import { openMeal, openWorkout } from '@/components/quick/quickAddBus';
 import HotSwipeActionCard, { HotAction } from '@/components/momentum/HotSwipeActionCard';
@@ -207,12 +207,16 @@ const MomentumPage: React.FC = () => {
         if (error) throw error;
         setMeals(data || []);
       } else {
-        // For other dates, use meals table with date filter
+        // For other dates, use created_at day range in UTC to avoid timezone issues
+        const nextDate = new Date(currentDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const nextStr = nextDate.toISOString().slice(0, 10);
         const { data, error } = await supabase
           .from('meals')
           .select('id,user_id,created_at,text,calories,protein,carbs,fats,quality_score,meal_type')
           .eq('user_id', user.id)
-          .eq('date', dateStr)
+          .gte('created_at', `${dateStr}T00:00:00Z`)
+          .lt('created_at', `${nextStr}T00:00:00Z`)
           .order('created_at', { ascending: false });
         
         if (error) throw error;
@@ -435,20 +439,15 @@ const MomentumPage: React.FC = () => {
             totalWaterMl={totalWaterMl}
           />
 
-          {/* Water Tracking */}
+          {/* Water Quick Section */}
           <div className="mb-6">
-            <WaterTrackingCard 
+            <WaterQuickSection 
               date={currentDate}
-              onDataUpdate={() => { fetchMeals(); fetchWaterTotals(); }}
+              totalMl={totalWaterMl}
+              onDataUpdate={() => { fetchWaterTotals(); }}
             />
           </div>
 
-          {/* Hot Actions */}
-          {hotActions.length > 0 && (
-            <div className="mb-6">
-              <HotSwipeActionCard actions={hotActions} />
-            </div>
-          )}
 
           {/* Overview Rings */}
           <div className="mb-6">

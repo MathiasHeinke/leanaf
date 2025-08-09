@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { HotSwipeActionCard, HotAction } from './HotSwipeActionCard';
-import { openMeal, openWorkout, openSleep, openSupplements } from '@/components/quick/quickAddBus';
+import { openMeal, openWorkout, openSleep, openSupplements, openFluidInput } from '@/components/quick/quickAddBus';
 import { Utensils, Droplets, Pill, MessageCircle, Moon, Scale } from 'lucide-react';
 
 interface SmartSuggestionsHubProps {
@@ -67,7 +67,7 @@ export const SmartSuggestionsHub: React.FC<SmartSuggestionsHubProps> = ({
           id: 'water-suggestion',
           title: 'Mehr trinken',
           subtitle: `Nur ${Math.round(totalWaterMl)}ml von ${waterGoal}ml`,
-          onTap: () => {} // Handled by WaterTrackingCard
+          onTap: () => openFluidInput()
         });
       }
 

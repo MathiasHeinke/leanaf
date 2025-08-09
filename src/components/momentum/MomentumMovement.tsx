@@ -121,7 +121,7 @@ const fetchStats = async () => {
             <div className="text-xs text-muted-foreground">Schritte · Distanz · Workouts</div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => navigate('/workout')}>
+            <Button size="sm" variant="outline" onClick={() => navigate('/training')}>
               <Dumbbell className="h-4 w-4 mr-1" />
               Training
             </Button>

@@ -1,10 +1,6 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { Plus } from "lucide-react";
 import { QuickActionsMenu, ActionType } from "./QuickActionsMenu";
-import { toast } from "@/components/ui/sonner";
-import { quickAddBus } from "./quickAddBus";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 
 const QuickMealSheet = lazy(() => import("./QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 const QuickWorkoutModal = lazy(() => import("@/components/QuickWorkoutModal").then(m => ({ default: m.QuickWorkoutModal })));
