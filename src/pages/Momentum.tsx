@@ -478,19 +478,29 @@ const MomentumPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {groupedMeals.map(group => (
-                    <div key={group.label}>
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-base font-medium">{group.label}</h3>
-                        <div className="text-sm text-muted-foreground">
-                          {Math.round(group.totalKcal)} kcal
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        {group.meals.map(m => {
-                          const isEditing = editingMealId === m.id;
-                          return (
-                            <div key={m.id} className="flex items-center gap-4 p-4 border border-border/60 rounded-lg bg-background hover:bg-accent/50 transition-colors">
+                  {groupedMeals.map(group => {
+                    const [expanded, setExpanded] = useState(false);
+                    
+                    return (
+                      <div key={group.label}>
+                        <button
+                          onClick={() => setExpanded(!expanded)}
+                          className="w-full flex items-center justify-between mb-3 p-2 rounded-lg hover:bg-accent/50 transition-colors"
+                        >
+                          <h3 className="text-base font-medium">{group.label} ({group.meals.length})</h3>
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm text-muted-foreground">
+                              {Math.round(group.totalKcal)} kcal
+                            </div>
+                            <span className={`transition-transform ${expanded ? 'rotate-180' : ''}`}>▼</span>
+                          </div>
+                        </button>
+                        {expanded && (
+                          <div className="space-y-3">
+                             {group.meals.map(m => {
+                               const isEditing = editingMealId === m.id;
+                               return (
+                                 <div key={m.id} className="flex items-center gap-4 p-4 border border-border/60 rounded-lg bg-background hover:bg-accent/50 transition-colors">
                               <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden shrink-0">
                                 {m.image_url && (
                                   <BlurImage
@@ -573,22 +583,18 @@ const MomentumPage: React.FC = () => {
                                     </button>
                                   </>
                                 )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                  <button 
-                    className="w-full py-3 text-sm text-primary hover:underline" 
-                    onClick={() => openMeal()}
-                  >
-                    + Mahlzeit hinzufügen
-                  </button>
-                </div>
-              )}
-            </CardContent>
+                                 </div>
+                               </div>
+                               );
+                             })}
+                           </div>
+                         )}
+                       </div>
+                     );
+                   })}
+                 </div>
+               )}
+             </CardContent>
           </Card>
 
           {/* Movement */}

@@ -93,6 +93,22 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     }
   };
 
+  const getTimeBasedSuggestions = () => {
+    const hour = new Date().getHours();
+    if (hour < 10) return ['Haferflocken mit Beeren', 'Rührei mit Toast', 'Joghurt mit Müsli'];
+    if (hour < 14) return ['Salat mit Hähnchen', 'Pasta mit Gemüse', 'Suppe mit Brot'];
+    if (hour < 18) return ['Apfel mit Nüssen', 'Protein-Shake', 'Joghurt'];
+    return ['Lachs mit Gemüse', 'Gemüse-Pfanne', 'Suppe'];
+  };
+
+  const getSmartPlaceholder = () => {
+    const hour = new Date().getHours();
+    if (hour < 10) return 'Was gab es zum Frühstück?';
+    if (hour < 14) return 'Was gab es zum Mittagessen?';
+    if (hour < 18) return 'Was gab es als Snack?';
+    return 'Was gab es zum Abendessen?';
+  };
+
   const onSubmit = async () => {
     await handleSubmitMeal();
     if (!isAnalyzing) {
@@ -114,10 +130,25 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
             <textarea
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Kurz beschreiben oder diktieren…"
+              placeholder={getSmartPlaceholder()}
               rows={3}
               className="w-full bg-transparent outline-none resize-none text-sm"
             />
+            
+            {/* Smart Suggestions */}
+            {inputText.length === 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {getTimeBasedSuggestions().map((suggestion, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setInputText(suggestion)}
+                    className="px-3 py-1 text-xs rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Images preview */}
             {uploadedImages.length > 0 && (

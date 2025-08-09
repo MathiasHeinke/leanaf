@@ -3,6 +3,8 @@ import { Plus } from "lucide-react";
 import { QuickActionsMenu, ActionType } from "./QuickActionsMenu";
 import { toast } from "@/components/ui/sonner";
 import { quickAddBus } from "./quickAddBus";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const QuickMealSheet = lazy(() => import("./QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 const QuickWorkoutModal = lazy(() => import("@/components/QuickWorkoutModal").then(m => ({ default: m.QuickWorkoutModal })));
@@ -19,10 +21,42 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
 
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
 
+  const { user } = useAuth();
+
+  const handleQuickFluid = useCallback(async (fluidType: 'water' | 'coffee' | 'tea') => {
+    if (!user) {
+      toast.error("Bitte zuerst anmelden");
+      return;
+    }
+
+    const amounts = { water: 250, coffee: 200, tea: 200 };
+    const fluidNames = { water: 'Wasser', coffee: 'Kaffee', tea: 'Tee' };
+    
+    try {
+      const { error } = await supabase.from('user_fluids').insert({
+        user_id: user.id,
+        custom_name: fluidNames[fluidType],
+        amount_ml: amounts[fluidType],
+        consumed_at: new Date().toISOString(),
+        date: new Date().toISOString().split('T')[0]
+      });
+
+      if (error) throw error;
+      toast.success(`${amounts[fluidType]}ml ${fluidNames[fluidType]} hinzugefügt`);
+    } catch (error) {
+      toast.error("Fehler beim Hinzufügen");
+    }
+  }, [user]);
+
   const handleSelect = useCallback((type: ActionType) => {
     if (type === "meal") {
       setMenuOpen(false);
       setMealOpen(true);
+      return;
+    }
+    if (type === "water" || type === "coffee" || type === "tea") {
+      setMenuOpen(false);
+      handleQuickFluid(type as 'water' | 'coffee' | 'tea');
       return;
     }
     if (type === "workout") {
@@ -44,7 +78,7 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
 
     if (type === "coach") toast.info("Coach-Zugang kommt bald ✨");
     setMenuOpen(false);
-  }, []);
+  }, [handleQuickFluid]);
 
   useEffect(() => {
     const unsub = quickAddBus.subscribe((action) => {
