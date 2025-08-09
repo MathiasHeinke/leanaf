@@ -284,7 +284,6 @@ export class ExtendedBadgeManager extends BadgeManager {
     const { data: mealImages, count } = await supabase
       .from('meal_images')
       .select('meal_id', { count: 'exact' })
-      .eq('user_id', this.userId)
       .in('meal_id', mealsWithImages.map(m => m.id));
 
     if ((count || 0) >= 10) {

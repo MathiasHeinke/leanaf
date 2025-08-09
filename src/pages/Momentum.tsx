@@ -199,7 +199,7 @@ const MomentumPage: React.FC = () => {
       // Use v_today_meals view for current day only
       if (isToday) {
         const { data, error } = await supabase
-          .from('v_today_meals')
+          .from('v_today_meals_union')
           .select('*')
           .eq('user_id', user.id)
           .order('ts', { ascending: false });

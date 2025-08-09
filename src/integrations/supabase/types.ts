@@ -5517,6 +5517,21 @@ export type Database = {
         }
         Relationships: []
       }
+      v_momentum_meals_compat: {
+        Row: {
+          carbs: number | null
+          fat: number | null
+          id: string | null
+          image_url: string | null
+          kcal: number | null
+          protein: number | null
+          quality_score: number | null
+          title: string | null
+          ts: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       v_summary_rolling_30: {
         Row: {
           completeness_score: number | null
@@ -5537,6 +5552,14 @@ export type Database = {
         Row: {
           compliance_pct: number | null
           date: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_today_fluids: {
+        Row: {
+          date_key: string | null
+          today_ml: number | null
           user_id: string | null
         }
         Relationships: []
@@ -5574,6 +5597,20 @@ export type Database = {
           title?: never
           ts?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      v_today_meals_union: {
+        Row: {
+          carbs: number | null
+          fat: number | null
+          id: string | null
+          kcal: number | null
+          protein: number | null
+          quality_score: number | null
+          title: string | null
+          ts: string | null
+          user_id: string | null
         }
         Relationships: []
       }
