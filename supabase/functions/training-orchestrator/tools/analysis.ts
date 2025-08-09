@@ -1,6 +1,6 @@
 
-import type { SetEntry } from "./set-parser";
-import { musclesForExercise } from "./muscle-map";
+import type { SetEntry } from "./set-parser.ts";
+import { musclesForExercise } from "./muscle-map.ts";
 
 export type ExerciseEntry = {
   name: string;
@@ -88,3 +88,4 @@ ${ml}
 
 ${tip}`;
 }
+
