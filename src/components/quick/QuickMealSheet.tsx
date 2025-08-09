@@ -29,6 +29,9 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     closeDialog,
     resetForm,
     removeImage,
+    isEditingMode,
+    enterEditMode,
+    exitEditMode,
   } = useGlobalMealInput();
 
   const { user } = useAuth();
@@ -207,7 +210,9 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl border-border/40 glass-card pb-6">
         <SheetHeader>
-          <SheetTitle>Mahlzeit hinzufügen</SheetTitle>
+          <SheetTitle>
+            {isEditingMode ? "Mahlzeit bearbeiten" : "Mahlzeit hinzufügen"}
+          </SheetTitle>
         </SheetHeader>
 
         <div className="mt-3 space-y-3">
@@ -295,7 +300,9 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
             <div className="mt-3 flex gap-2">
               <button
                 onClick={() => {
-                  closeDialog();
+                  if (analyzedMealData) {
+                    enterEditMode(analyzedMealData);
+                  }
                 }}
                 className="h-9 px-3 rounded-lg border border-border/40"
               >

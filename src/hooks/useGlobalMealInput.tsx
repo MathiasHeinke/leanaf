@@ -48,6 +48,10 @@ export const useGlobalMealInput = () => {
   const [analyzedMealData, setAnalyzedMealData] = useState<AnalyzedMealData | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>('other');
   
+  // Edit mode states
+  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [quickMealSheetOpen, setQuickMealSheetOpen] = useState(false);
+  
   // Upload states
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
@@ -370,6 +374,30 @@ export const useGlobalMealInput = () => {
     setShowConfirmationDialog(false);
   }, []);
 
+  // Edit mode functions
+  const enterEditMode = useCallback((mealData: AnalyzedMealData) => {
+    setInputText(mealData.title);
+    setAnalyzedMealData(mealData);
+    setSelectedMealType(mealData.meal_type);
+    setIsEditingMode(true);
+    setShowConfirmationDialog(false);
+  }, []);
+
+  const exitEditMode = useCallback(() => {
+    setIsEditingMode(false);
+  }, []);
+
+  const openQuickMealSheet = useCallback((tab?: "text" | "photo" | "voice") => {
+    setQuickMealSheetOpen(true);
+  }, []);
+
+  const closeQuickMealSheet = useCallback(() => {
+    setQuickMealSheetOpen(false);
+    if (isEditingMode) {
+      exitEditMode();
+    }
+  }, [isEditingMode, exitEditMode]);
+
   return {
     // Core API functions
     analyzeMealText,
@@ -402,6 +430,16 @@ export const useGlobalMealInput = () => {
     // Dialog control
     setShowConfirmationDialog,
     setAnalyzedMealData,
-    setSelectedMealType
+    setSelectedMealType,
+    
+    // Edit mode
+    isEditingMode,
+    enterEditMode,
+    exitEditMode,
+    
+    // Sheet control
+    quickMealSheetOpen,
+    openQuickMealSheet,
+    closeQuickMealSheet
   };
 };

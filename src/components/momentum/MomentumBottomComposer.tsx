@@ -6,9 +6,8 @@ import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const MomentumBottomComposer: React.FC = () => {
-  const [mealOpen, setMealOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const { inputText, setInputText, uploadImages, handleVoiceRecord, isRecording } = useGlobalMealInput();
+  const { inputText, setInputText, uploadImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet } = useGlobalMealInput();
  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -21,7 +20,7 @@ export const MomentumBottomComposer: React.FC = () => {
     if (files.length) {
       await uploadImages(files);
       setActiveTab("photo");
-      setMealOpen(true);
+      openQuickMealSheet("photo");
       e.currentTarget.value = "";
     }
   }, [uploadImages]);
@@ -29,20 +28,20 @@ export const MomentumBottomComposer: React.FC = () => {
   const handleVoiceTap = useCallback(async () => {
     await handleVoiceRecord();
     setActiveTab("voice");
-    setMealOpen(true);
-  }, [handleVoiceRecord]);
+    openQuickMealSheet("voice");
+  }, [handleVoiceRecord, openQuickMealSheet]);
 
   const handleTextTap = useCallback(() => {
     setActiveTab("text");
-    setMealOpen(true);
-  }, []);
+    openQuickMealSheet("text");
+  }, [openQuickMealSheet]);
 
   const handleSubmit = useCallback(() => {
     if (inputText.trim()) {
       setActiveTab("text");
-      setMealOpen(true);
+      openQuickMealSheet("text");
     }
-  }, [inputText]);
+  }, [inputText, openQuickMealSheet]);
 
   return (
     <>
@@ -116,8 +115,8 @@ export const MomentumBottomComposer: React.FC = () => {
       {/* Meal Sheet */}
       <Suspense fallback={null}>
         <QuickMealSheet 
-          open={mealOpen} 
-          onOpenChange={setMealOpen}
+          open={quickMealSheetOpen} 
+          onOpenChange={closeQuickMealSheet}
         />
       </Suspense>
     </>
