@@ -62,7 +62,7 @@ const MomentumBoard: React.FC = () => {
     const desc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (desc) desc.content = 'Dein tägliches Momentum: Kalorien-Defizit, Protein-Delta, Carb-Budget und mehr – inklusive 7‑Tage‑Trend.';
     let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
-    if (canonical) canonical.href = `${window.location.origin}/plus`;
+    if (canonical) canonical.href = `${window.location.origin}/momentum-board`;
   }, []);
 
   // Clean UI cards (white, minimal color) for quick inputs
@@ -144,6 +144,8 @@ const MomentumBoard: React.FC = () => {
             <div><MiniJournalQuick /></div>
           </div>
         </div>
+        {/* Spacer to avoid overlap with bottom composer */}
+        <div aria-hidden className="h-24" />
         <MomentumBottomComposer />
       </main>
     </ErrorBoundary>
