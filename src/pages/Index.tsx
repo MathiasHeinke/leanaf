@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useTrackingPreferences } from "@/hooks/useTrackingPreferences";
@@ -570,6 +570,12 @@ const Index = () => {
       )}
       
       <div className="space-y-5">
+        <Link to="/momentum-board" className="block rounded-2xl border border-border shadow-sm p-4 bg-card hover:bg-muted transition-colors">
+          <div className="text-xs font-medium mb-1">Neu</div>
+          <div className="text-lg font-semibold">Momentum‑Board</div>
+          <p className="text-sm text-muted-foreground">Dein tägliches Momentum: Defizit, Protein, Wasser, Training – alles auf einen Blick.</p>
+          <div className="mt-3 inline-flex items-center rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium">Jetzt öffnen</div>
+        </Link>
         <DailyProgress
           dailyTotals={{
             calories: calorieSummary.consumed,
