@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Droplets, Footprints, Dumbbell, Moon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,28 @@ export const MomentumHeaderTriptych: React.FC<MomentumHeaderTriptychProps> = ({
 }) => {
   const [kcalUnit, setKcalUnit] = useState<'kcal' | 'percent'>('kcal');
   const [rightSlot, setRightSlot] = useState<'hydration' | 'steps' | 'training' | 'sleep'>('hydration');
+  
+  // Persist user preferences in localStorage
+  useEffect(() => {
+    try {
+      const savedSlot = localStorage.getItem('momentum_right_slot');
+      if (savedSlot === 'hydration' || savedSlot === 'steps' || savedSlot === 'training' || savedSlot === 'sleep') {
+        setRightSlot(savedSlot);
+      }
+      const savedUnit = localStorage.getItem('momentum_kcal_unit');
+      if (savedUnit === 'kcal' || savedUnit === 'percent') {
+        setKcalUnit(savedUnit as 'kcal' | 'percent');
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem('momentum_right_slot', rightSlot); } catch {}
+  }, [rightSlot]);
+
+  useEffect(() => {
+    try { localStorage.setItem('momentum_kcal_unit', kcalUnit); } catch {}
+  }, [kcalUnit]);
   
   const { loading, goals, today, remainingKcal } = data;
 
@@ -137,6 +159,7 @@ export const MomentumHeaderTriptych: React.FC<MomentumHeaderTriptychProps> = ({
         <button 
           className="glass-card rounded-xl p-3 hover:bg-muted/50 transition-colors"
           onClick={() => setKcalUnit(prev => prev === 'kcal' ? 'percent' : 'kcal')}
+          aria-label="Anzeige zwischen kcal und Prozent umschalten"
         >
           <div className="text-center">
             <div className="text-lg font-semibold">
@@ -179,7 +202,6 @@ export const MomentumHeaderTriptych: React.FC<MomentumHeaderTriptychProps> = ({
             variant="ghost"
             className="absolute top-1 right-1 h-6 w-6 p-0"
             onClick={() => {
-              // TODO: Open slot picker
               const slots: typeof rightSlot[] = ['hydration', 'steps', 'training', 'sleep'];
               const currentIndex = slots.indexOf(rightSlot);
               const nextIndex = (currentIndex + 1) % slots.length;

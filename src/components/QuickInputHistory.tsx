@@ -110,11 +110,11 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
         .from('supplement_intake_log')
         .select(`
           *,
-          user_supplements!inner(
+          user_supplements!left(
             custom_name,
             dosage,
             unit,
-            supplement_database(name)
+            supplement_database!left(name)
           )
         `)
         .eq('user_id', user.id)

@@ -228,7 +228,7 @@ export const QuickSupplementInput = () => {
         .from('user_supplements')
         .select(`
           *,
-          supplement_database (
+          supplement_database!left (
             name,
             category
           )

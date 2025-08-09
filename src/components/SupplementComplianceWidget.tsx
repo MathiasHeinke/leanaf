@@ -45,7 +45,7 @@ export const SupplementComplianceWidget = () => {
           id,
           custom_name,
           supplement_id,
-          supplement_database!inner(name)
+          supplement_database!left(name)
         `)
         .eq('user_id', user.id)
         .eq('is_active', true);
