@@ -21,6 +21,7 @@ import { QuickSleepCard } from '@/components/momentum/quick/QuickSleepCard';
 import { QuickTrainingCard } from '@/components/momentum/quick/QuickTrainingCard';
 import { QuickMealsCard } from '@/components/momentum/quick/QuickMealsCard';
 import confetti from 'canvas-confetti';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
@@ -107,59 +108,61 @@ const MomentumBoard: React.FC = () => {
   }
 
   return (
-    <ErrorBoundary>
-      <main className="relative">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-primary/20 via-background to-background blur-2xl" />
-        
-        {/* XP Bar - Sticky */}
-        <MomentumXPBar 
-          xp={currentXP} 
-          goal={100} 
-          loading={flagsLoading}
-          deltaBadge={xpDelta}
-          onBurst={onBurst}
-        />
-        
-        {/* Header Triptychon */}
-        <MomentumHeaderTriptych 
-          data={data}
-          missionCompletedCount={missionCompletedCount}
-          missionTotal={5}
-          key={`header-${missionCompletedCount}-${currentXP}`} // Force re-render on changes
-        />
-        
-        <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-0 pb-6 max-w-5xl font-display">
-          <header className="board-hero animate-fade-in mt-2 mb-5">
-            <h1 className="text-3xl md:text-4xl">Momentum-Board</h1>
-            <p className="text-muted-foreground mt-1">Dein tägliches Momentum: Defizit, Protein, Schritte & mehr.</p>
-          </header>
+    <MealInputProvider>
+      <ErrorBoundary>
+        <main className="relative">
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-primary/20 via-background to-background blur-2xl" />
+          
+          {/* XP Bar - Sticky */}
+          <MomentumXPBar 
+            xp={currentXP} 
+            goal={100} 
+            loading={flagsLoading}
+            deltaBadge={xpDelta}
+            onBurst={onBurst}
+          />
+          
+          {/* Header Triptychon */}
+          <MomentumHeaderTriptych 
+            data={data}
+            missionCompletedCount={missionCompletedCount}
+            missionTotal={5}
+            key={`header-${missionCompletedCount}-${currentXP}`} // Force re-render on changes
+          />
+          
+          <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-0 pb-6 max-w-5xl font-display">
+            <header className="board-hero animate-fade-in mt-2 mb-5">
+              <h1 className="text-3xl md:text-4xl">Momentum-Board</h1>
+              <p className="text-muted-foreground mt-1">Dein tägliches Momentum: Defizit, Protein, Schritte & mehr.</p>
+            </header>
 
-          <section aria-label="Schnellerfassung" className="mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <QuickHydrationCard />
-              <QuickSupplementsCard />
-              <QuickWeightCard />
-              <QuickSleepCard />
-              <QuickTrainingCard />
-              <QuickMealsCard />
+            <section aria-label="Schnellerfassung" className="mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <QuickHydrationCard />
+                <QuickSupplementsCard />
+                <QuickWeightCard />
+                <QuickSleepCard />
+                <QuickTrainingCard />
+                <QuickMealsCard />
+              </div>
+            </section>
+
+            <div className="grid grid-cols-1 gap-5 md:gap-6 lg:gap-8 animate-fade-in">
+              <div><StreakLevelHeader /></div>
+              <div><MomentumNextAction data={data} missionCompletedCount={missionCompletedCount} /></div>
+              <div><PlusDeficitRing data={data} /></div>
+              <div><PlusMacroDeltas data={data} /></div>
+              <div><PlusTrainingSteps data={data} /></div>
+              <div><PlusSupportTiles data={data} /></div>
+              <div><MiniJournalQuick /></div>
             </div>
-          </section>
-
-          <div className="grid grid-cols-1 gap-5 md:gap-6 lg:gap-8 animate-fade-in">
-            <div><StreakLevelHeader /></div>
-            <div><MomentumNextAction data={data} missionCompletedCount={missionCompletedCount} /></div>
-            <div><PlusDeficitRing data={data} /></div>
-            <div><PlusMacroDeltas data={data} /></div>
-            <div><PlusTrainingSteps data={data} /></div>
-            <div><PlusSupportTiles data={data} /></div>
-            <div><MiniJournalQuick /></div>
           </div>
-        </div>
-        {/* Spacer to avoid overlap with bottom composer */}
-        <div aria-hidden className="h-24" />
-        <MomentumBottomComposer />
-      </main>
-    </ErrorBoundary>
+          {/* Spacer to avoid overlap with bottom composer */}
+          <div aria-hidden className="h-24" />
+          <MomentumBottomComposer />
+        </main>
+      </ErrorBoundary>
+    </MealInputProvider>
   );
 };
 
