@@ -49,6 +49,29 @@ export const QuickTrainingCard: React.FC = () => {
     loadTodaysWorkouts();
   }, [loadTodaysWorkouts]);
 
+  // Realtime refresh on workouts changes
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('workouts-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'workouts' },
+        (payload) => {
+          const today = getCurrentDateString();
+          const row = (payload as any).new || (payload as any).old;
+          if (row?.user_id === user.id && row?.date === today) {
+            loadTodaysWorkouts();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, loadTodaysWorkouts]);
+
   const addQuickWalk = async (minutes: number) => {
     if (!user) return;
 
