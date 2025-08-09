@@ -13,6 +13,8 @@ import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
 import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
+import { WaterTrackingCard } from '@/components/momentum/WaterTrackingCard';
+import { SmartSuggestionsHub } from '@/components/momentum/SmartSuggestionsHub';
 import { openMeal, openWorkout } from '@/components/quick/quickAddBus';
 import HotSwipeActionCard, { HotAction } from '@/components/momentum/HotSwipeActionCard';
 import confetti from 'canvas-confetti';
@@ -406,6 +408,21 @@ const MomentumPage: React.FC = () => {
             currentDate={currentDate}
             onDateChange={setCurrentDate}
           />
+
+          {/* Smart Suggestions Hub */}
+          <SmartSuggestionsHub 
+            date={currentDate}
+            calories={calories}
+            totalWaterMl={totalWaterMl}
+          />
+
+          {/* Water Tracking */}
+          <div className="mb-6">
+            <WaterTrackingCard 
+              date={currentDate}
+              onDataUpdate={fetchMeals}
+            />
+          </div>
 
           {/* Hot Actions */}
           {hotActions.length > 0 && (

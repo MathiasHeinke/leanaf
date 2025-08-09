@@ -27,17 +27,36 @@ export const DateNavigation = ({ currentDate, onDateChange }: DateNavigationProp
   };
 
 
+  const goToToday = () => {
+    onDateChange(new Date());
+  };
+
   return (
-    <div className="bg-background p-3 rounded-xl border border-border shadow-sm">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={goToPreviousDay} aria-label="Vorheriger Tag">
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="text-sm font-medium tabular-nums">{formatDate(currentDate)}</div>
-        <Button variant="ghost" size="sm" onClick={goToNextDay} aria-label="Nächster Tag">
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+    <div className="flex items-center justify-between px-4 py-3 mb-6">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={goToPreviousDay}
+        className="h-8 w-8 p-0"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      
+      <button
+        onClick={goToToday}
+        className="text-center hover:bg-secondary/50 rounded-md px-3 py-1 transition-colors"
+      >
+        <div className="text-lg font-semibold">{formatDate(currentDate)}</div>
+      </button>
+      
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={goToNextDay}
+        className="h-8 w-8 p-0"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
     </div>
   );
 };

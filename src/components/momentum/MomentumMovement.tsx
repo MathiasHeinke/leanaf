@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState, Suspense, lazy } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Footprints, Dumbbell, Timer } from "lucide-react";
+import { Footprints, Dumbbell, Timer, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
@@ -16,6 +17,7 @@ interface MovementStats {
 
 export const MomentumMovement: React.FC<{ date: Date }> = ({ date }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<MovementStats>({ steps: 0, distanceKm: 0, workoutsCount: 0, workoutMinutes: 0 });
   const [openQuick, setOpenQuick] = useState(false);
@@ -118,7 +120,13 @@ const fetchStats = async () => {
             <div className="text-sm font-medium">Bewegung</div>
             <div className="text-xs text-muted-foreground">Schritte · Distanz · Workouts</div>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setOpenQuick(true)}>Eintragen</Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate('/workout')}>
+              <Dumbbell className="h-4 w-4 mr-1" />
+              Training
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setOpenQuick(true)}>Eintragen</Button>
+          </div>
         </div>
 
         {loading ? (
