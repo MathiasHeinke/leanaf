@@ -37,6 +37,7 @@ import { GehirnPage } from "./pages/Gehirn";
 import TraceDebug from "./pages/TraceDebug";
 import TransformationJourneyPage from "./pages/TransformationJourney";
 import MomentumBoard from "./pages/MomentumBoard";
+import { MealInputProvider } from "@/hooks/useGlobalMealInput";
 
 const queryClient = new QueryClient();
 
@@ -50,10 +51,11 @@ const App = () => (
     >
       <TranslationProvider>
         <AuthProvider>
-          <SubscriptionProvider>
-            <EnhancedSecurityManager>
-              <Sonner />
-              <BrowserRouter>
+          <MealInputProvider>
+            <SubscriptionProvider>
+              <EnhancedSecurityManager>
+                <Sonner />
+                <BrowserRouter>
                 <SidebarProvider>
                   <Layout>
                     <AdminOnboardingAccess />
@@ -95,6 +97,7 @@ const App = () => (
               </BrowserRouter>
             </EnhancedSecurityManager>
           </SubscriptionProvider>
+        </MealInputProvider>
         </AuthProvider>
       </TranslationProvider>
     </ThemeProvider>
