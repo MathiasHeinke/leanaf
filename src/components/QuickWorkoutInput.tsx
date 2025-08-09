@@ -190,7 +190,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
       {hasWorkoutToday && !isEditing ? (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-cyan-600" />
+            <CheckCircle className={`h-5 w-5 ${asCard ? "text-foreground/70" : "text-cyan-600"}`} />
             <div className="flex-1">
               <h3 className="font-semibold text-foreground">
                 {todaysWorkouts.length === 1 ? 'Workout erledigt! 💪' : `${todaysWorkouts.length} Workouts erledigt! 💪`}
@@ -209,10 +209,10 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                 ]}
               />
               <Button
-                variant="outline"
+                variant={asCard ? "secondary" : "outline"}
                 size="sm"
                 onClick={handleAddNewWorkout}
-                className="text-cyan-600 border-cyan-300 hover:bg-cyan-50"
+                className={asCard ? undefined : "text-cyan-600 border-cyan-300 hover:bg-cyan-50"}
                 title="Weiteres Workout hinzufügen"
               >
                 <Plus className="h-4 w-4" />
@@ -232,10 +232,10 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           </div>
           
           <div className="space-y-2">
-            {todaysWorkouts.map((workout, index) => (
-              <div key={workout.id} className="flex items-center justify-between bg-card rounded-lg p-3 border">
+              {todaysWorkouts.map((workout, index) => (
+                <div key={workout.id} className={`flex items-center justify-between rounded-lg p-3 ${asCard ? "bg-muted/20" : "bg-card border"}`}>
                 <div className="flex-1">
-                  <p className="text-sm text-cyan-600">
+                  <p className={`text-sm ${asCard ? "text-foreground" : "text-cyan-600"}`}>
                     <span className="font-medium">
                       {workout.workout_type === 'kraft' ? 'Krafttraining' : 
                        workout.workout_type === 'cardio' ? 'Cardio' : 
@@ -263,7 +263,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEditWorkout(workout)}
-                    className="text-cyan-600 hover:bg-cyan-100 p-1 h-auto"
+                    className={`p-1 h-auto ${asCard ? "text-foreground/70 hover:bg-muted/20" : "text-cyan-600 hover:bg-cyan-100"}`}
                     title="Workout bearbeiten"
                   >
                     <Edit className="h-3 w-3" />
@@ -272,7 +272,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteWorkout(workout)}
-                    className="text-red-600 hover:bg-red-100 p-1 h-auto"
+                    className={`p-1 h-auto ${asCard ? "text-foreground/70 hover:bg-muted/20" : "text-red-600 hover:bg-red-100"}`}
                     title="Workout löschen"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -294,17 +294,17 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           </div>
           
           {/* Tips in matching cyan theme */}
-          <div className="bg-cyan-100/50 rounded-lg p-3 border border-cyan-200">
-            <p className="text-xs text-cyan-700 mb-2">
+          <div className={`rounded-lg p-3 ${asCard ? "bg-muted/30" : "bg-cyan-100/50 border border-cyan-200"}`}>
+            <p className={`text-xs mb-2 ${asCard ? "text-muted-foreground" : "text-cyan-700"}`}>
               <strong>Tipp:</strong> Effektives Training braucht die richtige Balance!
             </p>
-            <p className="text-xs text-cyan-600">
+            <p className={`text-xs ${asCard ? "text-muted-foreground" : "text-cyan-600"}`}>
               • Krafttraining 2-3x pro Woche für optimalen Muskelaufbau
               • Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung
               • Mindestens 1-2 Ruhetage pro Woche für Regeneration
               • Progressive Steigerung für kontinuierliche Fortschritte
             </p>
-            <p className="text-xs text-cyan-600 mt-2">
+            <p className={`text-xs mt-2 ${asCard ? "text-muted-foreground" : "text-cyan-600"}`}>
               <strong>Nächstes Training:</strong> Morgen 💪
             </p>
           </div>
@@ -315,7 +315,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           hideable={true}
           fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
         >
-          <div className="bg-card p-4 rounded-2xl border">
+          <div className={`p-4 ${asCard ? "p-0 rounded-none border-0 bg-transparent" : "bg-card rounded-2xl border"}`}>
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 bg-muted rounded-xl">
                 <Dumbbell className="h-5 w-5" />
@@ -357,7 +357,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
               </div>
 
               {workoutType === 'pause' ? (
-                <div className="rounded-lg p-4 border">
+                <div className={`rounded-lg p-4 ${asCard ? "bg-muted/20" : "border"}`}>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="p-2 bg-muted rounded-xl">
                       <Moon className="h-5 w-5" />
@@ -412,7 +412,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
               )}
 
               {/* Lauf/Spazier Tracking Section */}
-              <div className="border-t pt-4">
+              <div className={`${asCard ? "pt-4" : "border-t pt-4"}`}>
                 <div className="flex items-center gap-2 mb-3">
                   <Footprints className="h-4 w-4" />
                   <h4 className="text-sm font-medium">
@@ -501,7 +501,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
   // Card-only mode (for overlays/modals): no collapsible header, neutral design
   if (asCard) {
     return (
-      <div className="rounded-xl border bg-card p-4">
+      <div className="rounded-2xl glass-card modern-shadow border border-border/40 p-4">
         {content}
       </div>
     );

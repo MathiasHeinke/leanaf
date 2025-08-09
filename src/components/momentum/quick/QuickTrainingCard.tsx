@@ -159,14 +159,12 @@ export const QuickTrainingCard: React.FC = () => {
       </QuickCardShell>
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="w-full sm:max-w-md p-0">
-          <div className="p-4">
-            <QuickWorkoutInput 
-              asCard
-              onWorkoutAdded={loadTodaysWorkouts} 
-              todaysWorkouts={todaysWorkouts} 
-            />
-          </div>
+        <DialogContent className="w-full sm:max-w-md p-0 bg-transparent border-none shadow-none sm:rounded-2xl">
+          <QuickWorkoutInput 
+            asCard
+            onWorkoutAdded={loadTodaysWorkouts} 
+            todaysWorkouts={todaysWorkouts} 
+          />
         </DialogContent>
       </Dialog>
     </>
