@@ -21,14 +21,14 @@ import { QuickTrainingCard } from '@/components/momentum/quick/QuickTrainingCard
 import { QuickMealsCard } from '@/components/momentum/quick/QuickMealsCard';
 import confetti from 'canvas-confetti';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-
+import { TrainingFloatingCoach } from '../../dev0/components/TrainingFloatingCoach';
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
   const enabled = isEnabled('feature_plus_dashboard');
   const data = usePlusData();
   const [xpDelta, setXpDelta] = useState<number>(0);
   const [previousMissions, setPreviousMissions] = useState<number>(0);
-
+  const [coachOpen, setCoachOpen] = useState(false);
   // Tagesmission Dynamik aus Daten ableiten
   const macrosDone = typeof (data as any)?.proteinDelta === 'number' ? ((data as any).proteinDelta <= 0) : false;
   const sleepLogged = Boolean((data as any)?.sleepLoggedToday || (((data as any)?.sleepDurationToday ?? 0) > 0));
@@ -158,6 +158,12 @@ const MomentumBoard: React.FC = () => {
         {/* Spacer to avoid overlap with bottom composer */}
         <div aria-hidden className="h-24" />
         <MomentumBottomComposer />
+        {/* Floating Training Coach */}
+        <TrainingFloatingCoach 
+          isOpen={coachOpen}
+          onToggle={() => setCoachOpen((o) => !o)}
+          onExerciseLogged={() => {}}
+        />
       </main>
     </ErrorBoundary>
   );

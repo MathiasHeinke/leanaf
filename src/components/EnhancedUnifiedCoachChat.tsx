@@ -342,13 +342,12 @@ if (enableAdvancedFeatures) {
   // ============= SEND MESSAGE =============
   const handleSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
     if (!message.trim() || !user?.id || isChatLoading) return;
-    
     const messageText = message.trim();
-    
+
     // Check if this is a training plan analysis request
-    const isTrainingPlanAnalysis = messageText.toLowerCase().includes('trainingsplan') && 
+    const isTrainingPlanAnalysis = messageText.toLowerCase().includes('trainingsplan') &&
                                   !messageText.toLowerCase().includes('erstellen');
-    
+
     // Create user message
     const userMessage: EnhancedChatMessage = {
       id: `user-${Date.now()}`,
@@ -361,16 +360,47 @@ if (enableAdvancedFeatures) {
       coach_color: coach?.color,
       coach_accent_color: coach?.accentColor
     };
-    
+
     // Add user message to UI immediately
     setMessages(prev => [...prev, userMessage]);
-    
+
     try {
-      // Send to enhanced AI system
+      // Special routing for training mode → use training-orchestrator
+      if (mode === 'training') {
+        let payload: any = { event: { type: 'TEXT', text: messageText } };
+
+        if (mediaUrls && mediaUrls.length > 0) {
+          payload = { event: { type: 'IMAGE', url: mediaUrls[0] } };
+        } else if (messageText.toLowerCase() === '/end' || messageText.toLowerCase() === 'end') {
+          payload = { event: { type: 'END' } };
+        }
+
+        const { data, error } = await supabase.functions.invoke('training-orchestrator', { body: payload });
+        if (error) {
+          console.error('training-orchestrator error:', error);
+          toast.error('Training-Orchestrator nicht erreichbar');
+          return;
+        }
+
+        const assistantMessage: EnhancedChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data?.text ?? 'OK.',
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.id || 'lucy',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor,
+          metadata: data?.state ?? undefined
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        return;
+      }
+
+      // Default: send to enhanced AI system
       const response = await sendEnhancedMessage(messageText, coach?.id || 'lucy');
-      
       if (response) {
-        // Create assistant message with metadata
         const assistantMessage: EnhancedChatMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
@@ -383,25 +413,20 @@ if (enableAdvancedFeatures) {
           coach_accent_color: coach?.accentColor,
           metadata: lastMetadata
         };
-        
-        // Add assistant message to UI
         setMessages(prev => [...prev, assistantMessage]);
 
-        // Show quick action button after training plan analysis
         if (isTrainingPlanAnalysis) {
           setShowQuickAction(true);
         }
-
-        // Check if response contains plan data
         if (lastMetadata?.planData) {
           setPendingPlanData(lastMetadata.planData);
         }
       }
-      
+
     } catch (error) {
-      console.error('Error sending enhanced message:', error);
+      console.error('Error sending message:', error);
     }
-  }, [user?.id, coach, sendEnhancedMessage, isChatLoading, lastMetadata]);
+  }, [user?.id, coach, sendEnhancedMessage, isChatLoading, lastMetadata, mode]);
 
   // Handle training plan creation
   const handleCreateTrainingPlan = useCallback(async () => {
