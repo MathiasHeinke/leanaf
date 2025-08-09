@@ -12,7 +12,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { MomentumQuickGrid } from '@/components/momentum/MomentumQuickGrid';
+import { QuickHydrationCard } from '@/components/momentum/quick/QuickHydrationCard';
+import { QuickSupplementsCard } from '@/components/momentum/quick/QuickSupplementsCard';
+import { QuickWeightCard } from '@/components/momentum/quick/QuickWeightCard';
+import { QuickSleepCard } from '@/components/momentum/quick/QuickSleepCard';
+import { QuickTrainingCard } from '@/components/momentum/quick/QuickTrainingCard';
+import { QuickMealsCard } from '@/components/momentum/quick/QuickMealsCard';
 
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
@@ -78,8 +83,15 @@ const MomentumBoard: React.FC = () => {
             </div>
           </header>
 
-          <section aria-label="Schnellerfassung" className="mb-5">
-            <MomentumQuickGrid />
+          <section aria-label="Schnellerfassung" className="mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <QuickHydrationCard />
+              <QuickSupplementsCard />
+              <QuickWeightCard />
+              <QuickSleepCard />
+              <QuickTrainingCard />
+              <QuickMealsCard />
+            </div>
           </section>
 
           <div className="grid grid-cols-1 gap-5 md:gap-6 lg:gap-8 animate-fade-in">
