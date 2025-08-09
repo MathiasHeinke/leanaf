@@ -12,7 +12,7 @@ import { NextBestActionCard } from '@/components/plus/NextBestActionCard';
 import { MiniJournalQuick } from '@/components/plus/MiniJournalQuick';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
+import { MomentumBottomComposer } from '@/components/momentum/MomentumBottomComposer';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { QuickHydrationCard } from '@/components/momentum/quick/QuickHydrationCard';
 import { QuickSupplementsCard } from '@/components/momentum/quick/QuickSupplementsCard';
@@ -126,7 +126,7 @@ const MomentumBoard: React.FC = () => {
             <div><MiniJournalQuick /></div>
           </div>
         </div>
-        <QuickAddFAB />
+        <MomentumBottomComposer />
       </main>
     </ErrorBoundary>
   );
