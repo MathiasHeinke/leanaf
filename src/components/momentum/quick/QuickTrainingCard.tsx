@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { useNavigate } from 'react-router-dom';
 
 interface TodaysWorkout {
   id: string;
@@ -18,9 +19,11 @@ interface TodaysWorkout {
 
 export const QuickTrainingCard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [todaysWorkouts, setTodaysWorkouts] = useState<TodaysWorkout[]>([]);
   const [loading, setLoading] = useState(false);
+  const [favoriteTypes, setFavoriteTypes] = useState<string[]>([]);
 
   const loadTodaysWorkouts = useCallback(async () => {
     if (!user) return;
@@ -84,6 +87,60 @@ export const QuickTrainingCard: React.FC = () => {
     }
   };
 
+  const addRestDay = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        toast.error('Bitte melde dich erneut an, um Ruhetage zu speichern.');
+        return;
+      }
+      const today = getCurrentDateString();
+      const { error } = await supabase
+        .from('workouts')
+        .insert([{ user_id: user.id, date: today, workout_type: 'pause', did_workout: false }]);
+      if (error) throw error;
+      toast.success('Ruhetag erfasst');
+      loadTodaysWorkouts();
+    } catch (e) {
+      console.error(e);
+      toast.error('Fehler beim Speichern des Ruhetags');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load favorites based on last 30 days usage
+  useEffect(() => {
+    (async () => {
+      if (!user) return;
+      try {
+        const since = new Date();
+        since.setDate(since.getDate() - 30);
+        const sinceStr = since.toISOString().slice(0, 10);
+        const { data, error } = await supabase
+          .from('workouts')
+          .select('workout_type')
+          .eq('user_id', user.id)
+          .gte('date', sinceStr);
+        if (error) throw error;
+        const counts: Record<string, number> = {};
+        (data || []).forEach((w: any) => {
+          const t = w.workout_type || 'kraft';
+          counts[t] = (counts[t] || 0) + 1;
+        });
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([t]) => t);
+        const top = sorted.slice(0, 2);
+        // sensible defaults if no history
+        setFavoriteTypes(top.length ? top : ['pause', 'kraft']);
+      } catch (e) {
+        console.error('load favorites failed', e);
+        setFavoriteTypes(['pause', 'kraft']);
+      }
+    })();
+  }, [user]);
+
   const hasWorkoutToday = todaysWorkouts.length > 0;
   const hasActiveWorkout = todaysWorkouts.some(w => w.did_workout);
 
@@ -110,6 +167,32 @@ export const QuickTrainingCard: React.FC = () => {
   const progressPercent = hasWorkoutToday ? 100 : 
                          todaysWorkouts.length > 0 ? 60 : 0;
 
+  // Build dynamic quick actions based on favorites
+  const quickActionsHeader = (() => {
+    const actions: { label: string; onClick: () => void; disabled?: boolean; variant?: any }[] = [];
+    let addedWorkout = false;
+    let addedRest = false;
+    favoriteTypes.forEach((t) => {
+      if (t === 'pause' && !addedRest) {
+        actions.push({ label: 'Ruhetag', onClick: addRestDay, disabled: loading, variant: 'secondary' });
+        addedRest = true;
+      } else if (!addedWorkout) {
+        actions.push({ label: 'Workout', onClick: () => navigate('/training'), disabled: false, variant: 'secondary' });
+        addedWorkout = true;
+      }
+    });
+    if (actions.length < 2) {
+      if (!addedWorkout) {
+        actions.push({ label: 'Workout', onClick: () => navigate('/training'), variant: 'secondary' });
+        addedWorkout = true;
+      } else if (!addedRest) {
+        actions.push({ label: 'Ruhetag', onClick: addRestDay, disabled: loading, variant: 'secondary' });
+        addedRest = true;
+      }
+    }
+    return actions.slice(0, 2);
+  })();
+
   return (
     <>
       <QuickCardShell
@@ -121,23 +204,13 @@ export const QuickTrainingCard: React.FC = () => {
           (hasActiveWorkout ? `${todaysWorkouts.length} Einheit(en)` : 'Ruhetag') : 
           'Noch nicht erfasst'
         }
-        quickActions={[
-          {
-            label: '10-Min Walk',
-            onClick: () => addQuickWalk(10),
-            disabled: loading,
-            variant: 'secondary'
-          },
-          {
-            label: '20-Min Walk',
-            onClick: () => addQuickWalk(20),
-            disabled: loading,
-            variant: 'secondary'
-          }
+        quickActions={quickActionsHeader}
+        dropdownActions={[
+          { label: 'Quick-Eintrag', onClick: () => setDetailsOpen(true) }
         ]}
         detailsAction={{
-          label: hasWorkoutToday ? 'Details' : 'Starten',
-          onClick: () => setDetailsOpen(true)
+          label: 'Workout starten',
+          onClick: () => navigate('/training')
         }}
       >
         {hasWorkoutToday && (

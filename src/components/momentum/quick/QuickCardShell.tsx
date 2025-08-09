@@ -81,7 +81,7 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
       className
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className={cn(
             "h-8 w-8 rounded-xl flex items-center justify-center transition-all duration-300",
@@ -101,7 +101,7 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Quick Actions */}
           {quickActions.map((action, index) => (
             <Button
