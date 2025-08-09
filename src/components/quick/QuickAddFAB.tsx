@@ -7,6 +7,7 @@ const QuickMealSheet = lazy(() => import("./QuickMealSheet").then(m => ({ defaul
 const QuickWorkoutModal = lazy(() => import("@/components/QuickWorkoutModal").then(m => ({ default: m.QuickWorkoutModal })));
 const QuickSleepModal = lazy(() => import("@/components/quick/QuickSleepModal"));
 const QuickSupplementsModal = lazy(() => import("@/components/quick/QuickSupplementsModal"));
+const QuickFluidModal = lazy(() => import("@/components/quick/QuickFluidModal"));
 
 export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' | 'partial' | 'due'>> }> = ({ statuses }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -14,6 +15,7 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
   const [workoutOpen, setWorkoutOpen] = useState(false);
   const [sleepOpen, setSleepOpen] = useState(false);
   const [suppsOpen, setSuppsOpen] = useState(false);
+  const [fluidOpen, setFluidOpen] = useState(false);
   const [recommendedWorkoutType, setRecommendedWorkoutType] = useState<string | undefined>('walking');
 
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
@@ -43,6 +45,11 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       setSuppsOpen(true);
       return;
     }
+    if (type === "fluid") {
+      setMenuOpen(false);
+      setFluidOpen(true);
+      return;
+    }
 
     if (type === "coach") toast.info("Coach-Zugang kommt bald ✨");
     setMenuOpen(false);
@@ -54,6 +61,7 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       if (action.type === 'meal') setMealOpen(true);
       if (action.type === 'sleep') setSleepOpen(true);
       if (action.type === 'supplements') setSuppsOpen(true);
+      if (action.type === 'fluid') setFluidOpen(true);
       if (action.type === 'workout') {
         setRecommendedWorkoutType(action.payload?.recommendedType);
         setWorkoutOpen(true);
@@ -104,6 +112,11 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       {/* Supplements flow */}
       <Suspense fallback={null}>
         <QuickSupplementsModal isOpen={suppsOpen} onClose={() => setSuppsOpen(false)} />
+      </Suspense>
+
+      {/* Fluid flow */}
+      <Suspense fallback={null}>
+        <QuickFluidModal isOpen={fluidOpen} onClose={() => setFluidOpen(false)} />
       </Suspense>
     </>
   );

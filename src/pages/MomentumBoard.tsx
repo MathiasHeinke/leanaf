@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { MomentumQuickGrid } from '@/components/momentum/MomentumQuickGrid';
 
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
@@ -37,6 +38,9 @@ const MomentumBoard: React.FC = () => {
     if (canonical) canonical.href = `${window.location.origin}/plus`;
   }, []);
 
+  // Clean UI cards (white, minimal color) for quick inputs
+  // integrated as a grid above the PLUS widgets
+  
   if (flagsLoading) {
     return (
       <div className="container mx-auto px-4 pt-0 pb-6 max-w-5xl space-y-6">
@@ -73,6 +77,10 @@ const MomentumBoard: React.FC = () => {
               <span className="inline-flex items-center rounded-full border border-border/40 px-2.5 py-1 text-xs">Level & Rewards</span>
             </div>
           </header>
+
+          <section aria-label="Schnellerfassung" className="mb-5">
+            <MomentumQuickGrid />
+          </section>
 
           <div className="grid grid-cols-1 gap-5 md:gap-6 lg:gap-8 animate-fade-in">
             <div><StreakLevelHeader /></div>
