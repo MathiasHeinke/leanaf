@@ -90,7 +90,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ open, onSele
             onClick={onClose}
             onTouchStart={onOverlayTouchStart}
             onTouchEnd={onOverlayTouchEnd}
-            className="absolute inset-0 bg-background/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-background/70 backdrop-blur-sm"
           />
 
           {/* Actions cluster - bottom right, large thumb targets */}
