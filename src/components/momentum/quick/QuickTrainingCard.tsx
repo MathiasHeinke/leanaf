@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { QuickCardShell } from './QuickCardShell';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { QuickWorkoutInput } from '@/components/QuickWorkoutInput';
 import { Badge } from '@/components/ui/badge';
 import { Dumbbell, Footprints, Play } from 'lucide-react';
@@ -158,19 +158,17 @@ export const QuickTrainingCard: React.FC = () => {
         )}
       </QuickCardShell>
 
-      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Training Details</SheetTitle>
-          </SheetHeader>
-          <div className="mt-6">
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="w-full sm:max-w-md p-0">
+          <div className="p-4">
             <QuickWorkoutInput 
+              asCard
               onWorkoutAdded={loadTodaysWorkouts} 
               todaysWorkouts={todaysWorkouts} 
             />
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

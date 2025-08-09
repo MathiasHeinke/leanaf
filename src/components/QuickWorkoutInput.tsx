@@ -23,9 +23,10 @@ interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
   todaysWorkout?: any;
   todaysWorkouts?: any[]; // Array of all workouts for today
+  asCard?: boolean; // renders as stand-alone card without collapsible/header
 }
 
-export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkouts = [] }: QuickWorkoutInputProps) => {
+export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkouts = [], asCard = false }: QuickWorkoutInputProps) => {
   const [workoutType, setWorkoutType] = useState("kraft");
   const [duration, setDuration] = useState<number[]>([30]);
   const [intensity, setIntensity] = useState<number[]>([7]);
@@ -183,14 +184,9 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
 
   const isCompleted = !!hasWorkoutToday;
 
-  return (
-    <CollapsibleQuickInput
-      title={hasWorkoutToday && !isEditing ? "Workout erledigt! 💪" : "Training & Bewegung"}
-      icon={<Dumbbell className="h-4 w-4 text-white" />}
-      isCompleted={isCompleted}
-      defaultOpen={false}
-      theme="purple"
-    >
+  // Shared body content used in both modes (collapsible vs. card-only)
+  const content = (
+    <>
       {hasWorkoutToday && !isEditing ? (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -239,7 +235,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             {todaysWorkouts.map((workout, index) => (
               <div key={workout.id} className="flex items-center justify-between bg-card rounded-lg p-3 border">
                 <div className="flex-1">
-                  <p className="text-sm text-cyan-600 dark:text-cyan-400">
+                  <p className="text-sm text-cyan-600">
                     <span className="font-medium">
                       {workout.workout_type === 'kraft' ? 'Krafttraining' : 
                        workout.workout_type === 'cardio' ? 'Cardio' : 
@@ -267,7 +263,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEditWorkout(workout)}
-                    className="text-cyan-600 hover:bg-cyan-100 dark:hover:bg-cyan-900/50 p-1 h-auto"
+                    className="text-cyan-600 hover:bg-cyan-100 p-1 h-auto"
                     title="Workout bearbeiten"
                   >
                     <Edit className="h-3 w-3" />
@@ -276,7 +272,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteWorkout(workout)}
-                    className="text-red-600 hover:bg-red-100 dark:hover:bg-red-900/50 p-1 h-auto"
+                    className="text-red-600 hover:bg-red-100 p-1 h-auto"
                     title="Workout löschen"
                   >
                     <Trash2 className="h-3 w-3" />
@@ -298,17 +294,17 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           </div>
           
           {/* Tips in matching cyan theme */}
-          <div className="bg-cyan-100/50 dark:bg-cyan-900/30 rounded-lg p-3 border border-cyan-200 dark:border-cyan-700">
-            <p className="text-xs text-cyan-700 dark:text-cyan-300 mb-2">
+          <div className="bg-cyan-100/50 rounded-lg p-3 border border-cyan-200">
+            <p className="text-xs text-cyan-700 mb-2">
               <strong>Tipp:</strong> Effektives Training braucht die richtige Balance!
             </p>
-            <p className="text-xs text-cyan-600 dark:text-cyan-400">
+            <p className="text-xs text-cyan-600">
               • Krafttraining 2-3x pro Woche für optimalen Muskelaufbau
               • Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung
               • Mindestens 1-2 Ruhetage pro Woche für Regeneration
               • Progressive Steigerung für kontinuierliche Fortschritte
             </p>
-            <p className="text-xs text-cyan-600 dark:text-cyan-400 mt-2">
+            <p className="text-xs text-cyan-600 mt-2">
               <strong>Nächstes Training:</strong> Morgen 💪
             </p>
           </div>
@@ -319,13 +315,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           hideable={true}
           fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
         >
-          <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-cyan-200 dark:border-cyan-800">
+          <div className="bg-card p-4 rounded-2xl border">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-cyan-100 dark:bg-cyan-900 rounded-xl">
-                <Dumbbell className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+              <div className="p-2 bg-muted rounded-xl">
+                <Dumbbell className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-cyan-800 dark:text-cyan-200">
+                <h3 className="font-semibold">
                   {hasWorkoutToday ? 'Workout bearbeiten' : 'Workout eintragen'}
                 </h3>
               </div>
@@ -344,11 +340,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-cyan-700 dark:text-cyan-300 mb-2 block">
+                <label className="text-sm font-medium mb-2 block">
                   Trainingsart
                 </label>
                 <Select value={workoutType} onValueChange={setWorkoutType}>
-                  <SelectTrigger className="bg-white dark:bg-cyan-950/50 border-cyan-200 dark:border-cyan-700">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -361,19 +357,19 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
               </div>
 
               {workoutType === 'pause' ? (
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="rounded-lg p-4 border">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
-                      <Moon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <div className="p-2 bg-muted rounded-xl">
+                      <Moon className="h-5 w-5" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-blue-800 dark:text-blue-200">Perfekte Entscheidung! 🌙</h4>
-                      <p className="text-sm text-blue-600 dark:text-blue-400">
+                      <h4 className="font-semibold">Perfekte Entscheidung! 🌙</h4>
+                      <p className="text-sm text-muted-foreground">
                         Regeneration ist genauso wichtig wie Training
                       </p>
                     </div>
                   </div>
-                  <div className="text-sm text-blue-700 dark:text-blue-300">
+                  <div className="text-sm text-muted-foreground">
                     <p className="mb-2"><strong>Warum Ruhetage wichtig sind:</strong></p>
                     <ul className="list-disc list-inside space-y-1 text-xs">
                       <li>Muskeln wachsen während der Ruhephase</li>
@@ -386,7 +382,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
               ) : (
                 <>
                   <div>
-                    <label className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-2 block">
+                    <label className="text-sm font-medium mb-2 block">
                       Dauer: {duration[0]} Minuten
                     </label>
                     <Slider
@@ -400,7 +396,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-orange-700 dark:text-orange-300 mb-2 block">
+                    <label className="text-sm font-medium mb-2 block">
                       Intensität: {intensity[0]}/10
                     </label>
                     <Slider
@@ -416,17 +412,17 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
               )}
 
               {/* Lauf/Spazier Tracking Section */}
-              <div className="border-t border-green-200 dark:border-green-800 pt-4">
+              <div className="border-t pt-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Footprints className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <h4 className="text-sm font-medium text-green-700 dark:text-green-300">
+                  <Footprints className="h-4 w-4" />
+                  <h4 className="text-sm font-medium">
                     Zusätzliche Bewegung (optional)
                   </h4>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3 mb-3">
                   <div>
-                    <label className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 block">
+                    <label className="text-xs font-medium mb-1 block">
                       Distanz (km)
                     </label>
                     <NumericInput
@@ -436,12 +432,12 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                       step={0.1}
                       min={0}
                       allowDecimals={true}
-                      className="text-sm border-green-300 focus:border-green-500"
+                      className="text-sm"
                     />
                   </div>
                   
                   <div>
-                    <label className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 block">
+                    <label className="text-xs font-medium mb-1 block">
                       Schritte
                     </label>
                     <NumericInput
@@ -450,20 +446,20 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                       placeholder="z.B. 8000"
                       min={0}
                       allowDecimals={false}
-                      className="text-sm border-green-300 focus:border-green-500"
+                      className="text-sm"
                     />
                   </div>
                 </div>
                 
                 <div>
-                  <label className="text-xs font-medium text-green-700 dark:text-green-300 mb-1 block">
+                  <label className="text-xs font-medium mb-1 block">
                     Notizen zur Bewegung
                   </label>
                   <Textarea
                     value={walkingNotes}
                     onChange={(e) => setWalkingNotes(e.target.value)}
                     placeholder="z.B. Morgens spaziert, Treppe statt Aufzug..."
-                    className="text-sm border-green-300 focus:border-green-500 resize-none h-16"
+                    className="text-sm resize-none h-16"
                   />
                 </div>
               </div>
@@ -472,11 +468,10 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2" />
                       Speichern...
                     </div>
                   ) : (
@@ -486,13 +481,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                     </div>
                   )}
                 </Button>
-                
                 {(editingWorkoutId || isAddingNew) && (
                   <Button
                     type="button"
                     variant="outline"
                     onClick={resetForm}
-                    className="border-orange-300 text-orange-600"
                   >
                     Abbrechen
                   </Button>
@@ -502,6 +495,28 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
           </div>
         </PremiumGate>
       )}
+    </>
+  );
+
+  // Card-only mode (for overlays/modals): no collapsible header, neutral design
+  if (asCard) {
+    return (
+      <div className="rounded-xl border bg-card p-4">
+        {content}
+      </div>
+    );
+  }
+
+  // Default collapsible variant (existing behavior)
+  return (
+    <CollapsibleQuickInput
+      title={hasWorkoutToday && !isEditing ? "Workout erledigt! 💪" : "Training & Bewegung"}
+      icon={<Dumbbell className="h-4 w-4 text-white" />}
+      isCompleted={isCompleted}
+      defaultOpen={false}
+      theme="purple"
+    >
+      {content}
     </CollapsibleQuickInput>
   );
 };
