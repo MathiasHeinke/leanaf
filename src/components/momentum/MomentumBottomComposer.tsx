@@ -1,5 +1,5 @@
 import React, { useState, useCallback, Suspense, lazy, useRef } from "react";
-import { Camera, Mic, ArrowRight } from "lucide-react";
+import { Camera, Mic, ArrowRight, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 
@@ -8,7 +8,7 @@ const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").th
 export const MomentumBottomComposer: React.FC = () => {
   const [mealOpen, setMealOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const { inputText, setInputText, uploadImages, handleVoiceRecord } = useGlobalMealInput();
+  const { inputText, setInputText, uploadImages, handleVoiceRecord, isRecording } = useGlobalMealInput();
  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,9 +70,13 @@ export const MomentumBottomComposer: React.FC = () => {
               variant="ghost"
               onClick={handleVoiceTap}
               className="flex-shrink-0 h-10 w-10"
-              aria-label="Sprachaufnahme"
+              aria-label={isRecording ? "Aufnahme stoppen" : "Sprachaufnahme"}
             >
-              <Mic className="h-5 w-5" />
+              {isRecording ? (
+                <Square className="h-5 w-5" />
+              ) : (
+                <Mic className="h-5 w-5" />
+              )}
             </Button>
 
             <input

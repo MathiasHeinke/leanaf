@@ -46,51 +46,26 @@ export const QuickHydrationCard: React.FC = () => {
   }, [user]);
 
   const loadFavorites = useCallback(async () => {
-    if (!user) return;
-
     try {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
       const { data, error } = await supabase
-        .from('user_fluids')
-        .select('custom_name, amount_ml, fluid_database!left(name)')
-        .eq('user_id', user.id)
-        .gte('consumed_at', sevenDaysAgo.toISOString())
-        .not('custom_name', 'eq', 'Wasser')
-        .not('fluid_database.name', 'eq', 'Wasser');
+        .from('fluid_database')
+        .select('id, name, default_amount')
+        .order('usage_score', { ascending: false })
+        .limit(5);
 
       if (error) throw error;
 
-      // Count occurrences and average amounts
-      const favoriteMap = new Map<string, { totalAmount: number; count: number }>();
-      
-      data?.forEach(fluid => {
-        const name = fluid.fluid_database?.name || fluid.custom_name || 'Unbekannt';
-        if (name !== 'Wasser') {
-          const existing = favoriteMap.get(name) || { totalAmount: 0, count: 0 };
-          favoriteMap.set(name, {
-            totalAmount: existing.totalAmount + fluid.amount_ml,
-            count: existing.count + 1
-          });
-        }
-      });
-
-      // Convert to array and sort by frequency, take top 3
-      const favoritesArray = Array.from(favoriteMap.entries())
-        .map(([name, data]) => ({
-          name,
-          amount: Math.round(data.totalAmount / data.count),
-          count: data.count
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 3);
+      const favoritesArray: FluidFavorite[] = (data || []).map((row: any) => ({
+        name: row.name,
+        amount: Math.round(row.default_amount || 250),
+        count: 0,
+      }));
 
       setFavorites(favoritesArray);
     } catch (error) {
       console.error('Error loading favorites:', error);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     loadTodayIntake();
