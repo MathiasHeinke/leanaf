@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useRef, useEffect, createContext, useContext, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,7 +36,9 @@ const ERROR_MESSAGES = {
   RECORDING_STOP_FAILED: 'Fehler beim Stoppen der Aufnahme'
 };
 
-export const useGlobalMealInput = () => {
+export const MealInputContext = createContext<any>(null);
+
+export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
   
   // Core states
@@ -398,7 +399,7 @@ export const useGlobalMealInput = () => {
     }
   }, [isEditingMode, exitEditMode]);
 
-  return {
+  const value = {
     // Core API functions
     analyzeMealText,
     startRecording,
@@ -442,4 +443,18 @@ export const useGlobalMealInput = () => {
     openQuickMealSheet,
     closeQuickMealSheet
   };
+
+  return (
+    <MealInputContext.Provider value={value}>
+      {children}
+    </MealInputContext.Provider>
+  );
+};
+
+export const useGlobalMealInput = () => {
+  const ctx = useContext(MealInputContext);
+  if (!ctx) {
+    throw new Error('useGlobalMealInput must be used within MealInputProvider');
+  }
+  return ctx;
 };

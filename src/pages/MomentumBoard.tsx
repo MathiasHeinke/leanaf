@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { MealInputProvider } from '@/hooks/useGlobalMealInput';
 import { usePlusData } from '@/hooks/usePlusData';
 import { MomentumXPBar } from '@/components/momentum/MomentumXPBar';
 import { MomentumHeaderTriptych } from '@/components/momentum/MomentumHeaderTriptych';

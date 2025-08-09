@@ -116,7 +116,7 @@ export const MomentumBottomComposer: React.FC = () => {
       <Suspense fallback={null}>
         <QuickMealSheet 
           open={quickMealSheetOpen} 
-          onOpenChange={closeQuickMealSheet}
+          onOpenChange={(open) => open ? openQuickMealSheet() : closeQuickMealSheet()}
         />
       </Suspense>
     </>
