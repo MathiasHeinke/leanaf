@@ -1,13 +1,14 @@
 import React, { useState, useCallback, Suspense, lazy } from "react";
 import { Camera, Mic, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const MomentumBottomComposer: React.FC = () => {
   const [mealOpen, setMealOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const [inputText, setInputText] = useState("");
+  const { inputText, setInputText } = useGlobalMealInput();
 
   const handlePhotoTap = useCallback(() => {
     setActiveTab("photo");
