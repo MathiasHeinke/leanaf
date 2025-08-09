@@ -113,8 +113,8 @@ const fetchStats = async () => {
   useDataRefresh(fetchStats);
 
   return (
-    <Card>
-      <CardContent className="pt-5">
+    <Card className="rounded-2xl border border-border/40 modern-shadow">
+      <CardContent className="p-6">
         <div className="flex items-center justify-between mb-3">
           <div>
             <div className="text-sm font-medium">Bewegung</div>

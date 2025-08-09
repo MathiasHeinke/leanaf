@@ -13,7 +13,7 @@ import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
 import { DateNavigation } from '@/components/DateNavigation';
 import OverviewRingsCard from '@/components/momentum/OverviewRingsCard';
-import { WaterQuickSection } from '@/components/momentum/WaterQuickSection';
+import { FluidTrackingCard } from '@/components/momentum/FluidTrackingCard';
 import { SmartSuggestionsHub } from '@/components/momentum/SmartSuggestionsHub';
 import { openMeal, openWorkout } from '@/components/quick/quickAddBus';
 import HotSwipeActionCard, { HotAction } from '@/components/momentum/HotSwipeActionCard';
@@ -439,9 +439,9 @@ const MomentumPage: React.FC = () => {
             totalWaterMl={totalWaterMl}
           />
 
-          {/* Water Quick Section */}
+          {/* Fluid Tracking */}
           <div className="mb-6">
-            <WaterQuickSection 
+            <FluidTrackingCard 
               date={currentDate}
               totalMl={totalWaterMl}
               onDataUpdate={() => { fetchWaterTotals(); }}

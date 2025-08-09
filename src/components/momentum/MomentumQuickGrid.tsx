@@ -29,7 +29,7 @@ export const MomentumQuickGrid: React.FC = () => {
   return (
     <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
       {/* Schlaf */}
-      <Card className="rounded-2xl border border-border/40 p-4">
+      <Card className="rounded-2xl border border-border/40 p-4 modern-shadow">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl grid place-items-center bg-muted">
@@ -40,12 +40,12 @@ export const MomentumQuickGrid: React.FC = () => {
               <div className="text-xs text-muted-foreground">Noch nicht eingetragen</div>
             </div>
           </div>
-          <Button size="sm" onClick={() => openSleep()}>Erfassen</Button>
+          <Button size="sm" className="rounded-lg" onClick={() => openSleep()}>Erfassen</Button>
         </div>
       </Card>
 
       {/* Gewicht */}
-      <Card className="rounded-2xl border border-border/40 p-4">
+      <Card className="rounded-2xl border border-border/40 p-4 modern-shadow">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl grid place-items-center bg-muted">
@@ -56,13 +56,13 @@ export const MomentumQuickGrid: React.FC = () => {
               <div className="text-xs text-muted-foreground">Noch nicht eingetragen</div>
             </div>
           </div>
-          <Button size="sm" onClick={() => setWeightOpen(true)}>Erfassen</Button>
+          <Button size="sm" className="rounded-lg" onClick={() => setWeightOpen(true)}>Erfassen</Button>
         </div>
         <QuickWeightModal isOpen={weightOpen} onClose={() => setWeightOpen(false)} />
       </Card>
 
       {/* Flüssigkeit */}
-      <Card className="rounded-2xl border border-border/40 p-4">
+      <Card className="rounded-2xl border border-border/40 p-4 modern-shadow">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl grid place-items-center bg-muted">
@@ -74,15 +74,15 @@ export const MomentumQuickGrid: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="secondary" onClick={() => addFluid(250)}>+250</Button>
-            <Button size="sm" variant="secondary" onClick={() => addFluid(500)}>+500</Button>
-            <Button size="sm" onClick={() => quickAddBus.emit({ type: 'fluid' })}>Mehr</Button>
+            <Button size="sm" variant="secondary" className="rounded-lg" onClick={() => addFluid(250)}>+250</Button>
+            <Button size="sm" variant="secondary" className="rounded-lg" onClick={() => addFluid(500)}>+500</Button>
+            <Button size="sm" className="rounded-lg" onClick={() => quickAddBus.emit({ type: 'fluid' })}>Mehr</Button>
           </div>
         </div>
       </Card>
 
       {/* Mahlzeiten */}
-      <Card className="rounded-2xl border border-border/40 p-4">
+      <Card className="rounded-2xl border border-border/40 p-4 modern-shadow">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl grid place-items-center bg-muted">
@@ -93,12 +93,12 @@ export const MomentumQuickGrid: React.FC = () => {
               <div className="text-xs text-muted-foreground">Keine heute</div>
             </div>
           </div>
-          <Button size="sm" onClick={() => openMeal()}>Hinzufügen</Button>
+          <Button size="sm" className="rounded-lg" onClick={() => openMeal()}>Hinzufügen</Button>
         </div>
       </Card>
 
       {/* Training */}
-      <Card className="rounded-2xl border border-border/40 p-4">
+      <Card className="rounded-2xl border border-border/40 p-4 modern-shadow">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl grid place-items-center bg-muted">
@@ -109,12 +109,12 @@ export const MomentumQuickGrid: React.FC = () => {
               <div className="text-xs text-muted-foreground">Noch nicht gestartet</div>
             </div>
           </div>
-          <Button size="sm" onClick={() => openWorkout({ recommendedType: 'walking' })}>Starten</Button>
+          <Button size="sm" className="rounded-lg" onClick={() => openWorkout({ recommendedType: 'walking' })}>Starten</Button>
         </div>
       </Card>
 
       {/* Supplements */}
-      <Card className="rounded-2xl border border-border/40 p-4">
+      <Card className="rounded-2xl border border-border/40 p-4 modern-shadow">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl grid place-items-center bg-muted">
@@ -125,7 +125,7 @@ export const MomentumQuickGrid: React.FC = () => {
               <div className="text-xs text-muted-foreground">Keine heute</div>
             </div>
           </div>
-          <Button size="sm" onClick={() => openSupplements()}>Hinzufügen</Button>
+          <Button size="sm" className="rounded-lg" onClick={() => openSupplements()}>Hinzufügen</Button>
         </div>
       </Card>
     </section>

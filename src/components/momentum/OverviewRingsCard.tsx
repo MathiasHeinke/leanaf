@@ -30,8 +30,8 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
   const fPct = useMemo(() => clampPct(macros.fats.used, macros.fats.goal), [macros.fats]);
 
   return (
-    <Card>
-      <CardContent className="pt-5">
+    <Card className="rounded-2xl border border-border/40 modern-shadow">
+      <CardContent className="p-6">
         <p className="sr-only" aria-live="polite">{overshootKcal > 0 ? `Überschuss +${Math.round(overshootKcal)} kcal, ${Math.round(pct*100)}% des Ziels` : `${Math.round(calories.remaining)} kcal Rest, ${Math.round(pct*100)}% des Ziels erreicht`}</p>
         <div className="grid grid-cols-2 gap-4">
           {/* Left: Calories ring (thicker, blue, subtle glow) */}
@@ -73,7 +73,7 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
             {/* Outer = Protein (thickest) */}
             <div
               className="absolute inset-0 rounded-full"
-              style={{ background: `conic-gradient(hsl(var(--fats) / 0.5) ${Math.round(pPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(pPct*360)}deg)` }}
+              style={{ background: `conic-gradient(hsl(var(--protein) / 0.5) ${Math.round(pPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(pPct*360)}deg)` }}
             />
             {macros.protein.goal > 0 && macros.protein.used > macros.protein.goal && (
               <div className="absolute inset-0 rounded-full border" style={{ borderColor: 'hsl(var(--destructive))' }} />
@@ -84,7 +84,7 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
             <div className="absolute inset-[14%]">
               <div
                 className="absolute inset-0 rounded-full"
-                style={{ background: `conic-gradient(hsl(var(--muted-foreground) / 0.45) ${Math.round(cPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(cPct*360)}deg)` }}
+                style={{ background: `conic-gradient(hsl(var(--carbs) / 0.45) ${Math.round(cPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(cPct*360)}deg)` }}
               />
               {macros.carbs.goal > 0 && macros.carbs.used > macros.carbs.goal && (
                 <div className="absolute inset-0 rounded-full border" style={{ borderColor: 'hsl(var(--destructive))' }} />
@@ -96,7 +96,7 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
             <div className="absolute inset-[30%]">
               <div
                 className="absolute inset-0 rounded-full"
-                style={{ background: `conic-gradient(hsl(var(--carbs) / 0.5) ${Math.round(fPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(fPct*360)}deg)` }}
+                style={{ background: `conic-gradient(hsl(var(--fats) / 0.5) ${Math.round(fPct*360)}deg, hsl(var(--border) / 0.25) ${Math.round(fPct*360)}deg)` }}
               />
               {macros.fats.goal > 0 && macros.fats.used > macros.fats.goal && (
                 <div className="absolute inset-0 rounded-full border" style={{ borderColor: 'hsl(var(--destructive))' }} />
@@ -120,17 +120,17 @@ export const OverviewRingsCard: React.FC<OverviewRingsCardProps> = ({ calories, 
         {/* Unified footer row: three points for macros */}
         <div className="mt-5 grid grid-cols-3 gap-3 text-center">
           <div>
-            <div className="mx-auto mb-1 h-2 w-2 rounded-full" style={{ backgroundColor: 'hsl(var(--fats))' }} />
+            <div className="mx-auto mb-1 h-2 w-2 rounded-full" style={{ backgroundColor: 'hsl(var(--protein))' }} />
             <div className="text-xs text-muted-foreground">Protein</div>
             <div className="text-sm font-medium tabular-nums">{Math.round(macros.protein.used)}/{Math.round(macros.protein.goal)} g</div>
           </div>
           <div>
-            <div className="mx-auto mb-1 h-2 w-2 rounded-full" style={{ backgroundColor: 'hsl(var(--muted-foreground))' }} />
+            <div className="mx-auto mb-1 h-2 w-2 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs))' }} />
             <div className="text-xs text-muted-foreground">Carbs</div>
             <div className="text-sm font-medium tabular-nums">{Math.round(macros.carbs.used)}/{Math.round(macros.carbs.goal)} g</div>
           </div>
           <div>
-            <div className="mx-auto mb-1 h-2 w-2 rounded-full" style={{ backgroundColor: 'hsl(var(--carbs))' }} />
+            <div className="mx-auto mb-1 h-2 w-2 rounded-full" style={{ backgroundColor: 'hsl(var(--fats))' }} />
             <div className="text-xs text-muted-foreground">Fett</div>
             <div className="text-sm font-medium tabular-nums">{Math.round(macros.fats.used)}/{Math.round(macros.fats.goal)} g</div>
           </div>
