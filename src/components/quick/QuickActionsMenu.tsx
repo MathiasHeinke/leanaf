@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Dumbbell, Moon, Pill, MessageCircle, Utensils } from "lucide-react";
-export type ActionType = "meal" | "workout" | "sleep" | "supplements" | "coach";
+import { Dumbbell, Moon, Pill, MessageCircle, Utensils, Droplets } from "lucide-react";
+export type ActionType = "meal" | "workout" | "sleep" | "supplements" | "fluid" | "coach";
 
 interface QuickActionsMenuProps {
   open: boolean;
@@ -15,6 +15,7 @@ const actions: { key: ActionType; label: string; Icon: React.ComponentType<any> 
   { key: "workout", label: "Workout", Icon: Dumbbell },
   { key: "sleep", label: "Schlaf", Icon: Moon },
   { key: "supplements", label: "Supps", Icon: Pill },
+  { key: "fluid", label: "Getränke", Icon: Droplets },
   { key: "coach", label: "Coach", Icon: MessageCircle },
 ];
 
