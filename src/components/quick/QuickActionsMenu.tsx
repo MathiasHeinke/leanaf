@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Dumbbell, Moon, Pill, MessageCircle, Utensils, Droplets, Coffee, Wine } from "lucide-react";
-
+import { Dumbbell, Moon, Pill, MessageCircle, Utensils } from "lucide-react";
 export type ActionType = "meal" | "workout" | "sleep" | "supplements" | "coach";
 
 interface QuickActionsMenuProps {

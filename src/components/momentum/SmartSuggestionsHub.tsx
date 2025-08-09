@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { HotSwipeActionCard, HotAction } from './HotSwipeActionCard';
 import { openMeal, openWorkout, openSleep, openSupplements, openFluidInput } from '@/components/quick/quickAddBus';
-import { Utensils, Droplets, Pill, MessageCircle, Moon, Scale } from 'lucide-react';
+
 
 interface SmartSuggestionsHubProps {
   date: Date;
