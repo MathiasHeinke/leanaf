@@ -70,10 +70,49 @@ serve(async (req) => {
 
     // 2) Handle events
     if (event.type === "IMAGE") {
-      // Stub: Vision nicht angeschlossen – bitte Übungsnamen angeben
-      return await updateAndReply(supabase, sessionId, {
-        text: "Bild erhalten 👌 Ich konnte die Übung noch nicht erkennen. Wie heißt die Übung?",
-        state: { sessionId, pending: null },
+      const vision = await detectExerciseFromImage(event.url);
+      const guessName = vision?.name;
+      const confidence = Number(vision?.confidence ?? 0);
+
+      if (!guessName || confidence < 0.55) {
+        return await updateAndReply(supabase, sessionId, {
+          text: "Bild erhalten 👌 Ich bin mir nicht sicher, welche Übung das ist. Bitte nenne die Übung (z. B. Bankdrücken, Rudern).",
+          state: { sessionId, pending: null },
+        });
+      }
+
+      // Resolve exercise id from DB (exact, then ilike fallback)
+      const { data: exact } = await supabase
+        .from("exercises")
+        .select("id, name")
+        .eq("name", guessName)
+        .limit(1)
+        .maybeSingle();
+
+      let exerciseId = exact?.id as string | undefined;
+      if (!exerciseId) {
+        const token = guessName.split(" ")[0];
+        const { data: similar } = await supabase
+          .from("exercises")
+          .select("id, name")
+          .ilike("name", `%${token}%`)
+          .limit(1);
+        exerciseId = similar?.[0]?.id;
+      }
+
+      if (!exerciseId) {
+        return await updateAndReply(supabase, sessionId, {
+          text: `Ich glaube, es ist "${guessName}" (Sicherheit ${(confidence * 100).toFixed(0)}%). Bitte bestätige den Namen oder nenne die Übung.`,
+          state: { sessionId, pending: null },
+        });
+      }
+
+      const newMeta = { ...metadata, pending: { exercise_id: exerciseId, missing: ["weight", "reps", "rpe"], source: "image" } };
+      await supabase.from("exercise_sessions").update({ metadata: newMeta }).eq("id", sessionId);
+
+      return jsonOK({
+        text: `Erkannt: **${guessName}** (Sicherheit ${(confidence * 100).toFixed(0)}%). Bitte Gewicht, Wiederholungen & RPE angeben.`,
+        state: { sessionId, pending: newMeta.pending },
       });
     }
 
@@ -98,7 +137,7 @@ serve(async (req) => {
           weight_kg: parsed.weight,
           reps: parsed.reps,
           rpe: parsed.rpe ?? null,
-          origin: "manual",
+          origin: pending?.source ?? "manual",
           client_event_id: ceid,
         };
 
@@ -228,3 +267,45 @@ async function updateAndReply(supabase: any, sessionId: string, payload: any) {
   }
   return json(payload, 200);
 }
+
+async function detectExerciseFromImage(imageUrl: string): Promise<{ name?: string; confidence?: number; raw?: any }> {
+  try {
+    const apiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!apiKey) {
+      console.warn('OPENAI_API_KEY not set');
+      return {};
+    }
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: 'You extract the gym exercise being performed in an image. Reply as JSON: {"exercise":"<name>","confidence":0-1} using German names like Bankdrücken, Rudern, Schulterdrücken, Latzug, Kniebeugen, Kreuzheben.' },
+          { role: 'user', content: [
+            { type: 'text', text: 'Was ist die Übung? Antworte nur als kompaktes JSON. Wenn unsicher, confidence < 0.55.' },
+            { type: 'image_url', image_url: { url: imageUrl } }
+          ]}
+        ]
+      })
+    });
+    if (!resp.ok) {
+      console.error('OpenAI vision error', await resp.text());
+      return {};
+    }
+    const data = await resp.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (typeof content === 'string') {
+      try { const obj = JSON.parse(content); return { name: obj.exercise ?? obj.name, confidence: obj.confidence, raw: data }; } catch { return { raw: data }; }
+    }
+    return { raw: data };
+  } catch (e) {
+    console.error('detectExerciseFromImage failed', e);
+    return {};
+  }
+}
+
