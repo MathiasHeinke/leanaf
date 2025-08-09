@@ -44,7 +44,8 @@ export const QuickSupplementsCard: React.FC = () => {
           timing,
           dosage,
           unit,
-          supplement_database(name)
+          supplement_id,
+          supplement_database!left(name)
         `)
         .eq('user_id', user.id)
         .eq('is_active', true)
