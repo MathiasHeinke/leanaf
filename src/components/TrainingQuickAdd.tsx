@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { mirrorWorkoutToDailyOverview } from '@/utils/workoutSync';
 
 interface Exercise {
   id: string;
@@ -255,7 +256,18 @@ export const TrainingQuickAdd: React.FC<TrainingQuickAddProps> = ({ onClose, onS
       if (setsError) throw setsError;
 
       toast.success('Training erfolgreich gespeichert!');
+
+      // Mirror to workouts for daily overview (when timer not active)
+      await mirrorWorkoutToDailyOverview({
+        userId: user.id,
+        workoutType,
+        startTime,
+        endTime,
+        rpeValues: sets.map(s => s.rpe ?? null),
+      });
+
       onSessionSaved?.();
+
 
     } catch (error) {
       console.error('Error saving session:', error);

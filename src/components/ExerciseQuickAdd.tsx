@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { CustomExerciseManager } from './CustomExerciseManager';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 import { useWorkoutTimer } from '@/hooks/useWorkoutTimer';
+import { mirrorWorkoutToDailyOverview } from '@/utils/workoutSync';
 
 interface Exercise {
   id: string;
@@ -167,28 +168,15 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
 
       if (setsError) throw setsError;
 
-      // Mirror to workouts table for daily overview
-      try {
-        const avgRpe = sets
-          .map(s => s.rpe || 0)
-          .filter(v => v > 0)
-          .reduce((a, b, _, arr) => a + b / arr.length, 0) || 5;
-        const durationMinutes = Math.max(1, Math.round((new Date(endTime).getTime() - new Date(startTime).getTime()) / 60000));
-        const mappedType = workoutType === 'cardio' ? 'cardio' : 'kraft';
-        const { error: workoutErr } = await supabase
-          .from('workouts')
-          .insert([{
-            user_id: user.id,
-            date: getCurrentDateString(),
-            did_workout: true,
-            workout_type: mappedType,
-            duration_minutes: durationMinutes,
-            intensity: Math.min(10, Math.max(1, Math.round(avgRpe)))
-          }]);
-        if (workoutErr) console.warn('Workouts mirror failed', workoutErr);
-      } catch (mirrorErr) {
-        console.warn('Mirror to workouts skipped:', mirrorErr);
-      }
+      // Mirror to workouts table for daily overview (centralized)
+      await mirrorWorkoutToDailyOverview({
+        userId: user.id,
+        workoutType,
+        startTime,
+        endTime,
+        rpeValues: sets.map(s => s.rpe ?? null),
+      });
+
 
       toast.success('Training erfolgreich gespeichert!');
       

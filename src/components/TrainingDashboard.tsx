@@ -48,6 +48,8 @@ import {
   Copy
 } from 'lucide-react';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { mirrorWorkoutToDailyOverview } from '@/utils/workoutSync';
+
 
 
 interface ExerciseSession {
@@ -188,7 +190,17 @@ export const TrainingDashboard: React.FC = () => {
             .in('id', exerciseSetIds);
         }
 
+        // Mirror to workouts daily overview
+        await mirrorWorkoutToDailyOverview({
+          userId: user.id,
+          workoutType: 'strength',
+          startTime: result.actualStartTime,
+          endTime,
+          rpeValues: sessionExercises?.map((se: any) => se.rpe ?? null),
+        });
+
         loadSessions(); // Refresh the sessions list
+
       } catch (error) {
         console.error('Error saving workout session:', error);
       }

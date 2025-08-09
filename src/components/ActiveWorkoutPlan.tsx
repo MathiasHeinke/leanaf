@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { mirrorWorkoutToDailyOverview } from '@/utils/workoutSync';
+
 
 interface Exercise {
   id: string;
@@ -137,7 +139,22 @@ export const ActiveWorkoutPlan: React.FC<ActiveWorkoutPlanProps> = ({
       }
 
       toast.success('Training erfolgreich gespeichert!');
+
+      // Mirror to workouts table
+      const endTime = new Date();
+      const startTime = isTimerRunning
+        ? new Date(Date.now() - (timerDuration || 0) * 1000)
+        : new Date(endTime.getTime() - 10 * 60 * 1000); // fallback 10min
+      await mirrorWorkoutToDailyOverview({
+        userId: user!.id,
+        workoutType: 'strength',
+        startTime,
+        endTime,
+        rpeValues: exercises.map(e => e.rpe ?? null),
+      });
+
       onComplete();
+
     } catch (error) {
       console.error('Error saving workout:', error);
       toast.error('Fehler beim Speichern des Trainings');
