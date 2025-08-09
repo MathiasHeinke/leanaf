@@ -5569,34 +5569,13 @@ export type Database = {
           carbs: number | null
           fat: number | null
           id: string | null
+          image_url: string | null
           kcal: number | null
           protein: number | null
           quality_score: number | null
           title: string | null
           ts: string | null
           user_id: string | null
-        }
-        Insert: {
-          carbs?: number | null
-          fat?: number | null
-          id?: string | null
-          kcal?: number | null
-          protein?: number | null
-          quality_score?: number | null
-          title?: never
-          ts?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          carbs?: number | null
-          fat?: number | null
-          id?: string | null
-          kcal?: number | null
-          protein?: number | null
-          quality_score?: number | null
-          title?: never
-          ts?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }

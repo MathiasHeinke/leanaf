@@ -3,6 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { Camera, Mic, SendHorizontal, X } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
+import { safeToast } from "@/lib/safeToast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
@@ -74,8 +75,7 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
         }));
         const { error: imagesError } = await supabase.from('meal_images').insert(imageInserts);
         if (imagesError) {
-          console.error('Error saving meal images', imagesError);
-          toast.error('Mahlzeit gespeichert, aber Bilder konnten nicht verknüpft werden');
+          console.warn('meal_images insert failed', imagesError);
         }
       }
 
@@ -84,12 +84,13 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
       await awardPoints(hasPhoto ? 'meal_tracked_with_photo' : 'meal_tracked', basePoints, 'Schnell-Eintrag Mahlzeit');
       await updateStreak('meal_tracking');
 
-      toast.success("Mahlzeit gespeichert");
+      safeToast("meal-saved", toast.success, "Mahlzeit gespeichert!");
       triggerDataRefresh();
       closeDialog();
       onCloseAll();
     } catch (e: any) {
-      toast.error(e?.message || "Speichern fehlgeschlagen");
+      console.error(e);
+      safeToast("meal-error", toast.error, "Speichern fehlgeschlagen. Bitte erneut versuchen.");
     }
   };
 
