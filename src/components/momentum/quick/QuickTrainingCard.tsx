@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { QuickCardShell } from './QuickCardShell';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { QuickWorkoutInput } from '@/components/QuickWorkoutInput';
 import { Badge } from '@/components/ui/badge';
 import { Dumbbell, Footprints, Play } from 'lucide-react';
@@ -51,6 +51,12 @@ export const QuickTrainingCard: React.FC = () => {
 
     setLoading(true);
     try {
+      // Require authenticated session for RLS-protected insert
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        toast.error('Bitte melde dich erneut an, um Workouts zu speichern.');
+        return;
+      }
       const today = getCurrentDateString();
       const workoutData = {
         user_id: user.id,
@@ -160,11 +166,15 @@ export const QuickTrainingCard: React.FC = () => {
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="w-full sm:max-w-md p-0 bg-transparent border-none shadow-none sm:rounded-2xl">
-          <QuickWorkoutInput 
-            asCard
-            onWorkoutAdded={loadTodaysWorkouts} 
-            todaysWorkouts={todaysWorkouts} 
-          />
+          <DialogTitle className="sr-only">Workout eintragen</DialogTitle>
+          <DialogDescription className="sr-only">Details erfassen oder bearbeiten</DialogDescription>
+          <div className="rounded-2xl border border-border/50 bg-background/95 backdrop-blur-md shadow-xl p-4 sm:p-6">
+            <QuickWorkoutInput 
+              asCard
+              onWorkoutAdded={loadTodaysWorkouts} 
+              todaysWorkouts={todaysWorkouts} 
+            />
+          </div>
         </DialogContent>
       </Dialog>
     </>

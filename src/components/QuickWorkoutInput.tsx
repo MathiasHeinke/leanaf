@@ -86,6 +86,12 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
 
     setIsSubmitting(true);
     try {
+      // Ensure we have an authenticated session for RLS
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        toast.error('Bitte melde dich erneut an, um Workouts zu speichern.');
+        return;
+      }
       // Use timezone-aware date from dateHelpers
       const todayDateString = getCurrentDateString();
 
@@ -498,12 +504,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
     </>
   );
 
-  // Card-only mode (for overlays/modals): no collapsible header, neutral design
+  // Card-only mode (for overlays/modals): no outer wrapper/card here.
+  // The parent (e.g., DialogContent) will provide the single card container.
   if (asCard) {
     return (
-      <div className="rounded-2xl glass-card modern-shadow border border-border/40 p-4">
-        {content}
-      </div>
+      <>{content}</>
     );
   }
 
