@@ -4,12 +4,13 @@ import {
   Send, 
   Loader2, 
   Mic, 
-  MessageSquare
+  MessageSquare,
+  ImagePlus
 } from 'lucide-react';
 import { useVoiceOverlay } from '@/hooks/useVoiceOverlay';
 import { VoiceOverlay } from '@/components/VoiceOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import { useMediaUpload } from '@/hooks/useMediaUpload';
 
 interface EnhancedChatInputProps {
   inputText: string;
@@ -33,7 +34,23 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
   const { isVoiceOverlayOpen, openVoiceOverlay, closeVoiceOverlay } = useVoiceOverlay();
-  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFiles, uploading } = useMediaUpload();
+  const handleAttachClick = useCallback(() => { fileInputRef.current?.click(); }, []);
+  const handleFilesSelected = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (!files.length) return;
+    try {
+      const urls = await uploadFiles(files);
+      if (urls?.length) {
+        const append = urls.join(' ');
+        const currentText = textareaRef.current?.value || inputText;
+        setInputText((currentText ? currentText + ' ' : '') + append);
+      }
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }, [uploadFiles, setInputText, inputText]);
 
   // Get suggestions for current context - max 4 as per spec
   const getSuggestions = () => {
@@ -202,6 +219,25 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               </AnimatePresence>
             </div>
 
+            {/* ② Foto/Datei hinzufügen */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              onChange={handleFilesSelected}
+              className="hidden"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleAttachClick}
+              disabled={isLoading}
+              className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
+              aria-label="Foto oder Datei hinzufügen"
+            >
+              <ImagePlus className="w-6 h-6" />
+            </Button>
 
           </div>
 

@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
-import QuickAddButton from "@/components/quick/QuickAddFAB";
+
 
 
 
@@ -68,9 +68,6 @@ export const Layout = ({ children }: LayoutProps) => {
         </main>
         <Footer />
       </div>
-      
-      {/* Quick Add - global FAB */}
-      <QuickAddButton />
       
       {/* Debug Panels */}
       <EnhancedSubscriptionDebugPanel 

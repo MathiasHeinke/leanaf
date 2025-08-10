@@ -7,7 +7,7 @@ import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Flame, Utensils, Pen
 import { cn } from '@/lib/utils';
 import { MomentumMacros } from '@/components/momentum/MomentumMacros';
 import { MomentumMovement } from '@/components/momentum/MomentumMovement';
-import { QuickAddFAB } from '@/components/quick/QuickAddFAB';
+
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { toast } from '@/components/ui/sonner';
@@ -635,12 +635,6 @@ const MomentumPage: React.FC = () => {
           <MomentumMovement date={currentDate} />
         </main>
 
-        <QuickAddFAB 
-          statuses={{ 
-            meal: remaining > kcalGoal * 0.05 ? (meals.length > 0 ? 'partial' : 'due') : 'ok', 
-            workout: 'partial' 
-          }} 
-        />
       </div>
     </ErrorBoundary>
   );
