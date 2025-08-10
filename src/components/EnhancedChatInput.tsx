@@ -1,24 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { 
   Send, 
   Loader2, 
-  Paperclip, 
   Mic, 
-  MicOff, 
   X, 
-  Image as ImageIcon,
   Video,
   Wrench,
-  Plus,
-  Trash2,
-  ChevronUp,
-  ChevronDown,
-  AudioWaveform,
   Scale,
   UtensilsCrossed,
   BookOpen,
@@ -27,15 +15,10 @@ import {
   PenTool,
   MessageSquare
 } from 'lucide-react';
-import { useInputBarHeight } from '@/hooks/useInputBarHeight';
-import { toast } from 'sonner';
-import { MediaUploadZone } from '@/components/MediaUploadZone';
-import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { useVoiceOverlay } from '@/hooks/useVoiceOverlay';
 import { VoiceOverlay } from '@/components/VoiceOverlay';
 import { usePendingTools } from '@/hooks/usePendingTools';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { MindsetJournalWidget } from '@/components/mindset-journal/MindsetJournalWidget';
 
 // Tool configuration with colors
@@ -73,16 +56,11 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   placeholder = "Nachricht eingeben...",
   className = ""
 }) => {
-  const [uploadedMedia, setUploadedMedia] = useState<Array<{url: string, type: 'image' | 'video'}>>([]);
   const [showTools, setShowTools] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const toolsContainerRef = useRef<HTMLDivElement>(null);
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Hooks
-  const { uploadFiles, uploading, uploadProgress, getMediaType } = useMediaUpload();
   const { isVoiceOverlayOpen, openVoiceOverlay, closeVoiceOverlay } = useVoiceOverlay();
   
   const { 
@@ -144,30 +122,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     }
   }, [inputText]);
 
-  // Handle direct file selection - native file picker
-  const handleFileSelection = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-
-    try {
-      const urls = await uploadFiles(files);
-      const newMedia = urls.map(url => {
-        const mediaType = getMediaType(url);
-        return {
-          url,
-          type: mediaType === 'unknown' ? 'image' : mediaType as 'image' | 'video'
-        };
-      });
-      setUploadedMedia(prev => [...prev, ...newMedia]);
-    } catch (error) {
-      console.error('File upload failed:', error);
-    }
-    
-    // Reset input value to allow selecting same file again
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, [uploadFiles, getMediaType]);
 
   // Handle voice recording
   const handleVoiceStart = useCallback(() => {
@@ -201,18 +155,16 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
   // Handle send message
   const handleSend = useCallback(() => {
-    if (!inputText.trim() && uploadedMedia.length === 0) return;
+    if (!inputText.trim()) return;
     
-    const mediaUrls = uploadedMedia.map(media => media.url);
-    onSendMessage(inputText, mediaUrls, selectedTool);
+    onSendMessage(inputText, undefined, selectedTool);
     
     // Reset everything
     setInputText('');
-    setUploadedMedia([]);
     if (selectedTool) {
       removePendingTool(selectedTool);
     }
-  }, [inputText, uploadedMedia, selectedTool, onSendMessage, setInputText, removePendingTool]);
+  }, [inputText, selectedTool, onSendMessage, setInputText, removePendingTool]);
 
   // Handle key press
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
@@ -222,95 +174,11 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     }
   }, [handleSend]);
 
-  // Remove uploaded media
-  const removeMedia = useCallback((index: number) => {
-    setUploadedMedia(prev => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const hasContent = inputText.trim() || uploadedMedia.length > 0;
+  const hasContent = inputText.trim();
 
   return (
     <div className={`w-full max-w-4xl mx-auto ${className}`}>
 
-      {/* Upload Progress */}
-      {uploading && uploadProgress.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3"
-        >
-          <div className="bg-background/95 border border-border rounded-xl p-4 shadow-lg backdrop-blur-sm">
-            <div className="text-sm font-medium mb-3 flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Upload läuft...
-            </div>
-            <div className="space-y-3">
-              {uploadProgress.map((progress, index) => (
-                <div key={index} className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="truncate flex-1 font-medium">{progress.fileName}</span>
-                    <span className="text-primary font-semibold">{progress.progress}%</span>
-                  </div>
-                  <Progress value={progress.progress} className="h-2" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Uploaded Media Preview */}
-      {uploadedMedia.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3"
-        >
-          <div className="bg-background/95 border border-border rounded-xl p-4 shadow-lg backdrop-blur-sm">
-            <div className="text-sm font-medium mb-3">📎 Hochgeladene Medien ({uploadedMedia.length})</div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-              {uploadedMedia.map((media, index) => (
-                <div key={index} className="relative group">
-                  {media.type === 'image' ? (
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border border-border bg-muted">
-                      <img
-                        src={media.url}
-                        alt={`Hochgeladenes Bild ${index + 1}`}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
-                      <Video className="w-6 h-6 opacity-70" />
-                    </div>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground border border-border"
-                    onClick={() => removeMedia(index)}
-                    aria-label="Medienvorschau entfernen"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Hidden File Input for Native Picker */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,video/*"
-        multiple
-        className="hidden"
-        onChange={handleFileSelection}
-        aria-label="Dateien auswählen"
-      />
 
       {/* Main Input Container */}
       <div className={`
@@ -354,7 +222,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           )}
         </div>
 
-        {/* Button Row - Input Bar with exact icon order: ① Suggestions ② Tool-Picker ③ Plus ④ Red Microphone ⑤ Send */}
+        {/* Button Row - Input Bar with icon order: ① Suggestions ② Tool-Picker ③ Red Microphone ④ Send */}
         <div className="input-bar flex items-center justify-between px-4 py-2 border-t border-border/50">
           <div className="flex items-center gap-1">
             {/* ① Suggestions Button with Badge - 44x44pt touch target */}
@@ -486,26 +354,11 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* ③ Plus Icon - Native File Picker - 44x44pt touch target */}
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                fileInputRef.current?.click();
-                setShowTools(false);
-                setShowSuggestions(false);
-              }}
-              className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
-              disabled={isLoading}
-              aria-label="Medien hinzufügen"
-            >
-              <Plus className="w-6 h-6" />
-            </Button>
           </div>
 
-          {/* Right Side: ④ Red Microphone + ⑤ Send Button */}
+          {/* Right Side: ③ Red Microphone + ④ Send Button */}
           <div className="flex items-center gap-1">
-            {/* ④ Microphone Button - Red Color - 44x44pt touch target */}
+            {/* ③ Microphone Button - Red Color - 44x44pt touch target */}
             <Button
               type="button"
               variant="ghost"
@@ -520,7 +373,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               <Mic className="w-6 h-6" />
             </Button>
 
-            {/* ⑤ Send Button */}
+            {/* ④ Send Button */}
             <Button
               onClick={() => {
                 handleSend();

@@ -884,13 +884,6 @@ if (enableAdvancedFeatures) {
             <div ref={messagesEndRef} />
           </div>
         )}
-        {mode === 'training' && (
-          <div className="fixed right-4 bottom-24 z-50">
-            <Button onClick={() => handleSendMessage('/end')} variant="secondary">
-              Fertig & Zusammenfassung
-            </Button>
-          </div>
-        )}
         <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
         <ConfirmMealModal
           open={confirmMeal.open}
@@ -995,13 +988,6 @@ if (enableAdvancedFeatures) {
           />
         </div>
       </CardContent>
-      {mode === 'training' && (
-        <div className="fixed right-4 bottom-24 z-50">
-          <Button onClick={() => handleSendMessage('/end')} variant="secondary">
-            Fertig & Zusammenfassung
-          </Button>
-        </div>
-      )}
       <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
       <ConfirmMealModal
         open={confirmMeal.open}
