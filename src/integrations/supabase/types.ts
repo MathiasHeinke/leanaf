@@ -5825,6 +5825,17 @@ export type Database = {
         }
         Relationships: []
       }
+      v_trace_kpis_24h: {
+        Row: {
+          avg_latency_ms: number | null
+          calls: number | null
+          error_rate: number | null
+          errors: number | null
+          handler_name: string | null
+          p90_latency_ms: number | null
+        }
+        Relationships: []
+      }
       v_unmet_tool_stats: {
         Row: {
           avg_confidence: number | null
