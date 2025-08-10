@@ -6,10 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import MermaidChart from '@/components/MermaidChart';
 import TraceGantt from '@/components/TraceGantt';
 import { TelemetryDashboard } from '@/components/TelemetryDashboard';
-import { AlertCircle, Clock, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
+import { UnmetToolDashboard } from '@/components/UnmetToolDashboard';
+import { Activity, AlertCircle, Clock, CheckCircle, XCircle, BarChart3, Target } from 'lucide-react';
 
 interface TraceEvent {
   id: number;
@@ -25,7 +27,7 @@ export default function TraceDebug() {
   const [events, setEvents] = useState<TraceEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<TraceEvent | null>(null);
-  const [activeTab, setActiveTab] = useState<'trace' | 'telemetry'>('trace');
+  const [activeTab, setActiveTab] = useState<'trace' | 'telemetry' | 'unmet-tools'>('trace');
 
   const fetchTrace = async (id: string) => {
     if (!id.trim()) return;
@@ -116,53 +118,57 @@ export default function TraceDebug() {
               <AlertCircle className="h-5 w-5" />
               Request Trace Debug & Telemetry
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant={activeTab === 'trace' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('trace')}
-              >
-                <AlertCircle className="h-4 w-4 mr-1" />
-                Trace
-              </Button>
-              <Button
-                variant={activeTab === 'telemetry' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('telemetry')}
-              >
-                <BarChart3 className="h-4 w-4 mr-1" />
-                Telemetry
-              </Button>
-            </div>
           </CardTitle>
           <CardDescription>
-            {activeTab === 'trace' 
-              ? 'Visualize and debug the complete journey of a coach request'
-              : 'Real-time performance metrics and health monitoring'
-            }
+            Advanced debugging tools for coach orchestrator and unmet tool tracking
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {activeTab === 'trace' && (
-            <div className="flex gap-4">
-              <Input
-                placeholder="Enter trace ID (e.g. t_abc123def)"
-                value={inputTraceId}
-                onChange={(e) => setInputTraceId(e.target.value)}
-                className="flex-1"
-              />
-              <Button 
-                onClick={() => fetchTrace(inputTraceId)}
-                disabled={loading || !inputTraceId.trim()}
-              >
-                {loading ? 'Loading...' : 'Load Trace'}
-              </Button>
-            </div>
-          )}
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as any)} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="trace">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Trace
+              </TabsTrigger>
+              
+              <TabsTrigger value="telemetry">
+                <Activity className="w-4 h-4 mr-2" />
+                Telemetry
+              </TabsTrigger>
+              
+              <TabsTrigger value="unmet-tools">
+                <Target className="w-4 h-4 mr-2" />
+                Unmet Tools
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="trace" className="mt-6">
+              <div className="flex gap-4">
+                <Input
+                  placeholder="Enter trace ID (e.g. t_abc123def)"
+                  value={inputTraceId}
+                  onChange={(e) => setInputTraceId(e.target.value)}
+                  className="flex-1"
+                />
+                <Button 
+                  onClick={() => fetchTrace(inputTraceId)}
+                  disabled={loading || !inputTraceId.trim()}
+                >
+                  {loading ? 'Loading...' : 'Load Trace'}
+                </Button>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="telemetry">
+              <TelemetryDashboard />
+            </TabsContent>
+            
+            <TabsContent value="unmet-tools">
+              <UnmetToolDashboard />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
-
-      {activeTab === 'telemetry' && <TelemetryDashboard />}
 
       {activeTab === 'trace' && events.length > 0 && (
         <>

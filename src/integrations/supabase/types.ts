@@ -4300,6 +4300,36 @@ export type Database = {
           },
         ]
       }
+      tool_lexicon: {
+        Row: {
+          created_at: string | null
+          hits: number | null
+          id: string
+          phrase: string
+          source: string | null
+          tool_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hits?: number | null
+          id?: string
+          phrase: string
+          source?: string | null
+          tool_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hits?: number | null
+          id?: string
+          phrase?: string
+          source?: string | null
+          tool_id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       tool_usage_events: {
         Row: {
           confidence: number | null
@@ -4584,6 +4614,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      unmet_tool_events: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          handled_manually: boolean | null
+          id: string
+          intent_guess: string | null
+          manual_summary: string | null
+          message: string
+          session_id: string
+          status: string | null
+          suggested_tool: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          handled_manually?: boolean | null
+          id?: string
+          intent_guess?: string | null
+          manual_summary?: string | null
+          message: string
+          session_id: string
+          status?: string | null
+          suggested_tool?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          handled_manually?: boolean | null
+          id?: string
+          intent_guess?: string | null
+          manual_summary?: string | null
+          message?: string
+          session_id?: string
+          status?: string | null
+          suggested_tool?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_alcohol_abstinence: {
         Row: {
