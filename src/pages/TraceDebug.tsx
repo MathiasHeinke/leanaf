@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import MermaidChart from '@/components/MermaidChart';
 import TraceGantt from '@/components/TraceGantt';
-import TelemetryDashboard from '@/components/TelemetryDashboard';
+import { TelemetryDashboard } from '@/components/TelemetryDashboard';
 import { AlertCircle, Clock, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
 
 interface TraceEvent {
