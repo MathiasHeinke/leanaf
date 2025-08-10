@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock, AlertTriangle } from 'lucide-react';
-import { LiveTraceMonitor } from '@/components/LiveTraceMonitor';
+import { GehirnLiveView } from '@/components/gehirn/GehirnLiveView';
 
 export function GehirnPage() {
   const { isAdmin, loading, error } = useSecureAdminAccess();
@@ -57,7 +57,7 @@ export function GehirnPage() {
 
   return (
     <div className="container mx-auto py-6">
-      <LiveTraceMonitor />
+      <GehirnLiveView />
     </div>
   );
 }

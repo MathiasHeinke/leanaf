@@ -5,6 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.51.0";
 import { parseSetLine } from "./tools/set-parser.ts";
 import { detectExerciseFromText } from "./tools/exercise-detect.ts";
 import { buildSummaryMarkdown } from "./tools/analysis.ts";
+import { logTraceEvent } from "../telemetry.ts";
 
 const SUPABASE_URL = "https://gzczjscctgyxjyodhnhk.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I";

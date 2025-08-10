@@ -1,6 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logTraceEvent } from "../telemetry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const traceId = getTraceId(req);
+  const t0 = Date.now();
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -46,6 +48,16 @@ Deno.serve(async (req) => {
     }
     if (!userId) return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      coachId: undefined,
+      stage: 'tool_exec',
+      handler: 'weight-tracker',
+      status: 'RUNNING',
+      payload: { clientEventId: event.clientEventId }
+    });
+
     const kg = parseKg(event.text);
     if (kg == null) return ok({ kind: "message", text: "Ich konnte kein gültiges Gewicht erkennen. Beispiel: „Gewicht 82,4 kg“.", traceId } satisfies Reply);
 
@@ -58,13 +70,46 @@ Deno.serve(async (req) => {
     };
 
     const { error } = await supabase.from("weight_history").insert(payload);
+    const duration = Date.now() - t0;
     if (error) {
-      // 23505 = unique_violation
+      // 23505 = unique_violation (idempotent)
       if ((error as any)?.code === "23505") {
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: undefined,
+          stage: 'tool_result',
+          handler: 'weight-tracker',
+          status: 'OK',
+          latencyMs: duration,
+          payload: { duplicate: true, kg }
+        });
         return ok({ kind: "message", text: `Gewicht ${kg} kg ist bereits erfasst (Idempotenz).`, traceId } satisfies Reply);
       }
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        coachId: undefined,
+        stage: 'error',
+        handler: 'weight-tracker',
+        status: 'ERROR',
+        latencyMs: duration,
+        payload: { kg },
+        errorMessage: String(error)
+      });
       throw error;
     }
+
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      coachId: undefined,
+      stage: 'tool_result',
+      handler: 'weight-tracker',
+      status: 'OK',
+      latencyMs: duration,
+      payload: { kg }
+    });
     return ok({ kind: "message", text: `✅ Gewicht gespeichert: ${kg} kg.`, traceId } satisfies Reply);
   } catch (e) {
     console.error("weight-tracker error", e);
