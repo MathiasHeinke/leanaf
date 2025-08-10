@@ -36,9 +36,10 @@ test("training image → routed", async ({ page }) => {
 
 test("weight idempotent", async ({ page }) => {
   await page.goto("/coach");
-  await page.getByPlaceholder("Schreib hier...").fill("Gewicht 82,4 kg");
+  const msg = "Gewicht 82,4 kg";
+  await page.getByPlaceholder("Schreib hier...").fill(msg);
   await page.keyboard.press("Enter");
-  await expect(page.getByText(/Gewicht gespeichert/i)).toBeVisible();
+  await expect(page.getByText(/Gewicht gespeichert|bereits erfasst/i)).toBeVisible();
 });
 
 test("diary simple", async ({ page }) => {

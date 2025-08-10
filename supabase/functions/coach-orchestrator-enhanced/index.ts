@@ -155,24 +155,26 @@ serve(async (req) => {
       return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // weight → legacy coach-orchestrator (Phase 1)
+    // weight → thin function
     if (intent.name === "weight") {
-      const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
-        body: { mode: "weight", userId, clientEventId, event },
+      const { data, error } = await supabase.functions.invoke("weight-tracker", {
+        body: { userId, event },
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;
-      return new Response(JSON.stringify(asMessage((data as any)?.text ?? "Gewicht gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const text = (data as any)?.text ?? (data as any)?.reply ?? "Gewicht gespeichert.";
+      return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // diary → legacy coach-orchestrator (Phase 1)
+    // diary → thin function
     if (intent.name === "diary") {
-      const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
-        body: { mode: "diary", userId, clientEventId, event },
+      const { data, error } = await supabase.functions.invoke("diary-assistant", {
+        body: { userId, event },
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;
-      return new Response(JSON.stringify(asMessage((data as any)?.text ?? "Tagebuch gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const text = (data as any)?.text ?? (data as any)?.reply ?? "Tagebuch gespeichert.";
+      return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // supplement → analysis only
