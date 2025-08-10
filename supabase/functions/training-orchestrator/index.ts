@@ -43,9 +43,9 @@ serve(async (req) => {
     // 1) Find or create active session
     const { data: activeSession } = await supabase
       .from("exercise_sessions")
-      .select("id, metadata, ended_at")
+      .select("id, metadata, end_time")
       .eq("user_id", userId)
-      .is("ended_at", null)
+      .is("end_time", null)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -130,10 +130,19 @@ serve(async (req) => {
         // Idempotenz optional
         const ceid = clientEventId ?? crypto.randomUUID();
 
+        // set_number ermitteln (COUNT(session_id, exercise_id) + 1)
+        const { count: existingCount } = await supabase
+          .from("exercise_sets")
+          .select("id", { count: "exact", head: true })
+          .eq("session_id", sessionId)
+          .eq("exercise_id", pending.exercise_id);
+        const nextSetNumber = (existingCount ?? 0) + 1;
+
         const insertPayload: any = {
           session_id: sessionId,
           user_id: userId,
           exercise_id: pending.exercise_id,
+          set_number: nextSetNumber,
           weight_kg: parsed.weight,
           reps: parsed.reps,
           rpe: parsed.rpe ?? null,
@@ -143,7 +152,7 @@ serve(async (req) => {
 
         const { error: setErr } = await supabase.from("exercise_sets").insert([insertPayload]);
         if (setErr) {
-          // Falls Duplikat (idempotent) oder FK-Problem
+          // Falls Duplikat (idempotent) oder FK-Problem – nur loggen, UI bleibt positiv
           console.log("Insert set failed", setErr);
         }
 
@@ -233,7 +242,7 @@ serve(async (req) => {
       // Session beenden
       await supabase
         .from("exercise_sessions")
-        .update({ ended_at: new Date().toISOString(), metadata: { ...metadata, pending: null, summary: md } })
+        .update({ end_time: new Date().toISOString(), metadata: { ...metadata, pending: null, summary: md } })
         .eq("id", sessionId);
 
       return jsonOK({ text: md, end: true, state: { sessionId, pending: null } });

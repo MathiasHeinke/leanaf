@@ -108,22 +108,35 @@ serve(async (req) => {
         );
       }
       case "weight": {
-        return new Response(
-          JSON.stringify({
-            text: "⚖️ Gewicht erkannt. Öffne die Gewichtserfassung? Antworte mit 'ja' oder nenne direkt dein Gewicht (z. B. 82.4 kg).",
-            routed: "weight",
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        // Try to parse kg from text and update profile weight
+        let updated = false;
+        if (event.type === "TEXT" && userId) {
+          const m = (event.text || '').match(/(\d+(?:[\.,]\d+)?)\s*kg\b/i);
+          if (m) {
+            const kg = parseFloat(m[1].replace(',', '.'));
+            if (!Number.isNaN(kg) && kg > 0 && kg < 400) {
+              const { error } = await supabase.from('profiles').update({ weight: kg, updated_at: new Date().toISOString() }).eq('user_id', userId);
+              if (!error) updated = true;
+            }
+          }
+        }
+        const text = updated
+          ? "⚖️ Gewicht gespeichert. Möchtest du einen Trendvergleich sehen?"
+          : "⚖️ Gewicht erkannt. Nenne bitte dein Gewicht in kg (z. B. 82.4 kg), dann speichere ich es.";
+        return new Response(JSON.stringify({ text, routed: "weight", saved: updated }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       case "diary": {
-        return new Response(
-          JSON.stringify({
-            text: "📝 Tagebuch erkannt. Möchtest du, dass ich das so speichere? Antworte mit 'ja' oder passe den Text an.",
-            routed: "diary",
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        let saved = false;
+        if (event.type === "TEXT" && userId) {
+          const today = new Date().toISOString().slice(0, 10);
+          const content = (event.text || '').trim();
+          if (content) {
+            const { error } = await supabase.from('diary_entries').insert([{ user_id: userId, date: today, content }]);
+            if (!error) saved = true;
+          }
+        }
+        const text = saved ? "📝 Tagebuch-Eintrag gespeichert. Noch etwas hinzufügen?" : "📝 Tagebuch erkannt. Möchtest du das so speichern? Antworte mit dem gewünschten Text.";
+        return new Response(JSON.stringify({ text, routed: "diary", saved }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       case "advice": {
         return new Response(

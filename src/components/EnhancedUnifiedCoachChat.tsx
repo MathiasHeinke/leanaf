@@ -736,7 +736,7 @@ if (enableAdvancedFeatures) {
     const msg = (message || '').trim();
 
     // Special: pure media in training mode -> send IMAGE event directly
-    if (mode === 'training' && (!msg) && mediaUrls && mediaUrls.length > 0 && !selectedTool) {
+    if (mode === 'training' && (!msg) && mediaUrls && mediaUrls.length > 0) {
       await handleSendMessage('', mediaUrls);
       return;
     }
@@ -874,150 +874,11 @@ if (enableAdvancedFeatures) {
       }
     }
 
-    // Route Tool Picker actions
-    if (selectedTool === 'mahlzeit') {
-      try {
-        // Show user message in chat
-        if (msg) {
-          const userMessage: EnhancedChatMessage = {
-            id: `user-${Date.now()}`,
-            role: 'user',
-            content: msg,
-            created_at: new Date().toISOString(),
-            coach_personality: coach?.id || 'lucy',
-            coach_name: coach?.name || 'Coach',
-            coach_avatar: coach?.imageUrl,
-            coach_color: coach?.color,
-            coach_accent_color: coach?.accentColor
-          };
-          setMessages(prev => [...prev, userMessage]);
-        }
+    // Route Tool Picker actions removed – unified auto intent flow handles meals/supplements
 
-        const { data, error } = await supabase.functions.invoke('analyze-meal', {
-          body: {
-            text: msg || null,
-            images: mediaUrls && mediaUrls.length > 0 ? mediaUrls : null
-          }
-        });
-        if (error) throw error;
-
-        const parsed = parseAnalyzeResponse(data);
-        if (!parsed) {
-          toast.error('Analyse lieferte keine verwertbaren Daten');
-          return;
-        }
-
-        setMealAnalyzedData(parsed);
-        setMealUploadedImages(mediaUrls || []);
-        setMealSelectedType(parsed.meal_type || 'other');
-        setShowMealDialog(true);
-
-        // Assistant acknowledgement
-        const ack: EnhancedChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: '🍽️ Analyse bereit – bitte bestätige die Werte im Dialog unten.',
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.id || 'lucy',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, ack]);
-        setInputText('');
-        return;
-      } catch (e: any) {
-        console.error('Meal analysis failed:', e);
-        toast.error('Mahlzeit-Analyse fehlgeschlagen');
-        return;
-      }
-    }
-
-    if (selectedTool === 'supplement') {
-      try {
-        if (msg) {
-          const userMessage: EnhancedChatMessage = {
-            id: `user-${Date.now()}`,
-            role: 'user',
-            content: msg,
-            created_at: new Date().toISOString(),
-            coach_personality: coach?.id || 'lucy',
-            coach_name: coach?.name || 'Coach',
-            coach_avatar: coach?.imageUrl,
-            coach_color: coach?.color,
-            coach_accent_color: coach?.accentColor
-          };
-          setMessages(prev => [...prev, userMessage]);
-        }
-
-        const firstImage = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : undefined;
-        const { data, error } = await supabase.functions.invoke('supplement-recognition', {
-          body: {
-            imageUrl: firstImage,
-            userId: user?.id,
-            userQuestion: msg || 'Bitte Supplements analysieren'
-          }
-        });
-        if (error) throw error;
-
-        const summary = typeof data === 'object' ? JSON.stringify(data).slice(0, 800) : String(data);
-        const assistantMessage: EnhancedChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: `💊 Supplement-Analyse abgeschlossen:\n${summary}${summary.length >= 800 ? '…' : ''}`,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.id || 'lucy',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        setInputText('');
-        return;
-      } catch (e: any) {
-        console.error('Supplement analysis failed:', e);
-        // Fallback: general media analysis so the coach still reacts to the image
-        try {
-          const firstImage = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : undefined;
-          if (firstImage) {
-            const { data } = await supabase.functions.invoke('coach-media-analysis', {
-              body: {
-                userId: user?.id,
-                mediaUrls: [firstImage],
-                mediaType: 'image',
-                analysisType: 'general',
-                coachPersonality: coach?.id || 'lucy',
-                userQuestion: msg || 'Bitte analysiere dieses Bild'
-              }
-            });
-            const summary = (data?.analysis || data?.content || JSON.stringify(data));
-            const assistantMessage: EnhancedChatMessage = {
-              id: `assistant-${Date.now()}`,
-              role: 'assistant',
-              content: `🖼️ Analyse (Fallback):\n${summary}`,
-              created_at: new Date().toISOString(),
-              coach_personality: coach?.id || 'lucy',
-              coach_name: coach?.name || 'Coach',
-              coach_avatar: coach?.imageUrl,
-              coach_color: coach?.color,
-              coach_accent_color: coach?.accentColor
-            };
-            setMessages(prev => [...prev, assistantMessage]);
-            setInputText('');
-            return;
-          }
-        } catch (fallbackErr) {
-          console.warn('Fallback media analysis also failed:', fallbackErr);
-        }
-        toast.error('Supplement-Analyse fehlgeschlagen');
-        return;
-      }
-    }
 
     // If media is attached without a specific tool, auto-analyze with coach-media-analysis
-    if (mediaUrls && mediaUrls.length > 0 && !selectedTool) {
+    if (mediaUrls && mediaUrls.length > 0) {
       try {
         // Add user message if provided
         if (msg) {
@@ -1079,11 +940,8 @@ if (enableAdvancedFeatures) {
     if (mediaUrls && mediaUrls.length > 0) {
       fullMessage += `\n\nAngehängte Medien: ${mediaUrls.join(', ')}`;
     }
-    if (selectedTool) {
-      fullMessage += `\n\nAusgewähltes Tool: ${selectedTool}`;
-    }
     setInputText(fullMessage);
-    await handleSendMessage(fullMessage, mediaUrls, selectedTool);
+    await handleSendMessage(fullMessage, mediaUrls);
   }, [coach, user?.id, parseAnalyzeResponse, handleSendMessage]);
 
     // ============= FULLSCREEN LAYOUT =============
