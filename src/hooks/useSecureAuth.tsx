@@ -40,6 +40,9 @@ export const useSecureAuth = () => {
         throw new Error('Password is required');
       }
 
+      // Pre-clean auth state and attempt global sign out
+      try { await supabase.auth.signOut({ scope: 'global' }); } catch (e) {}
+
       // Attempt sign in
       const { data, error } = await supabase.auth.signInWithPassword({
         email: emailValidation.sanitized!,
@@ -71,6 +74,8 @@ export const useSecureAuth = () => {
       });
 
       setAuthState({ loading: false, error: null });
+      // Force full reload to ensure clean state
+      window.location.href = '/';
       return { data, error: null };
 
     } catch (err) {
@@ -99,6 +104,9 @@ export const useSecureAuth = () => {
       if (!passwordValidation.isValid) {
         throw new Error(passwordValidation.errors[0]);
       }
+
+      // Pre-clean auth state and attempt global sign out
+      try { await supabase.auth.signOut({ scope: 'global' }); } catch (e) {}
 
       // Attempt sign up
       const { data, error } = await supabase.auth.signUp({
@@ -145,14 +153,27 @@ export const useSecureAuth = () => {
     setAuthState({ loading: true, error: null });
 
     try {
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        throw error;
-      }
+      // Attempt global sign out and clear local state
+      try { await supabase.auth.signOut({ scope: 'global' }); } catch (e) {}
 
+      // Clear any leftover tokens
+      try {
+        Object.keys(localStorage).forEach((key) => {
+          if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+            localStorage.removeItem(key);
+          }
+        });
+        Object.keys(sessionStorage || {}).forEach((key) => {
+          if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+            sessionStorage.removeItem(key);
+          }
+        });
+      } catch {}
+      
       secureLogger.info('User signed out');
       setAuthState({ loading: false, error: null });
+      // Redirect to auth page for a clean state
+      window.location.href = '/auth';
       return { error: null };
 
     } catch (err) {

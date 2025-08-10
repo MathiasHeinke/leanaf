@@ -27,6 +27,7 @@ const Auth = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showResend, setShowResend] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [privacyAccepted, setPrivacyAccepted] = useState(true); // Vorausgewählt wie gewünscht
   const [rateLimiter] = useState(() => new ClientRateLimit(5, 15 * 60 * 1000)); // 5 attempts per 15 minutes
@@ -173,6 +174,11 @@ const Auth = () => {
     console.log('Starting authentication...');
     setLoading(true);
     setError('');
+    setShowResend(false);
+
+    // Pre-clean any stale auth state
+    cleanupAuthState();
+    try { await supabase.auth.signOut({ scope: 'global' }); } catch {}
     
     // Add retry logic for network issues
     let attempt = 0;
@@ -240,13 +246,21 @@ const Auth = () => {
               if (error.message.includes('Invalid login credentials')) {
                 setError(t('auth.invalidCredentials'));
                 return;
+              } else if (
+                error.message.toLowerCase().includes('email not confirmed') ||
+                error.message.toLowerCase().includes('confirm your email')
+              ) {
+                setError('Bitte bestätige deine E-Mail. Wir können die Bestätigungsmail erneut senden.');
+                setShowResend(true);
+                return;
               }
               throw error;
             }
             
             if (data.user) {
               toast.success(t('auth.signInSuccess'));
-              
+              // Force full reload to ensure a clean authenticated state
+              window.location.href = '/';
             }
             break;
           }
@@ -317,6 +331,27 @@ const Auth = () => {
     }
   };
 
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      setError(t('auth.enterEmail'));
+      return;
+    }
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+      } as any);
+      if (error) throw error;
+      toast.success('Bestätigungsmail wurde erneut gesendet.');
+      setShowResend(false);
+    } catch (err: any) {
+      setError('Erneutes Senden fehlgeschlagen. Bitte später erneut versuchen.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleAuth = async () => {
     setLoading(true);
     try {
@@ -373,6 +408,13 @@ const Auth = () => {
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
+            )}
+            {showResend && (
+              <div className="mt-2">
+                <Button type="button" variant="outline" size="sm" onClick={handleResendConfirmation}>
+                  Bestätigungsmail erneut senden
+                </Button>
+              </div>
             )}
             
             <div className="space-y-2">
@@ -623,6 +665,21 @@ const Auth = () => {
                 </p>
               </>
             )}
+          </div>
+
+          <div className="mt-4 text-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                cleanupAuthState();
+                supabase.auth.signOut({ scope: 'global' }).catch(() => {});
+                window.location.reload();
+              }}
+            >
+              Auth zurücksetzen
+            </Button>
           </div>
         </CardContent>
       </Card>
