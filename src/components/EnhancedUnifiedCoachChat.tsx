@@ -26,6 +26,7 @@ import { PlanInlineEditor } from '@/components/PlanInlineEditor';
 import { detectToolIntent, shouldUseTool } from '@/utils/toolDetector';
 import { WeightEntryModal } from '@/components/WeightEntryModal';
 import { v4 as uuidv4 } from 'uuid';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -106,6 +107,10 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 
   // Weight modal state (auto intent: gewicht)
   const [showWeightModal, setShowWeightModal] = useState(false);
+
+  // Feature flags
+  const { isEnabled: isFlagEnabled } = useFeatureFlags();
+  const autoTool = isFlagEnabled('auto_tool_orchestration');
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -781,7 +786,9 @@ if (enableAdvancedFeatures) {
               setMealAnalyzedData(parsed);
               setMealUploadedImages(firstImage ? [firstImage] : []);
               setMealSelectedType(parsed.meal_type || 'other');
-              setShowMealDialog(true);
+              if (autoTool) {
+                setShowMealDialog(true);
+              }
 
               const ack: EnhancedChatMessage = {
                 id: `assistant-${Date.now()}`,
@@ -933,7 +940,9 @@ if (enableAdvancedFeatures) {
                 setMealAnalyzedData(parsed);
                 setMealUploadedImages([firstImage]);
                 setMealSelectedType(parsed.meal_type || 'other');
-                setShowMealDialog(true);
+                if (autoTool) {
+                  setShowMealDialog(true);
+                }
 
                 const ack: EnhancedChatMessage = {
                   id: `assistant-${Date.now()}`,
