@@ -23,6 +23,8 @@ import { WorkoutPlanDraftCard } from '@/components/WorkoutPlanDraftCard';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
 import { generateNextDayPlan } from '@/utils/generateNextDayPlan';
 import { PlanInlineEditor } from '@/components/PlanInlineEditor';
+import { detectToolIntent, shouldUseTool } from '@/utils/toolDetector';
+import { WeightEntryModal } from '@/components/WeightEntryModal';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -100,6 +102,9 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [mealAnalyzedData, setMealAnalyzedData] = useState<any | null>(null);
   const [mealUploadedImages, setMealUploadedImages] = useState<string[]>([]);
   const [mealSelectedType, setMealSelectedType] = useState<string>('other');
+
+  // Weight modal state (auto intent: gewicht)
+  const [showWeightModal, setShowWeightModal] = useState(false);
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -733,6 +738,139 @@ if (enableAdvancedFeatures) {
       await handleSendMessage('', mediaUrls);
       return;
     }
+    // Auto intent detection (no manual picker)
+    if (msg) {
+      try {
+        const toolCtx = detectToolIntent(msg);
+        if (shouldUseTool(toolCtx)) {
+          // Add user message in UI if not already added later
+          if (toolCtx.tool === 'mealCapture') {
+            // mirror meal path
+            if (msg) {
+              const userMessage: EnhancedChatMessage = {
+                id: `user-${Date.now()}`,
+                role: 'user',
+                content: msg,
+                created_at: new Date().toISOString(),
+                coach_personality: coach?.id || 'lucy',
+                coach_name: coach?.name || 'Coach',
+                coach_avatar: coach?.imageUrl,
+                coach_color: coach?.color,
+                coach_accent_color: coach?.accentColor
+              };
+              setMessages(prev => [...prev, userMessage]);
+            }
+            const { data, error } = await supabase.functions.invoke('analyze-meal', {
+              body: {
+                text: msg || null,
+                images: mediaUrls && mediaUrls.length > 0 ? mediaUrls : null
+              }
+            });
+            if (error) throw error;
+            const parsed = parseAnalyzeResponse(data);
+            if (!parsed) {
+              toast.error('Analyse lieferte keine verwertbaren Daten');
+              return;
+            }
+            setMealAnalyzedData(parsed);
+            setMealUploadedImages(mediaUrls || []);
+            setMealSelectedType(parsed.meal_type || 'other');
+            setShowMealDialog(true);
+            const ack: EnhancedChatMessage = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: '🍽️ Analyse bereit – bitte bestätige die Werte im Dialog unten.',
+              created_at: new Date().toISOString(),
+              coach_personality: coach?.id || 'lucy',
+              coach_name: coach?.name || 'Coach',
+              coach_avatar: coach?.imageUrl,
+              coach_color: coach?.color,
+              coach_accent_color: coach?.accentColor
+            };
+            setMessages(prev => [...prev, ack]);
+            setInputText('');
+            return;
+          }
+          if (toolCtx.tool === 'supplement') {
+            if (msg) {
+              const userMessage: EnhancedChatMessage = {
+                id: `user-${Date.now()}`,
+                role: 'user',
+                content: msg,
+                created_at: new Date().toISOString(),
+                coach_personality: coach?.id || 'lucy',
+                coach_name: coach?.name || 'Coach',
+                coach_avatar: coach?.imageUrl,
+                coach_color: coach?.color,
+                coach_accent_color: coach?.accentColor
+              };
+              setMessages(prev => [...prev, userMessage]);
+            }
+            const firstImage = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : undefined;
+            const { data, error } = await supabase.functions.invoke('supplement-recognition', {
+              body: { imageUrl: firstImage, userId: user?.id, userQuestion: msg || 'Bitte Supplements analysieren' }
+            });
+            if (error) throw error;
+            const summary = typeof data === 'object' ? JSON.stringify(data).slice(0, 800) : String(data);
+            const assistantMessage: EnhancedChatMessage = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: `💊 Supplement-Analyse abgeschlossen:\n${summary}${summary.length >= 800 ? '…' : ''}`,
+              created_at: new Date().toISOString(),
+              coach_personality: coach?.id || 'lucy',
+              coach_name: coach?.name || 'Coach',
+              coach_avatar: coach?.imageUrl,
+              coach_color: coach?.color,
+              coach_accent_color: coach?.accentColor
+            };
+            setMessages(prev => [...prev, assistantMessage]);
+            setInputText('');
+            return;
+          }
+          if (toolCtx.tool === 'uebung' || toolCtx.tool === 'quickworkout') {
+            // Route to training orchestrator even outside training mode
+            const payload: any = { event: { type: 'TEXT', text: msg } };
+            const { data, error } = await supabase.functions.invoke('training-orchestrator', { body: payload });
+            if (!error) {
+              const assistantMessage: EnhancedChatMessage = {
+                id: `assistant-${Date.now()}`,
+                role: 'assistant',
+                content: data?.text ?? 'OK.',
+                created_at: new Date().toISOString(),
+                coach_personality: coach?.id || 'lucy',
+                coach_name: coach?.name || 'Coach',
+                coach_avatar: coach?.imageUrl,
+                coach_color: coach?.color,
+                coach_accent_color: coach?.accentColor,
+                metadata: data?.state ?? undefined
+              };
+              setMessages(prev => [...prev, assistantMessage]);
+              setInputText('');
+              return;
+            }
+          }
+          if (toolCtx.tool === 'gewicht') {
+            setShowWeightModal(true);
+            const assistantMessage: EnhancedChatMessage = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: '⚖️ Gewichtserfassung geöffnet. Bitte trage dein Gewicht ein.',
+              created_at: new Date().toISOString(),
+              coach_personality: coach?.id || 'lucy',
+              coach_name: coach?.name || 'Coach',
+              coach_avatar: coach?.imageUrl,
+              coach_color: coach?.color,
+              coach_accent_color: coach?.accentColor
+            };
+            setMessages(prev => [...prev, assistantMessage]);
+            setInputText('');
+            return;
+          }
+        }
+      } catch (intentErr) {
+        console.warn('Intent routing failed, falling back:', intentErr);
+      }
+    }
 
     // Route Tool Picker actions
     if (selectedTool === 'mahlzeit') {
@@ -1011,6 +1149,7 @@ if (enableAdvancedFeatures) {
             </Button>
           </div>
         )}
+        <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
       </ChatLayout>
     );
   }
@@ -1096,6 +1235,7 @@ if (enableAdvancedFeatures) {
           </Button>
         </div>
       )}
+      <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
     </Card>
   );
 };
