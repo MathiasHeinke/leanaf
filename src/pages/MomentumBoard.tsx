@@ -3,10 +3,6 @@ import { usePlusData } from '@/hooks/usePlusData';
 import { MomentumXPBar } from '@/components/momentum/MomentumXPBar';
 import { MomentumHeaderTriptych } from '@/components/momentum/MomentumHeaderTriptych';
 import { StreakLevelHeader } from '@/components/plus/StreakLevelHeader';
-import { PlusDeficitRing } from '@/components/plus/PlusDeficitRing';
-import { PlusMacroDeltas } from '@/components/plus/PlusMacroDeltas';
-import { PlusTrainingSteps } from '@/components/plus/PlusTrainingSteps';
-import { PlusSupportTiles } from '@/components/plus/PlusSupportTiles';
 import { MomentumNextAction } from '@/components/momentum/MomentumNextAction';
 import { MiniJournalQuick } from '@/components/plus/MiniJournalQuick';
 import { Card, CardContent } from '@/components/ui/card';
@@ -144,10 +140,6 @@ const MomentumBoard: React.FC = () => {
           <div className="grid grid-cols-1 gap-5 md:gap-6 lg:gap-8 animate-fade-in">
             <div><StreakLevelHeader /></div>
             <div><MomentumNextAction data={data} missionCompletedCount={missionCompletedCount} /></div>
-            <div><PlusDeficitRing data={data} /></div>
-            <div><PlusMacroDeltas data={data} /></div>
-            <div><PlusTrainingSteps data={data} /></div>
-            <div><PlusSupportTiles data={data} /></div>
             <div><MiniJournalQuick /></div>
           </div>
         </div>
