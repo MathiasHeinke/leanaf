@@ -268,28 +268,32 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
         >
           <div className="bg-background/95 border border-border rounded-xl p-4 shadow-lg backdrop-blur-sm">
             <div className="text-sm font-medium mb-3">📎 Hochgeladene Medien ({uploadedMedia.length})</div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
               {uploadedMedia.map((media, index) => (
                 <div key={index} className="relative group">
-                  <Badge 
-                    variant="secondary" 
-                    className="flex items-center gap-2 pr-1 py-1 bg-primary/10 text-primary border-primary/20"
+                  {media.type === 'image' ? (
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border border-border bg-muted">
+                      <img
+                        src={media.url}
+                        alt={`Hochgeladenes Bild ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border border-border bg-muted flex items-center justify-center">
+                      <Video className="w-6 h-6 opacity-70" />
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full bg-background/80 hover:bg-destructive hover:text-destructive-foreground border border-border"
+                    onClick={() => removeMedia(index)}
+                    aria-label="Medienvorschau entfernen"
                   >
-                    {media.type === 'image' ? (
-                      <ImageIcon className="w-3 h-3" />
-                    ) : (
-                      <Video className="w-3 h-3" />
-                    )}
-                    <span className="text-xs font-medium">{media.type}</span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full"
-                      onClick={() => removeMedia(index)}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </Badge>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
                 </div>
               ))}
             </div>

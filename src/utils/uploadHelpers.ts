@@ -122,12 +122,20 @@ const uploadSingleFileWithProgress = async (
 
   onProgress(90);
 
-  // Get public URL
+  // Prefer a signed URL to ensure accessibility even if bucket is private
+  const { data: signedData, error: signedErr } = await supabase.storage
+    .from(bucketName)
+    .createSignedUrl(fileName, 60 * 60 * 24 * 7); // 7 days
+
+  onProgress(100);
+  if (!signedErr && signedData?.signedUrl) {
+    return signedData.signedUrl;
+  }
+
+  // Fallback to public URL
   const { data: urlData } = supabase.storage
     .from(bucketName)
     .getPublicUrl(fileName);
-
-  onProgress(100);
   return urlData.publicUrl;
 };
 

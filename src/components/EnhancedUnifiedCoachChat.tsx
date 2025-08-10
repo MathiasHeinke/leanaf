@@ -838,8 +838,99 @@ if (enableAdvancedFeatures) {
         return;
       } catch (e: any) {
         console.error('Supplement analysis failed:', e);
+        // Fallback: general media analysis so the coach still reacts to the image
+        try {
+          const firstImage = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : undefined;
+          if (firstImage) {
+            const { data } = await supabase.functions.invoke('coach-media-analysis', {
+              body: {
+                userId: user?.id,
+                mediaUrls: [firstImage],
+                mediaType: 'image',
+                analysisType: 'general',
+                coachPersonality: coach?.id || 'lucy',
+                userQuestion: msg || 'Bitte analysiere dieses Bild'
+              }
+            });
+            const summary = (data?.analysis || data?.content || JSON.stringify(data));
+            const assistantMessage: EnhancedChatMessage = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: `🖼️ Analyse (Fallback):\n${summary}`,
+              created_at: new Date().toISOString(),
+              coach_personality: coach?.id || 'lucy',
+              coach_name: coach?.name || 'Coach',
+              coach_avatar: coach?.imageUrl,
+              coach_color: coach?.color,
+              coach_accent_color: coach?.accentColor
+            };
+            setMessages(prev => [...prev, assistantMessage]);
+            setInputText('');
+            return;
+          }
+        } catch (fallbackErr) {
+          console.warn('Fallback media analysis also failed:', fallbackErr);
+        }
         toast.error('Supplement-Analyse fehlgeschlagen');
         return;
+      }
+    }
+
+    // If media is attached without a specific tool, auto-analyze with coach-media-analysis
+    if (mediaUrls && mediaUrls.length > 0 && !selectedTool) {
+      try {
+        // Add user message if provided
+        if (msg) {
+          const userMessage: EnhancedChatMessage = {
+            id: `user-${Date.now()}`,
+            role: 'user',
+            content: msg,
+            created_at: new Date().toISOString(),
+            coach_personality: coach?.id || 'lucy',
+            coach_name: coach?.name || 'Coach',
+            coach_avatar: coach?.imageUrl,
+            coach_color: coach?.color,
+            coach_accent_color: coach?.accentColor
+          };
+          setMessages(prev => [...prev, userMessage]);
+        }
+
+        const images = mediaUrls.filter((u) => /\.(jpg|jpeg|png|gif|webp)$/i.test(u));
+        const videos = mediaUrls.filter((u) => /\.(mp4|mov|avi|webm)$/i.test(u));
+        const analysisType = 'general';
+        const mediaType = images.length > 0 ? 'image' : 'video';
+        const urlsForAnalysis = images.length > 0 ? images : videos;
+
+        const { data, error } = await supabase.functions.invoke('coach-media-analysis', {
+          body: {
+            userId: user?.id,
+            mediaUrls: urlsForAnalysis,
+            mediaType,
+            analysisType,
+            coachPersonality: coach?.id || 'lucy',
+            userQuestion: msg || 'Bitte analysiere die angehängten Medien'
+          }
+        });
+        if (error) throw error;
+
+        const analysisText = (data?.analysis || data?.content || data?.result || JSON.stringify(data));
+        const assistantMessage: EnhancedChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: (mediaType === 'image' ? '🖼️ ' : '🎬 ') + 'Analyse:\n' + analysisText,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.id || 'lucy',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setInputText('');
+        return;
+      } catch (e) {
+        console.warn('Auto media analysis failed, falling back to normal chat:', e);
+        // fall through to default behavior
       }
     }
 
@@ -855,7 +946,7 @@ if (enableAdvancedFeatures) {
     await handleSendMessage(fullMessage, mediaUrls, selectedTool);
   }, [coach, user?.id, parseAnalyzeResponse, handleSendMessage]);
 
-  // ============= FULLSCREEN LAYOUT =============
+    // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {
     return (
       <ChatLayout 
