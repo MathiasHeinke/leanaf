@@ -61,21 +61,13 @@ serve(async (req) => {
     if (finalIntent === "training") {
       const trainingPayload: any = { clientEventId, event };
 
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/training-orchestrator`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-          Authorization: authorization,
-          apikey: SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify(trainingPayload),
+      const { data, error } = await supabase.functions.invoke('training-orchestrator', {
+        body: trainingPayload,
       });
 
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        console.error("training-orchestrator proxy error", data);
-        return new Response(JSON.stringify({ error: data?.error || "Training orchestrator failed" }), {
+      if (error) {
+        console.error("training-orchestrator proxy error", error);
+        return new Response(JSON.stringify({ error: error.message || "Training orchestrator failed" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -86,15 +78,93 @@ serve(async (req) => {
       });
     }
 
-    // Non-training intents: phase-2 minimal acks (no DB writes yet)
+    // Non-training intents: Image classification and routing
     if (event.type === "IMAGE") {
-      return new Response(
-        JSON.stringify({
-          text: "📸 Bild erhalten. Die Bild-Analyse für Nicht-Training wird in Kürze aktiviert.",
-          routed: "image_ack",
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      try {
+        const { data: cls, error: clsErr } = await supabase.functions.invoke('image-classifier', {
+          body: { imageUrl: event.url, userId }
+        });
+        if (clsErr) throw clsErr;
+        const category = cls?.category || 'general';
+        const confidence = Number(cls?.confidence || 0);
+
+        if (category === 'exercise') {
+          // Forward image to training orchestrator
+          const trainingPayload: any = { clientEventId, event };
+          const { data, error } = await supabase.functions.invoke('training-orchestrator', { body: trainingPayload });
+          if (error) throw error;
+          return new Response(JSON.stringify({ ...data, routed: 'training' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        if (category === 'supplement') {
+          // Log supplement recognition intent for traceability
+          if (userId) {
+            await supabase.from('supplement_recognition_log').insert([
+              {
+                user_id: userId,
+                image_url: event.url,
+                recognized_supplements: cls?.recognized || [],
+                confidence_score: confidence || null,
+                analysis_result: cls?.description || null,
+              },
+            ]);
+          }
+          return new Response(
+            JSON.stringify({
+              text: `💊 Supplement erkannt (Sicherheit ${(confidence * 100).toFixed(0)}%). Soll ich das speichern oder mehr Details analysieren?`,
+              routed: 'supplement',
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (category === 'food') {
+          return new Response(
+            JSON.stringify({
+              text: `🍽️ Mahlzeit erkannt (Sicherheit ${(confidence * 100).toFixed(0)}%). Möchtest du, dass ich sie jetzt analysiere und speichere? Antworte mit 'ja'.`,
+              routed: 'meal_image',
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (category === 'body') {
+          if (userId) {
+            await supabase.from('target_images').insert([
+              {
+                user_id: userId,
+                image_url: event.url,
+                image_type: 'progress',
+                image_category: 'body_progress',
+              },
+            ]);
+          }
+          return new Response(
+            JSON.stringify({
+              text: '📸 Fortschrittsfoto gespeichert. Soll ich das mit deinem Ziel verknüpfen?',
+              routed: 'body_progress',
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            text: '🖼️ Bild erhalten. Ich konnte es keiner Kategorie eindeutig zuordnen. Was möchtest du damit machen?',
+            routed: 'image_unknown',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (e) {
+        console.warn('image classification failed', e);
+        return new Response(
+          JSON.stringify({
+            text: '📸 Bild erhalten. Kurze Analyse nicht möglich – möchtest du Training, Mahlzeit oder Supplement erfassen?',
+            routed: 'image_ack',
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     switch (finalIntent) {
