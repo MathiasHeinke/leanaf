@@ -130,6 +130,35 @@ serve(async (req) => {
       payload: { type: event.type, source, chatMode }
     });
 
+    // Auto-classify image if missing image_type to improve routing
+    if (event.type === "IMAGE" && !(event as any).context?.image_type && (event as any).url) {
+      const tStart = Date.now();
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        coachId: undefined,
+        stage: 'tool_exec',
+        handler: 'image-classifier',
+        status: 'RUNNING',
+        payload: { action: 'classify_image' }
+      });
+      const { data: cls, error: clsErr } = await supabase.functions.invoke("image-classifier", {
+        body: { imageUrl: (event as any).url, userId },
+        headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
+      });
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        coachId: undefined,
+        stage: 'tool_result',
+        handler: 'image-classifier',
+        status: clsErr ? 'ERROR' : 'OK',
+        latencyMs: Date.now() - tStart,
+        payload: { category: (cls as any)?.category, confidence: (cls as any)?.confidence }
+      });
+      (event as any).context = { ...(event as any).context, image_type: (cls as any)?.category ?? 'unknown' };
+    }
+
     const intent = chatMode === "training"
       ? { name: "training", score: 0.9, toolCandidate: "training-orchestrator" } as Intent
       : detectIntentWithConfidence(event);
@@ -267,8 +296,11 @@ serve(async (req) => {
       const tool = event.type === "IMAGE" ? "supplement-recognition" : "supplement-analysis";
       const t0 = Date.now();
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: tool, status: 'RUNNING' });
+      const invokeBody = event.type === "IMAGE"
+        ? { userId, imageUrl: (event as any).url, userQuestion: "" }
+        : { userId, event };
       const { data, error } = await supabase.functions.invoke(tool, {
-        body: { userId, event },
+        body: invokeBody,
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;

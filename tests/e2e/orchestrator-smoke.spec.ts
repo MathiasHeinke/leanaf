@@ -55,3 +55,25 @@ test("tool timeout → fallback", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect(page.getByText(/Kurz hake ich|Ich helfe dir direkt/i)).toBeVisible();
 });
+
+// New: supplement image → analysis
+test("supplement image → analysis", async ({ page }) => {
+  await page.goto("/coach");
+  const fileChooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: /Foto/i }).click();
+  const chooser = await fileChooserPromise;
+  await chooser.setFiles("tests/fixtures/supplement_creatine.jpg");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/Supplement-Analyse|💊/i)).toBeVisible();
+});
+
+// New: food image → meal analysis
+test("food image → meal analysis", async ({ page }) => {
+  await page.goto("/coach");
+  const fileChooserPromise = page.waitForEvent("filechooser");
+  await page.getByRole("button", { name: /Foto/i }).click();
+  const chooser = await fileChooserPromise;
+  await chooser.setFiles("tests/fixtures/meal_bowl.jpg");
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/Bitte kurz bestätigen|Mahlzeit|Analyse/i)).toBeVisible();
+});

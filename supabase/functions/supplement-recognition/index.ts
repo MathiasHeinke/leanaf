@@ -28,13 +28,11 @@ serve(async (req) => {
     const supabaseLog = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
     const t0 = Date.now();
     
-    const body = await req.json();
+    const body = await req.json().catch(() => ({} as any));
     
-    const {
-      userId,
-      imageUrl,
-      userQuestion = ''
-    } = body;
+    const userId: string | null = body?.userId ?? null;
+    const imageUrl: string = body?.imageUrl ?? body?.event?.url ?? '';
+    const userQuestion: string = body?.userQuestion ?? body?.event?.text ?? '';
 
     // Telemetry: received
     await logTraceEvent(supabaseLog, {
@@ -49,6 +47,15 @@ serve(async (req) => {
 
     // Validate inputs
     if (!userId || !imageUrl) {
+      await logTraceEvent(supabaseLog, {
+        traceId,
+        userId: userId ?? null,
+        coachId: null,
+        stage: 'error',
+        handler: 'supplement-recognition',
+        status: 'ERROR',
+        errorMessage: !userId ? 'missing userId' : 'missing imageUrl'
+      });
       return new Response(
         JSON.stringify({ error: 'User ID and image URL are required' }),
         { 
