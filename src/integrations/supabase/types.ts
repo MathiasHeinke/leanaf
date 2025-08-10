@@ -1460,6 +1460,7 @@ export type Database = {
       }
       diary_entries: {
         Row: {
+          client_event_id: string | null
           content: string
           created_at: string
           date: string
@@ -1471,6 +1472,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_event_id?: string | null
           content: string
           created_at?: string
           date: string
@@ -1482,6 +1484,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_event_id?: string | null
           content?: string
           created_at?: string
           date?: string
@@ -4617,44 +4620,56 @@ export type Database = {
       }
       unmet_tool_events: {
         Row: {
+          client_event_id: string | null
           confidence: number | null
           created_at: string | null
+          error: string | null
           handled_manually: boolean | null
           id: string
           intent_guess: string | null
           manual_summary: string | null
           message: string
           session_id: string
+          source: string | null
           status: string | null
           suggested_tool: string | null
+          trace_id: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          client_event_id?: string | null
           confidence?: number | null
           created_at?: string | null
+          error?: string | null
           handled_manually?: boolean | null
           id?: string
           intent_guess?: string | null
           manual_summary?: string | null
           message: string
           session_id: string
+          source?: string | null
           status?: string | null
           suggested_tool?: string | null
+          trace_id?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          client_event_id?: string | null
           confidence?: number | null
           created_at?: string | null
+          error?: string | null
           handled_manually?: boolean | null
           id?: string
           intent_guess?: string | null
           manual_summary?: string | null
           message?: string
           session_id?: string
+          source?: string | null
           status?: string | null
           suggested_tool?: string | null
+          trace_id?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -5290,6 +5305,7 @@ export type Database = {
         Row: {
           body_fat_percentage: number | null
           body_water_percentage: number | null
+          client_event_id: string | null
           created_at: string
           date: string
           id: string
@@ -5306,6 +5322,7 @@ export type Database = {
         Insert: {
           body_fat_percentage?: number | null
           body_water_percentage?: number | null
+          client_event_id?: string | null
           created_at?: string
           date?: string
           id?: string
@@ -5322,6 +5339,7 @@ export type Database = {
         Update: {
           body_fat_percentage?: number | null
           body_water_percentage?: number | null
+          client_event_id?: string | null
           created_at?: string
           date?: string
           id?: string
