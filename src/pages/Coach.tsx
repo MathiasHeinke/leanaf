@@ -37,10 +37,13 @@ const CoachPage = () => {
       );
     }
     
+    const trainingCoachIds = ['sascha', 'markus'];
+    const chatMode: 'training' | 'specialized' = trainingCoachIds.includes(selectedCoach.id) ? 'training' : 'specialized';
+    
     return (
       <div className="h-screen relative">
         <EnhancedUnifiedCoachChat
-          mode="specialized"
+          mode={chatMode}
           coach={selectedCoach}
           useFullscreenLayout={true}
           enableAdvancedFeatures={true}

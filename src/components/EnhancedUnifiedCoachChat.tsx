@@ -728,6 +728,12 @@ if (enableAdvancedFeatures) {
   const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
     const msg = (message || '').trim();
 
+    // Special: pure media in training mode -> send IMAGE event directly
+    if (mode === 'training' && (!msg) && mediaUrls && mediaUrls.length > 0 && !selectedTool) {
+      await handleSendMessage('', mediaUrls);
+      return;
+    }
+
     // Route Tool Picker actions
     if (selectedTool === 'mahlzeit') {
       try {
@@ -846,7 +852,7 @@ if (enableAdvancedFeatures) {
       fullMessage += `\n\nAusgewähltes Tool: ${selectedTool}`;
     }
     setInputText(fullMessage);
-    await handleSendMessage(fullMessage);
+    await handleSendMessage(fullMessage, mediaUrls, selectedTool);
   }, [coach, user?.id, parseAnalyzeResponse, handleSendMessage]);
 
   // ============= FULLSCREEN LAYOUT =============
@@ -905,6 +911,13 @@ if (enableAdvancedFeatures) {
             )}
             
             <div ref={messagesEndRef} />
+          </div>
+        )}
+        {mode === 'training' && (
+          <div className="fixed right-4 bottom-24 z-50">
+            <Button onClick={() => handleSendMessage('/end')} variant="secondary">
+              Fertig & Zusammenfassung
+            </Button>
           </div>
         )}
       </ChatLayout>
@@ -985,6 +998,13 @@ if (enableAdvancedFeatures) {
           />
         </div>
       </CardContent>
+      {mode === 'training' && (
+        <div className="fixed right-4 bottom-24 z-50">
+          <Button onClick={() => handleSendMessage('/end')} variant="secondary">
+            Fertig & Zusammenfassung
+          </Button>
+        </div>
+      )}
     </Card>
   );
 };
