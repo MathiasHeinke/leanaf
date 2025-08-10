@@ -14,21 +14,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MomentumBottomComposer } from '@/components/momentum/MomentumBottomComposer';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { QuickHydrationCard } from '@/components/momentum/quick/QuickHydrationCard';
-import { QuickSupplementsCard } from '@/components/momentum/quick/QuickSupplementsCard';
+
 import { QuickWeightCard } from '@/components/momentum/quick/QuickWeightCard';
 import { QuickSleepCard } from '@/components/momentum/quick/QuickSleepCard';
 import { QuickTrainingCard } from '@/components/momentum/quick/QuickTrainingCard';
 import { QuickMealsCard } from '@/components/momentum/quick/QuickMealsCard';
 import confetti from 'canvas-confetti';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-import { TrainingFloatingCoach } from '../../dev0/components/TrainingFloatingCoach';
+import { SupplementSmartChips } from '@/components/momentum/SupplementSmartChips';
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
   const enabled = isEnabled('feature_plus_dashboard');
   const data = usePlusData();
   const [xpDelta, setXpDelta] = useState<number>(0);
   const [previousMissions, setPreviousMissions] = useState<number>(0);
-  const [coachOpen, setCoachOpen] = useState(false);
+  
   // Tagesmission Dynamik aus Daten ableiten
   const macrosDone = typeof (data as any)?.proteinDelta === 'number' ? ((data as any).proteinDelta <= 0) : false;
   const sleepLogged = Boolean((data as any)?.sleepLoggedToday || (((data as any)?.sleepDurationToday ?? 0) > 0));
@@ -129,15 +129,11 @@ const MomentumBoard: React.FC = () => {
         />
         
         <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-0 pb-6 max-w-5xl font-display">
-          <header className="board-hero animate-fade-in mt-2 mb-5">
-            <h1 className="text-3xl md:text-4xl">Momentum-Board</h1>
-            <p className="text-muted-foreground mt-1">Dein tägliches Momentum: Defizit, Protein, Schritte & mehr.</p>
-          </header>
+          <SupplementSmartChips />
 
           <section aria-label="Schnellerfassung" className="mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <QuickHydrationCard />
-              <QuickSupplementsCard />
               <QuickWeightCard />
               <QuickSleepCard />
               <QuickTrainingCard />
@@ -158,12 +154,6 @@ const MomentumBoard: React.FC = () => {
         {/* Spacer to avoid overlap with bottom composer */}
         <div aria-hidden className="h-24" />
         <MomentumBottomComposer />
-        {/* Floating Training Coach */}
-        <TrainingFloatingCoach 
-          isOpen={coachOpen}
-          onToggle={() => setCoachOpen((o) => !o)}
-          onExerciseLogged={() => {}}
-        />
       </main>
     </ErrorBoundary>
   );
