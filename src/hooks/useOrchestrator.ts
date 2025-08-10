@@ -24,7 +24,8 @@ export type CoachEvent =
 
 function normalizeReply(raw: any): OrchestratorReply {
   if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
-  if (raw.kind === 'message' || raw.kind === 'clarify' || raw.kind === 'confirm_save_meal') return raw as OrchestratorReply;
+  const k = typeof raw?.kind === 'string' ? raw.kind.toLowerCase() : '';
+  if (k === 'message' || k === 'clarify' || k === 'confirm_save_meal') return raw as OrchestratorReply;
   const text = raw.reply ?? raw.content ?? (typeof raw === 'string' ? raw : 'OK');
   return { kind: 'message', text, end: raw.end, traceId: raw.traceId };
 }

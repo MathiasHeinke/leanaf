@@ -27,6 +27,9 @@ import { detectToolIntent, shouldUseTool } from '@/utils/toolDetector';
 import { WeightEntryModal } from '@/components/WeightEntryModal';
 import { v4 as uuidv4 } from 'uuid';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useOrchestrator, OrchestratorReply } from '@/hooks/useOrchestrator';
+import ChoiceBar from '@/components/ChoiceBar';
+import ConfirmMealModal from '@/components/ConfirmMealModal';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -111,6 +114,11 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   // Feature flags
   const { isEnabled: isFlagEnabled } = useFeatureFlags();
   const autoTool = isFlagEnabled('auto_tool_orchestration');
+  const { sendEvent } = useOrchestrator();
+
+  // Orchestrator UI states
+  const [clarify, setClarify] = useState<{ prompt: string; options: [string, string]; traceId?: string } | null>(null);
+  const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -126,6 +134,43 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
     };
     fetchUserProfile();
   }, [user?.id]);
+
+  // Central reply handler
+  const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
+    if (!res) return;
+    if (res.kind === 'message') {
+      const assistantMessage: EnhancedChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: res.text,
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.id || 'lucy',
+        coach_name: coach?.name || 'Coach',
+        coach_avatar: coach?.imageUrl,
+        coach_color: coach?.color,
+        coach_accent_color: coach?.accentColor,
+        metadata: res.traceId ? { traceId: res.traceId } : undefined,
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+      setClarify(null);
+      return;
+    }
+    if (res.kind === 'clarify') {
+      setClarify({ prompt: res.prompt, options: res.options, traceId: res.traceId });
+      return;
+    }
+    if (res.kind === 'confirm_save_meal') {
+      setConfirmMeal({ open: true, prompt: res.prompt, proposal: res.proposal, traceId: res.traceId });
+      setClarify(null);
+      return;
+    }
+  }, [coach]);
+
+  const handleClarifyPick = useCallback(async (value: string) => {
+    if (!user?.id) return;
+    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: mode } });
+    renderOrchestratorReply(reply);
+  }, [user?.id, mode, sendEvent, renderOrchestratorReply]);
 
   // Helper: normalize analyze-meal responses
   const parseAnalyzeResponse = useCallback((data: any) => {
@@ -740,297 +785,46 @@ if (enableAdvancedFeatures) {
   const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
     const msg = (message || '').trim();
 
-    // Special: pure media in training mode -> send IMAGE event directly
-    if (mode === 'training' && (!msg) && mediaUrls && mediaUrls.length > 0) {
-      await handleSendMessage('', mediaUrls);
-      return;
-    }
-    // Auto intent detection (no manual picker)
+    // Create user-visible message immediately
     if (msg) {
-      try {
-        const toolCtx = detectToolIntent(msg);
-        if (shouldUseTool(toolCtx)) {
-          // Add user message in UI if not already added later
-          if (toolCtx.tool === 'mealCapture') {
-            // Send to orchestrator to analyze meal (text and optional images)
-            if (msg) {
-              const userMessage: EnhancedChatMessage = {
-                id: `user-${Date.now()}`,
-                role: 'user',
-                content: msg,
-                created_at: new Date().toISOString(),
-                coach_personality: coach?.id || 'lucy',
-                coach_name: coach?.name || 'Coach',
-                coach_avatar: coach?.imageUrl,
-                coach_color: coach?.color,
-                coach_accent_color: coach?.accentColor
-              };
-              setMessages(prev => [...prev, userMessage]);
-            }
+      const userMessage: EnhancedChatMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: msg,
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.id || 'lucy',
+        coach_name: coach?.name || 'Coach',
+        coach_avatar: coach?.imageUrl,
+        coach_color: coach?.color,
+        coach_accent_color: coach?.accentColor
+      };
+      setMessages(prev => [...prev, userMessage]);
+    }
 
-            const clientEventId = uuidv4();
-            const firstImage = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : undefined;
-            const event = { type: 'TEXT', text: msg } as const;
-            const { data, error } = await supabase.functions.invoke('coach-orchestrator', {
-              body: { clientEventId, event }
-            });
-            if (error) {
-              console.error('coach-orchestrator meal route failed:', error);
-              toast.error('Mahlzeit-Erkennung derzeit nicht verfügbar');
-              return;
-            }
+    try {
+      if (!user?.id) return;
+      const clientEventId = uuidv4();
 
-            // Prefer orchestrator-provided analysis
-            const parsed = parseAnalyzeResponse(data?.analysis);
-            if (parsed) {
-              setMealAnalyzedData(parsed);
-              setMealUploadedImages(firstImage ? [firstImage] : []);
-              setMealSelectedType(parsed.meal_type || 'other');
-              if (autoTool) {
-                setShowMealDialog(true);
-              }
-
-              const ack: EnhancedChatMessage = {
-                id: `assistant-${Date.now()}`,
-                role: 'assistant',
-                content: '🍽️ Analyse bereit – bitte bestätige die Werte im Dialog unten.',
-                created_at: new Date().toISOString(),
-                coach_personality: coach?.id || 'lucy',
-                coach_name: coach?.name || 'Coach',
-                coach_avatar: coach?.imageUrl,
-                coach_color: coach?.color,
-                coach_accent_color: coach?.accentColor
-              };
-              setMessages(prev => [...prev, ack]);
-              setInputText('');
-              return;
-            }
-
-            // No analysis returned – show message from orchestrator
-            const assistantMessage: EnhancedChatMessage = {
-              id: `assistant-${Date.now()}`,
-              role: 'assistant',
-              content: data?.text ?? 'OK.',
-              created_at: new Date().toISOString(),
-              coach_personality: coach?.id || 'lucy',
-              coach_name: coach?.name || 'Coach',
-              coach_avatar: coach?.imageUrl,
-              coach_color: coach?.color,
-              coach_accent_color: coach?.accentColor
-            };
-            setMessages(prev => [...prev, assistantMessage]);
-            setInputText('');
-            return;
-          }
-          if (toolCtx.tool === 'supplement') {
-            if (msg) {
-              const userMessage: EnhancedChatMessage = {
-                id: `user-${Date.now()}`,
-                role: 'user',
-                content: msg,
-                created_at: new Date().toISOString(),
-                coach_personality: coach?.id || 'lucy',
-                coach_name: coach?.name || 'Coach',
-                coach_avatar: coach?.imageUrl,
-                coach_color: coach?.color,
-                coach_accent_color: coach?.accentColor
-              };
-              setMessages(prev => [...prev, userMessage]);
-            }
-            const firstImage = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : undefined;
-            const { data, error } = await supabase.functions.invoke('supplement-recognition', {
-              body: { imageUrl: firstImage, userId: user?.id, userQuestion: msg || 'Bitte Supplements analysieren' }
-            });
-            if (error) throw error;
-            const summary = typeof data === 'object' ? JSON.stringify(data).slice(0, 800) : String(data);
-            const assistantMessage: EnhancedChatMessage = {
-              id: `assistant-${Date.now()}`,
-              role: 'assistant',
-              content: `💊 Supplement-Analyse abgeschlossen:\n${summary}${summary.length >= 800 ? '…' : ''}`,
-              created_at: new Date().toISOString(),
-              coach_personality: coach?.id || 'lucy',
-              coach_name: coach?.name || 'Coach',
-              coach_avatar: coach?.imageUrl,
-              coach_color: coach?.color,
-              coach_accent_color: coach?.accentColor
-            };
-            setMessages(prev => [...prev, assistantMessage]);
-            setInputText('');
-            return;
-          }
-          if (toolCtx.tool === 'uebung' || toolCtx.tool === 'quickworkout') {
-            // Route to training orchestrator even outside training mode
-            const payload: any = { event: { type: 'TEXT', text: msg } };
-            const { data, error } = await supabase.functions.invoke('coach-orchestrator', { body: { ...payload, clientEventId: uuidv4(), mode: 'training' } });
-            if (!error) {
-              const assistantMessage: EnhancedChatMessage = {
-                id: `assistant-${Date.now()}`,
-                role: 'assistant',
-                content: data?.text ?? 'OK.',
-                created_at: new Date().toISOString(),
-                coach_personality: coach?.id || 'lucy',
-                coach_name: coach?.name || 'Coach',
-                coach_avatar: coach?.imageUrl,
-                coach_color: coach?.color,
-                coach_accent_color: coach?.accentColor,
-                metadata: data?.state ?? undefined
-              };
-              setMessages(prev => [...prev, assistantMessage]);
-              setInputText('');
-              return;
-            }
-          }
-          if (toolCtx.tool === 'gewicht') {
-            setShowWeightModal(true);
-            const assistantMessage: EnhancedChatMessage = {
-              id: `assistant-${Date.now()}`,
-              role: 'assistant',
-              content: '⚖️ Gewichtserfassung geöffnet. Bitte trage dein Gewicht ein.',
-              created_at: new Date().toISOString(),
-              coach_personality: coach?.id || 'lucy',
-              coach_name: coach?.name || 'Coach',
-              coach_avatar: coach?.imageUrl,
-              coach_color: coach?.color,
-              coach_accent_color: coach?.accentColor
-            };
-            setMessages(prev => [...prev, assistantMessage]);
-            setInputText('');
-            return;
-          }
-        }
-      } catch (intentErr) {
-        console.warn('Intent routing failed, falling back:', intentErr);
+      // Decide event type
+      let event: { type: 'TEXT'|'IMAGE'|'END'; text?: string; url?: string } = { type: 'TEXT', text: msg };
+      if (mediaUrls && mediaUrls.length > 0 && !msg) {
+        event = { type: 'IMAGE', url: mediaUrls[0] };
       }
-    }
-
-    // Route Tool Picker actions removed – unified auto intent flow handles meals/supplements
-
-
-    // If media is attached without a specific tool, auto-analyze with coach-media-analysis
-    if (mediaUrls && mediaUrls.length > 0) {
-      try {
-        // Add user message if provided
-        if (msg) {
-          const userMessage: EnhancedChatMessage = {
-            id: `user-${Date.now()}`,
-            role: 'user',
-            content: msg,
-            created_at: new Date().toISOString(),
-            coach_personality: coach?.id || 'lucy',
-            coach_name: coach?.name || 'Coach',
-            coach_avatar: coach?.imageUrl,
-            coach_color: coach?.color,
-            coach_accent_color: coach?.accentColor
-          };
-          setMessages(prev => [...prev, userMessage]);
-        }
-
-        // First try unified orchestrator for image routing (exercise/meal/supplement/body)
-        try {
-          const clientEventId = uuidv4();
-          const firstImage = (mediaUrls && mediaUrls.length > 0) ? mediaUrls[0] : undefined;
-          if (firstImage) {
-            const { data: orch, error: orchErr } = await supabase.functions.invoke('coach-orchestrator', {
-              body: { clientEventId, event: { type: 'IMAGE', url: firstImage } }
-            });
-            if (!orchErr && orch) {
-              // Meal image with analysis → open dialog
-              const parsed = parseAnalyzeResponse(orch.analysis);
-              if (orch.routed === 'meal_image' && parsed) {
-                setMealAnalyzedData(parsed);
-                setMealUploadedImages([firstImage]);
-                setMealSelectedType(parsed.meal_type || 'other');
-                if (autoTool) {
-                  setShowMealDialog(true);
-                }
-
-                const ack: EnhancedChatMessage = {
-                  id: `assistant-${Date.now()}`,
-                  role: 'assistant',
-                  content: '🍽️ Analyse bereit – bitte bestätige die Werte im Dialog unten.',
-                  created_at: new Date().toISOString(),
-                  coach_personality: coach?.id || 'lucy',
-                  coach_name: coach?.name || 'Coach',
-                  coach_avatar: coach?.imageUrl,
-                  coach_color: coach?.color,
-                  coach_accent_color: coach?.accentColor
-                };
-                setMessages(prev => [...prev, ack]);
-                setInputText('');
-                return;
-              }
-
-              // Otherwise, show orchestrator text (training/supplement/body/general)
-              if (orch.text) {
-                const assistantMessage: EnhancedChatMessage = {
-                  id: `assistant-${Date.now()}`,
-                  role: 'assistant',
-                  content: orch.text,
-                  created_at: new Date().toISOString(),
-                  coach_personality: coach?.id || 'lucy',
-                  coach_name: coach?.name || 'Coach',
-                  coach_avatar: coach?.imageUrl,
-                  coach_color: coach?.color,
-                  coach_accent_color: coach?.accentColor
-                };
-                setMessages(prev => [...prev, assistantMessage]);
-                setInputText('');
-                return;
-              }
-            }
-          }
-        } catch (e) {
-          console.warn('coach-orchestrator image route failed, falling back to media analysis:', e);
-        }
-
-        // Fallback: generic media analysis
-        const images = mediaUrls.filter((u) => /\.(jpg|jpeg|png|gif|webp)$/i.test(u));
-        const videos = mediaUrls.filter((u) => /\.(mp4|mov|avi|webm)$/i.test(u));
-        const analysisType = 'general';
-        const mediaType = images.length > 0 ? 'image' : 'video';
-        const urlsForAnalysis = images.length > 0 ? images : videos;
-
-        const { data, error } = await supabase.functions.invoke('coach-media-analysis', {
-          body: {
-            userId: user?.id,
-            mediaUrls: urlsForAnalysis,
-            mediaType,
-            analysisType,
-            coachPersonality: coach?.id || 'lucy',
-            userQuestion: msg || 'Bitte analysiere die angehängten Medien'
-          }
-        });
-        if (error) throw error;
-
-        const analysisText = (data?.analysis || data?.content || data?.result || JSON.stringify(data));
-        const assistantMessage: EnhancedChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: (mediaType === 'image' ? '🖼️ ' : '🎬 ') + 'Analyse:\n' + analysisText,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.id || 'lucy',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-        setInputText('');
-        return;
-      } catch (e) {
-        console.warn('Auto media analysis failed, falling back to normal chat:', e);
-        // fall through to default behavior
+      if (msg === '/end' || msg.toLowerCase() === 'end') {
+        event = { type: 'END' };
       }
+
+      const reply = await sendEvent(user.id, { ...event, clientEventId, context: { source: 'chat', coachMode: mode } } as any);
+      renderOrchestratorReply(reply);
+      setInputText('');
+      return;
+    } catch (e) {
+      console.warn('Orchestrator routing failed, falling back to normal chat:', e);
     }
 
-    // Default: normal chat flow (preserve existing behavior)
-    let fullMessage = msg;
-    if (mediaUrls && mediaUrls.length > 0) {
-      fullMessage += `\n\nAngehängte Medien: ${mediaUrls.join(', ')}`;
-    }
-    setInputText(fullMessage);
-    await handleSendMessage(fullMessage, mediaUrls);
-  }, [coach, user?.id, parseAnalyzeResponse, handleSendMessage]);
+    // Fallback to existing behavior
+    await handleSendMessage(msg, mediaUrls);
+  }, [coach, user?.id, mode, sendEvent, renderOrchestratorReply, handleSendMessage]);
 
     // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {

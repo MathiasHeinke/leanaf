@@ -18,7 +18,9 @@ export const MomentumBottomComposer: React.FC = () => {
   const orchestrationEnabled = isEnabled('auto_tool_orchestration');
   const { user } = useAuth();
   const { sendEvent } = useOrchestrator();
- 
+
+  const [clarify, setClarify] = useState<{ prompt: string; options: [string, string]; traceId?: string } | null>(null);
+  const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePhotoTap = useCallback(() => {
@@ -47,22 +49,28 @@ export const MomentumBottomComposer: React.FC = () => {
   }, [openQuickMealSheet]);
 
 const handleSubmit = useCallback(async () => {
-  if (inputText.trim()) {
-    setActiveTab("text");
-    openQuickMealSheet("text");
-    // Optional: Orchestrator-Routing (nicht blockierend)
-    if (orchestrationEnabled && user?.id) {
-      try {
-        await sendEvent(user.id, {
-          type: 'TEXT',
-          text: inputText.trim(),
-          clientEventId: crypto.randomUUID(),
-          context: { source: 'momentum', coachMode: 'nutrition' }
-        });
-      } catch (e) {
-        // still ok – QuickSheet bleibt der Fast-Path
-        console.debug('Orchestrator sendEvent failed (non-blocking)', e);
+  if (!inputText.trim()) return;
+  setActiveTab("text");
+  openQuickMealSheet("text");
+  if (orchestrationEnabled && user?.id) {
+    try {
+      const reply = await sendEvent(user.id, {
+        type: 'TEXT',
+        text: inputText.trim(),
+        clientEventId: crypto.randomUUID(),
+        context: { source: 'momentum', coachMode: 'nutrition' }
+      });
+      if (reply.kind === 'message') {
+        toast.message(reply.text);
+        setClarify(null);
+      } else if (reply.kind === 'clarify') {
+        setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
+      } else if (reply.kind === 'confirm_save_meal') {
+        setConfirmMeal({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+        setClarify(null);
       }
+    } catch (e) {
+      console.debug('Orchestrator sendEvent failed (non-blocking)', e);
     }
   }
 }, [inputText, openQuickMealSheet, orchestrationEnabled, user?.id, sendEvent]);
@@ -135,6 +143,45 @@ const handleSubmit = useCallback(async () => {
           </div>
         </div>
       </div>
+
+      {/* Orchestrator UI Responses */}
+      {clarify && (
+        <div className="container mx-auto px-4 mt-2 max-w-5xl">
+          <ChoiceBar prompt={clarify.prompt} options={clarify.options} onPick={async (v) => {
+            if (!user?.id) return;
+            const res = await sendEvent(user.id, { type: 'TEXT', text: v, clientEventId: crypto.randomUUID(), context: { source: 'momentum', coachMode: 'nutrition' } });
+            if (res.kind === 'message') { toast.message(res.text); setClarify(null); }
+            if (res.kind === 'clarify') { setClarify({ prompt: res.prompt, options: res.options, traceId: res.traceId }); }
+            if (res.kind === 'confirm_save_meal') { setConfirmMeal({ open: true, prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); setClarify(null); }
+          }} />
+        </div>
+      )}
+
+      <ConfirmMealModal
+        open={confirmMeal.open}
+        prompt={confirmMeal.prompt}
+        proposal={confirmMeal.proposal}
+        onConfirm={async () => {
+          try {
+            if (!user?.id || !confirmMeal.proposal) return;
+            const p = confirmMeal.proposal as any;
+            await supabase.from('meals').insert({
+              user_id: user.id,
+              text: p.title || 'Mahlzeit',
+              calories: Math.round(p.calories || 0),
+              protein: Math.round(p.protein || 0),
+              carbs: Math.round(p.carbs || 0),
+              fats: Math.round(p.fats || 0),
+            });
+            toast.success('Mahlzeit gespeichert');
+          } catch (e) {
+            toast.error('Speichern fehlgeschlagen');
+          } finally {
+            setConfirmMeal(prev => ({ ...prev, open: false }));
+          }
+        }}
+        onClose={() => setConfirmMeal(prev => ({ ...prev, open: false }))}
+      />
 
       {/* Meal Sheet */}
       <Suspense fallback={null}>
