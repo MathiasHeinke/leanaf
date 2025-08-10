@@ -47,12 +47,25 @@ export const QuickSleepCard: React.FC = () => {
 
   const formatSleepTime = (timeString?: string) => {
     if (!timeString) return '';
-    const date = new Date(timeString);
-    return date.toLocaleTimeString('de-DE', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    // Handle plain "HH:MM" or "H:MM"
+    const match = /^(\d{1,2}):(\d{2})$/.exec(timeString);
+    if (match) {
+      const h = Math.min(23, Math.max(0, parseInt(match[1], 10)));
+      const m = Math.min(59, Math.max(0, parseInt(match[2], 10)));
+      if (Number.isNaN(h) || Number.isNaN(m)) return '—';
+      const hh = String(h).padStart(2, '0');
+      const mm = String(m).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+    // Try parsing as date/time string
+    const d = new Date(timeString);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    }
+    return '—';
   };
+
+  const isValidTimeDisplay = (s: string) => !!s && s !== '—';
 
   const getSleepQualityText = (quality?: number) => {
     if (!quality) return '';
@@ -99,12 +112,19 @@ export const QuickSleepCard: React.FC = () => {
       >
         {hasSleepData && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Zeitraum:</span>
-              <span>
-                {formatSleepTime(todaysSleep?.bedtime)} - {formatSleepTime(todaysSleep?.wake_time)}
-              </span>
-            </div>
+            {(() => {
+              const bedtimeStr = formatSleepTime(todaysSleep?.bedtime);
+              const wakeStr = formatSleepTime(todaysSleep?.wake_time);
+              const showTimeRange = isValidTimeDisplay(bedtimeStr) || isValidTimeDisplay(wakeStr);
+              return showTimeRange ? (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Zeitraum:</span>
+                  <span>
+                    {isValidTimeDisplay(bedtimeStr) ? bedtimeStr : '—'} - {isValidTimeDisplay(wakeStr) ? wakeStr : '—'}
+                  </span>
+                </div>
+              ) : null;
+            })()}
             
             {todaysSleep?.sleep_quality && (
               <div className="flex items-center justify-between text-sm">
