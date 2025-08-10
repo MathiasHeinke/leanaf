@@ -1,30 +1,16 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// telemetry utilities (no local Supabase client needed)
 
 export async function logTrace(entry: { traceId: string; stage: string; data: unknown }) {
   console.log("[trace]", JSON.stringify(entry));
 }
 
 export async function logUnmetTool(
-  supabaseOrArgs: any,
-  maybeArgs?: {
+  supabase: any,
+  args: {
     userId: string; traceId: string; event: any; intent: any;
     handledManually: boolean; error?: string|null; source?: string; clientEventId?: string;
   }
 ) {
-  // Support calling either as logUnmetTool(supabase, args) or logUnmetTool(args)
-  const hasClient = !!maybeArgs;
-  const args = (hasClient ? maybeArgs : supabaseOrArgs) as any;
-
-  let supabase = hasClient ? supabaseOrArgs : null;
-  if (!supabase) {
-    // Fallback: construct client with current Authorization header if present
-    const auth = (globalThis as any)?.Deno?.env?.get?.("AUTHORIZATION") || "";
-    supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: auth } } }
-    );
-  }
-
   const payload = {
     user_id: args.userId,
     trace_id: args.traceId,
