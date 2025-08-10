@@ -17,7 +17,7 @@ import { QuickTrainingCard } from '@/components/momentum/quick/QuickTrainingCard
 import { QuickMealsCard } from '@/components/momentum/quick/QuickMealsCard';
 import confetti from 'canvas-confetti';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-import { SupplementSmartChips } from '@/components/momentum/SupplementSmartChips';
+import { QuickSupplementsCardV2 } from '@/components/momentum/quick/QuickSupplementsCardV2';
 const MomentumBoard: React.FC = () => {
   const { isEnabled, loading: flagsLoading } = useFeatureFlags();
   const enabled = isEnabled('feature_plus_dashboard');
@@ -125,8 +125,6 @@ const MomentumBoard: React.FC = () => {
         />
         
         <div className="container mx-auto px-4 md:px-4 lg:px-4 pt-0 pb-6 max-w-5xl font-display">
-          <SupplementSmartChips />
-
           <section aria-label="Schnellerfassung" className="mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <QuickHydrationCard />
@@ -134,6 +132,7 @@ const MomentumBoard: React.FC = () => {
               <QuickSleepCard />
               <QuickTrainingCard />
               <QuickMealsCard />
+              <QuickSupplementsCardV2 />
             </div>
           </section>
 
