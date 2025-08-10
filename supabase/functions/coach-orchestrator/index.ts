@@ -119,10 +119,25 @@ serve(async (req) => {
         }
 
         if (category === 'food') {
+          // Auto-analyze meal (no DB write yet) and ask for confirmation
+          const { data: analysis, error: mealErr } = await supabase.functions.invoke('analyze-meal', {
+            body: { text: null, images: [event.url] }
+          });
+          if (mealErr) {
+            console.warn('analyze-meal failed', mealErr);
+            return new Response(
+              JSON.stringify({
+                text: `🍽️ Mahlzeit erkannt (Sicherheit ${(confidence * 100).toFixed(0)}%). Analyse nicht möglich. Soll ich es später erneut versuchen?`,
+                routed: 'meal_image',
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
           return new Response(
             JSON.stringify({
-              text: `🍽️ Mahlzeit erkannt (Sicherheit ${(confidence * 100).toFixed(0)}%). Möchtest du, dass ich sie jetzt analysiere und speichere? Antworte mit 'ja'.`,
+              text: `🍽️ Analyse bereit – soll ich diese Mahlzeit speichern? Antworte mit 'ja', falls ok.`,
               routed: 'meal_image',
+              analysis,
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
@@ -169,12 +184,31 @@ serve(async (req) => {
 
     switch (finalIntent) {
       case "meal": {
+        // Analyze meal text (no DB write yet) and ask for confirmation
+        if (event.type === 'TEXT') {
+          try {
+            const { data: analysis, error: mealErr } = await supabase.functions.invoke('analyze-meal', {
+              body: { text: event.text || null, images: null }
+            });
+            if (mealErr) throw mealErr;
+            return new Response(
+              JSON.stringify({
+                text: "🍽️ Analyse bereit – soll ich diese Mahlzeit speichern? Antworte mit 'ja', falls ok.",
+                routed: 'meal_text',
+                analysis,
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          } catch (e) {
+            console.warn('analyze-meal failed', e);
+          }
+        }
         return new Response(
           JSON.stringify({
-            text: "🍽️ Verstanden – Mahlzeit erkannt. Soll ich sie jetzt analysieren und ins Tagebuch übernehmen? Antworte mit 'ja' oder teile ein Foto.",
-            routed: "meal",
+            text: "🍽️ Verstanden – nenne Zutaten oder lade ein Foto hoch, dann analysiere ich die Mahlzeit.",
+            routed: 'meal',
           }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       case "weight": {
