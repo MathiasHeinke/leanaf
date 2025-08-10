@@ -747,7 +747,7 @@ if (enableAdvancedFeatures) {
         if (shouldUseTool(toolCtx)) {
           // Add user message in UI if not already added later
           if (toolCtx.tool === 'mealCapture') {
-            // mirror meal path
+            // Send to orchestrator to analyze meal (text and optional images)
             if (msg) {
               const userMessage: EnhancedChatMessage = {
                 id: `user-${Date.now()}`,
@@ -762,26 +762,48 @@ if (enableAdvancedFeatures) {
               };
               setMessages(prev => [...prev, userMessage]);
             }
-            const { data, error } = await supabase.functions.invoke('analyze-meal', {
-              body: {
-                text: msg || null,
-                images: mediaUrls && mediaUrls.length > 0 ? mediaUrls : null
-              }
+
+            const clientEventId = uuidv4();
+            const firstImage = mediaUrls && mediaUrls.length > 0 ? mediaUrls[0] : undefined;
+            const event = { type: 'TEXT', text: msg } as const;
+            const { data, error } = await supabase.functions.invoke('coach-orchestrator', {
+              body: { clientEventId, event }
             });
-            if (error) throw error;
-            const parsed = parseAnalyzeResponse(data);
-            if (!parsed) {
-              toast.error('Analyse lieferte keine verwertbaren Daten');
+            if (error) {
+              console.error('coach-orchestrator meal route failed:', error);
+              toast.error('Mahlzeit-Erkennung derzeit nicht verfügbar');
               return;
             }
-            setMealAnalyzedData(parsed);
-            setMealUploadedImages(mediaUrls || []);
-            setMealSelectedType(parsed.meal_type || 'other');
-            setShowMealDialog(true);
-            const ack: EnhancedChatMessage = {
+
+            // Prefer orchestrator-provided analysis
+            const parsed = parseAnalyzeResponse(data?.analysis);
+            if (parsed) {
+              setMealAnalyzedData(parsed);
+              setMealUploadedImages(firstImage ? [firstImage] : []);
+              setMealSelectedType(parsed.meal_type || 'other');
+              setShowMealDialog(true);
+
+              const ack: EnhancedChatMessage = {
+                id: `assistant-${Date.now()}`,
+                role: 'assistant',
+                content: '🍽️ Analyse bereit – bitte bestätige die Werte im Dialog unten.',
+                created_at: new Date().toISOString(),
+                coach_personality: coach?.id || 'lucy',
+                coach_name: coach?.name || 'Coach',
+                coach_avatar: coach?.imageUrl,
+                coach_color: coach?.color,
+                coach_accent_color: coach?.accentColor
+              };
+              setMessages(prev => [...prev, ack]);
+              setInputText('');
+              return;
+            }
+
+            // No analysis returned – show message from orchestrator
+            const assistantMessage: EnhancedChatMessage = {
               id: `assistant-${Date.now()}`,
               role: 'assistant',
-              content: '🍽️ Analyse bereit – bitte bestätige die Werte im Dialog unten.',
+              content: data?.text ?? 'OK.',
               created_at: new Date().toISOString(),
               coach_personality: coach?.id || 'lucy',
               coach_name: coach?.name || 'Coach',
@@ -789,7 +811,7 @@ if (enableAdvancedFeatures) {
               coach_color: coach?.color,
               coach_accent_color: coach?.accentColor
             };
-            setMessages(prev => [...prev, ack]);
+            setMessages(prev => [...prev, assistantMessage]);
             setInputText('');
             return;
           }
@@ -896,6 +918,63 @@ if (enableAdvancedFeatures) {
           setMessages(prev => [...prev, userMessage]);
         }
 
+        // First try unified orchestrator for image routing (exercise/meal/supplement/body)
+        try {
+          const clientEventId = uuidv4();
+          const firstImage = (mediaUrls && mediaUrls.length > 0) ? mediaUrls[0] : undefined;
+          if (firstImage) {
+            const { data: orch, error: orchErr } = await supabase.functions.invoke('coach-orchestrator', {
+              body: { clientEventId, event: { type: 'IMAGE', url: firstImage } }
+            });
+            if (!orchErr && orch) {
+              // Meal image with analysis → open dialog
+              const parsed = parseAnalyzeResponse(orch.analysis);
+              if (orch.routed === 'meal_image' && parsed) {
+                setMealAnalyzedData(parsed);
+                setMealUploadedImages([firstImage]);
+                setMealSelectedType(parsed.meal_type || 'other');
+                setShowMealDialog(true);
+
+                const ack: EnhancedChatMessage = {
+                  id: `assistant-${Date.now()}`,
+                  role: 'assistant',
+                  content: '🍽️ Analyse bereit – bitte bestätige die Werte im Dialog unten.',
+                  created_at: new Date().toISOString(),
+                  coach_personality: coach?.id || 'lucy',
+                  coach_name: coach?.name || 'Coach',
+                  coach_avatar: coach?.imageUrl,
+                  coach_color: coach?.color,
+                  coach_accent_color: coach?.accentColor
+                };
+                setMessages(prev => [...prev, ack]);
+                setInputText('');
+                return;
+              }
+
+              // Otherwise, show orchestrator text (training/supplement/body/general)
+              if (orch.text) {
+                const assistantMessage: EnhancedChatMessage = {
+                  id: `assistant-${Date.now()}`,
+                  role: 'assistant',
+                  content: orch.text,
+                  created_at: new Date().toISOString(),
+                  coach_personality: coach?.id || 'lucy',
+                  coach_name: coach?.name || 'Coach',
+                  coach_avatar: coach?.imageUrl,
+                  coach_color: coach?.color,
+                  coach_accent_color: coach?.accentColor
+                };
+                setMessages(prev => [...prev, assistantMessage]);
+                setInputText('');
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('coach-orchestrator image route failed, falling back to media analysis:', e);
+        }
+
+        // Fallback: generic media analysis
         const images = mediaUrls.filter((u) => /\.(jpg|jpeg|png|gif|webp)$/i.test(u));
         const videos = mediaUrls.filter((u) => /\.(mp4|mov|avi|webm)$/i.test(u));
         const analysisType = 'general';
