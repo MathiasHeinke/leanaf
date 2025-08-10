@@ -382,7 +382,7 @@ if (enableAdvancedFeatures) {
           payload = { clientEventId, event: { type: 'END' } };
         }
 
-        const { data, error } = await supabase.functions.invoke('training-orchestrator', { body: payload });
+        const { data, error } = await supabase.functions.invoke('coach-orchestrator', { body: { ...payload, mode: 'training' } });
         if (error) {
           console.error('training-orchestrator error:', error);
           toast.error('Training-Orchestrator nicht erreichbar');
@@ -832,7 +832,7 @@ if (enableAdvancedFeatures) {
           if (toolCtx.tool === 'uebung' || toolCtx.tool === 'quickworkout') {
             // Route to training orchestrator even outside training mode
             const payload: any = { event: { type: 'TEXT', text: msg } };
-            const { data, error } = await supabase.functions.invoke('training-orchestrator', { body: payload });
+            const { data, error } = await supabase.functions.invoke('coach-orchestrator', { body: { ...payload, clientEventId: uuidv4(), mode: 'training' } });
             if (!error) {
               const assistantMessage: EnhancedChatMessage = {
                 id: `assistant-${Date.now()}`,
