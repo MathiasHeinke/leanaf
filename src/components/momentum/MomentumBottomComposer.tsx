@@ -8,7 +8,7 @@ import { useOrchestrator } from "@/hooks/useOrchestrator";
 import ChoiceBar from "@/components/ChoiceBar";
 import ConfirmMealModal from "@/components/ConfirmMealModal";
 import { toast } from "sonner";
-
+import { supabase } from "@/integrations/supabase/client";
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const MomentumBottomComposer: React.FC = () => {

@@ -168,7 +168,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 
   const handleClarifyPick = useCallback(async (value: string) => {
     if (!user?.id) return;
-    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: mode } });
+    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode) } });
     renderOrchestratorReply(reply);
   }, [user?.id, mode, sendEvent, renderOrchestratorReply]);
 
@@ -814,7 +814,7 @@ if (enableAdvancedFeatures) {
         event = { type: 'END' };
       }
 
-      const reply = await sendEvent(user.id, { ...event, clientEventId, context: { source: 'chat', coachMode: mode } } as any);
+      const reply = await sendEvent(user.id, { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode) } } as any);
       renderOrchestratorReply(reply);
       setInputText('');
       return;
@@ -892,6 +892,31 @@ if (enableAdvancedFeatures) {
           </div>
         )}
         <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
+        <ConfirmMealModal
+          open={confirmMeal.open}
+          prompt={confirmMeal.prompt}
+          proposal={confirmMeal.proposal}
+          onConfirm={async () => {
+            try {
+              if (!user?.id || !confirmMeal.proposal) return;
+              const p = confirmMeal.proposal as any;
+              await supabase.from('meals').insert({
+                user_id: user.id,
+                text: p.title || 'Mahlzeit',
+                calories: Math.round(p.calories || 0),
+                protein: Math.round(p.protein || 0),
+                carbs: Math.round(p.carbs || 0),
+                fats: Math.round(p.fats || 0),
+              });
+              toast.success('Mahlzeit gespeichert');
+            } catch (e) {
+              toast.error('Speichern fehlgeschlagen');
+            } finally {
+              setConfirmMeal(prev => ({ ...prev, open: false }));
+            }
+          }}
+          onClose={() => setConfirmMeal(prev => ({ ...prev, open: false }))}
+        />
       </ChatLayout>
     );
   }
@@ -978,6 +1003,31 @@ if (enableAdvancedFeatures) {
         </div>
       )}
       <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
+      <ConfirmMealModal
+        open={confirmMeal.open}
+        prompt={confirmMeal.prompt}
+        proposal={confirmMeal.proposal}
+        onConfirm={async () => {
+          try {
+            if (!user?.id || !confirmMeal.proposal) return;
+            const p = confirmMeal.proposal as any;
+            await supabase.from('meals').insert({
+              user_id: user.id,
+              text: p.title || 'Mahlzeit',
+              calories: Math.round(p.calories || 0),
+              protein: Math.round(p.protein || 0),
+              carbs: Math.round(p.carbs || 0),
+              fats: Math.round(p.fats || 0),
+            });
+            toast.success('Mahlzeit gespeichert');
+          } catch (e) {
+            toast.error('Speichern fehlgeschlagen');
+          } finally {
+            setConfirmMeal(prev => ({ ...prev, open: false }));
+          }
+        }}
+        onClose={() => setConfirmMeal(prev => ({ ...prev, open: false }))}
+      />
     </Card>
   );
 };
