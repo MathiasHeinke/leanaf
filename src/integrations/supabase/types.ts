@@ -3253,6 +3253,48 @@ export type Database = {
         }
         Relationships: []
       }
+      orchestrator_traces: {
+        Row: {
+          coach_id: string | null
+          error_message: string | null
+          handler_name: string | null
+          id: number
+          latency_ms: number | null
+          payload_json: Json | null
+          stage: string
+          status: string
+          timestamp: string
+          trace_id: string
+          user_id: string | null
+        }
+        Insert: {
+          coach_id?: string | null
+          error_message?: string | null
+          handler_name?: string | null
+          id?: number
+          latency_ms?: number | null
+          payload_json?: Json | null
+          stage: string
+          status: string
+          timestamp?: string
+          trace_id: string
+          user_id?: string | null
+        }
+        Update: {
+          coach_id?: string | null
+          error_message?: string | null
+          handler_name?: string | null
+          id?: number
+          latency_ms?: number | null
+          payload_json?: Json | null
+          stage?: string
+          status?: string
+          timestamp?: string
+          trace_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       pipeline_automation_config: {
         Row: {
           active_topics: Json | null
@@ -5639,6 +5681,41 @@ export type Database = {
           quality_score: number | null
           title: string | null
           ts: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_orchestrator_metrics_60m: {
+        Row: {
+          avg_latency_ms: number | null
+          error_rate: number | null
+          stage: string | null
+        }
+        Relationships: []
+      }
+      v_orchestrator_traces_open_errors: {
+        Row: {
+          aggregated_status: string | null
+          coach_id: string | null
+          has_error: boolean | null
+          last_event_at: string | null
+          max_latency_ms: number | null
+          stage_details: Json | null
+          stages_run: string[] | null
+          started_at: string | null
+          still_running: boolean | null
+          trace_id: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_orchestrator_traces_recent: {
+        Row: {
+          aggregated_status: string | null
+          coach_id: string | null
+          last_event_at: string | null
+          started_at: string | null
+          trace_id: string | null
           user_id: string | null
         }
         Relationships: []

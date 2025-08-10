@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fallbackFlow } from "./fallback.ts";
 import { logUnmetTool, logTrace } from "./telemetry.ts";
+import { logTraceEvent } from "../telemetry.ts";
 
 // CORS
 const corsHeaders = {
@@ -118,6 +119,17 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Telemetry: received
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      coachId: undefined,
+      stage: 'received',
+      handler: 'coach-orchestrator-enhanced',
+      status: 'RUNNING',
+      payload: { type: event.type, source, chatMode }
+    });
+
     const intent = chatMode === "training"
       ? { name: "training", score: 0.9, toolCandidate: "training-orchestrator" } as Intent
       : detectIntentWithConfidence(event);
@@ -130,11 +142,29 @@ serve(async (req) => {
     const userFlagsMeta = mergeFlagMetadata(userFlagRows as any[] || []);
 
     await logTrace({ traceId, stage: "route_decision", data: { intent, source, type: event.type, flags: userFlagsMeta } });
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      coachId: undefined,
+      stage: 'route_decision',
+      handler: 'coach-orchestrator-enhanced',
+      status: 'OK',
+      payload: { intent, source, type: event.type, flags: userFlagsMeta }
+    });
 
     // Clarify path
     if (intent.score >= THRESHOLDS.clarify && intent.score < THRESHOLDS.tool) {
       const opts = clarifyOptions(intent);
       const reply: OrchestratorReply = { kind: "clarify", prompt: "Meinst du das hier?", options: opts, traceId };
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        coachId: undefined,
+        stage: 'clarify_reply',
+        handler: 'coach-orchestrator-enhanced',
+        status: 'OK',
+        payload: { options: opts }
+      });
       return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -146,6 +176,15 @@ serve(async (req) => {
         logTrace,
       }, { clarify: false, source });
       const reply: OrchestratorReply = typeof out.reply === "string" ? { kind: "message", text: out.reply, traceId } : (out.reply as OrchestratorReply);
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        coachId: undefined,
+        stage: 'fallback_llm_only',
+        handler: 'coach-orchestrator-enhanced',
+        status: 'OK',
+        payload: { intent }
+      });
       return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -154,21 +193,27 @@ serve(async (req) => {
 
     // training
     if (intent.name === "training") {
+      const t0 = Date.now();
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'training-orchestrator', status: 'RUNNING', payload: { clientEventId } });
       const { data, error } = await supabase.functions.invoke("training-orchestrator", {
         body: { userId, clientEventId, event },
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'training-orchestrator', status: 'OK', latencyMs: Date.now() - t0 });
       return new Response(JSON.stringify(asMessage((data as any)?.text ?? "Training erfasst.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // meal → analyze-meal (analysis only)
     if (intent.name === "meal") {
+      const t0 = Date.now();
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'analyze-meal', status: 'RUNNING', payload: { type: event.type } });
       const { data, error } = await supabase.functions.invoke("analyze-meal", {
         body: { userId, event },
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'analyze-meal', status: 'OK', latencyMs: Date.now() - t0 });
       const proposal = (data as any)?.proposal ?? (data as any)?.analysis ?? null;
       if (!proposal) {
         return new Response(JSON.stringify(asMessage("Ich habe nichts Verlässliches erkannt – nenn mir kurz Menge & Zutaten, dann schätze ich dir die Makros.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -220,11 +265,14 @@ serve(async (req) => {
     // supplement → analysis only
     if (intent.name === "supplement") {
       const tool = event.type === "IMAGE" ? "supplement-recognition" : "supplement-analysis";
+      const t0 = Date.now();
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: tool, status: 'RUNNING' });
       const { data, error } = await supabase.functions.invoke(tool, {
         body: { userId, event },
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: tool, status: 'OK', latencyMs: Date.now() - t0 });
       const summary = typeof data === "string" ? data : ((data as any)?.summary ?? (data as any)?.text ?? JSON.stringify(data).slice(0, 800));
       return new Response(JSON.stringify(asMessage(`💊 Supplement-Analyse:\n${summary}`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -239,6 +287,7 @@ serve(async (req) => {
     return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     await logTrace({ traceId, stage: "error", data: { error: String(e) } });
+    await logTraceEvent(supabase, { traceId, userId: undefined, coachId: undefined, stage: 'error', handler: 'coach-orchestrator-enhanced', status: 'ERROR', errorMessage: String(e) });
     const reply: OrchestratorReply = { kind: "message", text: "Kurz hake ich – bitte nochmal versuchen.", traceId };
     return new Response(JSON.stringify(reply), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
