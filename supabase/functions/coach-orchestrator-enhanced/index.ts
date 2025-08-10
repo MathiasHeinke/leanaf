@@ -70,6 +70,21 @@ function detectIntentWithConfidence(event: CoachEvent): Intent {
 
 const asMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text, traceId });
 
+// Feature flags helpers (JSON-based flags in user_feature_flags.metadata)
+function mergeFlagMetadata(rows: Array<{ metadata?: Record<string, any> }>): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const r of rows || []) {
+    if (r?.metadata && typeof r.metadata === "object") {
+      Object.assign(out, r.metadata);
+    }
+  }
+  return out;
+}
+function isFlagOn(meta: Record<string, any> | null | undefined, key: string): boolean {
+  if (!meta) return false;
+  return Boolean((meta as any)[key]);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -107,7 +122,14 @@ serve(async (req) => {
       ? { name: "training", score: 0.9, toolCandidate: "training-orchestrator" } as Intent
       : detectIntentWithConfidence(event);
 
-    await logTrace({ traceId, stage: "route_decision", data: { intent, source, type: event.type } });
+    // Load user flags (JSON metadata)
+    const { data: userFlagRows } = await supabase
+      .from('user_feature_flags')
+      .select('metadata, assigned_at')
+      .eq('user_id', userId);
+    const userFlagsMeta = mergeFlagMetadata(userFlagRows as any[] || []);
+
+    await logTrace({ traceId, stage: "route_decision", data: { intent, source, type: event.type, flags: userFlagsMeta } });
 
     // Clarify path
     if (intent.score >= THRESHOLDS.clarify && intent.score < THRESHOLDS.tool) {
@@ -155,26 +177,44 @@ serve(async (req) => {
       return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // weight → thin function
+    // weight → flag-gated thin function, else legacy
     if (intent.name === "weight") {
-      const { data, error } = await supabase.functions.invoke("weight-tracker", {
-        body: { userId, event },
-        headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
-      });
-      if (error) throw error;
-      const text = (data as any)?.text ?? (data as any)?.reply ?? "Gewicht gespeichert.";
-      return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (isFlagOn(userFlagsMeta, 'auto_tool_orchestration')) {
+        const { data, error } = await supabase.functions.invoke("weight-tracker", {
+          body: { userId, event },
+          headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
+        });
+        if (error) throw error;
+        const text = (data as any)?.text ?? (data as any)?.reply ?? "Gewicht gespeichert.";
+        return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } else {
+        const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
+          body: { mode: "weight", userId, clientEventId, event },
+          headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
+        });
+        if (error) throw error;
+        return new Response(JSON.stringify(asMessage((data as any)?.text ?? "Gewicht gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
-    // diary → thin function
+    // diary → flag-gated thin function, else legacy
     if (intent.name === "diary") {
-      const { data, error } = await supabase.functions.invoke("diary-assistant", {
-        body: { userId, event },
-        headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
-      });
-      if (error) throw error;
-      const text = (data as any)?.text ?? (data as any)?.reply ?? "Tagebuch gespeichert.";
-      return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (isFlagOn(userFlagsMeta, 'auto_tool_orchestration')) {
+        const { data, error } = await supabase.functions.invoke("diary-assistant", {
+          body: { userId, event },
+          headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
+        });
+        if (error) throw error;
+        const text = (data as any)?.text ?? (data as any)?.reply ?? "Tagebuch gespeichert.";
+        return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } else {
+        const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
+          body: { mode: "diary", userId, clientEventId, event },
+          headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
+        });
+        if (error) throw error;
+        return new Response(JSON.stringify(asMessage((data as any)?.text ?? "Tagebuch gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     // supplement → analysis only
