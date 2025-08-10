@@ -2,12 +2,19 @@ import React, { useState, useCallback, Suspense, lazy, useRef } from "react";
 import { Camera, Mic, ArrowRight, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { useAuth } from "@/hooks/useAuth";
+import { useOrchestrator } from "@/hooks/useOrchestrator";
 
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const MomentumBottomComposer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
   const { inputText, setInputText, uploadImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet } = useGlobalMealInput();
+  const { isEnabled } = useFeatureFlags();
+  const orchestrationEnabled = isEnabled('auto_tool_orchestration');
+  const { user } = useAuth();
+  const { sendEvent } = useOrchestrator();
  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -36,12 +43,26 @@ export const MomentumBottomComposer: React.FC = () => {
     openQuickMealSheet("text");
   }, [openQuickMealSheet]);
 
-  const handleSubmit = useCallback(() => {
-    if (inputText.trim()) {
-      setActiveTab("text");
-      openQuickMealSheet("text");
+const handleSubmit = useCallback(async () => {
+  if (inputText.trim()) {
+    setActiveTab("text");
+    openQuickMealSheet("text");
+    // Optional: Orchestrator-Routing (nicht blockierend)
+    if (orchestrationEnabled && user?.id) {
+      try {
+        await sendEvent(user.id, {
+          type: 'TEXT',
+          text: inputText.trim(),
+          clientEventId: crypto.randomUUID(),
+          context: { source: 'momentum', coachMode: 'nutrition' }
+        });
+      } catch (e) {
+        // still ok – QuickSheet bleibt der Fast-Path
+        console.debug('Orchestrator sendEvent failed (non-blocking)', e);
+      }
     }
-  }, [inputText, openQuickMealSheet]);
+  }
+}, [inputText, openQuickMealSheet, orchestrationEnabled, user?.id, sendEvent]);
 
   return (
     <>

@@ -20,7 +20,7 @@ const THRESHOLDS = {
 
 // Enhanced intent detection with confidence scoring
 async function detectIntentWithConfidence(input?: string): Promise<{
-  name: "training" | "meal" | "weight" | "diary" | "advice" | "unknown";
+  name: "training" | "meal" | "weight" | "diary" | "supplement" | "advice" | "unknown";
   score: number;
   toolCandidate?: string;
 }> {
@@ -52,12 +52,18 @@ async function detectIntentWithConfidence(input?: string): Promise<{
     'diary', 'tagebuch', 'reflex', 'gedanken', 'gefühl', 'stimmung',
     'journal', 'notiz', 'mood'
   ];
+
+  // Supplement terms
+  const supplementTerms = [
+    'supplement', 'supplements', 'nahrungsergänzung', 'magnesium', 'omega', 'zink', 'vitamin', 'kapsel', 'dose', 'creatin', 'kreatin'
+  ];
   
   // Calculate confidence scores based on term matches
   const trainingScore = calculateTermScore(text, trainingTerms);
   const mealScore = calculateTermScore(text, mealTerms);
   const weightScore = calculateTermScore(text, weightTerms);
   const diaryScore = calculateTermScore(text, diaryTerms);
+  const supplementScore = calculateTermScore(text, supplementTerms);
   
   // Determine best match
   const scores = [
@@ -65,6 +71,7 @@ async function detectIntentWithConfidence(input?: string): Promise<{
     { name: "meal" as const, score: mealScore, tool: "meal-analyzer" },
     { name: "weight" as const, score: weightScore, tool: "weight-tracker" },
     { name: "diary" as const, score: diaryScore, tool: "diary-assistant" },
+    { name: "supplement" as const, score: supplementScore, tool: "supplement" },
   ];
   
   const bestMatch = scores.reduce((prev, current) => 
@@ -283,68 +290,129 @@ serve(async (req) => {
       }
     }
     
-    // Handle clarification needed (medium confidence)
-    if (suggestedTool && confidence >= THRESHOLDS.clarify && confidence < THRESHOLDS.tool) {
-      console.log('🤔 Medium confidence - Requesting clarification');
-      
-      const clarificationMessage = `Meinst du ${getToolDescription(suggestedTool)} oder etwas anderes? 
-Wenn du willst, löse ich's direkt manuell und notiere das als Feature, damit es künftig automatisch läuft.`;
-      
-      // Log the clarification event
-      await logUnmetTool(supabase, {
-        userId,
-        sessionId,
-        message: userMessage,
-        intentGuess: userIntent,
-        confidence,
-        suggestedTool,
-        handledManually: false,
-        manualSummary: 'Clarification requested'
-      });
-      
-      return new Response(JSON.stringify({
-        role: 'assistant',
-        content: clarificationMessage,
-        metadata: { clarification_needed: true, suggested_tool: suggestedTool }
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // LLM-Only Fallback for low confidence or no specific tool
-    console.log('🤖 Low confidence or no tool - Using LLM fallback');
-    
-    const manualAnswer = await buildManualAnswer(event, { userId });
-    
-    // Log the unmet tool event for learning
-    await logUnmetTool(supabase, {
-      userId,
-      sessionId,
-      message: userMessage,
-      intentGuess: userIntent,
-      confidence,
-      suggestedTool,
-      handledManually: true,
-      manualSummary: manualAnswer.substring(0, 200)
+// Handle high-confidence routing for other intents
+if (userIntent === 'meal' && confidence >= THRESHOLDS.tool) {
+  console.log('🍽️ High confidence - Routing to meal analyzer');
+  try {
+    const { data, error } = await supabase.functions.invoke('analyze-meal', {
+      body: { event, clientEventId }
     });
-    
-    // Extract synonyms for continuous learning
-    if (suggestedTool) {
-      await extractAndLearnSynonyms(supabase, userMessage, suggestedTool);
-    }
-    
-    return new Response(JSON.stringify({
-      role: 'assistant',
-      content: manualAnswer,
-      metadata: { 
-        fallback_used: true, 
-        confidence,
-        suggested_tool: suggestedTool,
-        unmet_tool: true 
-      }
-    }), {
+    if (error) throw error;
+    return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  } catch (error) {
+    console.error('❌ Meal analyzer failed, falling back:', error);
+  }
+}
+
+if (userIntent === 'weight' && confidence >= THRESHOLDS.tool) {
+  console.log('⚖️ High confidence - Routing to weight tracker');
+  try {
+    const { data, error } = await supabase.functions.invoke('weight-tracker', {
+      body: { event, clientEventId }
+    });
+    if (error) throw error;
+    return new Response(JSON.stringify(data), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error('❌ Weight tracker failed, falling back:', error);
+  }
+}
+
+if (userIntent === 'diary' && confidence >= THRESHOLDS.tool) {
+  console.log('📓 High confidence - Routing to diary assistant');
+  try {
+    const { data, error } = await supabase.functions.invoke('diary-assistant', {
+      body: { event, clientEventId }
+    });
+    if (error) throw error;
+    return new Response(JSON.stringify(data), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error('❌ Diary assistant failed, falling back:', error);
+  }
+}
+
+if (userIntent === 'supplement' && confidence >= THRESHOLDS.tool) {
+  console.log('💊 High confidence - Routing to supplement');
+  try {
+    const { data, error } = await supabase.functions.invoke('supplement', {
+      body: { event, clientEventId }
+    });
+    if (error) throw error;
+    return new Response(JSON.stringify(data), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error('❌ Supplement handler failed, falling back:', error);
+  }
+}
+
+// Handle clarification needed (medium confidence)
+if (suggestedTool && confidence >= THRESHOLDS.clarify && confidence < THRESHOLDS.tool) {
+  console.log('🤔 Medium confidence - Requesting clarification');
+  
+  const clarificationMessage = `Meinst du ${getToolDescription(suggestedTool)} oder etwas anderes? 
+Wenn du willst, löse ich's direkt manuell und notiere das als Feature, damit es künftig automatisch läuft.`;
+  
+  // Log the clarification event
+  await logUnmetTool(supabase, {
+    userId,
+    sessionId,
+    message: userMessage,
+    intentGuess: userIntent,
+    confidence,
+    suggestedTool,
+    handledManually: false,
+    manualSummary: 'Clarification requested'
+  });
+  
+  return new Response(JSON.stringify({
+    role: 'assistant',
+    content: clarificationMessage,
+    metadata: { clarification_needed: true, suggested_tool: suggestedTool }
+  }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// LLM-Only Fallback for low confidence or no specific tool
+console.log('🤖 Low confidence or no tool - Using LLM fallback');
+
+const manualAnswer = await buildManualAnswer(event, { userId });
+
+// Log the unmet tool event for learning
+await logUnmetTool(supabase, {
+  userId,
+  sessionId,
+  message: userMessage,
+  intentGuess: userIntent,
+  confidence,
+  suggestedTool,
+  handledManually: true,
+  manualSummary: manualAnswer.substring(0, 200)
+});
+
+// Extract synonyms for continuous learning
+if (suggestedTool) {
+  await extractAndLearnSynonyms(supabase, userMessage, suggestedTool);
+}
+
+return new Response(JSON.stringify({
+  role: 'assistant',
+  content: manualAnswer,
+  metadata: { 
+    fallback_used: true, 
+    confidence,
+    suggested_tool: suggestedTool,
+    unmet_tool: true 
+  }
+}), {
+  headers: { ...corsHeaders, "Content-Type": "application/json" },
+});
 
   } catch (error) {
     console.error("coach-orchestrator-enhanced error", error);
