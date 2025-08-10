@@ -31,6 +31,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   className = ""
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
   const { isVoiceOverlayOpen, openVoiceOverlay, closeVoiceOverlay } = useVoiceOverlay();
@@ -43,14 +44,12 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     try {
       const urls = await uploadFiles(files);
       if (urls?.length) {
-        const append = urls.join(' ');
-        const currentText = textareaRef.current?.value || inputText;
-        setInputText((currentText ? currentText + ' ' : '') + append);
+        setAttachments(prev => [...prev, ...urls]);
       }
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
-  }, [uploadFiles, setInputText, inputText]);
+  }, [uploadFiles]);
 
   // Get suggestions for current context - max 4 as per spec
   const getSuggestions = () => {
@@ -108,10 +107,12 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
   // Handle send message
   const handleSend = useCallback(() => {
-    if (!inputText.trim()) return;
-    onSendMessage(inputText);
+    const text = inputText.trim();
+    if (!text && attachments.length === 0) return;
+    onSendMessage(text, attachments.length ? attachments : undefined);
     setInputText('');
-  }, [inputText, onSendMessage, setInputText]);
+    setAttachments([]);
+  }, [inputText, attachments, onSendMessage, setInputText]);
 
   // Handle key press
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
@@ -121,7 +122,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     }
   }, [handleSend]);
 
-  const hasContent = inputText.trim();
+  const canSend = inputText.trim().length > 0 || attachments.length > 0;
 
   return (
     <div className={`w-full max-w-4xl mx-auto ${className}`}>
@@ -158,6 +159,27 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             }}
           />
         </div>
+
+        {/* Attachments Preview */}
+        {attachments.length > 0 && (
+          <div className="px-4 pb-2">
+            <div className="flex gap-2 overflow-x-auto">
+              {attachments.map((url, i) => (
+                <div key={url + i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
+                  <img src={url} alt="Ausgewählter Anhang" className="w-full h-full object-cover" loading="lazy" />
+                  <button
+                    type="button"
+                    aria-label="Anhang entfernen"
+                    onClick={() => setAttachments(prev => prev.filter(u => u !== url))}
+                    className="absolute -top-1 -right-1 bg-background/80 border border-border rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Button Row - Input Bar with icon order: ① Suggestions ② Tool-Picker ③ Red Microphone ④ Send */}
         <div className="input-bar flex items-center justify-between px-4 py-2 border-t border-border/50">
@@ -263,10 +285,10 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
                 handleSend();
                 setShowSuggestions(false);
               }}
-              disabled={!hasContent || isLoading}
+              disabled={!canSend || isLoading || uploading}
               className={`
                 w-11 h-11 p-0 transition-all duration-200 font-medium
-                ${hasContent && !isLoading
+                ${canSend && !isLoading && !uploading
                   ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg scale-100' 
                   : 'bg-muted text-muted-foreground cursor-not-allowed scale-95'
                 }
