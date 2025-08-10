@@ -165,8 +165,10 @@ const handleSubmit = useCallback(async () => {
           try {
             if (!user?.id || !confirmMeal.proposal) return;
             const p = confirmMeal.proposal as any;
+            const clientEventId = crypto.randomUUID();
             await supabase.from('meals').insert({
               user_id: user.id,
+              client_event_id: clientEventId,
               text: p.title || 'Mahlzeit',
               calories: Math.round(p.calories || 0),
               protein: Math.round(p.protein || 0),

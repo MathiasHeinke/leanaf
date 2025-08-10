@@ -81,6 +81,8 @@ export function useOrchestrator() {
           const data = await withTimeout(invokeLegacy(), 7000);
           return normalizeReply(data);
         } catch (e2) { /* fall through */ }
+      } else {
+        console.info('Legacy fallback disabled via flag; returning friendly error.');
       }
       return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
     }

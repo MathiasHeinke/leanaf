@@ -2950,6 +2950,7 @@ export type Database = {
           bonus_points: number | null
           calories: number | null
           carbs: number | null
+          client_event_id: string | null
           consumption_percentage: number | null
           created_at: string
           date: string | null
@@ -2974,6 +2975,7 @@ export type Database = {
           bonus_points?: number | null
           calories?: number | null
           carbs?: number | null
+          client_event_id?: string | null
           consumption_percentage?: number | null
           created_at?: string
           date?: string | null
@@ -2998,6 +3000,7 @@ export type Database = {
           bonus_points?: number | null
           calories?: number | null
           carbs?: number | null
+          client_event_id?: string | null
           consumption_percentage?: number | null
           created_at?: string
           date?: string | null
