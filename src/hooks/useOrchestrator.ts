@@ -1,5 +1,6 @@
 // src/hooks/useOrchestrator.ts
 import { supabase } from '@/integrations/supabase/client';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 export type MealProposal = {
   title?: string;
@@ -31,6 +32,8 @@ function normalizeReply(raw: any): OrchestratorReply {
 }
 
 export function useOrchestrator() {
+  const { isEnabled } = useFeatureFlags();
+  const legacyEnabled = isEnabled('legacy_fallback_enabled');
   async function sendEvent(userId: string, ev: CoachEvent, traceId?: string): Promise<OrchestratorReply> {
     const headers: Record<string, string> = {
       'x-trace-id': traceId ?? crypto.randomUUID(),
@@ -73,13 +76,13 @@ export function useOrchestrator() {
         return normalizeReply(data);
       }
     } catch (e) {
-      // Fallback to legacy orchestrator
-      try {
-        const data = await withTimeout(invokeLegacy(), 7000);
-        return normalizeReply(data);
-      } catch (e2) {
-        return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
+      if (legacyEnabled) {
+        try {
+          const data = await withTimeout(invokeLegacy(), 7000);
+          return normalizeReply(data);
+        } catch (e2) { /* fall through */ }
       }
+      return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
     }
   }
 

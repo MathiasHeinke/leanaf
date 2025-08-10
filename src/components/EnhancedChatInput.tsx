@@ -4,35 +4,12 @@ import {
   Send, 
   Loader2, 
   Mic, 
-  X, 
-  Video,
-  Wrench,
-  Scale,
-  UtensilsCrossed,
-  BookOpen,
-  Pill,
-  Dumbbell,
-  PenTool,
   MessageSquare
 } from 'lucide-react';
 import { useVoiceOverlay } from '@/hooks/useVoiceOverlay';
 import { VoiceOverlay } from '@/components/VoiceOverlay';
-import { usePendingTools } from '@/hooks/usePendingTools';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MindsetJournalWidget } from '@/components/mindset-journal/MindsetJournalWidget';
 
-// Tool configuration with colors
-import { Brain } from 'lucide-react';
-
-const TOOLS = [
-  { id: "gewicht", name: "Gewicht", color: "violet", borderColor: "border-violet-500", bgColor: "bg-violet-500", textColor: "text-violet-500", icon: Scale },
-  { id: "mahlzeit", name: "Mahlzeit", color: "orange", borderColor: "border-orange-400", bgColor: "bg-orange-400", textColor: "text-orange-400", icon: UtensilsCrossed },
-  { id: "uebung", name: "Training", color: "sky", borderColor: "border-sky-400", bgColor: "bg-sky-400", textColor: "text-sky-400", icon: BookOpen },
-  { id: "supplement", name: "Supplements", color: "green", borderColor: "border-green-400", bgColor: "bg-green-400", textColor: "text-green-400", icon: Pill },
-  { id: "trainingsplan", name: "Trainingsplan", color: "purple", borderColor: "border-purple-500", bgColor: "bg-purple-500", textColor: "text-purple-500", icon: Dumbbell },
-  { id: "mindset-journal", name: "Mindset Journal", color: "mindset", borderColor: "border-mindset", bgColor: "bg-mindset", textColor: "text-mindset", icon: Brain },
-  { id: "diary", name: "Tagebuch", color: "pink", borderColor: "border-pink-400", bgColor: "bg-pink-400", textColor: "text-pink-400", icon: PenTool },
-];
 
 interface EnhancedChatInputProps {
   inputText: string;
@@ -43,10 +20,6 @@ interface EnhancedChatInputProps {
   className?: string;
 }
 
-interface ToolWidgetProps {
-  selectedTool: string | null;
-  onKaiTransfer?: (text: string) => void;
-}
 
 export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   inputText,
@@ -56,21 +29,11 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   placeholder = "Nachricht eingeben...",
   className = ""
 }) => {
-  const [showTools, setShowTools] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const toolsContainerRef = useRef<HTMLDivElement>(null);
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
   const { isVoiceOverlayOpen, openVoiceOverlay, closeVoiceOverlay } = useVoiceOverlay();
   
-  const { 
-    pendingTools, 
-    addPendingTool, 
-    removePendingTool 
-  } = usePendingTools();
-
-  const selectedTool = pendingTools[0]?.tool || null;
-  const selectedToolConfig = TOOLS.find(tool => tool.id === selectedTool);
 
   // Get suggestions for current context - max 4 as per spec
   const getSuggestions = () => {
@@ -85,25 +48,16 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
   const suggestionCount = getSuggestions().length;
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
-      
-      // Check if click is outside both containers
-      const clickedOutsideTools = toolsContainerRef.current && !toolsContainerRef.current.contains(target);
       const clickedOutsideSuggestions = suggestionsContainerRef.current && !suggestionsContainerRef.current.contains(target);
-      
-      if (clickedOutsideTools && showTools) {
-        setShowTools(false);
-      }
-      
       if (clickedOutsideSuggestions && showSuggestions) {
         setShowSuggestions(false);
       }
     };
 
-    if (showTools || showSuggestions) {
+    if (showSuggestions) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
     }
@@ -112,7 +66,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, [showTools, showSuggestions]);
+  }, [showSuggestions]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -134,37 +88,13 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     setInputText(currentText + (currentText ? ' ' : '') + text);
   }, [setInputText, inputText]);
 
-  // Handle tool selection
-  const handleToolSelect = useCallback((toolId: string) => {
-    if (selectedTool === toolId) {
-      // Deselect if already selected
-      removePendingTool(toolId);
-    } else {
-      // Remove current tool and select new one
-      if (selectedTool) {
-        removePendingTool(selectedTool);
-      }
-      addPendingTool({
-        tool: toolId,
-        label: toolId,
-        confidence: 1.0
-      });
-    }
-    setShowTools(false);
-  }, [addPendingTool, removePendingTool, selectedTool]);
 
   // Handle send message
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;
-    
-    onSendMessage(inputText, undefined, selectedTool);
-    
-    // Reset everything
+    onSendMessage(inputText);
     setInputText('');
-    if (selectedTool) {
-      removePendingTool(selectedTool);
-    }
-  }, [inputText, selectedTool, onSendMessage, setInputText, removePendingTool]);
+  }, [inputText, onSendMessage, setInputText]);
 
   // Handle key press
   const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
@@ -182,8 +112,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 
       {/* Main Input Container */}
       <div className={`
-        enhanced-chat-input-container bg-background/95 border transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm relative
-        ${selectedToolConfig ? selectedToolConfig.borderColor : 'border-gray-200 dark:border-gray-700 hover:border-primary/50'}
+        enhanced-chat-input-container bg-background/95 border border-border/40 transition-all duration-300 rounded-2xl shadow-lg backdrop-blur-sm relative
       `}>
 
         {/* Text Input Row - Full Width Above Buttons */}
@@ -211,15 +140,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               fontFamily: 'InterVariable, Inter, -apple-system, sans-serif'
             }}
           />
-          {/* Tool Status in top-right of textarea */}
-          {selectedToolConfig && (
-            <div className="absolute top-2 right-2 flex items-center gap-1 text-xs font-medium">
-              {React.createElement(selectedToolConfig.icon, {
-                className: `w-4 h-4 ${selectedToolConfig.textColor}`
-              })}
-              <span className={selectedToolConfig.textColor}>{selectedToolConfig.name}</span>
-            </div>
-          )}
         </div>
 
         {/* Button Row - Input Bar with icon order: ① Suggestions ② Tool-Picker ③ Red Microphone ④ Send */}
@@ -232,7 +152,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
                 variant="ghost"
                 onClick={() => {
                   setShowSuggestions(!showSuggestions);
-                  if (!showSuggestions) setShowTools(false);
                 }}
                 className="w-11 h-11 p-0 text-muted-foreground hover:text-foreground transition-colors duration-200"
                 aria-label="Gesprächsvorschläge anzeigen"
@@ -283,76 +202,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* ② Tool Picker - 44x44pt touch target */}
-            <div className="relative" ref={toolsContainerRef}>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  setShowTools(!showTools);
-                  if (!showTools) setShowSuggestions(false);
-                }}
-                className={`
-                  w-11 h-11 p-0 transition-all duration-200 
-                  ${selectedTool ? selectedToolConfig?.textColor : 'text-muted-foreground hover:text-foreground'}
-                `}
-                aria-label="Werkzeuge auswählen"
-              >
-                <Wrench className={`w-6 h-6 transition-transform duration-200 ${showTools ? 'rotate-45' : ''}`} />
-              </Button>
-              
-              {/* Tool Selection Dropdown */}
-              <AnimatePresence>
-                {showTools && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ type: "spring", duration: 0.2 }}
-                    className="absolute bottom-full mb-2 left-0 z-50"
-                  >
-                    <div className="bg-background border border-border rounded-xl p-2 shadow-xl backdrop-blur-sm w-56">
-                      <div className="space-y-1">
-                        {TOOLS.map(tool => {
-                          const IconComponent = tool.icon;
-                          return (
-                            <Button
-                              key={tool.id}
-                              size="sm"
-                              variant={selectedTool === tool.id ? "default" : "ghost"}
-                              onClick={() => handleToolSelect(tool.id)}
-                              className={`
-                                w-full justify-between font-medium transition-all duration-200
-                                ${selectedTool === tool.id 
-                                  ? `${tool.bgColor} text-white shadow-lg hover:opacity-90` 
-                                  : 'hover:bg-accent hover:text-accent-foreground'
-                                }
-                              `}
-                            >
-                              <span>{tool.name}</span>
-                              <IconComponent className="w-4 h-4" />
-                            </Button>
-                          );
-                        })}
-                      </div>
-                      {selectedTool && (
-                        <div className="mt-2 pt-2 border-t border-border">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => removePendingTool(selectedTool)}
-                            className="w-full justify-center text-destructive hover:text-destructive hover:bg-destructive/10"
-                          >
-                            <X className="w-3 h-3 mr-1" />
-                            Tool entfernen
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
 
           </div>
 
@@ -364,7 +213,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               variant="ghost"
               onClick={() => {
                 handleVoiceStart();
-                setShowTools(false);
                 setShowSuggestions(false);
               }}
               className="w-11 h-11 p-0 transition-all duration-200 text-red-600 hover:text-red-700"
@@ -377,7 +225,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
             <Button
               onClick={() => {
                 handleSend();
-                setShowTools(false);
                 setShowSuggestions(false);
               }}
               disabled={!hasContent || isLoading}
@@ -399,17 +246,6 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           </div>
         </div>
 
-        {/* Tool Widget Area */}
-        {selectedTool === 'mindset-journal' && (
-          <div className="border-t border-border/50 p-4">
-            <MindsetJournalWidget 
-              onKaiTransfer={(text) => {
-                setInputText(text);
-                removePendingTool(selectedTool);
-              }}
-            />
-          </div>
-        )}
 
         {/* Voice Overlay */}
         {isVoiceOverlayOpen && (

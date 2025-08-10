@@ -20,16 +20,19 @@ import { EnhancedChatInput } from '@/components/EnhancedChatInput';
 import { TrainingPlanQuickAction } from '@/components/TrainingPlanQuickAction';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 import { WorkoutPlanDraftCard } from '@/components/WorkoutPlanDraftCard';
-import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
+
 import { generateNextDayPlan } from '@/utils/generateNextDayPlan';
 import { PlanInlineEditor } from '@/components/PlanInlineEditor';
-import { detectToolIntent, shouldUseTool } from '@/utils/toolDetector';
+
 import { WeightEntryModal } from '@/components/WeightEntryModal';
 import { v4 as uuidv4 } from 'uuid';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useOrchestrator, OrchestratorReply } from '@/hooks/useOrchestrator';
 import ChoiceBar from '@/components/ChoiceBar';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
+import { usePointsSystem } from '@/hooks/usePointsSystem';
+import { getMealBasePoints } from '@/utils/mealPointsHelper';
+import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -114,7 +117,11 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   // Feature flags
   const { isEnabled: isFlagEnabled } = useFeatureFlags();
   const autoTool = isFlagEnabled('auto_tool_orchestration');
+  const legacyEnabled = isFlagEnabled('legacy_fallback_enabled');
   const { sendEvent } = useOrchestrator();
+
+  // Points & streaks
+  const { awardPoints, updateStreak } = usePointsSystem();
 
   // Orchestrator UI states
   const [clarify, setClarify] = useState<{ prompt: string; options: [string, string]; traceId?: string } | null>(null);
@@ -819,12 +826,15 @@ if (enableAdvancedFeatures) {
       setInputText('');
       return;
     } catch (e) {
-      console.warn('Orchestrator routing failed, falling back to normal chat:', e);
+      console.warn('Orchestrator routing failed:', e);
+      if (legacyEnabled && mode === 'training') {
+        await handleSendMessage(msg, mediaUrls);
+        return;
+      }
+      toast.error('Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.');
+      return;
     }
-
-    // Fallback to existing behavior
-    await handleSendMessage(msg, mediaUrls);
-  }, [coach, user?.id, mode, sendEvent, renderOrchestratorReply, handleSendMessage]);
+  }, [coach, user?.id, mode, sendEvent, renderOrchestratorReply, handleSendMessage, legacyEnabled]);
 
     // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {
@@ -893,14 +903,32 @@ if (enableAdvancedFeatures) {
             try {
               if (!user?.id || !confirmMeal.proposal) return;
               const p = confirmMeal.proposal as any;
-              await supabase.from('meals').insert({
-                user_id: user.id,
-                text: p.title || 'Mahlzeit',
-                calories: Math.round(p.calories || 0),
-                protein: Math.round(p.protein || 0),
-                carbs: Math.round(p.carbs || 0),
-                fats: Math.round(p.fats || 0),
-              });
+              const { data: mealInsert, error: mealError } = await supabase
+                .from('meals')
+                .insert({
+                  user_id: user.id,
+                  text: p.title || 'Mahlzeit',
+                  calories: Math.round(p.calories || 0),
+                  protein: Math.round(p.protein || 0),
+                  carbs: Math.round(p.carbs || 0),
+                  fats: Math.round(p.fats || 0),
+                })
+                .select('id')
+                .single();
+              if (mealError) throw mealError;
+              const newMealId = (mealInsert as any)?.id;
+              if (p.imageUrl && newMealId) {
+                await supabase.from('meal_images').insert({
+                  user_id: user.id,
+                  meal_id: newMealId,
+                  image_url: p.imageUrl,
+                });
+              }
+              const hasPhoto = !!p.imageUrl;
+              const basePoints = getMealBasePoints(hasPhoto);
+              await awardPoints(hasPhoto ? 'meal_tracked_with_photo' : 'meal_tracked', basePoints, 'Chat-Mahlzeit');
+              await updateStreak('meal_tracking');
+              triggerDataRefresh();
               toast.success('Mahlzeit gespeichert');
             } catch (e) {
               toast.error('Speichern fehlgeschlagen');
@@ -997,14 +1025,32 @@ if (enableAdvancedFeatures) {
           try {
             if (!user?.id || !confirmMeal.proposal) return;
             const p = confirmMeal.proposal as any;
-            await supabase.from('meals').insert({
-              user_id: user.id,
-              text: p.title || 'Mahlzeit',
-              calories: Math.round(p.calories || 0),
-              protein: Math.round(p.protein || 0),
-              carbs: Math.round(p.carbs || 0),
-              fats: Math.round(p.fats || 0),
-            });
+            const { data: mealInsert, error: mealError } = await supabase
+              .from('meals')
+              .insert({
+                user_id: user.id,
+                text: p.title || 'Mahlzeit',
+                calories: Math.round(p.calories || 0),
+                protein: Math.round(p.protein || 0),
+                carbs: Math.round(p.carbs || 0),
+                fats: Math.round(p.fats || 0),
+              })
+              .select('id')
+              .single();
+            if (mealError) throw mealError;
+            const newMealId = (mealInsert as any)?.id;
+            if (p.imageUrl && newMealId) {
+              await supabase.from('meal_images').insert({
+                user_id: user.id,
+                meal_id: newMealId,
+                image_url: p.imageUrl,
+              });
+            }
+            const hasPhoto = !!p.imageUrl;
+            const basePoints = getMealBasePoints(hasPhoto);
+            await awardPoints(hasPhoto ? 'meal_tracked_with_photo' : 'meal_tracked', basePoints, 'Chat-Mahlzeit');
+            await updateStreak('meal_tracking');
+            triggerDataRefresh();
             toast.success('Mahlzeit gespeichert');
           } catch (e) {
             toast.error('Speichern fehlgeschlagen');
