@@ -5695,15 +5695,15 @@ export type Database = {
       }
       v_orchestrator_traces_open_errors: {
         Row: {
-          aggregated_status: string | null
           coach_id: string | null
-          has_error: boolean | null
-          last_event_at: string | null
-          max_latency_ms: number | null
-          stage_details: Json | null
-          stages_run: string[] | null
-          started_at: string | null
-          still_running: boolean | null
+          error_message: string | null
+          handler_name: string | null
+          id: number | null
+          latency_ms: number | null
+          payload_json: Json | null
+          stage: string | null
+          status: string | null
+          timestamp: string | null
           trace_id: string | null
           user_id: string | null
         }
@@ -5711,12 +5711,43 @@ export type Database = {
       }
       v_orchestrator_traces_recent: {
         Row: {
-          aggregated_status: string | null
           coach_id: string | null
-          last_event_at: string | null
-          started_at: string | null
+          error_message: string | null
+          handler_name: string | null
+          id: number | null
+          latency_ms: number | null
+          payload_json: Json | null
+          stage: string | null
+          status: string | null
+          timestamp: string | null
           trace_id: string | null
           user_id: string | null
+        }
+        Insert: {
+          coach_id?: string | null
+          error_message?: string | null
+          handler_name?: string | null
+          id?: number | null
+          latency_ms?: number | null
+          payload_json?: Json | null
+          stage?: string | null
+          status?: string | null
+          timestamp?: string | null
+          trace_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          coach_id?: string | null
+          error_message?: string | null
+          handler_name?: string | null
+          id?: number | null
+          latency_ms?: number | null
+          payload_json?: Json | null
+          stage?: string | null
+          status?: string | null
+          timestamp?: string | null
+          trace_id?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
