@@ -72,3 +72,8 @@ export const useFeatureFlags = (): FeatureFlagHook => {
     refreshFlags: fetchFeatureFlags
   };
 };
+
+// Helper to check a flag from the merged boolean map.
+export const isFeatureEnabled = (flagsMap: Record<string, boolean> | undefined, key: string): boolean => {
+  return Boolean(flagsMap?.[key]);
+};
