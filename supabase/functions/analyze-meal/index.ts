@@ -3,12 +3,13 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 import { TASK_CONFIGS, callOpenAIWithRetry, logPerformanceMetrics } from '../_shared/openai-config.ts';
+import { logTraceEvent } from "../telemetry.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode',
 };
 
 serve(async (req) => {
@@ -22,6 +23,14 @@ serve(async (req) => {
 
   try {
     const requestBody = await req.json();
+
+    const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const supabaseLog = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
     
     // Input validation and sanitization
     const sanitizeText = (text: string): string => {
@@ -39,6 +48,14 @@ serve(async (req) => {
     
     const text = sanitizeText(requestBody.text);
     const images = validateImages(requestBody.images || []);
+
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      stage: 'received',
+      handler: 'analyze-meal',
+      status: 'RUNNING',
+      payload: { hasText: !!text, imageCount: images.length }
+    });
     
     console.log('📋 [ANALYZE-MEAL] Request payload:', {
       hasText: !!text,
@@ -396,6 +413,15 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       const totalDuration = Date.now() - requestStartTime;
       console.log(`🎉 [ANALYZE-MEAL] RAG analysis completed successfully in ${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
       
+      await logTraceEvent(supabaseLog, {
+        traceId,
+        stage: 'tool_result',
+        handler: 'analyze-meal',
+        status: 'OK',
+        latencyMs: totalDuration,
+        payload: { method: 'rag', imageCount: images?.length || 0 }
+      });
+      
       return new Response(JSON.stringify(ragResponse), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -503,6 +529,14 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         parsed.total.fats = Math.round((parsed.total.fats || 0) * 10) / 10;
       }
 
+      await logTraceEvent(supabaseLog, {
+        traceId,
+        stage: 'tool_result',
+        handler: 'analyze-meal',
+        status: 'OK',
+        latencyMs: totalDuration,
+        payload: { method: 'openai', imageCount: images?.length || 0 }
+      });
       return new Response(JSON.stringify(parsed), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -533,6 +567,14 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       
       console.log('🔄 [ANALYZE-MEAL] Using fallback response:', fallbackResponse);
       
+      await logTraceEvent(supabaseLog, {
+        traceId,
+        stage: 'tool_result',
+        handler: 'analyze-meal',
+        status: 'OK',
+        latencyMs: Date.now() - requestStartTime,
+        payload: { method: 'fallback', imageCount: images?.length || 0 }
+      });
       return new Response(JSON.stringify(fallbackResponse), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -542,9 +584,20 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     const totalDuration = Date.now() - requestStartTime;
     console.error('❌ [ANALYZE-MEAL] Error in analyze-meal function:', error);
     console.error('🕐 [ANALYZE-MEAL] Failed after:', `${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
+
+    try {
+      await logTraceEvent(supabaseLog, {
+        traceId,
+        stage: 'error',
+        handler: 'analyze-meal',
+        status: 'ERROR',
+        latencyMs: totalDuration,
+        errorMessage: String(error)
+      });
+    } catch (_) { /* ignore */ }
     
     return new Response(JSON.stringify({ 
-      error: error.message || 'Ein unerwarteter Fehler ist aufgetreten'
+      error: (error as any).message || 'Ein unerwarteter Fehler ist aufgetreten'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

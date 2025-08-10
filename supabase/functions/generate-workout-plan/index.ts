@@ -1,10 +1,11 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { logTraceEvent } from "../telemetry.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode',
 };
 
 serve(async (req) => {
@@ -16,19 +17,24 @@ serve(async (req) => {
   try {
     const { coachId, planName, category, description, userGoals, userLevel } = await req.json();
 
+    const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const supabaseLog = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+    const t0 = Date.now();
+
+
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get Authorization header
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    const authHeader2 = req.headers.get('Authorization');
+    if (!authHeader2) {
       throw new Error('No authorization header');
     }
 
-    // Parse the JWT token to get user info
-    const token = authHeader.replace('Bearer ', '');
+    const token = authHeader2.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     
     if (userError || !user) {
@@ -36,6 +42,7 @@ serve(async (req) => {
     }
 
     // Example workout plan generation (simplified)
+    await logTraceEvent(supabaseLog, { traceId, stage: 'tool_exec', handler: 'generate-workout-plan', status: 'RUNNING', payload: { category, userLevel } });
     // In a real implementation, this would integrate with OpenAI or other AI services
     const generateExercisesPlan = (category: string, userLevel: string) => {
       const exercisePlans = {
@@ -82,6 +89,15 @@ serve(async (req) => {
 
     if (planError) throw planError;
 
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      stage: 'tool_result',
+      handler: 'generate-workout-plan',
+      status: 'OK',
+      latencyMs: Date.now() - t0,
+      payload: { category, exercisesCount: exercises.length }
+    });
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -95,10 +111,16 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error generating workout plan:', error);
+    try {
+      const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const supabaseLog = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+      await logTraceEvent(supabaseLog, { traceId, stage: 'error', handler: 'generate-workout-plan', status: 'ERROR', errorMessage: String(error) });
+    } catch (_) { /* ignore */ }
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message
+        error: (error as any).message
       }),
       {
         status: 500,

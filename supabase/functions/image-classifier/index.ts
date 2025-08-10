@@ -1,12 +1,14 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getTaskModel } from '../_shared/openai-config.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { logTraceEvent } from "../telemetry.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode',
 };
 
 interface ClassificationResult {
@@ -22,6 +24,23 @@ serve(async (req) => {
   }
 
   try {
+    const t0 = Date.now();
+    const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    await logTraceEvent(supabase, {
+      traceId,
+      stage: 'received',
+      handler: 'image-classifier',
+      status: 'RUNNING',
+      payload: { source: 'edge' }
+    });
+
     const { imageUrl, userId } = await req.json();
 
     if (!imageUrl) {
@@ -107,6 +126,15 @@ Antworte im JSON Format:
 
     console.log('✅ Image classified:', result);
 
+    await logTraceEvent(supabase, {
+      traceId,
+      stage: 'tool_result',
+      handler: 'image-classifier',
+      status: 'OK',
+      latencyMs: Date.now() - t0,
+      payload: { category: result.category, confidence: result.confidence }
+    });
+
     return new Response(JSON.stringify({
       success: true,
       classification: result
@@ -116,9 +144,25 @@ Antworte im JSON Format:
 
   } catch (error) {
     console.error('❌ Error in image-classifier:', error);
+    try {
+      const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      await logTraceEvent(supabase, {
+        traceId,
+        stage: 'error',
+        handler: 'image-classifier',
+        status: 'ERROR',
+        errorMessage: String(error)
+      });
+    } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({
       success: false,
-      error: error.message,
+      error: (error as any).message,
       classification: {
         category: 'general',
         confidence: 0.1,

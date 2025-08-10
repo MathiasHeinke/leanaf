@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
+import { logTraceEvent } from "../telemetry.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode",
@@ -36,6 +36,17 @@ Deno.serve(async (req) => {
     }
     if (!userId) return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+    const t0 = Date.now();
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      coachId: undefined,
+      stage: 'tool_exec',
+      handler: 'diary-assistant',
+      status: 'RUNNING',
+      payload: { clientEventId: event.clientEventId }
+    });
+
     const text = (event.text ?? "").trim();
     if (!text) return ok({ kind: "message", text: "Bitte schreib einen kurzen Tagebuch‑Eintrag.", traceId } satisfies Reply);
 
@@ -51,13 +62,43 @@ Deno.serve(async (req) => {
     const { error } = await supabase.from("diary_entries").insert(payload);
     if (error) {
       if ((error as any)?.code === "23505") {
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: undefined,
+          stage: 'tool_result',
+          handler: 'diary-assistant',
+          status: 'OK',
+          latencyMs: Date.now() - t0,
+          payload: { duplicate: true }
+        });
         return ok({ kind: "message", text: "Tagebuch‑Eintrag bereits erfasst (Idempotenz).", traceId } satisfies Reply);
       }
       throw error;
     }
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      coachId: undefined,
+      stage: 'tool_result',
+      handler: 'diary-assistant',
+      status: 'OK',
+      latencyMs: Date.now() - t0
+    });
     return ok({ kind: "message", text: "✅ Tagebuch gespeichert.", traceId } satisfies Reply);
   } catch (e) {
     console.error("diary-assistant error", e);
+    try {
+      await logTraceEvent(supabase, {
+        traceId,
+        userId: undefined,
+        coachId: undefined,
+        stage: 'error',
+        handler: 'diary-assistant',
+        status: 'ERROR',
+        errorMessage: String(e)
+      });
+    } catch (_) { /* ignore */ }
     return ok({ kind: "message", text: "Konnte Tagebuch nicht speichern. Bitte nochmal senden.", traceId } satisfies Reply);
   }
 });

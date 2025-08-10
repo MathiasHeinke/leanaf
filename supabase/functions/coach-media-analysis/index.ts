@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 import { getTaskModel } from '../_shared/openai-config.ts';
+import { logTraceEvent } from "../telemetry.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -9,7 +10,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode',
 };
 
 serve(async (req) => {
@@ -22,6 +23,10 @@ serve(async (req) => {
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const supabaseLog = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+    const t0 = Date.now();
     
     const body = await req.json();
     
@@ -46,6 +51,14 @@ serve(async (req) => {
         }
       );
     }
+
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      stage: 'received',
+      handler: 'coach-media-analysis',
+      status: 'RUNNING',
+      payload: { mediaCount: mediaUrls.length, mediaType }
+    });
 
     // Log security event
     try {
@@ -322,7 +335,7 @@ serve(async (req) => {
         }
         
         return userData;
-      } catch (error) {
+  } catch (error) {
         console.error('Error loading user context:', error);
         return {};
       }
@@ -382,6 +395,7 @@ serve(async (req) => {
     if (!openAIResponse.ok) {
       const errorText = await openAIResponse.text();
       console.error('OpenAI Vision API error:', errorText);
+      await logTraceEvent(supabaseLog, { traceId, stage: 'error', handler: 'coach-media-analysis', status: 'ERROR', errorMessage: errorText });
       throw new Error(`OpenAI Vision API error: ${openAIResponse.status}`);
     }
 
@@ -389,13 +403,23 @@ serve(async (req) => {
     const analysis = openAIData.choices[0]?.message?.content;
 
     if (!analysis) {
+      await logTraceEvent(supabaseLog, { traceId, stage: 'error', handler: 'coach-media-analysis', status: 'ERROR', errorMessage: 'No analysis from OpenAI Vision API' });
       throw new Error('No analysis from OpenAI Vision API');
     }
 
     console.log(`Generated media analysis successfully from ${coachInfo.name}`);
 
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      stage: 'tool_result',
+      handler: 'coach-media-analysis',
+      status: 'OK',
+      latencyMs: Date.now() - t0,
+      payload: { mediaCount: mediaUrls.length, mediaType }
+    });
+
     return new Response(JSON.stringify({ 
-      response: analysis, // Use 'response' key for consistency with enhanced-coach-chat
+      response: analysis, // ... keep existing code (rest of response fields)
       analysis,
       coachName: coachInfo.name,
       coachStyle: coachInfo.style,

@@ -2,12 +2,13 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { getTaskModel } from '../_shared/openai-config.ts';
+import { logTraceEvent } from "../telemetry.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode',
 };
 
 // Lucy's safe supplements from the safety checker
@@ -36,6 +37,23 @@ serve(async (req) => {
   }
 
   try {
+    const t0 = Date.now();
+    const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    await logTraceEvent(supabase, {
+      traceId,
+      stage: 'received',
+      handler: 'supplement-analysis',
+      status: 'RUNNING',
+      payload: { source: 'edge' }
+    });
+
     const { supplements, userProfile } = await req.json();
     
     console.log('🔄 Supplement analysis request:', {
@@ -145,15 +163,39 @@ Schreibe auf Deutsch in Lucy's warmem, wissenschaftlichem Stil.${berlinTip}`;
     }
 
     console.log('🎉 Analysis generated successfully');
+    await logTraceEvent(supabase, {
+      traceId,
+      stage: 'tool_result',
+      handler: 'supplement-analysis',
+      status: 'OK',
+      latencyMs: Date.now() - t0,
+      payload: { length: (analysis || '').length }
+    });
     return new Response(JSON.stringify({ analysis }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('💥 Error in supplement-analysis function:', error);
+    try {
+      const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      await logTraceEvent(supabase, {
+        traceId,
+        stage: 'error',
+        handler: 'supplement-analysis',
+        status: 'ERROR',
+        errorMessage: String(error)
+      });
+    } catch (_) { /* ignore */ }
     return new Response(JSON.stringify({ 
       analysis: "Hey du 👋 Kleine Pause bei der Analyse! Supplements sind trotzdem ein guter Schritt. Balance statt Perfektion ✨",
-      error: error.message 
+      error: (error as any).message 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
