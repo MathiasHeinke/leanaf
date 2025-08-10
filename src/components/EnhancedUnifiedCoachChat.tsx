@@ -25,6 +25,7 @@ import { generateNextDayPlan } from '@/utils/generateNextDayPlan';
 import { PlanInlineEditor } from '@/components/PlanInlineEditor';
 import { detectToolIntent, shouldUseTool } from '@/utils/toolDetector';
 import { WeightEntryModal } from '@/components/WeightEntryModal';
+import { v4 as uuidv4 } from 'uuid';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -372,12 +373,13 @@ if (enableAdvancedFeatures) {
     try {
       // Special routing for training mode → use training-orchestrator
       if (mode === 'training') {
-        let payload: any = { event: { type: 'TEXT', text: messageText } };
+        const clientEventId = uuidv4();
+        let payload: any = { clientEventId, event: { type: 'TEXT', text: messageText } };
 
         if (mediaUrls && mediaUrls.length > 0) {
-          payload = { event: { type: 'IMAGE', url: mediaUrls[0] } };
+          payload = { clientEventId, event: { type: 'IMAGE', url: mediaUrls[0] } };
         } else if (messageText.toLowerCase() === '/end' || messageText.toLowerCase() === 'end') {
-          payload = { event: { type: 'END' } };
+          payload = { clientEventId, event: { type: 'END' } };
         }
 
         const { data, error } = await supabase.functions.invoke('training-orchestrator', { body: payload });
