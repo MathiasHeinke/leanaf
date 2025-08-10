@@ -1,52 +1,79 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders, logTraceEvent, softTruncate } from "../telemetry.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-force-non-streaming, x-debug-mode',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400'
-};
+const HANDLER = 'minimal-coach';
 
 serve(async (req) => {
-  console.log(`🔧 MINIMAL: ${req.method} request received`);
-  
   if (req.method === 'OPTIONS') {
-    console.log(`🔧 MINIMAL: CORS preflight`);
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (req.method === 'POST') {
-    try {
-      const body = await req.json();
-      console.log(`🔧 MINIMAL: Received message: "${body.message || 'no message'}"`);
-      
-      // Simple AI-like response
-      const response = {
-        response: `Hallo! Ich habe deine Nachricht "${body.message || 'test'}" erhalten. Ich bin derzeit im Test-Modus und kann noch keine echten AI-Antworten generieren, aber die Verbindung funktioniert! 🤖`,
-        timestamp: new Date().toISOString(),
-        success: true
-      };
-      
-      console.log(`🔧 MINIMAL: Sending response`);
-      return new Response(JSON.stringify(response), {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-      
-    } catch (error) {
-      console.error(`🔧 MINIMAL: Error:`, error);
-      return new Response(JSON.stringify({
-        error: `Fehler: ${error.message}`,
-        timestamp: new Date().toISOString()
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-  }
+  const traceId = req.headers.get('x-trace-id') || crypto.randomUUID();
+  const authorization = req.headers.get('Authorization') ?? '';
+  const source = req.headers.get('x-source') ?? 'function';
+  const chatMode = req.headers.get('x-chat-mode') ?? '';
 
-  return new Response('Method not allowed', { 
-    status: 405, 
-    headers: corsHeaders 
-  });
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authorization } } }
+  );
+
+  const ok = (body: any, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+
+  const t0 = Date.now();
+
+  try {
+    const body = await req.json().catch(() => ({}));
+    const { data: userRes } = await supabase.auth.getUser();
+    const userId = userRes?.user?.id ?? null;
+
+    await logTraceEvent(supabase, {
+      traceId, userId, coachId: null,
+      stage: 'received', handler: HANDLER, status: 'RUNNING',
+      payload: softTruncate({ input: { hasMessage: Boolean(body?.message), length: (body?.message||'').length } }, 8000)
+    });
+
+    // ---- tool_exec ----
+    const execStart = Date.now();
+    await logTraceEvent(supabase, {
+      traceId, userId, coachId: null,
+      stage: 'tool_exec', handler: HANDLER, status: 'RUNNING'
+    });
+
+    // Business logic (simple echo)
+    const response = {
+      response: `Hallo! Ich habe deine Nachricht "${body.message || 'test'}" erhalten. Ich bin derzeit im Test-Modus und kann noch keine echten AI-Antworten generieren, aber die Verbindung funktioniert! 🤖`,
+      timestamp: new Date().toISOString(),
+      success: true
+    };
+
+    const latencyMs = Date.now() - execStart;
+
+    // ---- tool_result ----
+    await logTraceEvent(supabase, {
+      traceId, userId, coachId: null,
+      stage: 'tool_result', handler: HANDLER, status: 'OK',
+      latencyMs, payload: softTruncate({ output: { success: true } }, 8000)
+    });
+
+    // ---- reply_send ----
+    await logTraceEvent(supabase, {
+      traceId, userId, coachId: null,
+      stage: 'reply_send', handler: HANDLER, status: 'OK',
+      latencyMs: Date.now() - t0
+    });
+
+    return ok(response);
+  } catch (error: any) {
+    await logTraceEvent(supabase, {
+      traceId, userId: null, coachId: null,
+      stage: 'error', handler: HANDLER, status: 'ERROR',
+      latencyMs: Date.now() - t0, errorMessage: String(error)
+    });
+
+    return ok({ error: `Fehler: ${error?.message ?? 'Unexpected error'}`, success: false });
+  }
 });

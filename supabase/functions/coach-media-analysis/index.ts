@@ -450,6 +450,18 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('Error in coach-media-analysis function:', error);
+    try {
+      const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const supabaseLog = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+      await logTraceEvent(supabaseLog, {
+        traceId,
+        stage: 'error',
+        handler: 'coach-media-analysis',
+        status: 'ERROR',
+        errorMessage: String(error)
+      });
+    } catch (_) { /* ignore */ }
     
     const errorResponse = {
       error: error.message || 'Internal server error',
