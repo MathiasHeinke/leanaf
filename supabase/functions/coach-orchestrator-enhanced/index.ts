@@ -130,6 +130,33 @@ serve(async (req) => {
       payload: { type: event.type, source, chatMode }
     });
 
+    // Idempotency & retry info
+    const retryHeader = req.headers.get('x-retry') === '1';
+    const clientEventId = (event as any).clientEventId as string | undefined;
+    if (clientEventId) {
+      // Check if already processed (prior reply_send with same clientEventId)
+      const { data: existingProcessed } = await supabase
+        .from('orchestrator_traces')
+        .select('id')
+        .eq('stage', 'reply_send')
+        // @ts-ignore - JSONB contains filter supported at runtime
+        .contains('payload_json', { clientEventId })
+        .limit(1);
+      if (existingProcessed && existingProcessed.length > 0) {
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', payload: { dedupe: true, clientEventId, retried: retryHeader } });
+        return new Response(JSON.stringify(asMessage('Alles klar – ich habe dir bereits geantwortet.', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      // Lightweight in-flight guard within this instance
+      // deno-lint-ignore no-var
+      var __inflight = (globalThis as any).__inflightSet as Set<string> | undefined;
+      if (!__inflight) { (globalThis as any).__inflightSet = new Set<string>(); __inflight = (globalThis as any).__inflightSet; }
+      if (__inflight.has(clientEventId)) {
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'route_decision', handler: 'coach-orchestrator-enhanced', status: 'RUNNING', payload: { inflight: true, clientEventId, retried: retryHeader } });
+        return new Response(JSON.stringify(asMessage('⏳ Bin dran – einen Moment …', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      __inflight.add(clientEventId);
+    }
+
     // Auto-classify image if missing image_type to improve routing
     if (event.type === "IMAGE" && !(event as any).context?.image_type && (event as any).url) {
       const tStart = Date.now();
@@ -296,7 +323,7 @@ serve(async (req) => {
     if (intent.name === "supplement") {
       const tool = event.type === "IMAGE" ? "supplement-recognition" : "supplement-analysis";
       const t0 = Date.now();
-      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: tool, status: 'RUNNING' });
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: tool, status: 'RUNNING', payload: { clientEventId } });
       const invokeBody = event.type === "IMAGE"
         ? { userId, imageUrl: (event as any).url, userQuestion: "" }
         : { userId, event };

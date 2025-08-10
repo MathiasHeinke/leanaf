@@ -69,10 +69,15 @@ export function useOrchestrator() {
     try {
       // Try enhanced with timeout, retry once on error/timeout
       try {
-        const data = await withTimeout(invokeEnhanced(), 7000);
+        const data = await withTimeout(invokeEnhanced(), 25000);
         return normalizeReply(data);
       } catch (e1) {
-        const data = await withTimeout(invokeEnhanced(), 7000);
+        if (e1 instanceof Error && e1.message === 'timeout') {
+          console.warn('orchestrator TIMEOUT', { cutoffMs: 25000 });
+        }
+        // mark retry so the server can log it in traces
+        headers['x-retry'] = '1';
+        const data = await withTimeout(invokeEnhanced(), 10000);
         return normalizeReply(data);
       }
     } catch (e) {
