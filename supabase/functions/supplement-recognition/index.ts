@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
 import { getTaskModel } from '../_shared/openai-config.ts';
+import { logTraceEvent } from "../telemetry.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -9,7 +10,7 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode',
 };
 
 serve(async (req) => {
@@ -21,7 +22,11 @@ serve(async (req) => {
   }
 
   try {
+    const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+    const authHeader = req.headers.get('Authorization') ?? '';
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseLog = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+    const t0 = Date.now();
     
     const body = await req.json();
     
@@ -30,6 +35,17 @@ serve(async (req) => {
       imageUrl,
       userQuestion = ''
     } = body;
+
+    // Telemetry: received
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      userId,
+      coachId: null,
+      stage: 'received',
+      handler: 'supplement-recognition',
+      status: 'RUNNING',
+      payload: { hasImage: Boolean(imageUrl) }
+    });
 
     // Validate inputs
     if (!userId || !imageUrl) {
@@ -122,6 +138,16 @@ WICHTIG:
 
     console.log('🤖 Sending image to OpenAI Vision API for supplement recognition');
 
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      userId,
+      coachId: null,
+      stage: 'tool_exec',
+      handler: 'supplement-recognition',
+      status: 'RUNNING',
+      payload: { hasImage: Boolean(imageUrl) }
+    });
+
     // Call OpenAI Vision API
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -189,6 +215,17 @@ WICHTIG:
 
     // Log recognition result
     try {
+      await logTraceEvent(supabaseLog, {
+        traceId,
+        userId,
+        coachId: null,
+        stage: 'tool_result',
+        handler: 'supplement-recognition',
+        status: 'OK',
+        latencyMs: Date.now() - t0,
+        payload: { count: parsedResult?.recognized_supplements?.length || 0, confidence: parsedResult?.confidence_score || 0 }
+      });
+
       await supabase
         .from('supplement_recognition_log')
         .insert({
@@ -204,6 +241,16 @@ WICHTIG:
 
     console.log(`✅ Supplement recognition completed. Found ${parsedResult.recognized_supplements?.length || 0} supplements`);
 
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      userId,
+      coachId: null,
+      stage: 'reply_send',
+      handler: 'supplement-recognition',
+      status: 'OK',
+      latencyMs: Date.now() - t0
+    });
+
     return new Response(JSON.stringify({
       success: true,
       ...parsedResult,
@@ -214,6 +261,21 @@ WICHTIG:
 
   } catch (error: any) {
     console.error('❌ Error in supplement-recognition function:', error);
+    try {
+      const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
+      const authHeader = req.headers.get('Authorization') ?? '';
+      const supabaseLog = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: authHeader } } });
+      await logTraceEvent(supabaseLog, {
+        traceId,
+        userId: null,
+        coachId: null,
+        stage: 'error',
+        handler: 'supplement-recognition',
+        status: 'ERROR',
+        latencyMs: null,
+        errorMessage: String(error)
+      });
+    } catch (_) { /* ignore */ }
     
     const errorResponse = {
       success: false,

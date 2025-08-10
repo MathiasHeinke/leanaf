@@ -377,6 +377,14 @@ serve(async (req) => {
 
     console.log(`Sending vision analysis request to OpenAI for ${mediaUrls.length} media items`);
 
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      stage: 'tool_exec',
+      handler: 'coach-media-analysis',
+      status: 'RUNNING',
+      payload: { mediaCount: mediaUrls.length, mediaType }
+    });
+
     // Call OpenAI Vision API
     const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -418,6 +426,13 @@ serve(async (req) => {
       payload: { mediaCount: mediaUrls.length, mediaType }
     });
 
+    await logTraceEvent(supabaseLog, {
+      traceId,
+      stage: 'reply_send',
+      handler: 'coach-media-analysis',
+      status: 'OK',
+      latencyMs: Date.now() - t0
+    });
     return new Response(JSON.stringify({ 
       response: analysis, // ... keep existing code (rest of response fields)
       analysis,

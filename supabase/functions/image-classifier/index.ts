@@ -49,6 +49,14 @@ serve(async (req) => {
 
     console.log('🔍 Classifying image:', imageUrl);
 
+    await logTraceEvent(supabase, {
+      traceId,
+      stage: 'tool_exec',
+      handler: 'image-classifier',
+      status: 'RUNNING',
+      payload: { hasImage: Boolean(imageUrl) }
+    });
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -135,6 +143,13 @@ Antworte im JSON Format:
       payload: { category: result.category, confidence: result.confidence }
     });
 
+    await logTraceEvent(supabase, {
+      traceId,
+      stage: 'reply_send',
+      handler: 'image-classifier',
+      status: 'OK',
+      latencyMs: Date.now() - t0
+    });
     return new Response(JSON.stringify({
       success: true,
       classification: result

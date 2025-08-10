@@ -1,6 +1,12 @@
 // supabase/functions/telemetry.ts
 // Shared telemetry helper for edge functions (no secrets; safe payload logging)
 
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
 export type TraceStage =
   | 'received'
   | 'route_decision'
@@ -80,5 +86,18 @@ function truncateApprox(obj: any, maxLen: number) {
     }
   } catch {
     // ignore
+  }
+}
+
+export function softTruncate(obj: any, maxLen: number = 8000) {
+  try {
+    const s = JSON.stringify(obj ?? null);
+    if (!s) return null;
+    if (s.length > maxLen) {
+      return { __truncated__: true };
+    }
+    return obj;
+  } catch {
+    return { __truncated__: true };
   }
 }

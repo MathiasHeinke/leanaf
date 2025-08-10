@@ -111,6 +111,14 @@ Schreibe auf Deutsch in Lucy's warmem, wissenschaftlichem Stil.${berlinTip}`;
 
     console.log('🤖 Calling OpenAI with model:', getTaskModel('supplement-recognition'));
 
+    await logTraceEvent(supabase, {
+      traceId,
+      stage: 'tool_exec',
+      handler: 'supplement-analysis',
+      status: 'RUNNING',
+      payload: { prompt_len: (prompt || '').length }
+    });
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -170,6 +178,14 @@ Schreibe auf Deutsch in Lucy's warmem, wissenschaftlichem Stil.${berlinTip}`;
       status: 'OK',
       latencyMs: Date.now() - t0,
       payload: { length: (analysis || '').length }
+    });
+
+    await logTraceEvent(supabase, {
+      traceId,
+      stage: 'reply_send',
+      handler: 'supplement-analysis',
+      status: 'OK',
+      latencyMs: Date.now() - t0
     });
     return new Response(JSON.stringify({ analysis }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
