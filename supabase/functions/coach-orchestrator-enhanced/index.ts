@@ -136,11 +136,11 @@ serve(async (req) => {
     if (clientEventId) {
       // Check if already processed (prior reply_send with same clientEventId)
       const { data: existingProcessed } = await supabase
-        .from('orchestrator_traces')
+        .from('coach_traces')
         .select('id')
         .eq('stage', 'reply_send')
         // @ts-ignore - JSONB contains filter supported at runtime
-        .contains('payload_json', { clientEventId })
+        .contains('data', { clientEventId })
         .limit(1);
       if (existingProcessed && existingProcessed.length > 0) {
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', payload: { dedupe: true, clientEventId, retried: retryHeader } });
@@ -246,7 +246,7 @@ serve(async (req) => {
     }
 
     // High confidence → tool routing
-    const clientEventId = (event as any).clientEventId;
+    // reuse clientEventId from earlier idempotency block
 
     // training
     if (intent.name === "training") {
@@ -332,7 +332,7 @@ serve(async (req) => {
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;
-      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: tool, status: 'OK', latencyMs: Date.now() - t0 });
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: tool, status: 'OK', latencyMs: Date.now() - t0, payload: { clientEventId } });
       const summary = typeof data === "string" ? data : ((data as any)?.summary ?? (data as any)?.text ?? JSON.stringify(data).slice(0, 800));
       return new Response(JSON.stringify(asMessage(`💊 Supplement-Analyse:\n${summary}`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

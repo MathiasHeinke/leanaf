@@ -74,6 +74,13 @@ export function useOrchestrator() {
       } catch (e1) {
         if (e1 instanceof Error && e1.message === 'timeout') {
           console.warn('orchestrator TIMEOUT', { cutoffMs: 25000 });
+          try {
+            await supabase.rpc('log_trace_event', {
+              p_trace_id: headers['x-trace-id'],
+              p_stage: 'client_timeout',
+              p_data: { cutoffMs: 25000 }
+            });
+          } catch (_) { /* non-fatal */ }
         }
         // mark retry so the server can log it in traces
         headers['x-retry'] = '1';
