@@ -119,11 +119,14 @@ Antworte im JSON Format:
     }
 
     let result: ClassificationResult;
+    const cleaned = String(content)
+      .replace(/```json\s*|\s*```/gi, '')
+      .replace(/```/g, '')
+      .trim();
     try {
-      // Some models wrap JSON in markdown code fences. Strip them before parsing.
-      const cleaned = String(content).replace(/```json\s*|\s*```/gi, '').trim();
       result = JSON.parse(cleaned);
     } catch (parseError) {
+      console.warn('classifier.clean_preview', cleaned.slice(0, 200));
       console.error('Failed to parse OpenAI response:', content);
       // Fallback result
       result = {

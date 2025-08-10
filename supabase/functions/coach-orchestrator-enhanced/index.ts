@@ -146,6 +146,7 @@ serve(async (req) => {
         body: { imageUrl: (event as any).url, userId },
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
+      const detectedCategory = (cls as any)?.classification?.category ?? 'unknown';
       await logTraceEvent(supabase, {
         traceId,
         userId,
@@ -154,9 +155,8 @@ serve(async (req) => {
         handler: 'image-classifier',
         status: clsErr ? 'ERROR' : 'OK',
         latencyMs: Date.now() - tStart,
-        payload: { category: (cls as any)?.classification?.category, confidence: (cls as any)?.classification?.confidence }
+        payload: { category: (cls as any)?.classification?.category, confidence: (cls as any)?.classification?.confidence, image_type_after_classify: detectedCategory }
       });
-      const detectedCategory = (cls as any)?.classification?.category ?? 'unknown';
       (event as any).context = { ...(event as any).context, image_type: detectedCategory };
     }
 
