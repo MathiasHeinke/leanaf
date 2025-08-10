@@ -7,9 +7,11 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Send, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useEnhancedChat } from '@/hooks/useEnhancedChat';
+import { useOrchestrator } from '@/hooks/useOrchestrator';
 import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
+import ChoiceBar from '@/components/ChoiceBar';
+import ConfirmMealModal from '@/components/ConfirmMealModal';
 
 // ============= TYPES =============
 export interface SimpleMessage {
@@ -60,44 +62,11 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
   const initializationRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // ============= ENHANCED CHAT INTEGRATION =============
-  const { 
-    sendMessage: sendChatMessage, 
-    isLoading: isChatLoading, 
-    error: chatError,
-    lastResponse,
-    lastMetadata
-  } = useEnhancedChat({
-    enableMemory: true,
-    enableRag: true,
-    enableProactive: true,
-    onError: (error) => {
-      console.error('❌ Enhanced chat error:', error);
-      
-      // Show user-friendly error message
-      const errorMessage: SimpleMessage = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: '❌ Entschuldigung, es gab ein technisches Problem. Bitte versuche es in einem Moment erneut.',
-        created_at: new Date().toISOString(),
-        coach_personality: coach?.personality || 'helpful',
-        coach_name: coach?.name || 'Coach',
-        coach_avatar: coach?.imageUrl,
-        coach_color: coach?.color,
-        coach_accent_color: coach?.accentColor
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      toast.error('Coach-Verbindung fehlgeschlagen', {
-        description: 'Bitte versuche es in einem Moment erneut.'
-      });
-    },
-    onSuccess: (response) => {
-      console.log('✅ Enhanced chat response received', {
-        responseLength: response.length
-      });
-    }
-  });
+// ============= ORCHESTRATOR INTEGRATION =============
+const { sendEvent } = useOrchestrator();
+const [isSending, setIsSending] = useState(false);
+const [clarify, setClarify] = useState<{ prompt: string; options: [string,string] } | null>(null);
+const [confirm, setConfirm] = useState<{ open: boolean; prompt: string; proposal: any } | null>(null);
   
   // ============= CHAT INITIALIZATION =============
   useEffect(() => {
@@ -185,14 +154,13 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ============= SEND MESSAGE =============
+// ============= SEND MESSAGE =============
   const handleSendMessage = useCallback(async () => {
-    if (!inputText.trim() || !user?.id || isChatLoading) return;
-    
+    if (!inputText.trim() || !user?.id || isSending) return;
+
     const messageText = inputText.trim();
     setInputText('');
-    
-    // Create user message
+
     const userMessage: SimpleMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -204,11 +172,9 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
       coach_color: coach?.color,
       coach_accent_color: coach?.accentColor
     };
-    
-    // Add user message to UI
+
     setMessages(prev => [...prev, userMessage]);
-    
-    // Save user message to database
+
     const today = new Date().toISOString().split('T')[0];
     await supabase.from('coach_conversations').insert({
       user_id: user.id,
@@ -217,17 +183,22 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
       coach_personality: coach?.id || 'lucy',
       conversation_date: today
     });
-    
+
+    setIsSending(true);
+    setClarify(null);
     try {
-      // Send to AI and get response with enhanced features
-      const response = await sendChatMessage(messageText, coach?.id || 'lucy');
-      
-      if (response) {
-        // Create assistant message with metadata
+      const reply = await sendEvent(user.id, {
+        type: 'TEXT',
+        text: messageText,
+        clientEventId: crypto.randomUUID(),
+        context: { source: 'chat', coachMode: (mode === 'training' ? 'training' : mode === 'nutrition' ? 'nutrition' : 'general') }
+      });
+
+      if (reply.kind === 'message') {
         const assistantMessage: SimpleMessage = {
           id: `assistant-${Date.now()}`,
           role: 'assistant',
-          content: response,
+          content: reply.text,
           created_at: new Date().toISOString(),
           coach_personality: coach?.personality || 'motivierend',
           coach_name: coach?.name || 'Coach',
@@ -235,33 +206,143 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
           coach_color: coach?.color,
           coach_accent_color: coach?.accentColor
         };
-        
-        // Add assistant message to UI
         setMessages(prev => [...prev, assistantMessage]);
-        
-        // Save assistant message to database with metadata
         await supabase.from('coach_conversations').insert({
           user_id: user.id,
           message_role: 'assistant',
-          message_content: response,
+          message_content: reply.text,
           coach_personality: coach?.id || 'lucy',
           conversation_date: today,
-          context_data: lastMetadata || {}
+          context_data: { traceId: reply.traceId }
         });
-        
-        // Log successful enhanced chat interaction
-        console.log('💗 Lucy mit voller Persönlichkeit und Memory aktiv!', {
-          traceId: lastMetadata?.traceId,
-          memoryUsed: lastMetadata?.memoryUsed,
-          ragUsed: lastMetadata?.ragUsed,
-          coachPersonality: coach?.personality
-        });
+      } else if (reply.kind === 'clarify') {
+        const assistantMessage: SimpleMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: reply.prompt,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setClarify({ prompt: reply.prompt, options: reply.options });
+      } else if (reply.kind === 'confirm_save_meal') {
+        const assistantMessage: SimpleMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: reply.prompt,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setConfirm({ open: true, prompt: reply.prompt, proposal: reply.proposal });
       }
-      
     } catch (error) {
-      console.error('Error sending enhanced message:', error);
+      console.error('Error sending message via orchestrator:', error);
+      toast.error('Coach-Verbindung fehlgeschlagen', { description: 'Bitte versuche es in einem Moment erneut.' });
+    } finally {
+      setIsSending(false);
     }
-  }, [inputText, user?.id, coach, sendChatMessage, isChatLoading]);
+  }, [inputText, user?.id, coach, mode, sendEvent, isSending]);
+
+  const handleClarifyPick = useCallback(async (value: string) => {
+    if (!user?.id || isSending) return;
+    setClarify(null);
+    const today = new Date().toISOString().split('T')[0];
+
+    // Echo user's clarify choice
+    const userMsg: SimpleMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: value,
+      created_at: new Date().toISOString(),
+      coach_personality: coach?.personality || 'motivierend',
+      coach_name: coach?.name || 'Coach',
+      coach_avatar: coach?.imageUrl,
+      coach_color: coach?.color,
+      coach_accent_color: coach?.accentColor
+    };
+    setMessages(prev => [...prev, userMsg]);
+    await supabase.from('coach_conversations').insert({
+      user_id: user.id,
+      message_role: 'user',
+      message_content: value,
+      coach_personality: coach?.id || 'lucy',
+      conversation_date: today
+    });
+
+    setIsSending(true);
+    try {
+      const reply = await sendEvent(user.id, {
+        type: 'TEXT',
+        text: value,
+        clientEventId: crypto.randomUUID(),
+        context: { source: 'chat', coachMode: (mode === 'training' ? 'training' : mode === 'nutrition' ? 'nutrition' : 'general') }
+      });
+      if (reply.kind === 'message') {
+        const assistantMessage: SimpleMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: reply.text,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        await supabase.from('coach_conversations').insert({
+          user_id: user.id,
+          message_role: 'assistant',
+          message_content: reply.text,
+          coach_personality: coach?.id || 'lucy',
+          conversation_date: today,
+          context_data: { traceId: reply.traceId }
+        });
+      } else if (reply.kind === 'clarify') {
+        const assistantMessage: SimpleMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: reply.prompt,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setClarify({ prompt: reply.prompt, options: reply.options });
+      } else if (reply.kind === 'confirm_save_meal') {
+        const assistantMessage: SimpleMessage = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: reply.prompt,
+          created_at: new Date().toISOString(),
+          coach_personality: coach?.personality || 'motivierend',
+          coach_name: coach?.name || 'Coach',
+          coach_avatar: coach?.imageUrl,
+          coach_color: coach?.color,
+          coach_accent_color: coach?.accentColor
+        };
+        setMessages(prev => [...prev, assistantMessage]);
+        setConfirm({ open: true, prompt: reply.prompt, proposal: reply.proposal });
+      }
+    } catch (err) {
+      console.error('Clarify follow-up failed', err);
+      toast.error('Konnte Nachfrage nicht verarbeiten');
+    } finally {
+      setIsSending(false);
+    }
+  }, [user?.id, coach, mode, sendEvent, isSending]);
 
   // ============= KEYBOARD HANDLERS =============
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -342,7 +423,7 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
             ) : (
               <div className="space-y-4 py-4">
                 {messages.map(renderMessage)}
-                {isChatLoading && (
+                {isSending && (
                   <div className="flex gap-3 mb-4 justify-start">
                     <Avatar className="w-8 h-8 flex-shrink-0">
                       <AvatarImage src={coach?.imageUrl} />
@@ -355,6 +436,9 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
                       </div>
                     </div>
                   </div>
+                )}
+                {clarify && (
+                  <ChoiceBar prompt={clarify.prompt} options={clarify.options} onPick={handleClarifyPick} />
                 )}
                 <div ref={messagesEndRef} />
               </div>

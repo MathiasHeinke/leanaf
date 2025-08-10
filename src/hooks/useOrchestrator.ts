@@ -1,36 +1,83 @@
 // src/hooks/useOrchestrator.ts
 import { supabase } from '@/integrations/supabase/client';
 
+export type MealProposal = {
+  title?: string;
+  items?: Array<{ name: string; qty?: number; unit?: string; calories?: number; protein?: number; carbs?: number; fats?: number }>;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
+  imageUrl?: string;
+  notes?: string;
+};
+
+export type OrchestratorReply =
+  | { kind: 'message'; text: string; end?: boolean; traceId?: string }
+  | { kind: 'clarify'; prompt: string; options: [string, string]; traceId?: string }
+  | { kind: 'confirm_save_meal'; prompt: string; proposal: MealProposal; traceId?: string };
+
 export type CoachEvent =
   | { type: 'TEXT'; text: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general' } }
-  | { type: 'IMAGE'; url: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general' } }
+  | { type: 'IMAGE'; url: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; image_type?: 'exercise'|'food'|'supplement'|'body' } }
   | { type: 'END'; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general' } };
 
+function normalizeReply(raw: any): OrchestratorReply {
+  if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
+  if (raw.kind === 'message' || raw.kind === 'clarify' || raw.kind === 'confirm_save_meal') return raw as OrchestratorReply;
+  const text = raw.reply ?? raw.content ?? (typeof raw === 'string' ? raw : 'OK');
+  return { kind: 'message', text, end: raw.end, traceId: raw.traceId };
+}
+
 export function useOrchestrator() {
-  async function sendEvent(userId: string, ev: CoachEvent, traceId?: string) {
+  async function sendEvent(userId: string, ev: CoachEvent, traceId?: string): Promise<OrchestratorReply> {
     const headers: Record<string, string> = {
       'x-trace-id': traceId ?? crypto.randomUUID(),
       'x-chat-mode': ev.context?.coachMode ?? '',
       'x-source': ev.context?.source ?? 'chat',
     };
 
-    try {
+    const payload = { userId, event: ev };
+
+    const invokeEnhanced = async () => {
       const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-        body: { userId, event: ev },
+        body: payload,
         headers,
       });
       if (error) throw error;
-      return data as { reply?: string; content?: string; state?: any; end?: boolean; flags?: Record<string, any>; traceId?: string };
-    } catch (e) {
-      // Legacy fallback
+      return data;
+    };
+
+    const invokeLegacy = async () => {
+      const { data } = await supabase.functions.invoke('coach-orchestrator', {
+        body: payload,
+        headers,
+      });
+      return data;
+    };
+
+    const withTimeout = <T,>(p: Promise<T>, ms = 7000) =>
+      Promise.race<T>([
+        p,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)) as Promise<T>,
+      ]);
+
+    try {
+      // Try enhanced with timeout, retry once on error/timeout
       try {
-        const { data } = await supabase.functions.invoke('coach-orchestrator', {
-          body: { userId, event: ev },
-          headers,
-        });
-        return data;
+        const data = await withTimeout(invokeEnhanced(), 7000);
+        return normalizeReply(data);
+      } catch (e1) {
+        const data = await withTimeout(invokeEnhanced(), 7000);
+        return normalizeReply(data);
+      }
+    } catch (e) {
+      // Fallback to legacy orchestrator
+      try {
+        const data = await withTimeout(invokeLegacy(), 7000);
+        return normalizeReply(data);
       } catch (e2) {
-        return { reply: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
+        return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
       }
     }
   }

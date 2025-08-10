@@ -5,6 +5,9 @@ import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrchestrator } from "@/hooks/useOrchestrator";
+import ChoiceBar from "@/components/ChoiceBar";
+import ConfirmMealModal from "@/components/ConfirmMealModal";
+import { toast } from "sonner";
 
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
