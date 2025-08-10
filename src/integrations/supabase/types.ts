@@ -5637,6 +5637,19 @@ export type Database = {
         }
         Relationships: []
       }
+      v_recent_unmet: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          intent_guess: string | null
+          msg_snippet: string | null
+          source: string | null
+          suggested_tool: string | null
+          trace_id: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       v_summary_rolling_30: {
         Row: {
           completeness_score: number | null
@@ -5695,6 +5708,15 @@ export type Database = {
           title: string | null
           ts: string | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      v_unmet_tool_stats: {
+        Row: {
+          avg_confidence: number | null
+          day: string | null
+          intent_guess: string | null
+          unmet_count: number | null
         }
         Relationships: []
       }
