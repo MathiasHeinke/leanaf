@@ -154,9 +154,10 @@ serve(async (req) => {
         handler: 'image-classifier',
         status: clsErr ? 'ERROR' : 'OK',
         latencyMs: Date.now() - tStart,
-        payload: { category: (cls as any)?.category, confidence: (cls as any)?.confidence }
+        payload: { category: (cls as any)?.classification?.category, confidence: (cls as any)?.classification?.confidence }
       });
-      (event as any).context = { ...(event as any).context, image_type: (cls as any)?.category ?? 'unknown' };
+      const detectedCategory = (cls as any)?.classification?.category ?? 'unknown';
+      (event as any).context = { ...(event as any).context, image_type: detectedCategory };
     }
 
     const intent = chatMode === "training"

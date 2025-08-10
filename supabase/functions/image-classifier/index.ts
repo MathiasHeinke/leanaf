@@ -120,7 +120,9 @@ Antworte im JSON Format:
 
     let result: ClassificationResult;
     try {
-      result = JSON.parse(content);
+      // Some models wrap JSON in markdown code fences. Strip them before parsing.
+      const cleaned = String(content).replace(/```json\s*|\s*```/gi, '').trim();
+      result = JSON.parse(cleaned);
     } catch (parseError) {
       console.error('Failed to parse OpenAI response:', content);
       // Fallback result

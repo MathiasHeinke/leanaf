@@ -806,6 +806,21 @@ if (enableAdvancedFeatures) {
         coach_accent_color: coach?.accentColor
       };
       setMessages(prev => [...prev, userMessage]);
+    } else if (mediaUrls && mediaUrls.length > 0) {
+      // Show a bubble for pure image sends so users see immediate feedback
+      const url = mediaUrls[0];
+      const userImageMessage: EnhancedChatMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: `![📷 Bild gesendet](${url})`,
+        created_at: new Date().toISOString(),
+        coach_personality: coach?.id || 'lucy',
+        coach_name: coach?.name || 'Coach',
+        coach_avatar: coach?.imageUrl,
+        coach_color: coach?.color,
+        coach_accent_color: coach?.accentColor
+      };
+      setMessages(prev => [...prev, userImageMessage]);
     }
 
     try {
