@@ -3317,6 +3317,7 @@ export type Database = {
         Row: {
           activity_type: string
           bonus_reason: string | null
+          client_event_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -3330,6 +3331,7 @@ export type Database = {
         Insert: {
           activity_type: string
           bonus_reason?: string | null
+          client_event_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -3343,6 +3345,7 @@ export type Database = {
         Update: {
           activity_type?: string
           bonus_reason?: string | null
+          client_event_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -6140,14 +6143,24 @@ export type Database = {
         }[]
       }
       update_user_points_and_level: {
-        Args: {
-          p_user_id: string
-          p_points: number
-          p_activity_type: string
-          p_description?: string
-          p_multiplier?: number
-          p_trial_multiplier?: number
-        }
+        Args:
+          | {
+              p_user_id: string
+              p_points: number
+              p_activity_type: string
+              p_description?: string
+              p_multiplier?: number
+              p_trial_multiplier?: number
+            }
+          | {
+              p_user_id: string
+              p_points: number
+              p_activity_type: string
+              p_description?: string
+              p_multiplier?: number
+              p_trial_multiplier?: number
+              p_client_event_id?: string
+            }
         Returns: Json
       }
       update_user_streak: {
