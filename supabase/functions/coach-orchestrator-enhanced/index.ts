@@ -71,6 +71,58 @@ function detectIntentWithConfidence(event: CoachEvent): Intent {
 
 const asMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text, traceId });
 
+// ---- Supplement follow-up parsing helpers ----
+type ParsedFollowUp =
+  | { kind: 'save'; pickIdx?: number }
+  | { kind: 'update'; dose?: string | null; schedule?: { freq?: 'daily' | 'weekly' | 'custom'; time?: 'morning' | 'noon' | 'evening' | 'preworkout' | 'postworkout' | 'bedtime' | 'custom'; custom?: string | null } }
+  | { kind: 'unknown' };
+
+const YES_RE = /\b(ja|jep|yo|yup|klar|mach ?(das|es)|speicher(e)?|hinzu(?:füge|fuege)?|add|ok)\b/i;
+const SAVE_RE = /\b(speicher|hinzu(?:fügen|fuegen)|add)\b/i;
+const UPDATE_RE = /\b(änder[e]?|aendere|passe an|update|mach|stell[e]? um|setze)\b/i;
+
+function parseDose(text: string): string | null {
+  const m = text.match(/(\d+(?:[.,]\d+)?)\s*(g|mg|mcg|µg|kapsel[n]?|caps?|tablette[n]?|ml|scoops?)\b/i);
+  if (!m) return null;
+  const qty = m[1].replace(',', '.');
+  const unit = m[2].toLowerCase();
+  return `${qty} ${unit}`;
+}
+
+function parseTime(text: string): 'morning' | 'noon' | 'evening' | 'preworkout' | 'postworkout' | 'bedtime' | 'custom' | null {
+  if (/\bmorgens?\b|am morgen\b/i.test(text)) return 'morning';
+  if (/\bmittags?\b|zu mittag\b/i.test(text)) return 'noon';
+  if (/\babends?\b|am abend\b/i.test(text)) return 'evening';
+  if (/\bvor dem training\b|pre[- ]?workout\b/i.test(text)) return 'preworkout';
+  if (/\bnach dem training\b|post[- ]?workout\b/i.test(text)) return 'postworkout';
+  if (/\bvor dem schlafen\b|schlaf(?:en)?s?zeit|bedtime\b/i.test(text)) return 'bedtime';
+  return null;
+}
+
+function parseFreq(text: string): 'daily' | 'weekly' | 'custom' | null {
+  if (/\btäglich|taeglich|jeden tag|daily\b/i.test(text)) return 'daily';
+  if (/\bwöchentlich|woechentlich|1x pro woche|weekly\b/i.test(text)) return 'weekly';
+  return null;
+}
+
+function parseFollowUp(text: string): ParsedFollowUp {
+  const t = (text || '').trim();
+  if (!t) return { kind: 'unknown' };
+  if (YES_RE.test(t) || SAVE_RE.test(t)) return { kind: 'save' };
+  if (UPDATE_RE.test(t)) {
+    const dose = parseDose(t);
+    const time = parseTime(t);
+    const freq = parseFreq(t);
+    const schedule: any = {};
+    if (freq) schedule.freq = freq;
+    if (time) schedule.time = time;
+    const m = t.match(/\bum\s*(\d{1,2}:\d{2})\b/);
+    if (m) { schedule.time = 'custom'; schedule.custom = m[1]; }
+    return { kind: 'update', dose: dose ?? null, schedule: Object.keys(schedule).length ? schedule : undefined };
+  }
+  return { kind: 'unknown' };
+}
+
 // Feature flags helpers (JSON-based flags in user_feature_flags.metadata)
 function mergeFlagMetadata(rows: Array<{ metadata?: Record<string, any> }>): Record<string, any> {
   const out: Record<string, any> = {};
@@ -185,6 +237,75 @@ serve(async (req) => {
         payload: { category: (cls as any)?.classification?.category, confidence: (cls as any)?.classification?.confidence, image_type_after_classify: detectedCategory }
       });
       (event as any).context = { ...(event as any).context, image_type: detectedCategory };
+    }
+
+    // Supplement text follow-ups based on last proposal context
+    if (event.type === "TEXT" && (event as any).context?.last_proposal?.kind === "supplement") {
+      const lp = (event as any).context.last_proposal?.data as { items: Array<{ name: string; canonical?: string | null; dose?: string | null }>; topPickIdx?: number; existingId?: number | null; existingSchedule?: any | null };
+      const fu = parseFollowUp((event as any).text || "");
+      const pickIdx = Number.isInteger(lp?.topPickIdx) ? lp!.topPickIdx! : 0;
+      const pick = lp?.items?.[pickIdx];
+
+      if (pick) {
+        if (fu.kind === 'save') {
+          const ceid = crypto.randomUUID();
+          const body = {
+            mode: lp?.existingId ? "update" : "insert",
+            clientEventId: ceid,
+            item: {
+              id: lp?.existingId ?? undefined,
+              canonical: pick.canonical ?? pick.name,
+              name: pick.name,
+              dose: pick.dose ?? null,
+              schedule: lp?.existingSchedule ?? null
+            }
+          };
+          const t0 = Date.now();
+          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-save', status: 'RUNNING', payload: { mode: body.mode, canonical: body.item.canonical, hasSchedule: !!body.item.schedule } });
+          const { data, error } = await supabase.functions.invoke('supplement-save', {
+            body,
+            headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" }
+          });
+          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-save', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t0, payload: { action: (data as any)?.action, canonical: body.item.canonical } });
+          if (error) throw error;
+          const act = (data as any)?.action;
+          const msg = act === 'insert' ? `✔️ Gespeichert: ${pick.name}${pick.dose ? ` (${pick.dose})` : ''}.` : act === 'update' ? `👍 Aktualisiert: ${pick.name}.` : `Schon vorhanden – alles gut.`;
+          return new Response(JSON.stringify(asMessage(msg + ' Willst du Dosis oder Timing anpassen?', traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        if (fu.kind === 'update') {
+          const ceid = crypto.randomUUID();
+          const body = {
+            mode: 'update',
+            clientEventId: ceid,
+            item: {
+              id: lp?.existingId ?? undefined,
+              canonical: pick.canonical ?? pick.name,
+              name: pick.name,
+              ...(fu.dose !== undefined ? { dose: fu.dose } : {}),
+              ...(fu.schedule !== undefined ? { schedule: fu.schedule } : {})
+            }
+          };
+          const t0 = Date.now();
+          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-save', status: 'RUNNING', payload: { mode: 'update', canonical: body.item.canonical, updatedFields: { dose: !!fu.dose, schedule: !!fu.schedule } } });
+          const { data, error } = await supabase.functions.invoke('supplement-save', {
+            body,
+            headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" }
+          });
+          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-save', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t0, payload: { action: (data as any)?.action, canonical: body.item.canonical } });
+          if (error) throw error;
+          const parts: string[] = [];
+          if (fu.dose) parts.push(`Dosis ${fu.dose}`);
+          if (fu.schedule?.freq || fu.schedule?.time) {
+            const f = fu.schedule?.freq === 'daily' ? 'täglich' : fu.schedule?.freq === 'weekly' ? 'wöchentlich' : fu.schedule?.freq ? 'custom' : '';
+            const t = fu.schedule?.time ? ({ morning: 'morgens', noon: 'mittags', evening: 'abends', preworkout: 'vor dem Training', postworkout: 'nach dem Training', bedtime: 'vor dem Schlafen', custom: fu.schedule?.custom ? `um ${fu.schedule.custom}` : 'custom' } as any)[fu.schedule.time] : '';
+            parts.push(['Timing', [f, t].filter(Boolean).join(' ')].filter(Boolean).join(' '));
+          }
+          const friendly = parts.length ? parts.join(', ') : 'Einstellungen';
+          return new Response(JSON.stringify(asMessage(`✅ Aktualisiert: ${friendly}.`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        // unknown follow-up → guiding question
+        return new Response(JSON.stringify(asMessage(`Soll ich ${pick.name} speichern oder etwas ändern? Beispiele: "ja", "mach 5 g abends".`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
     }
 
     const intent = chatMode === "training"
@@ -362,18 +483,35 @@ serve(async (req) => {
         if (c > best) { best = c; topPickIdx = idx; }
       });
 
+      // Enrich with existing stack matches
+      const { data: existingStack } = await supabase
+        .from('user_supplements')
+        .select('id, canonical, name, dose, schedule')
+        .eq('user_id', userId);
+      const existing = (existingStack || []) as Array<{ id: number; canonical: string | null; name: string; dose: string | null; schedule: any | null }>;
+
       const proposal = {
-        items: recognized.map((r: any) => ({
-          name: r.name,
-          canonical: r.canonical ?? null,
-          dose: r.dose ?? null,
-          confidence: typeof r.confidence === 'number' ? r.confidence : 0.7,
-          notes: r.notes ?? null,
-          image_url: r.image_url ?? ((invokeBody as any)?.imageUrl ?? null)
-        })),
+        items: recognized.map((r: any) => {
+          const match = existing.find((e) =>
+            (r.canonical && e.canonical && e.canonical === r.canonical) ||
+            (e.name && r.name && (e.name.toLowerCase().includes(r.name.toLowerCase()) || r.name.toLowerCase().includes(e.name.toLowerCase())))
+          );
+          return {
+            name: r.name,
+            canonical: r.canonical ?? null,
+            dose: r.dose ?? null,
+            confidence: typeof r.confidence === 'number' ? r.confidence : 0.7,
+            notes: r.notes ?? null,
+            image_url: r.image_url ?? ((invokeBody as any)?.imageUrl ?? null),
+            existingId: match?.id ?? null,
+            existingDose: match?.dose ?? null,
+            existingSchedule: match?.schedule ?? null,
+          };
+        }),
         topPickIdx,
         imageUrl: (invokeBody as any)?.imageUrl ?? null
       };
+
 
       const top = proposal.items[topPickIdx];
       const pct = Math.round(Math.max(60, Math.min(98, (top.confidence || 0) * 100)));
