@@ -6046,6 +6046,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      cleanup_stale_client_events: {
+        Args: { max_age?: unknown }
+        Returns: number
+      }
       consume_credits_for_feature: {
         Args: { p_feature_type: string; p_deduct?: boolean }
         Returns: Json
