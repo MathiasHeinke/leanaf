@@ -5173,15 +5173,21 @@ export type Database = {
       }
       user_supplements: {
         Row: {
+          canonical: string | null
+          client_event_id: string | null
+          confidence: number | null
           created_at: string
           custom_name: string | null
           dosage: string
           frequency_days: number | null
           goal: string | null
           id: string
+          image_url: string | null
           is_active: boolean
           notes: string | null
           rating: number | null
+          schedule: Json | null
+          source: string | null
           supplement_id: string | null
           timing: string[]
           unit: string
@@ -5189,15 +5195,21 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          canonical?: string | null
+          client_event_id?: string | null
+          confidence?: number | null
           created_at?: string
           custom_name?: string | null
           dosage: string
           frequency_days?: number | null
           goal?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           notes?: string | null
           rating?: number | null
+          schedule?: Json | null
+          source?: string | null
           supplement_id?: string | null
           timing?: string[]
           unit?: string
@@ -5205,15 +5217,21 @@ export type Database = {
           user_id: string
         }
         Update: {
+          canonical?: string | null
+          client_event_id?: string | null
+          confidence?: number | null
           created_at?: string
           custom_name?: string | null
           dosage?: string
           frequency_days?: number | null
           goal?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           notes?: string | null
           rating?: number | null
+          schedule?: Json | null
+          source?: string | null
           supplement_id?: string | null
           timing?: string[]
           unit?: string
