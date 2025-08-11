@@ -109,7 +109,6 @@ serve(async (req) => {
     }
 
     // Authentication verification - REQUIRED
-    const authHeader = req.headers.get('Authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('🚫 [ANALYZE-MEAL] Missing or invalid authorization header');
       return new Response(JSON.stringify({ 
