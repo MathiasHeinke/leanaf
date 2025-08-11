@@ -157,8 +157,44 @@ const [lastProposal, setLastProposal] = useState<any | null>(null);
 // Central reply handler (conversation-first)
 const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
   if (!res) return;
-  // Defer clarify/confirm UI
-  if (res.kind === 'clarify' || res.kind === 'confirm_save_meal' || (res as any).kind === 'confirm_save_supplement') {
+
+  // Reflect-first: render natural bubble immediately
+  if ((res as any).kind === 'reflect') {
+    const text = humanize((res as any).text);
+    const assistantMessage: EnhancedChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: text,
+      created_at: new Date().toISOString(),
+      coach_personality: coach?.id || 'lucy',
+      coach_name: coach?.name || 'Coach',
+      coach_avatar: coach?.imageUrl,
+      coach_color: coach?.color,
+      coach_accent_color: coach?.accentColor,
+      metadata: (res as any).traceId ? { traceId: (res as any).traceId } : undefined,
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+    return;
+  }
+
+  // Defer options: clarify / choice_suggest / confirm_* → schedule after delay
+  if (res.kind === 'clarify' || (res as any).kind === 'choice_suggest' || res.kind === 'confirm_save_meal' || (res as any).kind === 'confirm_save_supplement') {
+    // Show the conversational prompt as a bubble immediately
+    const promptText = (res as any).prompt || 'Wie sollen wir fortfahren?';
+    const assistantMessage: EnhancedChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: humanize(promptText),
+      created_at: new Date().toISOString(),
+      coach_personality: coach?.id || 'lucy',
+      coach_name: coach?.name || 'Coach',
+      coach_avatar: coach?.imageUrl,
+      coach_color: coach?.color,
+      coach_accent_color: coach?.accentColor,
+      metadata: res.traceId ? { traceId: res.traceId } : undefined,
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
     setPendingChoices({ reply: res, ts: Date.now() });
     window.setTimeout(() => {
       setPendingChoices(prev => {
@@ -171,6 +207,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
     }, CHOICE_DELAY_MS + 50);
     return;
   }
+
   // Default: message – humanized
   if (res.kind === 'message') {
     const text = humanize(res.text);
