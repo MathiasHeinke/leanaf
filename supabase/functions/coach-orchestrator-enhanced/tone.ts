@@ -1,35 +1,44 @@
 import type { CoachPersona } from './persona.ts';
 
+type ToneOpts = {
+  addSignOff?: boolean;         // neu: default true, bei open-intake false setzen
+  limitEmojis?: number;         // default 1
+  respectQuestion?: boolean;    // wenn Text schon mit ? endet → kein Sign-off
+  memoryHint?: string;
+};
+
 export function composeVoice(p: CoachPersona, opts?: { memoryHint?: string }) {
   const hint = opts?.memoryHint ? `Vorwissen: ${opts.memoryHint}\n` : '';
   return `Du sprichst als ${p.name}. ${hint}
 Regeln:
 - ${p.style_rules.join('\n- ')}
 - schreibe in DU-Form (deutsch), locker, aber kompetent
-- keine Codeblocks, kein „Als KI…“
+- keine Codeblocks, kein „Als KI…"
 - Abschluss mit einer sanften Rückfrage (${p.sign_off ?? 'Okay?'})`;
 }
 
-export function toLucyTone(text: string, persona: CoachPersona, opts?: { memoryHint?: string }) {
-  const emoji = (persona.emojis && persona.emojis[0]) || '🙂';
-  // Clean text: remove code blocks, excessive asterisks, compress newlines
-  let t = String(text || '')
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/\*{2,}/g, '')
-    .replace(/\n{3,}/g, '\n\n')
+export function toLucyTone(raw: string, persona: { sign_off: string; emojis: string[] }, opts: ToneOpts = {}) {
+  const { addSignOff = true, limitEmojis = 1, respectQuestion = true } = opts;
+
+  let text = String(raw || "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  // Limit to max 2 paragraphs
-  const paras = t.split(/\n\n+/).slice(0, 2);
-  t = paras.join('\n\n');
+  // max 2 kurze Absätze
+  const parts = text.split(/\n+/).map(s => s.trim()).filter(Boolean).slice(0, 2);
+  text = parts.join("\n\n");
 
-  // Avoid shouting bullet dumps by normalizing leading dashes
-  t = t.replace(/^\s*[-•]\s*/gm, '• ');
+  // Emojis auf max limitEmojis drosseln
+  if (limitEmojis >= 0) {
+    const emojiRegex = /([\p{Emoji_Presentation}\p{Extended_Pictographic}])/gu;
+    let count = 0;
+    text = text.replace(emojiRegex, m => (++count <= limitEmojis ? m : ""));
+  }
 
-  // Add gentle closing question only if not already ending with a question
-  const endsWithQuestion = /[?]$/.test(t.trim());
-  const signOff = persona.sign_off ?? 'Klingt gut?';
-  const closing = endsWithQuestion ? '' : `\n\n${emoji} ${signOff}`;
+  const alreadyQuestion = /\?\s*$/.test(text);
+  if (!addSignOff) return text;                           // << wichtig für Open‑Intake
+  if (respectQuestion && alreadyQuestion) return text;
 
-  return `${t}${closing}`.trim();
+  return `${text}\n\n${persona.sign_off}`;
 }

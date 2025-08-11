@@ -657,6 +657,33 @@ export type Database = {
           },
         ]
       }
+      coach_conversation_memory: {
+        Row: {
+          coach_id: string
+          created_at: string
+          id: string
+          last_updated: string
+          rolling_summary: string | null
+          user_id: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          id?: string
+          last_updated?: string
+          rolling_summary?: string | null
+          user_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          last_updated?: string
+          rolling_summary?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       coach_conversations: {
         Row: {
           coach_personality: string | null

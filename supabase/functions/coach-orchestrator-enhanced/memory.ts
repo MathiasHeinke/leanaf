@@ -12,3 +12,32 @@ export async function loadRollingSummary(supabase: any, userId: string, coachId:
     return '';
   }
 }
+
+export async function loadUserProfile(supabase: any, userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('age, gender, height, weight, target_weight, goal, activity_level, macro_strategy')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) return {};
+    return data || {};
+  } catch (_e) {
+    return {};
+  }
+}
+
+export async function loadRecentDailySummaries(supabase: any, userId: string, limit = 3) {
+  try {
+    const { data, error } = await supabase
+      .from('daily_summaries')
+      .select('summary_md')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return (data || []).map(r => r.summary_md).filter(Boolean);
+  } catch (_e) {
+    return [];
+  }
+}

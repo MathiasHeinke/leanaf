@@ -6,7 +6,8 @@ import { logUnmetTool, logTrace } from "./telemetry.ts";
 import { logTraceEvent } from "../telemetry.ts";
 import { loadCoachPersona } from "./persona.ts";
 import { toLucyTone } from "./tone.ts";
-import { loadRollingSummary } from "./memory.ts";
+import { personaPreset } from "./persona.ts";
+import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries } from "./memory.ts";
 import { llmOpenIntake, type Meta } from "./open-intake.ts";
 import { saveShadowState, loadShadowState } from "./shadow-state.ts";
 
@@ -331,10 +332,17 @@ serve(async (req) => {
 
     // 1) OPEN-INTAKE: First response → LLM-first, conversational Lucy
     if (!isFollowUp && event?.type === 'TEXT') {
+      const [profile, recentSummaries] = await Promise.all([
+        loadUserProfile(supabase, userId),
+        loadRecentDailySummaries(supabase, userId, 3)
+      ]);
+      
       const out = await llmOpenIntake({ 
         userText: event.text ?? '', 
         coachId, 
-        memoryHint 
+        memoryHint,
+        profile,
+        recentSummaries
       });
       
       await saveShadowState(supabaseState, { userId, traceId, meta: out.meta });
@@ -437,17 +445,25 @@ serve(async (req) => {
 
       // Continue conversation with open intake (no explicit tool request)
       if (followUpAction === 'continue') {
+        const [profile, recentSummaries] = await Promise.all([
+          loadUserProfile(supabase, userId),
+          loadRecentDailySummaries(supabase, userId, 3)
+        ]);
+        
         const out = await llmOpenIntake({ 
           userText: event.text ?? '', 
           coachId, 
-          memoryHint 
+          memoryHint,
+          profile,
+          recentSummaries
         });
         
         await saveShadowState(supabaseState, { userId, traceId, meta: out.meta });
         
+        const p = personaPreset(coachId);
         const reply = { 
           kind: 'message' as const, 
-          text: toLucyTone(out.assistant_text, persona, { memoryHint }), 
+          text: toLucyTone(out.assistant_text, p, { addSignOff: true, limitEmojis: 1, respectQuestion: true }), 
           traceId 
         };
         
