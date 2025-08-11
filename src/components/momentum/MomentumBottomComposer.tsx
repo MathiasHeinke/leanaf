@@ -26,7 +26,8 @@ export const MomentumBottomComposer: React.FC = () => {
   const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
   const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
   const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
-const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{ kind: 'meal' | 'supplement'; prompt: string; proposal: any; traceId?: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
 const multiImageEnabled = isEnabled('multiImageIntake');
 const [maxImages, setMaxImages] = useState<number>(IMAGE_UPLOAD_MAX_DEFAULT);
@@ -166,10 +167,10 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
         } else if (reply.kind === 'clarify') {
           setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
         } else if (reply.kind === 'confirm_save_meal') {
-          setConfirmMeal({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+          setPendingConfirm({ kind: 'meal', prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
           setClarify(null);
         } else if (reply.kind === 'confirm_save_supplement') {
-          setConfirmSupplement({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+          setPendingConfirm({ kind: 'supplement', prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
           setClarify(null);
         }
       } catch (e) {
@@ -208,10 +209,10 @@ const handleSubmit = useCallback(async () => {
       } else if (reply.kind === 'clarify') {
         setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
       } else if (reply.kind === 'confirm_save_meal') {
-        setConfirmMeal({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+        setPendingConfirm({ kind: 'meal', prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
         setClarify(null);
       } else if (reply.kind === 'confirm_save_supplement') {
-        setConfirmSupplement({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+        setPendingConfirm({ kind: 'supplement', prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
         setClarify(null);
       }
     } catch (e) {
@@ -350,9 +351,42 @@ const handleSubmit = useCallback(async () => {
             const res = await sendEvent(user.id, { type: 'TEXT', text: v, clientEventId: crypto.randomUUID(), context: { source: 'momentum', coachMode: 'nutrition' } });
             if (res.kind === 'message') { toast.message(res.text); setClarify(null); }
             if (res.kind === 'clarify') { setClarify({ prompt: res.prompt, options: res.options, traceId: res.traceId }); }
-            if (res.kind === 'confirm_save_meal') { setConfirmMeal({ open: true, prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); setClarify(null); }
-            if (res.kind === 'confirm_save_supplement') { setConfirmSupplement({ open: true, prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); setClarify(null); }
+            if (res.kind === 'confirm_save_meal') { setPendingConfirm({ kind: 'meal', prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); setClarify(null); }
+            if (res.kind === 'confirm_save_supplement') { setPendingConfirm({ kind: 'supplement', prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); setClarify(null); }
           }} />
+        </div>
+      )}
+
+      {pendingConfirm && (
+        <div className="container mx-auto px-4 mt-2 max-w-5xl">
+          <ChoiceBar
+            prompt={pendingConfirm.kind === 'meal' ? 'Ich sehe deine Mahlzeit. Möchtest du mehr Infos, jetzt speichern oder später?' : 'Ich sehe dein Supplement. Möchtest du mehr Infos, in den Stack aufnehmen oder später?'}
+            options={pendingConfirm.kind === 'meal' ? ['Mehr Infos', 'Jetzt speichern', 'Später'] : ['Mehr Infos', 'In Stack aufnehmen', 'Später']}
+            onPick={async (choice) => {
+              if (!user?.id) return;
+              if (choice === 'Mehr Infos') {
+                const res = await sendEvent(user.id, {
+                  type: 'TEXT',
+                  text: 'Mehr Infos',
+                  clientEventId: crypto.randomUUID(),
+                  context: { source: 'momentum', coachMode: 'nutrition', last_proposal: { kind: pendingConfirm.kind, data: pendingConfirm.proposal } }
+                } as any);
+                if (res.kind === 'message') { toast.message(res.text); setClarify(null); }
+                if (res.kind === 'clarify') { setClarify({ prompt: res.prompt, options: res.options, traceId: res.traceId }); }
+                if (res.kind === 'confirm_save_meal') { setPendingConfirm({ kind: 'meal', prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); }
+                if (res.kind === 'confirm_save_supplement') { setPendingConfirm({ kind: 'supplement', prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); }
+              } else if (choice === (pendingConfirm.kind === 'meal' ? 'Jetzt speichern' : 'In Stack aufnehmen')) {
+                if (pendingConfirm.kind === 'meal') {
+                  setConfirmMeal({ open: true, prompt: pendingConfirm.prompt, proposal: pendingConfirm.proposal, traceId: pendingConfirm.traceId });
+                } else {
+                  setConfirmSupplement({ open: true, prompt: pendingConfirm.prompt, proposal: pendingConfirm.proposal, traceId: pendingConfirm.traceId });
+                }
+                setPendingConfirm(null);
+              } else {
+                setPendingConfirm(null);
+              }
+            }}
+          />
         </div>
       )}
 

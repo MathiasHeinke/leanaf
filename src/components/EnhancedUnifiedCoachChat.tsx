@@ -128,8 +128,9 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
 const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
 const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
-// Conversational-first: hold pending supplement proposal until user decides
+// Conversational-first: hold pending proposals until user decides
 const [pendingSupplement, setPendingSupplement] = useState<{ prompt: string; proposal: any; traceId?: string } | null>(null);
+const [pendingMeal, setPendingMeal] = useState<{ prompt: string; proposal: any; traceId?: string } | null>(null);
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -171,7 +172,7 @@ const [pendingSupplement, setPendingSupplement] = useState<{ prompt: string; pro
       return;
     }
     if (res.kind === 'confirm_save_meal') {
-      setConfirmMeal({ open: true, prompt: res.prompt, proposal: res.proposal, traceId: res.traceId });
+      setPendingMeal({ prompt: res.prompt, proposal: res.proposal, traceId: res.traceId });
       setClarify(null);
       return;
     }
