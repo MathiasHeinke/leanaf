@@ -1267,6 +1267,15 @@ chatInput={
 
         {/* Input */}
         <div className="border-t bg-background p-4">
+          {choiceChips.length > 0 && (
+            <div className="mt-2 mb-2 flex flex-wrap gap-2">
+              {choiceChips.map(c => (
+                <button key={c} className="px-3 py-1 rounded-full border text-sm" onClick={() => onChipClick(c)}>
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
           <EnhancedChatInput
             inputText={inputText}
             setInputText={setInputText}
