@@ -1,145 +1,224 @@
-// src/hooks/useOrchestrator.ts
-import { supabase } from '@/integrations/supabase/client';
-import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-import { intentFromText } from '@/intake/intent';
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-export type MealProposal = {
-  title?: string;
-  items?: Array<{ name: string; qty?: number; unit?: string; calories?: number; protein?: number; carbs?: number; fats?: number }>;
-  calories?: number;
-  protein?: number;
-  carbs?: number;
-  fats?: number;
-  imageUrl?: string;
-  notes?: string;
+// CORS headers incl. tracing propagation
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-export type SupplementItem = {
-  name: string;
-  canonical: string | null;
-  dose: string | null;
-  confidence: number;
-  notes?: string | null;
-  image_url?: string | null;
-};
-
-export type SupplementProposal = {
-  items: SupplementItem[];
-  topPickIdx: number;
-  imageUrl?: string | null;
-};
-
-export type OrchestratorReply =
-  | { kind: 'message'; text: string; end?: boolean; traceId?: string }
-  | { kind: 'clarify'; prompt: string; options: string[]; traceId?: string }
-  | { kind: 'confirm_save_meal'; prompt: string; proposal: MealProposal; traceId?: string }
-  | { kind: 'confirm_save_supplement'; prompt: string; proposal: SupplementProposal; traceId?: string };
-
-export type CoachEvent =
-  | { type: 'TEXT'; text: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general' } }
-  | { type: 'IMAGE'; url: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; image_type?: 'exercise'|'food'|'supplement'|'body' } }
-  | { type: 'END'; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general' } };
-
-function normalizeReply(raw: any): OrchestratorReply {
-  if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
-  const k = typeof raw?.kind === 'string' ? raw.kind.toLowerCase() : '';
-  if (k === 'message' || k === 'clarify' || k === 'confirm_save_meal' || k === 'confirm_save_supplement') return raw as OrchestratorReply;
-  const text = raw.reply ?? raw.content ?? (typeof raw === 'string' ? raw : 'OK');
-  return { kind: 'message', text, end: raw.end, traceId: raw.traceId };
+// Simple telemetry helper (best-effort; non-fatal on failure)
+async function logTraceEvent(supabase: any, e: {
+  traceId: string;
+  userId?: string | null;
+  stage:
+    | "received"
+    | "tool_exec"
+    | "tool_result"
+    | "merge"
+    | "reply_send"
+    | "error";
+  handler: string;
+  status: "RUNNING" | "OK" | "ERROR";
+  latencyMs?: number | null;
+  payload?: unknown;
+  errorMessage?: string | null;
+}) {
+  try {
+    // Attempt to persist to orchestrator_traces (if table + RLS allow)
+    await supabase.from("orchestrator_traces").insert({
+      trace_id: e.traceId,
+      user_id: e.userId ?? null,
+      stage: e.stage,
+      handler_name: e.handler,
+      status: e.status,
+      latency_ms: e.latencyMs ?? null,
+      payload_json: softTruncate(e.payload ?? null),
+      error_message: e.errorMessage ?? null,
+    });
+  } catch (err) {
+    // Last resort: console log
+    console.log("[trace]", JSON.stringify({ ...e, payload: softTruncate(e.payload ?? null) }));
+  }
 }
 
-export function useOrchestrator() {
-  const { isEnabled } = useFeatureFlags();
-  const legacyEnabled = isEnabled('legacy_fallback_enabled');
-  async function sendEvent(userId: string, ev: CoachEvent, traceId?: string): Promise<OrchestratorReply> {
-    const headers: Record<string, string> = {
-      'x-trace-id': traceId ?? crypto.randomUUID(),
-      'x-chat-mode': ev.context?.coachMode ?? '',
-      'x-source': ev.context?.source ?? 'chat',
-    };
-
-    const payload = { userId, event: ev };
-
-    // Local intent detection (feature-flagged)
-    let localIntent: any = null;
-    if (ev.type === 'TEXT' && isEnabled('local_intent_enabled')) {
-      localIntent = intentFromText(ev.text);
-      headers['x-intent-domain'] = (localIntent.domain ?? '') as string;
-      headers['x-intent-action'] = (localIntent.action ?? '') as string;
-      headers['x-intent-conf'] = String(localIntent.conf ?? '');
-      try {
-        await supabase.rpc('log_trace_event', {
-          p_trace_id: headers['x-trace-id'],
-          p_stage: 'intent_from_text',
-          p_data: { intent: localIntent }
-        });
-      } catch (_) { /* non-fatal */ }
+function softTruncate(obj: any, maxLen: number = 8000) {
+  try {
+    const s = JSON.stringify(obj ?? null);
+    if (!s) return null;
+    if (s.length > maxLen) {
+      return { __truncated__: true };
     }
+    return obj;
+  } catch {
+    return { __truncated__: true };
+  }
+}
 
-    const invokeEnhanced = async () => {
-      const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-        body: payload,
-        headers,
-      });
-      if (error) throw error;
-      return data;
-    };
+// Fake classifier placeholder – replace with real model/logic if available
+async function classifyOne(url: string) {
+  // Simulate minimal async latency
+  await new Promise((r) => setTimeout(r, 10));
+  return { url, kind: "unknown", items: [], notes: null };
+}
 
-    const invokeLegacy = async () => {
-      const { data } = await supabase.functions.invoke('coach-orchestrator', {
-        body: payload,
-        headers,
-      });
-      return data;
-    };
-
-    const withTimeout = <T,>(p: Promise<T>, ms = 7000) =>
-      Promise.race<T>([
-        p,
-        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)) as Promise<T>,
-      ]);
-
-    try {
-      // Emit early client ack so UI feels responsive
-      try {
-        await supabase.rpc('log_trace_event', {
-          p_trace_id: headers['x-trace-id'],
-          p_stage: 'client_ack',
-          p_data: { source: headers['x-source'] }
-        });
-      } catch (_) { /* non-fatal */ }
-      // Try enhanced with timeout, retry once on error/timeout
-      try {
-        const data = await withTimeout(invokeEnhanced(), 30000);
-        return normalizeReply(data);
-      } catch (e1) {
-        if (e1 instanceof Error && e1.message === 'timeout') {
-          console.warn('orchestrator TIMEOUT', { cutoffMs: 30000 });
-          try {
-            await supabase.rpc('log_trace_event', {
-              p_trace_id: headers['x-trace-id'],
-              p_stage: 'client_timeout',
-              p_data: { cutoffMs: 30000 }
-            });
-          } catch (_) { /* non-fatal */ }
-        }
-        // mark retry so the server can log it in traces
-        headers['x-retry'] = '1';
-        const data = await withTimeout(invokeEnhanced(), 12000);
-        return normalizeReply(data);
-      }
-    } catch (e) {
-      if (legacyEnabled) {
-        try {
-          const data = await withTimeout(invokeLegacy(), 7000);
-          return normalizeReply(data);
-        } catch (e2) { /* fall through */ }
-      } else {
-        console.info('Legacy fallback disabled via flag; returning friendly error.');
-      }
-      return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
-    }
+serve(async (req: Request) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
 
-  return { sendEvent };
-}
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ ok: false, error: "method_not_allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const supabase = createClient(supabaseUrl!, supabaseKey!);
+
+  const traceId = req.headers.get("x-trace-id") ?? crypto.randomUUID();
+  const source = req.headers.get("x-source") ?? "unknown";
+  const chatMode = req.headers.get("x-chat-mode") ?? "";
+
+  let payload: any = {};
+  try {
+    payload = await req.json();
+  } catch (_) {
+    // ignore
+  }
+
+  const userId: string | undefined = payload?.userId ?? undefined;
+  const images: string[] = Array.isArray(payload?.images) ? payload.images : [];
+
+  const MAX_IMAGES = 5;
+
+  // Initial trace
+  await logTraceEvent(supabase, {
+    traceId,
+    userId,
+    stage: "received",
+    handler: "multi-image-intake",
+    status: "RUNNING",
+    payload: { nImages: images.length, source, chatMode },
+  });
+
+  // Server-side cap with friendly 400
+  if (images.length > MAX_IMAGES) {
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      stage: "tool_result",
+      handler: "multi-image-intake",
+      status: "ERROR",
+      payload: { too_many_images: true, n: images.length, max: MAX_IMAGES },
+      errorMessage: "too_many_images",
+    });
+
+    const body = { ok: false, error: "too_many_images", max: MAX_IMAGES, traceId };
+    return new Response(JSON.stringify(body), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "x-trace-id": traceId },
+    });
+  }
+
+  // Concurrency pool (max 3)
+  const startTotal = performance.now();
+  const queue = [...images];
+  const results: any[] = [];
+  const worker = async () => {
+    while (queue.length) {
+      const url = queue.shift()!;
+      const t0 = performance.now();
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        stage: "tool_exec",
+        handler: "image_classifier",
+        status: "RUNNING",
+        payload: { url },
+      });
+      try {
+        const out = await classifyOne(url);
+        const t1 = performance.now();
+        results.push(out);
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          stage: "tool_result",
+          handler: "image_classifier",
+          status: "OK",
+          latencyMs: Math.round(t1 - t0),
+          payload: { url },
+        });
+      } catch (err: any) {
+        const t1 = performance.now();
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          stage: "tool_result",
+          handler: "image_classifier",
+          status: "ERROR",
+          latencyMs: Math.round(t1 - t0),
+          payload: { url },
+          errorMessage: String(err?.message ?? err ?? "error"),
+        });
+      }
+    }
+  };
+
+  const workers = Array.from({ length: Math.min(3, queue.length || 1) }, () => worker());
+  await Promise.all(workers);
+  const endClassify = performance.now();
+
+  // Merge/consolidate step (placeholder)
+  const mergeStart = performance.now();
+  const consolidated = {
+    items: results.flatMap((r) => r.items ?? []),
+    topPickIdx: 0,
+  } as any;
+  const preview = {
+    title: "Analyse-Vorschau",
+    description: images.length > 1 ? `${images.length} Bilder verarbeitet` : `1 Bild verarbeitet`,
+    bullets: images.slice(0, 5).map((u, i) => `Bild ${i + 1}`),
+  };
+  const mergeEnd = performance.now();
+
+  // Final telemetry
+  const classifyMs = Math.round(endClassify - startTotal);
+  const mergeMs = Math.round(mergeEnd - mergeStart);
+  const totalMs = Math.round(mergeEnd - startTotal);
+
+  await logTraceEvent(supabase, {
+    traceId,
+    userId,
+    stage: "merge",
+    handler: "multi-image-intake",
+    status: "OK",
+    latencyMs: mergeMs,
+    payload: { classifyMs, mergeMs, totalMs, nImages: images.length },
+  });
+
+  await logTraceEvent(supabase, {
+    traceId,
+    userId,
+    stage: "reply_send",
+    handler: "multi-image-intake",
+    status: "OK",
+    latencyMs: totalMs,
+    payload: { source, chatMode, nImages: images.length },
+  });
+
+  // Response
+  return new Response(
+    JSON.stringify({ ok: true, preview, consolidated, traceId, metrics: { classifyMs, mergeMs, totalMs } }),
+    {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json", "x-trace-id": traceId },
+    }
+  );
+});

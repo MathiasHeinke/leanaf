@@ -16,7 +16,7 @@ const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").th
 
 export const MomentumBottomComposer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const { inputText, setInputText, uploadImages, appendUploadedImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet } = useGlobalMealInput();
+  const { inputText, setInputText, uploadImages, appendUploadedImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet, uploadedImages } = useGlobalMealInput();
   const { isEnabled } = useFeatureFlags();
   const orchestrationEnabled = isEnabled('auto_tool_orchestration');
   const { user } = useAuth();
@@ -122,7 +122,7 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     } catch (err: any) {
       setEphemeral(null);
       if (err?.message?.includes('too_many_images')) {
-        toast.info(`Maximal ${MAX_IMAGES} Bilder pro Analyse. Ich hab nichts geschickt – wähle bis zu ${MAX_IMAGES}.`);
+        toast.info(`Maximal ${MAX_IMAGES} Bilder. Bitte erneut auswählen.`);
       } else {
         toast.error('Analyse fehlgeschlagen – bitte erneut versuchen.');
       }
@@ -224,6 +224,11 @@ const handleSubmit = useCallback(async () => {
             >
               <Camera className="h-5 w-5" />
             </Button>
+            {/* Counter + hint */}
+            <div className="flex items-center gap-2 -ml-2 mr-2">
+              <span className="text-xs text-muted-foreground tabular-nums">{uploadedImages.length}/{MAX_IMAGES}</span>
+              <span className="hidden sm:inline text-xs text-muted-foreground">Max. {MAX_IMAGES} – überzählige ignoriert</span>
+            </div>
 
             {/* Voice Button */}
             <Button
