@@ -9,6 +9,7 @@ import { logTraceEvent } from "../telemetry.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-chat-mode, x-trace-id, x-source",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // Types
@@ -34,8 +35,11 @@ interface Intent {
 
 type OrchestratorReply =
   | { kind: "message"; text: string; end?: boolean; traceId?: string }
+  | { kind: "reflect"; text: string; traceId?: string }
+  | { kind: "choice_suggest"; prompt: string; options: string[]; traceId?: string }
   | { kind: "clarify"; prompt: string; options: string[]; traceId?: string }
-  | { kind: "confirm_save_meal"; prompt: string; proposal: any; traceId?: string };
+  | { kind: "confirm_save_meal"; prompt: string; proposal: any; traceId?: string }
+  | { kind: "confirm_save_supplement"; prompt: string; proposal: any; traceId?: string };
 
 // Thresholds
 const THRESHOLDS = { tool: 0.7, clarify: 0.4 };
@@ -183,6 +187,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Start timer for server ack measurement
+    const t0 = Date.now();
+
     // Telemetry: received
     await logTraceEvent(supabase, {
       traceId,
@@ -230,6 +237,39 @@ serve(async (req) => {
         return new Response(JSON.stringify(asMessage('⏳ Bin dran – einen Moment …', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       __inflight.add(clientEventId);
+    }
+
+    // Conversation-first minimal gate (feature-flag)
+    const conversationFirstEnabled = (Deno.env.get('CONVERSATION_FIRST_ENABLED') === 'true') || (chatMode === 'dev');
+
+    if (conversationFirstEnabled) {
+      if (event.type === 'TEXT') {
+        const intentQuick = detectIntentWithConfidence(event);
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: undefined,
+          stage: 'intent_from_text',
+          handler: 'coach-orchestrator-enhanced',
+          status: 'OK',
+          payload: intentQuick as any,
+        });
+        const domLabel = intentQuick.name === 'meal' ? 'Ernährung' : intentQuick.name === 'training' ? 'Training' : intentQuick.name === 'supplement' ? 'Supplements' : 'dem Thema';
+        const reflectText = intentQuick.name === 'unknown'
+          ? `Ich lese: „${(((event as any).text)||'').toString().slice(0,80)}“. Geht’s um Ernährung, Training oder Supplements – oder etwas anderes?`
+          : `Klingt nach ${domLabel}. Willst du eher eine kurze Analyse, etwas speichern oder erstmal Infos?`;
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
+        return new Response(JSON.stringify({ kind: 'reflect', text: reflectText, traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
+      }
+      if (event.type === 'IMAGE') {
+        const text = 'Danke fürs Bild – ich schau kurz, worum es geht. Magst du sagen, was dich daran interessiert?';
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
+        return new Response(JSON.stringify({ kind: 'reflect', text, traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
+      }
+      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'choice_suggest' } });
+      return new Response(JSON.stringify({ kind: 'choice_suggest', prompt: 'Wie machen wir weiter?', options: ['Kurze Analyse','Speichern','Später'], traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
     }
 
     // Auto-classify image if missing image_type to improve routing
