@@ -19,6 +19,7 @@ interface EnhancedChatInputProps {
   isLoading: boolean;
   placeholder?: string;
   className?: string;
+  onTypingChange?: (typing: boolean) => void;
 }
 
 
@@ -28,7 +29,8 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   onSendMessage,
   isLoading,
   placeholder = "Nachricht eingeben...",
-  className = ""
+  className = "",
+  onTypingChange
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -138,8 +140,15 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
           <textarea
             ref={textareaRef}
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyPress}
+            onChange={(e) => { 
+              setInputText(e.target.value); 
+              onTypingChange?.(true); 
+            }}
+            onKeyDown={(e) => {
+              handleKeyPress(e);
+              onTypingChange?.(true);
+            }}
+            onBlur={() => onTypingChange?.(false)}
             placeholder={placeholder}
             disabled={isLoading || isVoiceOverlayOpen}
             className={`

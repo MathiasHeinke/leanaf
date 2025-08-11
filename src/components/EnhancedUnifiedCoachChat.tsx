@@ -11,6 +11,16 @@ import { Send, Loader2, Brain, Database, Clock, Zap, Users } from 'lucide-react'
 import ReactMarkdown from 'react-markdown';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAuth } from '@/hooks/useAuth';
+interface EnhancedChatInputProps {
+  inputText: string;
+  setInputText: (text: string) => void;
+  onSendMessage: (message: string, mediaUrls?: string[], selectedTool?: string | null) => void;
+  isLoading: boolean;
+  placeholder?: string;
+  className?: string;
+  onTypingChange?: (typing: boolean) => void;
+}
+
 import { useEnhancedChat, EnhancedChatMessage } from '@/hooks/useEnhancedChat';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from 'sonner';
@@ -142,7 +152,11 @@ const [lastProposal, setLastProposal] = useState<any | null>(null);
 const [choiceChips, setChoiceChips] = useState<string[]>([]);
 
 // Shadow state for delayed chips
-const { shadowTraceId, pendingChips, saveShadowTraceId, clearShadowTraceId, scheduleChips, clearChips } = useShadowState();
+const {
+  shadowTraceId, pendingChips,
+  saveShadowTraceId, clearShadowTraceId,
+  scheduleChips, clearChips, setUserTyping
+} = useShadowState();
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -185,7 +199,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
     // Shadow state: save traceId and schedule delayed chips
     if ((res as any).traceId) {
       saveShadowTraceId((res as any).traceId);
-      scheduleChips((res as any).traceId);
+      scheduleChips((res as any).traceId, 6500);
     }
     return;
   }
@@ -949,9 +963,37 @@ const renderTypingIndicator = () => {
   return <TypingIndicator name={coach?.name || 'Coach'} />;
 };
 
+// ============= CHIP CLICK HANDLER =============
+const handleChipClick = useCallback(async (label: string) => {
+  if (!user?.id || isOrchestratorLoading) return;
+  clearChips(); setUserTyping(false); setIsOrchestratorLoading(true);
+  try {
+    const reply = await sendEvent(user.id, {
+      type: "TEXT",
+      text: label,
+      clientEventId: crypto.randomUUID(),
+      context: {
+        source: "chat",
+        coachMode: (mode === "specialized" ? "general" : mode),
+        coachId: coach?.id || "lucy",
+        followup: true,
+        shadowTraceId,
+        last_proposal: lastProposal ?? undefined
+      }
+    } as any);
+    renderOrchestratorReply(reply);
+  } catch {
+    toast.error("Konnte Auswahl nicht senden – bitte nochmal versuchen.");
+  } finally {
+    setIsOrchestratorLoading(false);
+  }
+}, [user?.id, isOrchestratorLoading, clearChips, setUserTyping, mode, coach?.id, shadowTraceId, lastProposal, sendEvent, renderOrchestratorReply]);
+
 // ============= ENHANCED SEND MESSAGE HANDLER =============
 const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
-  const msg = (message || '').trim();
+  if (!message.trim() || isOrchestratorLoading || !user?.id) return;
+  clearChips(); setUserTyping(false); setIsOrchestratorLoading(true);
+  const msg = message.trim();
 
   // Create user-visible message immediately
   if (msg) {
@@ -1039,21 +1081,33 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
       <ChatLayout 
 chatInput={
           <div>
-            {choiceChips.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {choiceChips.map(c => (
-                  <button key={c} className="px-3 py-1 rounded-full border text-sm" onClick={() => onChipClick(c)}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
+          {pendingChips.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {pendingChips.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => handleChipClick(c)}
+                  className="rounded-full px-3 py-1 text-sm border border-neutral-300 hover:bg-neutral-100"
+                >
+                  {c}
+                </button>
+              ))}
+              <button
+                onClick={() => clearChips()}
+                className="rounded-full px-3 py-1 text-sm border border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                aria-label="Chips schließen"
+              >
+                ×
+              </button>
+            </div>
+          )}
             <EnhancedChatInput
               inputText={inputText}
               setInputText={setInputText}
               onSendMessage={handleEnhancedSendMessage}
               isLoading={isChatLoading}
               placeholder="Nachricht eingeben..."
+              onTypingChange={setUserTyping}
             />
           </div>
         }
@@ -1253,13 +1307,24 @@ chatInput={
 
         {/* Input */}
         <div className="border-t bg-background p-4">
-          {choiceChips.length > 0 && (
+          {pendingChips.length > 0 && (
             <div className="mt-2 mb-2 flex flex-wrap gap-2">
-              {choiceChips.map(c => (
-                <button key={c} className="px-3 py-1 rounded-full border text-sm" onClick={() => onChipClick(c)}>
+              {pendingChips.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => handleChipClick(c)}
+                  className="rounded-full px-3 py-1 text-sm border border-neutral-300 hover:bg-neutral-100"
+                >
                   {c}
                 </button>
               ))}
+              <button
+                onClick={() => clearChips()}
+                className="rounded-full px-3 py-1 text-sm border border-neutral-200 text-neutral-500 hover:bg-neutral-50"
+                aria-label="Chips schließen"
+              >
+                ×
+              </button>
             </div>
           )}
           <EnhancedChatInput
@@ -1268,6 +1333,7 @@ chatInput={
             onSendMessage={handleEnhancedSendMessage}
             isLoading={isChatLoading}
             placeholder="Nachricht eingeben..."
+            onTypingChange={setUserTyping}
           />
         </div>
       </CardContent>

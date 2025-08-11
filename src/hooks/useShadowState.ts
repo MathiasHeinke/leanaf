@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ShadowMeta {
@@ -10,9 +10,13 @@ export interface ShadowMeta {
 }
 
 export function useShadowState() {
-  const [shadowTraceId, setShadowTraceId] = useState<string | null>(null);
+  const [shadowTraceId, setShadowTraceId] = useState<string|null>(null);
   const [pendingChips, setPendingChips] = useState<string[]>([]);
-  const [chipTimeout, setChipTimeout] = useState<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const typingRef = useRef(false);
+
+  // expose to parent to set typing state
+  const setUserTyping = useCallback((typing: boolean) => { typingRef.current = typing; }, []);
 
   const saveShadowTraceId = useCallback((traceId: string) => {
     setShadowTraceId(traceId);
@@ -21,49 +25,38 @@ export function useShadowState() {
   const clearShadowTraceId = useCallback(() => {
     setShadowTraceId(null);
     setPendingChips([]);
-    if (chipTimeout) {
-      clearTimeout(chipTimeout);
-      setChipTimeout(null);
-    }
-  }, [chipTimeout]);
+    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+  }, []);
 
   const scheduleChips = useCallback(async (traceId: string, delay = 6500) => {
-    // Clear any existing timeout
-    if (chipTimeout) {
-      clearTimeout(chipTimeout);
-    }
-
-    const timeout = setTimeout(async () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(async () => {
+      if (typingRef.current) return; // don't show chips while typing
       try {
         const { data, error } = await supabase
-          .from('shadow_state')
-          .select('meta')
-          .eq('trace_id', traceId)
-          .gt('expires_at', new Date().toISOString())
+          .from("shadow_state")
+          .select("meta")
+          .eq("trace_id", traceId)
+          .gt("expires_at", new Date().toISOString())
           .maybeSingle();
-
         if (!error && data?.meta) {
           const meta = data.meta as ShadowMeta;
           if (meta.suggestions?.length) {
-            const suggestions = meta.suggestions.slice(0, 3);
-            setPendingChips(suggestions);
+            setPendingChips(meta.suggestions.slice(0, 3));
           }
         }
-      } catch (error) {
-        console.debug('Failed to load shadow chips:', error);
-      }
+      } catch {}
     }, delay);
-
-    setChipTimeout(timeout);
-  }, [chipTimeout]);
+  }, []);
 
   const clearChips = useCallback(() => {
     setPendingChips([]);
-    if (chipTimeout) {
-      clearTimeout(chipTimeout);
-      setChipTimeout(null);
-    }
-  }, [chipTimeout]);
+    if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null; }
+  }, []);
+
+  useEffect(() => () => { // unmount
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  }, []);
 
   return {
     shadowTraceId,
@@ -71,6 +64,7 @@ export function useShadowState() {
     saveShadowTraceId,
     clearShadowTraceId,
     scheduleChips,
-    clearChips
+    clearChips,
+    setUserTyping,
   };
 }
