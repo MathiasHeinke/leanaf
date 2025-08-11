@@ -5179,11 +5179,13 @@ export type Database = {
           created_at: string
           custom_name: string | null
           dosage: string
+          dose: string | null
           frequency_days: number | null
           goal: string | null
           id: string
           image_url: string | null
           is_active: boolean
+          name: string | null
           notes: string | null
           rating: number | null
           schedule: Json | null
@@ -5201,11 +5203,13 @@ export type Database = {
           created_at?: string
           custom_name?: string | null
           dosage: string
+          dose?: string | null
           frequency_days?: number | null
           goal?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          name?: string | null
           notes?: string | null
           rating?: number | null
           schedule?: Json | null
@@ -5223,11 +5227,13 @@ export type Database = {
           created_at?: string
           custom_name?: string | null
           dosage?: string
+          dose?: string | null
           frequency_days?: number | null
           goal?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          name?: string | null
           notes?: string | null
           rating?: number | null
           schedule?: Json | null
