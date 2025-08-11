@@ -66,7 +66,7 @@ function normalizeReply(raw: any): OrchestratorReply {
 
 export function useOrchestrator() {
   const { isEnabled } = useFeatureFlags();
-  const legacyEnabled = isEnabled('legacy_fallback_enabled');
+  const legacyEnabled = false;
   async function sendEvent(userId: string, ev: CoachEvent, traceId?: string): Promise<OrchestratorReply> {
     const headers: Record<string, string> = {
       'x-trace-id': traceId ?? crypto.randomUUID(),

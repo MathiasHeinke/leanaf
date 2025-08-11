@@ -154,6 +154,28 @@ const [confirm, setConfirm] = useState<{ open: boolean; prompt: string; proposal
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+// Helper to append assistant messages with simple de-duplication
+const pushAssistant = (text: string) => {
+  setMessages(prev => {
+    const last = prev[prev.length - 1];
+    if (last?.role === 'assistant' && last?.content?.trim() === text.trim()) {
+      return prev; // duplicate → skip
+    }
+    const msg: SimpleMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: text,
+      created_at: new Date().toISOString(),
+      coach_personality: coach?.personality || 'motivierend',
+      coach_name: coach?.name || 'Coach',
+      coach_avatar: coach?.imageUrl,
+      coach_color: coach?.color,
+      coach_accent_color: coach?.accentColor
+    };
+    return [...prev, msg];
+  });
+};
+
 // ============= SEND MESSAGE =============
   const handleSendMessage = useCallback(async () => {
     if (!inputText.trim() || !user?.id || isSending) return;
@@ -191,22 +213,12 @@ const [confirm, setConfirm] = useState<{ open: boolean; prompt: string; proposal
         type: 'TEXT',
         text: messageText,
         clientEventId: crypto.randomUUID(),
-        context: { source: 'chat', coachMode: (mode === 'training' ? 'training' : mode === 'nutrition' ? 'nutrition' : 'general') }
+        context: { source: 'chat', coachMode: (mode === 'training' ? 'training' : mode === 'nutrition' ? 'nutrition' : 'general'), coachId: coach?.id || 'lucy' }
       });
 
+      console.debug('[orchestrator.reply]', { traceId: (reply as any)?.traceId, kind: (reply as any)?.kind, text: (reply as any)?.text?.slice?.(0, 60) || (reply as any)?.prompt?.slice?.(0, 60) });
       if (reply.kind === 'message') {
-        const assistantMessage: SimpleMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: reply.text,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'motivierend',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        pushAssistant(reply.text);
         await supabase.from('coach_conversations').insert({
           user_id: user.id,
           message_role: 'assistant',
@@ -216,32 +228,10 @@ const [confirm, setConfirm] = useState<{ open: boolean; prompt: string; proposal
           context_data: { traceId: reply.traceId }
         });
       } else if (reply.kind === 'clarify') {
-        const assistantMessage: SimpleMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: reply.prompt,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'motivierend',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        pushAssistant(reply.prompt);
         setClarify({ prompt: reply.prompt, options: reply.options });
       } else if (reply.kind === 'confirm_save_meal') {
-        const assistantMessage: SimpleMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: reply.prompt,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'motivierend',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        pushAssistant(reply.prompt);
         setConfirm({ open: true, prompt: reply.prompt, proposal: reply.proposal });
       }
     } catch (error) {
@@ -284,21 +274,11 @@ const [confirm, setConfirm] = useState<{ open: boolean; prompt: string; proposal
         type: 'TEXT',
         text: value,
         clientEventId: crypto.randomUUID(),
-        context: { source: 'chat', coachMode: (mode === 'training' ? 'training' : mode === 'nutrition' ? 'nutrition' : 'general') }
+        context: { source: 'chat', coachMode: (mode === 'training' ? 'training' : mode === 'nutrition' ? 'nutrition' : 'general'), coachId: coach?.id || 'lucy', followup: true }
       });
+      console.debug('[orchestrator.reply]', { traceId: (reply as any)?.traceId, kind: (reply as any)?.kind, text: (reply as any)?.text?.slice?.(0, 60) || (reply as any)?.prompt?.slice?.(0, 60) });
       if (reply.kind === 'message') {
-        const assistantMessage: SimpleMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: reply.text,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'motivierend',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        pushAssistant(reply.text);
         await supabase.from('coach_conversations').insert({
           user_id: user.id,
           message_role: 'assistant',
@@ -308,32 +288,10 @@ const [confirm, setConfirm] = useState<{ open: boolean; prompt: string; proposal
           context_data: { traceId: reply.traceId }
         });
       } else if (reply.kind === 'clarify') {
-        const assistantMessage: SimpleMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: reply.prompt,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'motivierend',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        pushAssistant(reply.prompt);
         setClarify({ prompt: reply.prompt, options: reply.options });
       } else if (reply.kind === 'confirm_save_meal') {
-        const assistantMessage: SimpleMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: reply.prompt,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.personality || 'motivierend',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor
-        };
-        setMessages(prev => [...prev, assistantMessage]);
+        pushAssistant(reply.prompt);
         setConfirm({ open: true, prompt: reply.prompt, proposal: reply.proposal });
       }
     } catch (err) {

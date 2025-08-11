@@ -159,6 +159,7 @@ const [choiceChips, setChoiceChips] = useState<string[]>([]);
 const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
   if (!res) return;
 
+  console.debug('[orchestrator.reply]', { traceId: (res as any)?.traceId, kind: (res as any)?.kind, text: (res as any)?.text?.slice?.(0, 60) || (res as any)?.prompt?.slice?.(0, 60) });
   // Reflect-first: render natural bubble immediately
   if ((res as any).kind === 'reflect') {
     const text = humanize((res as any).text);
@@ -258,7 +259,7 @@ function showChoices(reply: OrchestratorReply) {
 
   const handleClarifyPick = useCallback(async (value: string) => {
     if (!user?.id) return;
-    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy' } });
+    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', followup: true } });
     renderOrchestratorReply(reply);
   }, [user?.id, mode, sendEvent, renderOrchestratorReply, coach?.id]);
 
