@@ -500,25 +500,32 @@ serve(async (req) => {
 
     // supplement → lightweight intake first
     if (intent.name === "supplement") {
-      // IMAGE: human-first response (no heavy tool by default)
+      // IMAGE: human-first response using quick classifier, no modal yet
       if (event.type === 'IMAGE') {
-        await logTraceEvent(supabase, {
-          traceId,
-          userId,
-          coachId: undefined,
-          stage: 'reflect' as any,
-          handler: 'coach-orchestrator-enhanced',
-          status: 'OK',
-          payload: { mode: 'humanize_supplement_image', source, type: event.type }
+        // Run a fast image classification to get name + confidence
+        const t0 = Date.now();
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'image-classifier', status: 'RUNNING', payload: { action: 'classify_image_quick' } });
+        const { data: icData, error: icErr } = await supabase.functions.invoke('image-classifier', {
+          body: { imageUrl: (event as any).url, userId },
+          headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode ?? '' },
         });
-        const pct = 75; // quick human-ish estimate
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'image-classifier', status: icErr ? 'ERROR' : 'OK', latencyMs: Date.now() - t0, payload: { classification: (icData as any)?.classification ?? null } });
+
+        const cls: any = (icData as any)?.classification ?? {};
+        const pct = Math.round(Math.max(60, Math.min(98, (cls?.confidence ?? 0.6) * 100)));
+        const name = cls?.name || 'Supplement';
         const bullets = [
-          `Erkannt: Supplement (~${pct} %)`,
-          `Nutzen: unterstützt Nährstoffaufnahme / Regeneration`,
-          `Timing-Vorschlag: ${suggestTimeFromType('')}`,
-        ];
-        const text = `💊\n${bullets.map(b=>`• ${b}`).join('\n')}\n\nSoll ich’s speichern oder anpassen?`;
-        return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          `Erkannt: **${name}** (~${pct} %)`,
+          ...(cls?.benefit ? [`Nutzen: ${cls.benefit}`] : []),
+          ...(cls?.caution ? [`Hinweis: ${cls.caution}`] : []),
+          `Timing-Vorschlag: ${suggestTimeFromType(name)}`,
+        ].slice(0, 3);
+
+        // Reflect stage to keep traces readable
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect' as any, handler: 'coach-orchestrator-enhanced', status: 'OK', payload: { mode: 'humanize_supplement_image', name, pct } });
+
+        const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nSoll ich’s speichern oder anpassen?`;
+        return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // TEXT: only run analysis if explicitly asked
