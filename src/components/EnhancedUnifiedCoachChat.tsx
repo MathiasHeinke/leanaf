@@ -180,7 +180,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
   console.debug('[orchestrator.reply]', { traceId: (res as any)?.traceId, kind: (res as any)?.kind, text: (res as any)?.text?.slice?.(0, 60) || (res as any)?.prompt?.slice?.(0, 60) });
   // Reflect-first: render natural bubble immediately
   if ((res as any).kind === 'reflect') {
-    const text = humanize((res as any).text);
+    const text = humanize((res as any).text, ""); // No additional ask
     const assistantMessage: EnhancedChatMessage = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
@@ -211,7 +211,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
     const assistantMessage: EnhancedChatMessage = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
-      content: humanize(promptText),
+      content: humanize(promptText, ""), // No additional ask
       created_at: new Date().toISOString(),
       coach_personality: coach?.id || 'lucy',
       coach_name: coach?.name || 'Coach',
@@ -237,7 +237,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
 
   // Default: message – humanized
   if (res.kind === 'message') {
-    const text = humanize(res.text);
+    const text = humanize(res.text, ""); // No additional ask
     const assistantMessage: EnhancedChatMessage = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
