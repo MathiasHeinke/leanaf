@@ -44,154 +44,281 @@ Deno.serve(async (req) => {
   try {
     const body = (await req.json().catch(() => ({}))) as {
       userId?: string;
+      clientEventId?: string | null;
+      mode?: 'insert' | 'update';
       item?: {
+        id?: number;
+        canonical?: string;
         name?: string;
-        canonical?: string | null;
         dose?: string | null;
-        confidence?: number | null;
+        schedule?: {
+          freq?: 'daily' | 'weekly' | 'custom';
+          time?: 'morning' | 'noon' | 'evening' | 'preworkout' | 'postworkout' | 'bedtime' | 'custom';
+          custom?: string | null;
+        } | null;
         notes?: string | null;
-        image_url?: string | null;
       };
-      clientEventId?: string;
     };
 
     const { data: userRes } = await supabase.auth.getUser();
     const authUserId = userRes?.user?.id ?? null;
 
     const inputUserId = body?.userId;
+    const mode = (body?.mode as 'insert' | 'update') || 'insert';
     const item = body?.item;
-    const clientEventId = body?.clientEventId;
+    const clientEventId = body?.clientEventId ?? null;
     const userId = inputUserId || authUserId || null;
+
+    const sanitizeText = (v: unknown, max = 160) =>
+      typeof v === 'string' ? v.trim().slice(0, max) : null;
+
+    const sanitizeSchedule = (s: any) => {
+      if (!s || typeof s !== 'object') return null;
+      const out: Record<string, any> = {};
+      if (s.freq && ['daily', 'weekly', 'custom'].includes(s.freq)) out.freq = s.freq;
+      if (s.time && ['morning', 'noon', 'evening', 'preworkout', 'postworkout', 'bedtime', 'custom'].includes(s.time)) out.time = s.time;
+      if (s.custom) out.custom = String(s.custom).slice(0, 120);
+      return Object.keys(out).length ? out : null;
+    };
 
     await logTraceEvent(supabase, {
       traceId,
       userId,
       coachId: null,
-      stage: "received",
+      stage: 'received',
       handler: HANDLER,
-      status: "RUNNING",
+      status: 'RUNNING',
       payload: softTruncate(
-        { input: { hasItem: Boolean(item), hasClientEventId: Boolean(clientEventId) }, headers: { source, chatMode } },
+        { input: { mode, hasItem: Boolean(item), canonical: item?.canonical, hasSchedule: Boolean(item?.schedule) }, headers: { source, chatMode } },
         4000,
       ),
     });
 
-    if (!userId) return respond({ success: false, error: "Authentication required" }, 401);
-    if (!item || !item.name || typeof item.name !== "string") {
-      return respond({ success: false, error: "Invalid item: name required" }, 400);
-    }
+    if (!userId) return respond({ success: false, error: 'Authentication required' }, 401);
+    if (!item) return respond({ success: false, error: 'Invalid item' }, 400);
 
-    // Map to existing schema (user_supplements)
-    const normalized: Json = {
-      user_id: userId,
-      custom_name: String(item.name).trim().slice(0, 160),
-      // dosage is NOT NULL in schema; use provided dose or empty string as fallback
-      dosage: item.dose ? String(item.dose).trim().slice(0, 160) : "",
-      // leave default unit/timing/is_active from DB defaults
-      notes: item.notes ? String(item.notes).trim().slice(0, 1000) : null,
-      image_url: item.image_url ? String(item.image_url) : null,
-      confidence:
-        typeof item.confidence === "number"
-          ? Math.max(0, Math.min(1, item.confidence))
-          : null,
-      source: "recognition",
-      client_event_id: clientEventId ?? null,
-    };
+    // Quick idempotency check via client_event_id
+    if (clientEventId) {
+      const { data: existingByEvent } = await supabase
+        .from('user_supplements')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('client_event_id', clientEventId)
+        .maybeSingle();
+      if (existingByEvent?.id) {
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: null,
+          stage: 'tool_result',
+          handler: HANDLER,
+          status: 'OK',
+          payload: { idempotent: true, id: existingByEvent.id, mode },
+        });
+        await logTraceEvent(supabase, { traceId, userId, coachId: null, stage: 'reply_send', handler: HANDLER, status: 'OK' });
+        return respond({ success: true, id: existingByEvent.id, action: 'noop', idempotent: true });
+      }
+    }
 
     const execStart = Date.now();
     await logTraceEvent(supabase, {
       traceId,
       userId,
       coachId: null,
-      stage: "tool_exec",
+      stage: 'tool_exec',
       handler: HANDLER,
-      status: "RUNNING",
-      payload: softTruncate({ action: "insert user_supplements" }, 2000),
+      status: 'RUNNING',
+      payload: softTruncate({ action: 'save user_supplements', mode }, 2000),
     });
 
-    const { data, error } = await supabase
-      .from("user_supplements")
-      .insert(normalized)
-      .select(
-        "id, created_at, custom_name, dosage, unit, notes, image_url, confidence, source, client_event_id",
-      )
-      .single();
+    if (mode === 'update') {
+      // Resolve target by id or (user, canonical, name)
+      let targetId = item.id ?? null;
+      if (!targetId) {
+        if (!item.canonical || !item.name) {
+          return respond({ success: false, error: 'Update requires item.id or (canonical + name)' }, 400);
+        }
+        const { data: found } = await supabase
+          .from('user_supplements')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('canonical', String(item.canonical))
+          .eq('name', String(item.name))
+          .maybeSingle();
+        targetId = found?.id ?? null;
+      }
 
-    if (error && (error as any).code === "23505") {
+      if (!targetId) return respond({ success: false, error: 'Target supplement not found' }, 404);
+
+      // Build patch from provided fields only
+      const patch: Record<string, any> = {};
+      if (typeof item.dose !== 'undefined') patch.dose = sanitizeText(item.dose, 60);
+      if (typeof item.notes !== 'undefined') patch.notes = sanitizeText(item.notes, 1000);
+      if (typeof item.schedule !== 'undefined') patch.schedule = sanitizeSchedule(item.schedule);
+      if (clientEventId) patch.client_event_id = clientEventId;
+
+      if (Object.keys(patch).length === 0) {
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: null,
+          stage: 'tool_result',
+          handler: HANDLER,
+          status: 'OK',
+          latencyMs: Date.now() - execStart,
+          payload: { action: 'noop' },
+        });
+        return respond({ success: true, id: targetId, action: 'noop' });
+      }
+
+      const { data: upd, error: updErr } = await supabase
+        .from('user_supplements')
+        .update(patch)
+        .eq('id', targetId)
+        .eq('user_id', userId)
+        .select('id')
+        .single();
+
+      if (updErr) {
+        // If unique violation on client_event_id, treat as idempotent
+        if ((updErr as any).code === '23505' && clientEventId) {
+          const { data: exists } = await supabase
+            .from('user_supplements')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('client_event_id', clientEventId)
+            .maybeSingle();
+          if (exists?.id) {
+            await logTraceEvent(supabase, {
+              traceId,
+              userId,
+              coachId: null,
+              stage: 'tool_result',
+              handler: HANDLER,
+              status: 'OK',
+              latencyMs: Date.now() - execStart,
+              payload: { action: 'update', idempotent: true },
+            });
+            return respond({ success: true, id: exists.id, action: 'update', idempotent: true });
+          }
+        }
+        throw updErr;
+      }
+
       await logTraceEvent(supabase, {
         traceId,
         userId,
         coachId: null,
-        stage: "tool_result",
+        stage: 'tool_result',
         handler: HANDLER,
-        status: "OK",
+        status: 'OK',
         latencyMs: Date.now() - execStart,
-        payload: { idempotent: true },
+        payload: softTruncate({ output: { id: upd?.id }, action: 'update' }, 2000),
       });
-      await logTraceEvent(supabase, {
-        traceId,
-        userId,
-        coachId: null,
-        stage: "reply_send",
-        handler: HANDLER,
-        status: "OK",
-        latencyMs: Date.now() - t0,
-      });
-      return respond({ success: true, idempotent: true, message: "Bereits gespeichert (Idempotenz)." }, 200);
+
+      await logTraceEvent(supabase, { traceId, userId, coachId: null, stage: 'reply_send', handler: HANDLER, status: 'OK' });
+      return respond({ success: true, id: upd?.id, action: 'update' });
     }
 
-    if (error) throw error;
+    // INSERT branch
+    const canonical = sanitizeText(item.canonical, 160);
+    const name = sanitizeText(item.name, 160);
+    if (!canonical || !name) return respond({ success: false, error: 'canonical and name required' }, 400);
+
+    const insertPayload: Json = {
+      user_id: userId,
+      canonical,
+      name,
+      dose: sanitizeText(item.dose, 60),
+      schedule: sanitizeSchedule(item.schedule),
+      notes: sanitizeText(item.notes, 1000),
+      client_event_id: clientEventId,
+    };
+
+    const { data: ins, error: insErr } = await supabase
+      .from('user_supplements')
+      .insert(insertPayload)
+      .select('id')
+      .single();
+
+    if (insErr) {
+      // Handle uniqueness on (user_id, canonical, name)
+      if ((insErr as any).code === '23505') {
+        // Check idempotency via client_event_id first
+        if (clientEventId) {
+          const { data: existsByEvent } = await supabase
+            .from('user_supplements')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('client_event_id', clientEventId)
+            .maybeSingle();
+          if (existsByEvent?.id) {
+            await logTraceEvent(supabase, {
+              traceId,
+              userId,
+              coachId: null,
+              stage: 'tool_result',
+              handler: HANDLER,
+              status: 'OK',
+              latencyMs: Date.now() - execStart,
+              payload: { idempotent: true },
+            });
+            await logTraceEvent(supabase, { traceId, userId, coachId: null, stage: 'reply_send', handler: HANDLER, status: 'OK' });
+            return respond({ success: true, id: existsByEvent.id, action: 'noop', idempotent: true });
+          }
+        }
+        // Otherwise treat as duplicate by uniqueness
+        const { data: existing } = await supabase
+          .from('user_supplements')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('canonical', canonical)
+          .eq('name', name)
+          .maybeSingle();
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: null,
+          stage: 'tool_result',
+          handler: HANDLER,
+          status: 'OK',
+          latencyMs: Date.now() - execStart,
+          payload: { duplicate: true, existingId: existing?.id },
+        });
+        await logTraceEvent(supabase, { traceId, userId, coachId: null, stage: 'reply_send', handler: HANDLER, status: 'OK' });
+        return respond({ success: true, id: existing?.id, action: 'noop', duplicate: true });
+      }
+      throw insErr;
+    }
 
     await logTraceEvent(supabase, {
       traceId,
       userId,
       coachId: null,
-      stage: "tool_result",
+      stage: 'tool_result',
       handler: HANDLER,
-      status: "OK",
+      status: 'OK',
       latencyMs: Date.now() - execStart,
-      payload: softTruncate({ output: { id: data?.id } }, 2000),
+      payload: softTruncate({ output: { id: ins?.id }, action: 'insert' }, 2000),
     });
 
-    const friendlyName = data?.custom_name ?? item.name;
-    const friendlyDose = normalized.dosage ? ` (${normalized.dosage})` : "";
-
-    await logTraceEvent(supabase, {
-      traceId,
-      userId,
-      coachId: null,
-      stage: "reply_send",
-      handler: HANDLER,
-      status: "OK",
-      latencyMs: Date.now() - t0,
-    });
-
-    return respond({
-      success: true,
-      saved: {
-        user_supplement_id: data?.id,
-        name: friendlyName,
-        canonical: null,
-        dose: normalized.dosage,
-      },
-      message: `👍 Gespeichert: ${friendlyName}${friendlyDose}. Willst du tägliche Erinnerungen?`,
-      record: data,
-    });
+    await logTraceEvent(supabase, { traceId, userId, coachId: null, stage: 'reply_send', handler: HANDLER, status: 'OK' });
+    return respond({ success: true, id: ins?.id, action: 'insert' });
   } catch (e: any) {
     try {
       await logTraceEvent(supabase, {
         traceId,
         userId: null,
         coachId: null,
-        stage: "error",
+        stage: 'error',
         handler: HANDLER,
-        status: "ERROR",
+        status: 'ERROR',
         latencyMs: Date.now() - t0,
         errorMessage: String(e?.message || e),
       });
     } catch {
       // ignore logging failure
     }
-    return respond({ success: false, error: "Supplements speichern fehlgeschlagen." }, 500);
+    return respond({ success: false, error: 'supplement-save failed' }, 500);
   }
 });
