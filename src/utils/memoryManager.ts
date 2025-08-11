@@ -34,7 +34,7 @@ export interface ConversationMemory {
 }
 
 export class MemoryManager {
-  private readonly MESSAGE_LIMIT = 10;
+  private readonly MESSAGE_LIMIT = 30;
   private readonly OPENAI_API_KEY: string;
 
   constructor() {
@@ -103,24 +103,42 @@ export class MemoryManager {
       return memory;
     }
 
+    // Take all but last 2 for compression; keep last 2 as recent context
+    const messagesToCompress = memory.last_messages.slice(0, -2);
+    const recentMessages = memory.last_messages.slice(-2);
+
     const apiKey = openAIApiKey || this.OPENAI_API_KEY;
-    if (!apiKey) {
-      console.warn('No OpenAI API key available for compression');
-      // Fallback: simple truncation
-      memory.last_messages = memory.last_messages.slice(-this.MESSAGE_LIMIT);
-      await this.saveConversationMemory(memory);
-      return memory;
-    }
 
     try {
-      // Take first 8 messages for compression, keep last 2
-      const messagesToCompress = memory.last_messages.slice(0, -2);
-      const recentMessages = memory.last_messages.slice(-2);
+      let summary = '';
 
-      // Generate summary using OpenAI
-      const summary = await this.generateSummary(messagesToCompress, apiKey);
+      if (apiKey) {
+        // Generate summary using OpenAI
+        summary = await this.generateSummary(messagesToCompress, apiKey);
+      } else {
+        // Lightweight local roll-up (2–3 Sätze)
+        const text = messagesToCompress
+          .map(m => `${m.role === 'user' ? 'U' : 'C'}: ${m.content}`)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
 
-      // Create packet entry
+        const maxLen = 420;
+        const snippet = text.slice(0, maxLen);
+        // Simple heuristic sentences
+        const keyPoints = Array.from(
+          new Set(
+            snippet
+              .split(/[.!?]/)
+              .map(s => s.trim())
+              .filter(s => s.length > 0)
+          )
+        ).slice(0, 3);
+
+        summary = `Bisheriges Gespräch in Kürze: ${keyPoints.join('. ')}${keyPoints.length > 0 ? '.' : ''}`;
+      }
+
+      // Create packet entry (even for local roll-up)
       const packet: Omit<MemoryPacket, 'id'> = {
         convo_id: memory.convo_id,
         from_msg: Math.max(1, memory.message_count - messagesToCompress.length),
@@ -130,22 +148,19 @@ export class MemoryManager {
         created_at: new Date().toISOString()
       };
 
-      // Save packet to database
       await this.savePacket(packet);
 
-      // Update memory with compressed data
+      // Update memory
       memory.last_messages = recentMessages;
       memory.rolling_summary = summary;
       memory.updated_at = new Date().toISOString();
-
       await this.saveConversationMemory(memory);
 
-      console.log(`✅ Compressed ${messagesToCompress.length} messages into summary`);
+      console.log(`✅ Compressed ${messagesToCompress.length} messages into summary (api=${!!apiKey})`);
       return memory;
-
     } catch (error) {
       console.error('Error in compression:', error);
-      // Fallback to simple truncation
+      // Fallback to safe truncation
       memory.last_messages = memory.last_messages.slice(-this.MESSAGE_LIMIT);
       await this.saveConversationMemory(memory);
       return memory;

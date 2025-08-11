@@ -3,7 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useConversationMemory } from '@/hooks/useConversationMemory';
 import { useMemorySync } from '@/hooks/useMemorySync';
-import { ChatMessage } from '@/utils/memoryManager';
+import { ChatMessage, memoryManager } from '@/utils/memoryManager';
+import { getCurrentDateString } from '@/utils/dateHelpers';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 export interface EnhancedChatMessage {
   id: string;
@@ -46,13 +48,14 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
     addMessage: addToMemory, 
     getPromptContext,
     clearMemory: clearConversationMemory 
-  } = useConversationMemory('');
+  } = useConversationMemory('lucy');
   
   const { queueMemoryUpdate, isUpdating: isMemoryUpdating } = useMemorySync();
   
   // Refs for stable functions
   const conversationHistoryRef = useRef<EnhancedChatMessage[]>([]);
   const currentCoachRef = useRef<string>('');
+  const preloadedCoachHistory = useRef<Record<string, boolean>>({});
 
   const sendMessage = useCallback(async (
     message: string, 
@@ -70,6 +73,9 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
     setError(null);
     currentCoachRef.current = coachId;
 
+    const { isEnabled } = useFeatureFlags();
+    const memoryFlag = isEnabled ? isEnabled('enhanced_memory_enabled') : true;
+
     try {
       // Generate message ID and trace ID
       const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -82,12 +88,52 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
         timestamp: new Date().toISOString()
       };
       
-      if (options.enableMemory !== false) {
-        addToMemory(userMessage);
+      if (options.enableMemory !== false && memoryFlag) {
+        try {
+          const { memory, needsCompression } = await memoryManager.addMessage(user.id, coachId, userMessage);
+          console.log('[memory_save]', { coachId, count: memory.message_count, needsCompression });
+          if (needsCompression) {
+            await memoryManager.compressMessages(memory);
+            console.log('[memory_rollup]', { coachId, rolled: true });
+          }
+        } catch (e) {
+          console.warn('memory add failed (non-fatal)', e);
+        }
       }
 
-      // Get conversation history for context
-      const conversationHistory = conversationHistoryRef.current.slice(-6).map(msg => ({
+      // Preload today's history from DB once per coach for richer context
+      if (!preloadedCoachHistory.current[coachId]) {
+        try {
+          console.log('[memory_load] preload start', { coachId });
+          const today = getCurrentDateString();
+          const { data: existing, error: histErr } = await supabase
+            .from('coach_conversations')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('coach_personality', coachId)
+            .eq('conversation_date', today)
+            .order('created_at', { ascending: true })
+            .limit(20);
+          if (!histErr && existing?.length) {
+            const mapped = existing.map((msg: any) => ({
+              id: msg.id || `pre-${Date.now()}-${Math.random()}`,
+              role: msg.message_role as 'user' | 'assistant',
+              content: msg.message_content,
+              created_at: msg.created_at,
+              coach_personality: msg.coach_personality || coachId,
+            })) as EnhancedChatMessage[];
+            conversationHistoryRef.current.push(...mapped);
+            // keep only last 30 in ref
+            conversationHistoryRef.current = conversationHistoryRef.current.slice(-30);
+          }
+          preloadedCoachHistory.current[coachId] = true;
+        } catch (e) {
+          console.warn('history preload failed (non-fatal)', e);
+        }
+      }
+
+      // Get conversation history for context (last 30)
+      const conversationHistory = conversationHistoryRef.current.slice(-30).map(msg => ({
         role: msg.role,
         content: msg.content
       }));
@@ -156,19 +202,27 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
         timestamp: new Date().toISOString()
       };
       
-      if (options.enableMemory !== false) {
-        addToMemory(assistantMessage);
-        
-        // Queue memory update with enhanced analysis
-        queueMemoryUpdate({
-          userId: user.id,
-          coachId,
-          userMessage: message,
-          assistantResponse: aiResponse,
-          sentiment: calculateBasicSentiment(message),
-          categories: detectConversationCategories(message, aiResponse),
-          timestamp: new Date().toISOString()
-        });
+      if (options.enableMemory !== false && memoryFlag) {
+        try {
+          const { memory, needsCompression } = await memoryManager.addMessage(user.id, coachId, assistantMessage);
+          console.log('[memory_save]', { coachId, count: memory.message_count, needsCompression });
+          if (needsCompression) {
+            await memoryManager.compressMessages(memory);
+            console.log('[memory_rollup]', { coachId, rolled: true });
+          }
+          // Queue secondary analysis
+          queueMemoryUpdate({
+            userId: user.id,
+            coachId,
+            userMessage: message,
+            assistantResponse: aiResponse,
+            sentiment: calculateBasicSentiment(message),
+            categories: detectConversationCategories(message, aiResponse),
+            timestamp: new Date().toISOString()
+          });
+        } catch (e) {
+          console.warn('memory add failed (non-fatal)', e);
+        }
       }
 
       // Store conversation history
@@ -190,6 +244,34 @@ export function useEnhancedChat(options: UseEnhancedChatOptions = {}) {
       };
 
       conversationHistoryRef.current.push(userChatMessage, assistantChatMessage);
+      // keep ref bounded to last 30
+      conversationHistoryRef.current = conversationHistoryRef.current.slice(-30);
+
+      // Persist both messages to coach_conversations (non-blocking)
+      try {
+        const today = getCurrentDateString();
+        await supabase.from('coach_conversations').insert([
+          {
+            user_id: user.id,
+            message_role: 'user',
+            message_content: message,
+            coach_personality: coachId,
+            conversation_date: today,
+            context_data: { traceId, source: 'enhanced-chat', stage: 'user' }
+          },
+          {
+            user_id: user.id,
+            message_role: 'assistant',
+            message_content: aiResponse,
+            coach_personality: coachId,
+            conversation_date: today,
+            context_data: { traceId, source: 'enhanced-chat', stage: 'assistant' }
+          }
+        ]);
+        console.log('[memory_save] coach_conversations persisted');
+      } catch (e) {
+        console.warn('coach_conversations insert failed (non-fatal)', e);
+      }
       
       setLastResponse(aiResponse);
       setLastMetadata(normalizedMetadata);
