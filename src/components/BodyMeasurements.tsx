@@ -74,6 +74,36 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
     }
   }, [todaysMeasurements?.id, isEditing]); // Only depend on measurement ID, not the whole object
 
+  // One-off restore of body measurements for 2025-08-03 from screenshot
+  useEffect(() => {
+    const key = 'bm_restore_2025-08-03_v1';
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem(key)) return;
+
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { restoreBodyMeasurements } = await import('@/utils/restoreBodyMeasurements');
+        const res = await restoreBodyMeasurements(user.id, '2025-08-03', {
+          neck: 41.5,
+          chest: 113,
+          waist: 103,
+          belly: 105,
+          hips: 101,
+          arms: 36.5,
+          thigh: 61.5,
+          notes: 'Aus Screenshot (manuelle Wiederherstellung)'
+        });
+        console.log('[OneOffRestore] Body measurements 2025-08-03', res);
+        localStorage.setItem(key, 'done');
+      } catch (err) {
+        console.error('[OneOffRestore] Failed to restore 2025-08-03', err);
+      }
+    })();
+  }, []);
+
   const handleInputChange = (field: string, value: string) => {
     setMeasurements(prev => ({
       ...prev,
