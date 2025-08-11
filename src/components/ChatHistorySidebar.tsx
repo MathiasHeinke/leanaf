@@ -3,9 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { 
   Calendar,
   MessageSquare,
@@ -13,13 +11,13 @@ import {
   Clock,
   User,
   X,
-  Archive
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { format, isToday, isYesterday, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { consecutiveAssistantDedupe } from '@/utils/chat/dedupe';
 
 interface ChatDay {
   date: string;
@@ -68,7 +66,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
     try {
       const { data, error } = await supabase
         .from('coach_conversations')
-        .select('conversation_date, coach_personality, message_content, created_at')
+        .select('conversation_date, coach_personality, message_content, message_role, created_at')
         .eq('user_id', user.id)
         .eq('coach_personality', selectedCoach)
         .order('conversation_date', { ascending: false })
@@ -76,8 +74,13 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
 
       if (error) throw error;
 
+      // Dedupe consecutive assistant duplicates before grouping
+      const safeData = Array.isArray(data) ? data : [];
+      const deduped = consecutiveAssistantDedupe(safeData);
+      console.log('ChatHistorySidebar: fetched=', safeData.length, 'deduped=', deduped.length);
+
       // Group by date and get last message for each day
-      const groupedByDate = data?.reduce((acc: { [key: string]: ChatDay }, msg) => {
+      const groupedByDate = deduped.reduce((acc: { [key: string]: ChatDay }, msg: any) => {
         const date = msg.conversation_date;
         if (!acc[date]) {
           acc[date] = {
@@ -90,7 +93,7 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
         }
         acc[date].message_count++;
         return acc;
-      }, {}) || {};
+      }, {} as Record<string, ChatDay>);
 
       setChatDays(Object.values(groupedByDate));
     } catch (error) {
@@ -99,7 +102,6 @@ export const ChatHistorySidebar: React.FC<ChatHistorySidebarProps> = ({
       setIsLoading(false);
     }
   };
-
 
   const formatDate = (dateString: string) => {
     const date = parseISO(dateString);
