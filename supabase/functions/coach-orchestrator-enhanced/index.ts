@@ -71,6 +71,18 @@ function detectIntentWithConfidence(event: CoachEvent): Intent {
 
 const asMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text, traceId });
 
+// Robust analysis intent detector for supplements (covers prüfen/überprüfen/checken variants)
+const isAnalysisRequest = (t?: string) =>
+  !!t && /\b(analysier|analysiere|bewerte|prüf(?:e|en)?|überprüf(?:e|en)?|check(?:e|en)?)\b.*\b(supplement|stack|supplements?)\b/i.test(t);
+
+function suggestTimeFromType(name?: string) {
+  const n = (name || '').toLowerCase();
+  if (/(melatonin|zma|magnesium)/.test(n)) return 'abends';
+  if (/(creatin|creatine)/.test(n)) return 'wann es passt';
+  if (/(omega|fischöl|epa|dha)/.test(n)) return 'zu einer Mahlzeit';
+  if (/(vitamin d|vit d|d3)/.test(n)) return 'morgens mit Fett';
+  return 'abends ok';
+}
 // ---- Supplement follow-up parsing helpers ----
 type ParsedFollowUp =
   | { kind: 'save'; pickIdx?: number }
@@ -180,6 +192,17 @@ serve(async (req) => {
       handler: 'coach-orchestrator-enhanced',
       status: 'RUNNING',
       payload: { type: event.type, source, chatMode }
+    });
+
+    // Early DEFERRED reply marker to reflect immediate client ack
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      coachId: undefined,
+      stage: 'reply_send',
+      handler: 'coach-orchestrator-enhanced',
+      status: 'DEFERRED' as any,
+      payload: { early: true, source, chatMode, clientEventId: (event as any)?.clientEventId ?? null }
     });
 
     // Idempotency & retry info
@@ -319,6 +342,41 @@ serve(async (req) => {
       .eq('user_id', userId);
     const userFlagsMeta = mergeFlagMetadata(userFlagRows as any[] || []);
 
+    // Open-Intake for ambiguous supplement TEXT (no heavy tools yet)
+    if (event.type === "TEXT" && intent.name === "supplement") {
+      const txt = ((event as any)?.text || "").toString();
+      const openIntake = isFlagOn(userFlagsMeta, 'open_intake_v1') || true;
+      if (openIntake && !isAnalysisRequest(txt)) {
+        // Reflect stage
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: undefined,
+          stage: 'reflect' as any,
+          handler: 'coach-orchestrator-enhanced',
+          status: 'OK',
+          payload: { hypothesis: 'supplement', analysisRequest: false, source, type: event.type }
+        });
+        // Route decision (clarify)
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: undefined,
+          stage: 'route_decision',
+          handler: 'coach-orchestrator-enhanced',
+          status: 'OK',
+          payload: { intent, decision: 'clarify', source, type: event.type, flags: userFlagsMeta }
+        });
+        const reply = {
+          kind: 'clarify',
+          prompt: 'Alles klar – was genau zu Supplements?',
+          options: ['Foto analysieren', 'Meinen Stack bewerten', 'Neues Supplement hinzufügen'],
+          traceId,
+        } as any;
+        return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     await logTrace({ traceId, stage: "route_decision", data: { intent, source, type: event.type, flags: userFlagsMeta } });
     await logTraceEvent(supabase, {
       traceId,
@@ -440,29 +498,43 @@ serve(async (req) => {
       }
     }
 
-    // supplement → analysis only → return confirm_save_supplement proposal
+    // supplement → lightweight intake first
     if (intent.name === "supplement") {
-      const isAnalysisRequest = (t?: string) =>
-        !!t && /\b(analysier|analysiere|bewerte|check(e)?|bewertung|analyse)\b.*\b(supplement|stack|supplements)\b/i.test(t);
+      // IMAGE: human-first response (no heavy tool by default)
+      if (event.type === 'IMAGE') {
+        await logTraceEvent(supabase, {
+          traceId,
+          userId,
+          coachId: undefined,
+          stage: 'reflect' as any,
+          handler: 'coach-orchestrator-enhanced',
+          status: 'OK',
+          payload: { mode: 'humanize_supplement_image', source, type: event.type }
+        });
+        const pct = 75; // quick human-ish estimate
+        const bullets = [
+          `Erkannt: Supplement (~${pct} %)`,
+          `Nutzen: unterstützt Nährstoffaufnahme / Regeneration`,
+          `Timing-Vorschlag: ${suggestTimeFromType('')}`,
+        ];
+        const text = `💊\n${bullets.map(b=>`• ${b}`).join('\n')}\n\nSoll ich’s speichern oder anpassen?`;
+        return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
 
-      const tool =
-        event.type === "IMAGE"
-          ? "supplement-recognition"
-          : isAnalysisRequest((event as any)?.text || "")
-            ? "supplement-analysis"
-            : null;
+      // TEXT: only run analysis if explicitly asked
+      const tool = isAnalysisRequest(((event as any)?.text || '').toString()) ? 'supplement-analysis' : null;
 
       if (!tool) {
         const reply = {
-          kind: "clarify",
-          prompt: "Was genau möchtest du zu Supplements?",
+          kind: 'clarify',
+          prompt: 'Alles klar – was genau zu Supplements?',
           options: [
-            "Foto analysieren",
-            "Meinen Stack bewerten",
-            "Neues Supplement hinzufügen"
+            'Foto analysieren',
+            'Meinen Stack bewerten',
+            'Neues Supplement hinzufügen'
           ],
           traceId
-        };
+        } as any;
         return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
