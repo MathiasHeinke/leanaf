@@ -201,7 +201,7 @@ serve(async (req) => {
       coachId: undefined,
       stage: 'reply_send',
       handler: 'coach-orchestrator-enhanced',
-      status: 'DEFERRED' as any,
+      status: 'RUNNING',
       payload: { early: true, source, chatMode, clientEventId: (event as any)?.clientEventId ?? null }
     });
 
@@ -514,21 +514,23 @@ serve(async (req) => {
         const cls: any = (icData as any)?.classification ?? {};
         const pct = Math.round(Math.max(60, Math.min(98, (cls?.confidence ?? 0.6) * 100)));
         const name = cls?.name || 'Supplement';
+        const desc = (cls?.description || '').toString().trim();
         const bullets = [
           `Erkannt: **${name}** (~${pct} %)`,
+          ...(desc ? [`Beschreibung: ${desc}`] : []),
           ...(cls?.benefit ? [`Nutzen: ${cls.benefit}`] : []),
           ...(cls?.caution ? [`Hinweis: ${cls.caution}`] : []),
           `Timing-Vorschlag: ${suggestTimeFromType(name)}`,
-        ].slice(0, 3);
+        ].slice(0, 4);
 
         // 2) Build full proposal by running analysis so user can Save/Adjust immediately
         const t1 = Date.now();
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-analysis', status: 'RUNNING', payload: { withImage: true } });
-        const { data, error } = await supabase.functions.invoke('supplement-analysis', {
-          body: { userId, imageUrl: (event as any).url, userQuestion: '' },
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-recognition', status: 'RUNNING', payload: { withImage: true } });
+        const { data, error } = await supabase.functions.invoke('supplement-recognition', {
+          body: { userId, imageUrl: (event as any).url, userQuestion: ((cls as any)?.description || '') },
           headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode ?? '' },
         });
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-analysis', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t1 });
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-recognition', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t1 });
         if (error) {
           const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nSag mir kurz, ob du Infos willst oder speichern möchtest.`;
           return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
