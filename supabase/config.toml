@@ -98,3 +98,7 @@ verify_jwt = false
 
 [functions.save-target-image]
 verify_jwt = false
+
+[functions.supplement-save]
+verify_jwt = true
+

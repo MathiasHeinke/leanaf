@@ -25,8 +25,21 @@ export default function ConfirmSupplementModal({ open, prompt, proposal, onConfi
 
           <div className="rounded-lg border p-3">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="font-medium">{item.name}</div>
+              {item.image_url && (
+                <img
+                  src={item.image_url}
+                  alt={`Supplement Vorschau: ${item.name}`}
+                  className="w-12 h-12 rounded object-cover border"
+                  loading="lazy"
+                />
+              )}
+              <div className="flex-1">
+                <div className="font-medium flex items-center gap-2">
+                  <span>{item.name}</span>
+                  {item.canonical && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{item.canonical}</span>
+                  )}
+                </div>
                 {item.dose && <div className="text-sm text-muted-foreground">Dosierung: {item.dose}</div>}
                 {item.notes && <div className="text-sm text-muted-foreground mt-1">{item.notes}</div>}
               </div>
