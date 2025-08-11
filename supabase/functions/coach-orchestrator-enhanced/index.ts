@@ -211,6 +211,11 @@ serve(async (req) => {
       status: 'RUNNING',
       payload: { early: true, source, chatMode, clientEventId: (event as any)?.clientEventId ?? null }
     });
+    try {
+      await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { early: true, source, chatMode, clientEventId: (event as any)?.clientEventId ?? null } });
+    } catch {
+      // ignore rpc errors
+    }
 
     // Idempotency & retry info
     const retryHeader = req.headers.get('x-retry') === '1';
@@ -237,6 +242,19 @@ serve(async (req) => {
         return new Response(JSON.stringify(asMessage('⏳ Bin dran – einen Moment …', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       __inflight.add(clientEventId);
+    }
+
+    // Rate limit check
+    try {
+      const { data: rl } = await supabase.rpc('check_and_update_rate_limit', { p_identifier: userId, p_endpoint: 'coach-orchestrator-enhanced' });
+      if (rl && rl.allowed === false) {
+        const retry = rl.retry_after_seconds ?? 30;
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'error', handler: 'coach-orchestrator-enhanced', status: 'ERROR', payload: { rate_limited: true, retry } });
+        try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'rate_limited', p_data: { retry } }); } catch {}
+        return new Response(JSON.stringify(asMessage(`Zu viele Anfragen – bitte in ${retry}s nochmal.`, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 });
+      }
+    } catch {
+      // ignore
     }
 
     // Load user feature flags
@@ -271,8 +289,9 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'supplement-analysis', status: error?'ERROR':'OK' });
           const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
-          await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
-          return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+           await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
+           try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'message' } }); } catch {}
+           return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
         if (followUpAction === 'save' || followUpAction === 'update') {
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'supplement-save', status:'RUNNING' });
@@ -304,6 +323,8 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-analysis', status: error?'ERROR':'OK' });
           const text = data?.summary ?? 'Kurz gecheckt. Speichern oder später?';
+          await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
+          try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'message' } }); } catch {}
           return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
         if (followUpAction === 'save') {
@@ -312,9 +333,11 @@ serve(async (req) => {
             body: { userId, clientEventId: event.clientEventId ?? crypto.randomUUID(), item: lp.data }, 
             headers: { 'x-trace-id': traceId,'x-source': source,'x-chat-mode': chatMode },
           });
-          await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-save', status: error?'ERROR':'OK' });
-          const text = data?.success ? '🍽️ gespeichert!' : 'Konnte nicht speichern – nochmal?';
-          return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-save', status: error?'ERROR':'OK' });
+           const text = data?.success ? '🍽️ gespeichert!' : 'Konnte nicht speichern – nochmal?';
+           await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
+           try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'message' } }); } catch {}
+           return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
       }
 
@@ -346,15 +369,18 @@ serve(async (req) => {
           : `Klingt nach ${domLabel}. Willst du eher eine kurze Analyse, etwas speichern oder erstmal Infos?`;
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
+        try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'reflect' } }); } catch {}
         return new Response(JSON.stringify({ kind: 'reflect', text: reflectText, traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
       }
       if (event.type === 'IMAGE') {
         const text = 'Danke fürs Bild – ich schau kurz, worum es geht. Magst du sagen, was dich daran interessiert?';
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
+        try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'reflect' } }); } catch {}
         return new Response(JSON.stringify({ kind: 'reflect', text, traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
       }
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'choice_suggest' } });
+      try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'choice_suggest' } }); } catch {}
       return new Response(JSON.stringify({ kind: 'choice_suggest', prompt: 'Wie machen wir weiter?', options: ['Kurze Analyse','Speichern','Später'], traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
     }
 

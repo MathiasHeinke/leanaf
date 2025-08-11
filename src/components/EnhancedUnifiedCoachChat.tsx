@@ -175,6 +175,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
       metadata: (res as any).traceId ? { traceId: (res as any).traceId } : undefined,
     };
     setMessages(prev => [...prev, assistantMessage]);
+    persistConversation('assistant', text);
     return;
   }
 
@@ -225,6 +226,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
       metadata: res.traceId ? { traceId: res.traceId } : undefined,
     };
     setMessages(prev => [...prev, assistantMessage]);
+    persistConversation('assistant', text);
     setClarify(null);
     // first_paint metric
     if (awaitingFirstPaintRef.current && lastSendTimeRef.current) {
@@ -278,6 +280,7 @@ const onChipClick = useCallback(async (label: string) => {
       coach_accent_color: coach?.accentColor
     };
     setMessages(prev => [...prev, assistantMessage]);
+    persistConversation('assistant', assistantMessage.content);
     return;
   }
 
@@ -773,7 +776,24 @@ if (enableAdvancedFeatures) {
     return null;
   };
 
-  // ============= RENDER MESSAGE =============
+// Persist chat bubbles to coach_conversations
+async function persistConversation(role: 'user'|'assistant', content: string) {
+  try {
+    if (!user?.id) return;
+    const today = getCurrentDateString();
+    await supabase.from('coach_conversations').insert({
+      user_id: user.id,
+      coach_personality: coach?.id || 'lucy',
+      conversation_date: today,
+      message_role: role,
+      message_content: content
+    });
+  } catch (e) {
+    console.warn('persistConversation failed', e);
+  }
+}
+
+// ============= RENDER MESSAGE =============
   const renderMessage = (message: EnhancedChatMessage) => {
     const isUser = message.role === 'user';
     const userAvatarUrl = getUserAvatarUrl();
@@ -936,6 +956,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
       coach_accent_color: coach?.accentColor
     };
     setMessages(prev => [...prev, userMessage]);
+    persistConversation('user', msg);
   } else if (mediaUrls && mediaUrls.length > 0) {
     // Show a bubble for pure image sends so users see immediate feedback
     const url = mediaUrls[0];
@@ -951,6 +972,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
       coach_accent_color: coach?.accentColor
     };
     setMessages(prev => [...prev, userImageMessage]);
+    persistConversation('user', `![📷 Bild gesendet](${url})`);
   }
 
   try {
@@ -1046,63 +1068,7 @@ chatInput={
           <div className="space-y-4 py-4">
             {messages.map(renderMessage)}
             {renderTypingIndicator()}
-            {pendingSupplement && (
-              <ChoiceBar
-                prompt={"Möchtest du mehr Infos, in den Stack aufnehmen oder später?"}
-                options={["Mehr Infos", "In Stack aufnehmen", "Später"]}
-                onPick={async (choice) => {
-                  if (!user?.id || !pendingSupplement?.proposal) return;
-                  const p: any = pendingSupplement.proposal;
-                  const idx = p.topPickIdx ?? 0;
-                  const item = p.items?.[idx];
-                  if (!item) { setPendingSupplement(null); return; }
-                  if (choice === 'Mehr Infos') {
-                    const waitMsg: EnhancedChatMessage = {
-                      id: `assistant-${Date.now()}`,
-                      role: 'assistant',
-                      content: 'Alles klar – ich schaue kurz in deinen Stack und mögliche Wechselwirkungen …',
-                      created_at: new Date().toISOString(),
-                      coach_personality: coach?.id || 'lucy',
-                      coach_name: coach?.name || 'Coach',
-                      coach_avatar: coach?.imageUrl,
-                      coach_color: coach?.color,
-                      coach_accent_color: coach?.accentColor
-                    };
-                    setMessages(prev => [...prev, waitMsg]);
-                    try {
-                      const { data: stack } = await supabase
-                        .from('user_supplements')
-                        .select('custom_name')
-                        .eq('user_id', user.id)
-                        .eq('is_active', true);
-                      const names = (stack || []).map((s: any) => s.custom_name).filter(Boolean);
-                      const supplements = [{ name: item.canonical || item.name }, ...names.map((n: string) => ({ name: n }))];
-                      const { data, error } = await supabase.functions.invoke('supplement-analysis', {
-                        body: { supplements, userProfile }
-                      });
-                      const analysisText = (data as any)?.analysis || 'Okay. Ich habe mir das angeschaut – keine besonderen Konflikte gefunden.';
-                      const resp: EnhancedChatMessage = {
-                        id: `assistant-${Date.now()}`,
-                        role: 'assistant',
-                        content: analysisText,
-                        created_at: new Date().toISOString(),
-                        coach_personality: coach?.id || 'lucy',
-                        coach_name: coach?.name || 'Coach',
-                        coach_avatar: coach?.imageUrl,
-                        coach_color: coach?.color,
-                        coach_accent_color: coach?.accentColor
-                      };
-                      setMessages(prev => [...prev, resp]);
-                    } catch (e) {
-                      toast.error('Analyse fehlgeschlagen – bitte kurz erneut fragen.');
-                    }
-                  } else if (choice === 'In Stack aufnehmen') {
-                    setConfirmSupplement({ open: true, prompt: pendingSupplement.prompt, proposal: pendingSupplement.proposal, traceId: pendingSupplement.traceId });
-                  }
-                  setPendingSupplement(null);
-                }}
-              />
-            )}
+            {/* ChoiceBar deprecated for conversation-first; using delayed choiceChips instead */}
             
             {/* Training Plan Draft Card */}
             {pendingPlanData && (
