@@ -138,6 +138,7 @@ const [isOrchestratorLoading, setIsOrchestratorLoading] = useState(false);
 const CHOICE_DELAY_MS = 6000;
 const [pendingChoices, setPendingChoices] = useState<null | { reply: OrchestratorReply, ts: number }>(null);
 const [lastProposal, setLastProposal] = useState<any | null>(null);
+const [choiceChips, setChoiceChips] = useState<string[]>([]);
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -237,14 +238,20 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
 
 // Show choices now
 function showChoices(reply: OrchestratorReply) {
-  if (reply.kind === 'clarify') {
-    setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
-  } else if (reply.kind === 'confirm_save_meal') {
+  const anyReply: any = reply as any;
+  const opts = anyReply.options ?? (anyReply.kind?.toString().startsWith('confirm_save')
+    ? ['Speichern', 'Dosis/Timing anpassen', 'Später']
+    : ['Kurze Analyse', 'Speichern', 'Später']
+  );
+
+  // Hold pending proposals but do NOT open modals yet
+  if (reply.kind === 'confirm_save_meal') {
     setPendingMeal({ prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
-  } else if ((reply as any).kind === 'confirm_save_supplement') {
-    const anyRes = reply as any;
-    setPendingSupplement({ prompt: anyRes.prompt, proposal: anyRes.proposal, traceId: anyRes.traceId });
+  } else if (anyReply.kind === 'confirm_save_supplement') {
+    setPendingSupplement({ prompt: anyReply.prompt, proposal: anyReply.proposal, traceId: anyReply.traceId });
   }
+
+  setChoiceChips(opts);
 }
 
   const handleClarifyPick = useCallback(async (value: string) => {
@@ -253,7 +260,53 @@ function showChoices(reply: OrchestratorReply) {
     renderOrchestratorReply(reply);
   }, [user?.id, mode, sendEvent, renderOrchestratorReply]);
 
-  // Helper: normalize analyze-meal responses
+// Chip-Klick → Follow-up senden
+const onChipClick = useCallback(async (label: string) => {
+  setChoiceChips([]);
+  if (!user?.id) return;
+
+  if (label === 'Später') {
+    const assistantMessage: EnhancedChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: 'Alles klar – sag Bescheid, wenn wir’s speichern sollen. Was interessiert dich gerade am meisten?',
+      created_at: new Date().toISOString(),
+      coach_personality: coach?.id || 'lucy',
+      coach_name: coach?.name || 'Coach',
+      coach_avatar: coach?.imageUrl,
+      coach_color: coach?.color,
+      coach_accent_color: coach?.accentColor
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+    return;
+  }
+
+  let text = '';
+  if (label.startsWith('Kurze Analyse')) text = 'mehr info';
+  else if (label.startsWith('Speichern')) text = 'speichern';
+  else if (label.toLowerCase().includes('dosis') || label.toLowerCase().includes('timing')) text = 'dosis timing anpassen';
+  if (!text) return;
+
+  const clientEventId = uuidv4();
+  try {
+    const reply = await sendEvent(
+      user.id,
+      { type: 'TEXT', text, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}), ...(pendingMeal ? { last_proposal: { kind: 'meal', data: pendingMeal.proposal } } : {}) } } as any
+    );
+    renderOrchestratorReply(reply);
+  } catch (_) {
+    toast.error('Konnte Auswahl nicht senden – bitte nochmal versuchen.');
+  }
+}, [user?.id, mode, sendEvent, renderOrchestratorReply, pendingSupplement, pendingMeal, coach]);
+
+// Tipp: brich die Chips ab sobald der User tippt
+useEffect(() => {
+  const onKey = () => setChoiceChips([]);
+  window.addEventListener('keydown', onKey);
+  return () => window.removeEventListener('keydown', onKey);
+}, []);
+
+// Helper: normalize analyze-meal responses
   const parseAnalyzeResponse = useCallback((data: any) => {
     if (data?.total && typeof data.total === 'object') {
       return {
@@ -949,14 +1002,25 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
   if (useFullscreenLayout) {
     return (
       <ChatLayout 
-        chatInput={
-          <EnhancedChatInput
-            inputText={inputText}
-            setInputText={setInputText}
-            onSendMessage={handleEnhancedSendMessage}
-            isLoading={isChatLoading}
-            placeholder="Nachricht eingeben..."
-          />
+chatInput={
+          <div>
+            {choiceChips.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {choiceChips.map(c => (
+                  <button key={c} className="px-3 py-1 rounded-full border text-sm" onClick={() => onChipClick(c)}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+            <EnhancedChatInput
+              inputText={inputText}
+              setInputText={setInputText}
+              onSendMessage={handleEnhancedSendMessage}
+              isLoading={isChatLoading}
+              placeholder="Nachricht eingeben..."
+            />
+          </div>
         }
         bannerCollapsed={bannerCollapsed}
       >
