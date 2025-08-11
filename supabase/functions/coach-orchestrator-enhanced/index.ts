@@ -47,31 +47,47 @@ type OrchestratorReply =
 // Thresholds
 const THRESHOLDS = { tool: 0.7, clarify: 0.4 };
 
-// Client event helpers for proper idempotency
+// Client event helpers for proper idempotency - robust error handling
 async function upsertClientEvent(supabase: any, userId: string, clientEventId: string) {
-  const { data, error } = await supabase
+  const insertResult = await supabase
     .from('client_events')
     .insert({ user_id: userId, client_event_id: clientEventId, status: 'RECEIVED' })
     .select('status, last_reply, created_at')
     .single();
 
-  if (!error) return { created: true, status: 'RECEIVED' as const };
+  if (!insertResult.error) return { ok: true, created: true, status: 'RECEIVED' as const };
 
-  // conflict → fetch existing
-  const { data: row } = await supabase
+  // On conflict, fetch existing row
+  const selectResult = await supabase
     .from('client_events')
     .select('status, last_reply, created_at')
     .eq('user_id', userId)
     .eq('client_event_id', clientEventId)
     .maybeSingle();
 
-  return { created: false, status: row?.status, lastReply: row?.last_reply, createdAt: row?.created_at };
+  if (selectResult.error) {
+    // DO NOT continue silently - throw error for debugging
+    throw new Error(`client_events upsert failed: ${insertResult.error.message} / ${selectResult.error.message}`);
+  }
+
+  return { 
+    ok: true, 
+    created: false, 
+    status: selectResult.data?.status, 
+    lastReply: selectResult.data?.last_reply, 
+    createdAt: selectResult.data?.created_at 
+  };
 }
 
 async function markFinal(supabase: any, userId: string, clientEventId: string, reply: any) {
-  await supabase.from('client_events')
+  const updateResult = await supabase.from('client_events')
     .update({ status: 'FINAL', last_reply: reply, updated_at: new Date().toISOString() })
-    .eq('user_id', userId).eq('client_event_id', clientEventId);
+    .eq('user_id', userId)
+    .eq('client_event_id', clientEventId);
+  
+  if (updateResult.error) {
+    throw new Error(`client_events final update failed: ${updateResult.error.message}`);
+  }
 }
 
 // Helpers
@@ -192,10 +208,17 @@ serve(async (req) => {
   const chatMode = req.headers.get("x-chat-mode") ?? undefined;
   const source = req.headers.get("x-source") ?? "chat";
 
+  // Create two Supabase clients: one for user data, one for system state
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     { global: { headers: { Authorization: authorization } } }
+  );
+  
+  // Service role client for client_events (system state)
+  const supabaseState = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
   try {
@@ -258,20 +281,49 @@ serve(async (req) => {
     const retryHeader = req.headers.get('x-retry') === '1';
     const clientEventId = (event as any).clientEventId || crypto.randomUUID();
     
-    const ce = await upsertClientEvent(supabase, userId, clientEventId);
-    if (!ce.created) {
+    let ce;
+    try {
+      ce = await upsertClientEvent(supabaseState, userId, clientEventId);
+    } catch (e) {
+      // Fallback: continue processing WITHOUT dedupe and log the issue
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        coachId: undefined,
+        stage: 'warn',
+        handler: 'idempotency',
+        status: 'ERROR',
+        payload: { errorMessage: String(e), clientEventId }
+      });
+      console.warn('client_events upsert failed:', e);
+      // Continue without dedupe rather than fail
+      ce = null;
+    }
+
+    // If row exists and FINAL → return *actual* last reply (not generic)
+    if (ce && !ce.created) {
       if (ce.status === 'FINAL' && ce.lastReply) {
-        // idempotent: return the actual last reply (NOT generic message)
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', payload: { dedupe: true, clientEventId, retried: retryHeader } });
-        return new Response(JSON.stringify(ce.lastReply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        await logTraceEvent(supabase, { 
+          traceId, userId, coachId: undefined, 
+          stage: 'reply_send', 
+          handler: 'coach-orchestrator-enhanced', 
+          status: 'OK', 
+          payload: { dedupe: true, clientEventId, retried: retryHeader } 
+        });
+        return new Response(JSON.stringify(ce.lastReply), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
       }
-      // in progress: check age
-      const ageMs = ce.createdAt ? Date.now() - new Date(ce.createdAt).getTime() : 0;
-      if (ce.status === 'RECEIVED' && ageMs < 120000) {
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'route_decision', handler: 'coach-orchestrator-enhanced', status: 'RUNNING', payload: { inflight: true, clientEventId, retried: retryHeader } });
-        return new Response(JSON.stringify({ kind: 'noop', text: '', traceId, reason: 'in_progress' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      if (ce.status === 'RECEIVED') {
+        const age = ce.createdAt ? Date.now() - new Date(ce.createdAt).getTime() : 0;
+        if (age < 120000) {
+          return new Response(JSON.stringify({ kind: 'noop', reason: 'in_progress' }), { 
+            status: 409, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          });
+        }
+        // STALE → process normally
       }
-      // STALE/CANCELLED → continue normal processing
     }
 
     // Rate limit check
@@ -903,7 +955,17 @@ serve(async (req) => {
       logTrace,
     }, { clarify: false, source });
     const reply: OrchestratorReply = typeof out.reply === "string" ? asLucyMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
-    await markFinal(supabase, userId, clientEventId, reply);
+    
+    // Mark as final in client_events if idempotency is working
+    if (ce) {
+      try {
+        await markFinal(supabaseState, userId, clientEventId, reply);
+      } catch (e) {
+        console.warn('Failed to mark final in fallback:', e);
+        // Continue anyway
+      }
+    }
+    
     return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     await logTrace({ traceId, stage: "error", data: { error: String(e) } });

@@ -146,9 +146,20 @@ export function useOrchestrator() {
       } catch (_) { /* non-fatal */ }
       // Try enhanced with timeout, retry once on error/timeout
       try {
-        const data = await withTimeout(invokeEnhanced(), 30000);
+        const response = await supabase.functions.invoke('coach-orchestrator-enhanced', {
+          body: payload,
+          headers,
+        });
+        
+        // Handle potential 409 in_progress status through response data
+        if (response.data?.reason === 'in_progress') {
+          // Still processing - show typing or do nothing
+          return { kind: 'message', text: '...' };
+        }
+        
+        if (response.error) throw response.error;
         endUserAction();
-        return normalizeReply(data);
+        return normalizeReply(response.data);
       } catch (e1) {
         if (e1 instanceof Error && e1.message === 'timeout') {
           console.warn('orchestrator TIMEOUT', { cutoffMs: 30000 });
@@ -162,7 +173,11 @@ export function useOrchestrator() {
         }
         // mark retry so the server can log it in traces
         headers['x-retry'] = '1';
-        const data = await withTimeout(invokeEnhanced(), 12000);
+        const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
+          body: payload,
+          headers,
+        });
+        if (error) throw error;
         endUserAction();
         return normalizeReply(data);
       }
