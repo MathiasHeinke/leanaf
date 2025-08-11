@@ -442,13 +442,36 @@ serve(async (req) => {
 
     // supplement → analysis only → return confirm_save_supplement proposal
     if (intent.name === "supplement") {
-      const tool = event.type === "IMAGE" ? "supplement-recognition" : "supplement-analysis";
+      const isAnalysisRequest = (t?: string) =>
+        !!t && /\b(analysier|analysiere|bewerte|check(e)?|bewertung|analyse)\b.*\b(supplement|stack|supplements)\b/i.test(t);
+
+      const tool =
+        event.type === "IMAGE"
+          ? "supplement-recognition"
+          : isAnalysisRequest((event as any)?.text || "")
+            ? "supplement-analysis"
+            : null;
+
+      if (!tool) {
+        const reply = {
+          kind: "clarify",
+          prompt: "Was genau möchtest du zu Supplements?",
+          options: [
+            "Foto analysieren",
+            "Meinen Stack bewerten",
+            "Neues Supplement hinzufügen"
+          ],
+          traceId
+        };
+        return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
       const t0 = Date.now();
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: tool, status: 'RUNNING', payload: { clientEventId } });
       const invokeBody = event.type === "IMAGE"
         ? { userId, imageUrl: (event as any).url, userQuestion: "" }
         : { userId, event };
-      const { data, error } = await supabase.functions.invoke(tool, {
+      const { data, error } = await supabase.functions.invoke(tool as string, {
         body: invokeBody,
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
