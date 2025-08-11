@@ -11,6 +11,7 @@ import ConfirmSupplementModal from "@/components/ConfirmSupplementModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupplementRecognition } from "@/hooks/useSupplementRecognition";
+import { Card, CardContent } from "@/components/ui/card";
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const MomentumBottomComposer: React.FC = () => {
@@ -24,59 +25,145 @@ export const MomentumBottomComposer: React.FC = () => {
   const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
   const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
   const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { addRecognizedSupplementsToStack } = useSupplementRecognition();
+const MAX_IMAGES = 5;
+const multiImageEnabled = isEnabled('multiImageIntake');
+const [ephemeral, setEphemeral] = useState<string | null>(null);
+const [multiPreview, setMultiPreview] = useState<{
+  preview?: { title?: string; description?: string; bullets?: string[] };
+  items?: any[];
+  topPickIdx?: number;
+  traceId?: string;
+} | null>(null);
+
+const { addRecognizedSupplementsToStack } = useSupplementRecognition();
 
   const handlePhotoTap = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
 
-  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    if (files.length) {
-      const urls = await uploadImages(files);
-      if (urls && urls.length) {
-        appendUploadedImages(urls);
-        setActiveTab("photo");
-        openQuickMealSheet("photo");
-        e.currentTarget.value = "";
+const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = e.target.files ? Array.from(e.target.files) : [];
+  if (!files.length) return;
 
-        if (orchestrationEnabled && user?.id) {
-          const groupTraceId = crypto.randomUUID();
-          for (const url of urls) {
-            try {
-              const reply = await sendEvent(
-                user.id,
-                {
-                  type: 'IMAGE',
-                  url,
-                  clientEventId: crypto.randomUUID(),
-                  context: { source: 'momentum', coachMode: 'nutrition', image_type: 'food' }
-                },
-                groupTraceId
-              );
-              if (reply.kind === 'message') {
-                toast.message(reply.text);
-                setClarify(null);
-              } else if (reply.kind === 'clarify') {
-                setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
-              } else if (reply.kind === 'confirm_save_meal') {
-                setConfirmMeal({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
-                setClarify(null);
-              } else if (reply.kind === 'confirm_save_supplement') {
-                setConfirmSupplement({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
-                setClarify(null);
-              }
-            } catch (e) {
-              console.debug('Orchestrator IMAGE sendEvent failed (non-blocking)', e);
-            }
-          }
+  // Enforce max files on selection
+  let selected = files;
+  if (files.length > MAX_IMAGES) {
+    selected = files.slice(0, MAX_IMAGES);
+    const dropped = files.length - selected.length;
+    if (dropped > 0) toast.info(`Max. ${MAX_IMAGES} Bilder – ${dropped} ignoriert.`);
+  }
+
+  const urls = await uploadImages(selected);
+  e.currentTarget.value = "";
+
+  if (!urls || urls.length === 0) return;
+
+  appendUploadedImages(urls);
+  setActiveTab("photo");
+  openQuickMealSheet("photo");
+
+  // Route to multi-image-intake if enabled and more than one image
+  if (multiImageEnabled && user?.id && urls.length > 1) {
+    const groupTraceId = crypto.randomUUID();
+    const headers: Record<string, string> = {
+      'x-trace-id': groupTraceId,
+      'x-chat-mode': 'nutrition',
+      'x-source': 'momentum',
+    };
+
+    // FE-side cap as a fallback
+    let images = urls;
+    if (images.length > MAX_IMAGES) {
+      toast.info(`Sende nur die ersten ${MAX_IMAGES} Bilder.`);
+      images = images.slice(0, MAX_IMAGES);
+    }
+
+    try {
+      // Telemetry: client ack
+      try {
+        await supabase.rpc('log_trace_event', {
+          p_trace_id: groupTraceId,
+          p_stage: 'client_ack',
+          p_data: { source: 'momentum', nImages: images.length }
+        });
+      } catch (_) { /* non-fatal */ }
+
+      setEphemeral('Ich schaue mir deine Bilder kurz an …');
+      const { data, error } = await supabase.functions.invoke('multi-image-intake', {
+        body: { userId: user.id, images, message: '' },
+        headers,
+      });
+      setEphemeral(null);
+
+      if (error || !data?.ok) {
+        toast.error('Dauert länger als üblich – bitte erneut senden.');
+        return;
+      }
+
+      const preview = data.preview ?? {};
+      const consolidated = data.consolidated ?? {};
+      const items = consolidated.items ?? [];
+      const topPickIdx = consolidated.topPickIdx ?? 0;
+
+      setMultiPreview({ preview, items, topPickIdx, traceId: data.traceId });
+
+      // Telemetry: UI preview shown
+      try {
+        await supabase.rpc('log_trace_event', {
+          p_trace_id: data.traceId ?? groupTraceId,
+          p_stage: 'ui_preview_shown',
+          p_data: { nImages: images.length }
+        });
+      } catch (_) { /* non-fatal */ }
+
+      return; // Skip legacy per-image orchestration
+    } catch (err: any) {
+      setEphemeral(null);
+      if (err?.message?.includes('too_many_images')) {
+        toast.info(`Maximal ${MAX_IMAGES} Bilder pro Analyse. Ich hab nichts geschickt – wähle bis zu ${MAX_IMAGES}.`);
+      } else {
+        toast.error('Analyse fehlgeschlagen – bitte erneut versuchen.');
+      }
+      return;
+    }
+  }
+
+  // Existing per-image orchestrator flow (unchanged)
+  if (orchestrationEnabled && user?.id) {
+    const groupTraceId = crypto.randomUUID();
+    for (const url of urls) {
+      try {
+        const reply = await sendEvent(
+          user.id,
+          {
+            type: 'IMAGE',
+            url,
+            clientEventId: crypto.randomUUID(),
+            context: { source: 'momentum', coachMode: 'nutrition', image_type: 'food' }
+          },
+          groupTraceId
+        );
+        if (reply.kind === 'message') {
+          toast.message(reply.text);
+          setClarify(null);
+        } else if (reply.kind === 'clarify') {
+          setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
+        } else if (reply.kind === 'confirm_save_meal') {
+          setConfirmMeal({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+          setClarify(null);
+        } else if (reply.kind === 'confirm_save_supplement') {
+          setConfirmSupplement({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+          setClarify(null);
         }
+      } catch (e) {
+        console.debug('Orchestrator IMAGE sendEvent failed (non-blocking)', e);
       }
     }
-  }, [uploadImages, appendUploadedImages, orchestrationEnabled, user?.id, sendEvent, openQuickMealSheet]);
- 
+  }
+}, [uploadImages, appendUploadedImages, multiImageEnabled, orchestrationEnabled, user?.id, sendEvent, openQuickMealSheet]);
+
   const handleVoiceTap = useCallback(async () => {
     await handleVoiceRecord();
     setActiveTab("voice");
@@ -158,6 +245,7 @@ const handleSubmit = useCallback(async () => {
               type="file"
               accept="image/*"
               capture="environment"
+              multiple
               className="hidden"
               onChange={handleFileChange}
             />
@@ -186,6 +274,51 @@ const handleSubmit = useCallback(async () => {
           </div>
         </div>
       </div>
+
+      {/* Ephemeral status bubble */}
+      {ephemeral && (
+        <div className="container mx-auto px-4 mt-2 max-w-5xl">
+          <Card>
+            <CardContent className="py-3 text-sm">{ephemeral}</CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Multi-image preview card */}
+      {multiPreview && (
+        <div className="container mx-auto px-4 mt-2 max-w-5xl">
+          <Card>
+            <CardContent className="py-4">
+              <div className="flex flex-col gap-2">
+                <h3 className="text-base font-medium">{multiPreview.preview?.title ?? 'Vorschau'}</h3>
+                {multiPreview.preview?.description && (
+                  <p className="text-sm text-muted-foreground">{multiPreview.preview.description}</p>
+                )}
+                {Array.isArray(multiPreview.preview?.bullets) && (
+                  <ul className="list-disc pl-5 text-sm">
+                    {(multiPreview.preview?.bullets ?? []).slice(0, 5).map((b, i) => (
+                      <li key={i}>{b}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button onClick={() => {
+                    const items = multiPreview.items ?? [];
+                    const topPickIdx = multiPreview.topPickIdx ?? 0;
+                    setConfirmSupplement({ open: true, prompt: 'Speichern?', proposal: { items, topPickIdx }, traceId: multiPreview.traceId });
+                    setMultiPreview(null);
+                  }}>Speichern</Button>
+                  <Button variant="outline" onClick={() => {
+                    const items = multiPreview.items ?? [];
+                    const topPickIdx = multiPreview.topPickIdx ?? 0;
+                    setConfirmSupplement({ open: true, prompt: 'Dosis/Timing anpassen', proposal: { items, topPickIdx }, traceId: multiPreview.traceId });
+                  }}>Dosis/Timing anpassen</Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Orchestrator UI Responses */}
       {clarify && (
