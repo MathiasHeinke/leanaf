@@ -258,9 +258,9 @@ function showChoices(reply: OrchestratorReply) {
 
   const handleClarifyPick = useCallback(async (value: string) => {
     if (!user?.id) return;
-    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode) } });
+    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy' } });
     renderOrchestratorReply(reply);
-  }, [user?.id, mode, sendEvent, renderOrchestratorReply]);
+  }, [user?.id, mode, sendEvent, renderOrchestratorReply, coach?.id]);
 
 // Chip-Klick → Follow-up senden
 const onChipClick = useCallback(async (label: string) => {
@@ -292,7 +292,7 @@ const onChipClick = useCallback(async (label: string) => {
   if (!text) return;
 
   const clientEventId = uuidv4();
-  const ctx: any = { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), followup: true };
+  const ctx: any = { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), followup: true, coachId: coach?.id || 'lucy' };
   if (pendingSupplement) ctx.last_proposal = { kind: 'supplement', data: pendingSupplement.proposal };
   if (pendingMeal) ctx.last_proposal = { kind: 'meal', data: pendingMeal.proposal };
 
@@ -997,7 +997,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
     const t0 = performance.now();
     const reply = await sendEvent(
       user.id,
-      { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any
+      { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any
     );
 
     // Client metric: server_ack_ms

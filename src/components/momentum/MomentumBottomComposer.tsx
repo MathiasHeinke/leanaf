@@ -157,7 +157,7 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
             type: 'IMAGE',
             url,
             clientEventId: crypto.randomUUID(),
-            context: { source: 'momentum', coachMode: 'nutrition', image_type: 'food' }
+            context: { source: 'momentum', coachMode: 'nutrition', image_type: 'food', coachId: 'lucy' }
           },
           groupTraceId
         );
@@ -201,7 +201,7 @@ const handleSubmit = useCallback(async () => {
         type: 'TEXT',
         text: inputText.trim(),
         clientEventId: crypto.randomUUID(),
-        context: { source: 'momentum', coachMode: 'nutrition' }
+        context: { source: 'momentum', coachMode: 'nutrition', coachId: 'lucy' }
       });
       if (reply.kind === 'message') {
         toast.message(reply.text);
@@ -348,7 +348,7 @@ const handleSubmit = useCallback(async () => {
         <div className="container mx-auto px-4 mt-2 max-w-5xl">
           <ChoiceBar prompt={clarify.prompt} options={clarify.options} onPick={async (v) => {
             if (!user?.id) return;
-            const res = await sendEvent(user.id, { type: 'TEXT', text: v, clientEventId: crypto.randomUUID(), context: { source: 'momentum', coachMode: 'nutrition' } });
+            const res = await sendEvent(user.id, { type: 'TEXT', text: v, clientEventId: crypto.randomUUID(), context: { source: 'momentum', coachMode: 'nutrition', coachId: 'lucy' } });
             if (res.kind === 'message') { toast.message(res.text); setClarify(null); }
             if (res.kind === 'clarify') { setClarify({ prompt: res.prompt, options: res.options, traceId: res.traceId }); }
             if (res.kind === 'confirm_save_meal') { setPendingConfirm({ kind: 'meal', prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); setClarify(null); }
@@ -369,7 +369,7 @@ const handleSubmit = useCallback(async () => {
                   type: 'TEXT',
                   text: 'Mehr Infos',
                   clientEventId: crypto.randomUUID(),
-                  context: { source: 'momentum', coachMode: 'nutrition', last_proposal: { kind: pendingConfirm.kind, data: pendingConfirm.proposal } }
+                  context: { source: 'momentum', coachMode: 'nutrition', coachId: 'lucy', last_proposal: { kind: pendingConfirm.kind, data: pendingConfirm.proposal } }
                 } as any);
                 if (res.kind === 'message') { toast.message(res.text); setClarify(null); }
                 if (res.kind === 'clarify') { setClarify({ prompt: res.prompt, options: res.options, traceId: res.traceId }); }

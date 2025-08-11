@@ -5,5 +5,6 @@ export function humanize(raw: string, ask: string = 'Passt das so, oder soll ich
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   const short = cleaned.length > 500 ? cleaned.slice(0, 480) + '…' : cleaned;
-  return `${short}\n\n${ask}`;
+  const endsWithQuestion = /[?]$/.test(short.trim());
+  return endsWithQuestion ? short : `${short}\n\n${ask}`;
 }

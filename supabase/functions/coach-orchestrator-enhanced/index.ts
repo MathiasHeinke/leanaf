@@ -4,6 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { fallbackFlow } from "./fallback.ts";
 import { logUnmetTool, logTrace } from "./telemetry.ts";
 import { logTraceEvent } from "../telemetry.ts";
+import { loadCoachPersona } from "./persona.ts";
+import { toLucyTone } from "./tone.ts";
+import { loadRollingSummary } from "./memory.ts";
 
 // CORS
 const corsHeaders = {
@@ -187,6 +190,13 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Persona & memory context
+    const coachId = (event as any)?.context?.coachId ?? 'lucy';
+    const persona = await loadCoachPersona(supabase, coachId);
+    const memoryHint = await loadRollingSummary(supabase, userId, coachId);
+    const lucify = (txt: string) => toLucyTone(String(txt || ''), persona, { memoryHint });
+    const asMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text: lucify(text), traceId });
+
     // Start timer for server ack measurement
     const t0 = Date.now();
 
@@ -288,10 +298,10 @@ serve(async (req) => {
             headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode },
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'supplement-analysis', status: error?'ERROR':'OK' });
-          const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
+           const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
            await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
            try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'message' } }); } catch {}
-           return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+           return new Response(JSON.stringify(asMessage(text, traceId)), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
         if (followUpAction === 'save' || followUpAction === 'update') {
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'supplement-save', status:'RUNNING' });
@@ -364,16 +374,18 @@ serve(async (req) => {
           payload: intentQuick as any,
         });
         const domLabel = intentQuick.name === 'meal' ? 'Ernährung' : intentQuick.name === 'training' ? 'Training' : intentQuick.name === 'supplement' ? 'Supplements' : 'dem Thema';
-        const reflectText = intentQuick.name === 'unknown'
+        const reflectTextRaw = intentQuick.name === 'unknown'
           ? `Ich lese: „${(((event as any).text)||'').toString().slice(0,80)}“. Geht’s um Ernährung, Training oder Supplements – oder etwas anderes?`
           : `Klingt nach ${domLabel}. Willst du eher eine kurze Analyse, etwas speichern oder erstmal Infos?`;
+        const reflectText = lucify(reflectTextRaw);
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
         try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'reflect' } }); } catch {}
         return new Response(JSON.stringify({ kind: 'reflect', text: reflectText, traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
       }
       if (event.type === 'IMAGE') {
-        const text = 'Danke fürs Bild – ich schau kurz, worum es geht. Magst du sagen, was dich daran interessiert?';
+        const textRaw = 'Danke fürs Bild – ich schau kurz, worum es geht. Magst du sagen, was dich daran interessiert?';
+        const text = lucify(textRaw);
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
         try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'reflect' } }); } catch {}
@@ -582,7 +594,7 @@ serve(async (req) => {
         logUnmetTool: (args) => logUnmetTool(supabase, args),
         logTrace,
       }, { clarify: false, source });
-      const reply: OrchestratorReply = typeof out.reply === "string" ? { kind: "message", text: out.reply, traceId } : (out.reply as OrchestratorReply);
+      const reply: OrchestratorReply = typeof out.reply === "string" ? asMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
       await logTraceEvent(supabase, {
         traceId,
         userId,
@@ -865,7 +877,7 @@ serve(async (req) => {
       logUnmetTool: (args) => logUnmetTool(supabase, args),
       logTrace,
     }, { clarify: false, source });
-    const reply: OrchestratorReply = typeof out.reply === "string" ? { kind: "message", text: out.reply, traceId } : (out.reply as OrchestratorReply);
+    const reply: OrchestratorReply = typeof out.reply === "string" ? asMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
     return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     await logTrace({ traceId, stage: "error", data: { error: String(e) } });
