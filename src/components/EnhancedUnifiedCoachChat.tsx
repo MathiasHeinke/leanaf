@@ -34,6 +34,7 @@ import ConfirmSupplementModal from '@/components/ConfirmSupplementModal';
 import { usePointsSystem } from '@/hooks/usePointsSystem';
 import { getMealBasePoints } from '@/utils/mealPointsHelper';
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
+import { humanize } from '@/utils/humanize';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -131,6 +132,12 @@ const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prom
 // Conversational-first: hold pending proposals until user decides
 const [pendingSupplement, setPendingSupplement] = useState<{ prompt: string; proposal: any; traceId?: string } | null>(null);
 const [pendingMeal, setPendingMeal] = useState<{ prompt: string; proposal: any; traceId?: string } | null>(null);
+// PR-2: Conversation-first UI helpers
+const [ephemeral, setEphemeral] = useState<string | null>(null);
+const [isOrchestratorLoading, setIsOrchestratorLoading] = useState(false);
+const CHOICE_DELAY_MS = 6000;
+const [pendingChoices, setPendingChoices] = useState<null | { reply: OrchestratorReply, ts: number }>(null);
+const [lastProposal, setLastProposal] = useState<any | null>(null);
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -147,57 +154,61 @@ const [pendingMeal, setPendingMeal] = useState<{ prompt: string; proposal: any; 
     fetchUserProfile();
   }, [user?.id]);
 
-  // Central reply handler
-  const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
-    if (!res) return;
-    if (res.kind === 'message') {
-      const assistantMessage: EnhancedChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: res.text,
-        created_at: new Date().toISOString(),
-        coach_personality: coach?.id || 'lucy',
-        coach_name: coach?.name || 'Coach',
-        coach_avatar: coach?.imageUrl,
-        coach_color: coach?.color,
-        coach_accent_color: coach?.accentColor,
-        metadata: res.traceId ? { traceId: res.traceId } : undefined,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-      setClarify(null);
-      return;
+// Central reply handler (conversation-first)
+const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
+  if (!res) return;
+  // Defer clarify/confirm UI
+  if (res.kind === 'clarify' || res.kind === 'confirm_save_meal' || (res as any).kind === 'confirm_save_supplement') {
+    setPendingChoices({ reply: res, ts: Date.now() });
+    window.setTimeout(() => {
+      setPendingChoices(prev => {
+        if (!prev) return prev;
+        const idle = Date.now() - prev.ts >= CHOICE_DELAY_MS;
+        if (!idle) return prev;
+        showChoices(prev.reply);
+        return null;
+      });
+    }, CHOICE_DELAY_MS + 50);
+    return;
+  }
+  // Default: message – humanized
+  if (res.kind === 'message') {
+    const text = humanize(res.text);
+    const assistantMessage: EnhancedChatMessage = {
+      id: `assistant-${Date.now()}`,
+      role: 'assistant',
+      content: text,
+      created_at: new Date().toISOString(),
+      coach_personality: coach?.id || 'lucy',
+      coach_name: coach?.name || 'Coach',
+      coach_avatar: coach?.imageUrl,
+      coach_color: coach?.color,
+      coach_accent_color: coach?.accentColor,
+      metadata: res.traceId ? { traceId: res.traceId } : undefined,
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+    setClarify(null);
+    // first_paint metric
+    if (awaitingFirstPaintRef.current && lastSendTimeRef.current) {
+      const ms = Math.round(performance.now() - lastSendTimeRef.current);
+      queueMicrotask(async () => { try { await supabase.rpc('log_trace_event', { p_trace_id: res.traceId, p_stage: 'first_print', p_data: { first_paint_ms: ms } }); } catch { /* ignore */ } });
+      awaitingFirstPaintRef.current = false;
     }
-    if (res.kind === 'clarify') {
-      setClarify({ prompt: res.prompt, options: res.options, traceId: res.traceId });
-      return;
-    }
-    if (res.kind === 'confirm_save_meal') {
-      setPendingMeal({ prompt: res.prompt, proposal: res.proposal, traceId: res.traceId });
-      setClarify(null);
-      return;
-    }
-if ((res as any).kind === 'confirm_save_supplement') {
-  const anyRes = res as any;
-  const top = anyRes?.proposal?.items?.[anyRes?.proposal?.topPickIdx ?? 0];
-  const intro = `Ich sehe, du hast mir ein Bild gesendet – ich schaue kurz…\n${anyRes.prompt || ''}`.trim();
-  const assistantMessage: EnhancedChatMessage = {
-    id: `assistant-${Date.now()}`,
-    role: 'assistant',
-    content: intro,
-    created_at: new Date().toISOString(),
-    coach_personality: coach?.id || 'lucy',
-    coach_name: coach?.name || 'Coach',
-    coach_avatar: coach?.imageUrl,
-    coach_color: coach?.color,
-    coach_accent_color: coach?.accentColor,
-    metadata: anyRes.traceId ? { traceId: anyRes.traceId } : undefined,
-  };
-  setMessages(prev => [...prev, assistantMessage]);
-  setPendingSupplement({ prompt: anyRes.prompt, proposal: anyRes.proposal, traceId: anyRes.traceId });
-  setClarify(null);
-  return;
+    return;
+  }
+}, [coach]);
+
+// Show choices now
+function showChoices(reply: OrchestratorReply) {
+  if (reply.kind === 'clarify') {
+    setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
+  } else if (reply.kind === 'confirm_save_meal') {
+    setPendingMeal({ prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+  } else if ((reply as any).kind === 'confirm_save_supplement') {
+    const anyRes = reply as any;
+    setPendingSupplement({ prompt: anyRes.prompt, proposal: anyRes.proposal, traceId: anyRes.traceId });
+  }
 }
-  }, [coach]);
 
   const handleClarifyPick = useCallback(async (value: string) => {
     if (!user?.id) return;
@@ -232,10 +243,12 @@ if ((res as any).kind === 'confirm_save_supplement') {
     return null;
   }, []);
   
-  // ============= REFS =============
-  const initializationRef = useRef(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+// ============= REFS =============
+const initializationRef = useRef(false);
+const messagesEndRef = useRef<HTMLDivElement>(null);
+const lastSendTimeRef = useRef<number | null>(null);
+const awaitingFirstPaintRef = useRef<boolean>(false);
+
   // ============= ENHANCED CHAT INTEGRATION =============
   const { 
     sendMessage: sendEnhancedMessage, 
@@ -807,75 +820,93 @@ if (enableAdvancedFeatures) {
     );
   };
 
-  // ============= RENDER TYPING INDICATOR =============
-  const renderTypingIndicator = () => {
-    if (!isChatLoading) return null;
-    
-    return <TypingIndicator name={coach?.name || 'Coach'} />;
-  };
+// ============= RENDER TYPING INDICATOR =============
+const renderTypingIndicator = () => {
+  if (!isChatLoading && !isOrchestratorLoading) return null;
+  return <TypingIndicator name={coach?.name || 'Coach'} />;
+};
 
-  // ============= ENHANCED SEND MESSAGE HANDLER =============
-  const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
-    const msg = (message || '').trim();
+// ============= ENHANCED SEND MESSAGE HANDLER =============
+const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
+  const msg = (message || '').trim();
 
-    // Create user-visible message immediately
-    if (msg) {
-      const userMessage: EnhancedChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: msg,
-        created_at: new Date().toISOString(),
-        coach_personality: coach?.id || 'lucy',
-        coach_name: coach?.name || 'Coach',
-        coach_avatar: coach?.imageUrl,
-        coach_color: coach?.color,
-        coach_accent_color: coach?.accentColor
-      };
-      setMessages(prev => [...prev, userMessage]);
-    } else if (mediaUrls && mediaUrls.length > 0) {
-      // Show a bubble for pure image sends so users see immediate feedback
-      const url = mediaUrls[0];
-      const userImageMessage: EnhancedChatMessage = {
-        id: `user-${Date.now()}`,
-        role: 'user',
-        content: `![📷 Bild gesendet](${url})`,
-        created_at: new Date().toISOString(),
-        coach_personality: coach?.id || 'lucy',
-        coach_name: coach?.name || 'Coach',
-        coach_avatar: coach?.imageUrl,
-        coach_color: coach?.color,
-        coach_accent_color: coach?.accentColor
-      };
-      setMessages(prev => [...prev, userImageMessage]);
+  // Create user-visible message immediately
+  if (msg) {
+    const userMessage: EnhancedChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: msg,
+      created_at: new Date().toISOString(),
+      coach_personality: coach?.id || 'lucy',
+      coach_name: coach?.name || 'Coach',
+      coach_avatar: coach?.imageUrl,
+      coach_color: coach?.color,
+      coach_accent_color: coach?.accentColor
+    };
+    setMessages(prev => [...prev, userMessage]);
+  } else if (mediaUrls && mediaUrls.length > 0) {
+    // Show a bubble for pure image sends so users see immediate feedback
+    const url = mediaUrls[0];
+    const userImageMessage: EnhancedChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: `![📷 Bild gesendet](${url})`,
+      created_at: new Date().toISOString(),
+      coach_personality: coach?.id || 'lucy',
+      coach_name: coach?.name || 'Coach',
+      coach_avatar: coach?.imageUrl,
+      coach_color: coach?.color,
+      coach_accent_color: coach?.accentColor
+    };
+    setMessages(prev => [...prev, userImageMessage]);
+  }
+
+  try {
+    if (!user?.id) return;
+    const clientEventId = uuidv4();
+
+    // Ephemeral ack + typing
+    setEphemeral('Alles klar – ich schau’s mir kurz an …');
+    setIsOrchestratorLoading(true);
+    lastSendTimeRef.current = performance.now();
+    awaitingFirstPaintRef.current = true;
+
+    // Decide event type
+    let event: { type: 'TEXT'|'IMAGE'|'END'; text?: string; url?: string } = { type: 'TEXT', text: msg };
+    if (mediaUrls && mediaUrls.length > 0 && !msg) {
+      event = { type: 'IMAGE', url: mediaUrls[0] };
+    }
+    if (msg === '/end' || msg.toLowerCase() === 'end') {
+      event = { type: 'END' };
     }
 
-    try {
-      if (!user?.id) return;
-      const clientEventId = uuidv4();
+    const t0 = performance.now();
+    const reply = await sendEvent(
+      user.id,
+      { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any
+    );
 
-      // Decide event type
-      let event: { type: 'TEXT'|'IMAGE'|'END'; text?: string; url?: string } = { type: 'TEXT', text: msg };
-      if (mediaUrls && mediaUrls.length > 0 && !msg) {
-        event = { type: 'IMAGE', url: mediaUrls[0] };
-      }
-      if (msg === '/end' || msg.toLowerCase() === 'end') {
-        event = { type: 'END' };
-      }
+    // Client metric: server_ack_ms
+    queueMicrotask(async () => { try { await supabase.rpc('log_trace_event', { p_trace_id: (reply as any)?.traceId ?? clientEventId, p_stage: 'client_ack', p_data: { server_ack_ms: Math.round(performance.now() - t0) } }); } catch { /* ignore */ } });
 
-      const reply = await sendEvent(user.id, { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any);
-      renderOrchestratorReply(reply);
-      setInputText('');
-      return;
-    } catch (e) {
-      console.warn('Orchestrator routing failed:', e);
-      if (legacyEnabled && mode === 'training') {
-        await handleSendMessage(msg, mediaUrls);
-        return;
-      }
-      toast.error('Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.');
+    setEphemeral(null);
+    setIsOrchestratorLoading(false);
+
+    renderOrchestratorReply(reply);
+    setInputText('');
+    return;
+  } catch (e) {
+    console.warn('Orchestrator routing failed:', e);
+    setEphemeral(null);
+    setIsOrchestratorLoading(false);
+    if (legacyEnabled && mode === 'training') {
+      await handleSendMessage(msg, mediaUrls);
       return;
     }
-  }, [coach, user?.id, mode, sendEvent, renderOrchestratorReply, handleSendMessage, legacyEnabled]);
+    toast.error('Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.');
+    return;
+  }
+}, [coach, user?.id, mode, sendEvent, renderOrchestratorReply, handleSendMessage, legacyEnabled, pendingSupplement]);
 
     // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {
