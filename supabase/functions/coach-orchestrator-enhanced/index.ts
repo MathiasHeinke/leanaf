@@ -239,10 +239,96 @@ serve(async (req) => {
       __inflight.add(clientEventId);
     }
 
-    // Conversation-first minimal gate (feature-flag)
-    const conversationFirstEnabled = (Deno.env.get('CONVERSATION_FIRST_ENABLED') === 'true') || (chatMode === 'dev');
+    // Load user feature flags
+    const { data: flagRows } = await supabase
+      .from('user_feature_flags')
+      .select('metadata')
+      .eq('user_id', userId ?? '');
+    const userFlags = mergeFlagMetadata(flagRows || []);
+    const convFirstEnv = Deno.env.get('CONVERSATION_FIRST_ENABLED') === 'true';
+    const conversationFirstEnabled = isFlagOn(userFlags, 'conversation_first') || convFirstEnv || chatMode === 'dev';
 
-    if (conversationFirstEnabled) {
+    // Follow-up hint from FE (important to avoid reflect loop)
+    const isFollowUp = Boolean(event?.context?.followup) || Boolean(event?.context?.last_proposal);
+
+    // 1) FOLLOW-UP: Chips/action → direct Tools (no reflect)
+    if (conversationFirstEnabled && isFollowUp && event?.type === 'TEXT') {
+      // Parse follow-up intent
+      const text = String(event?.text ?? '').toLowerCase().normalize('NFKD').replace(/\p{Diacritic}/gu,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
+      let followUpAction: 'analyze' | 'save' | 'update' | 'unknown' = 'unknown';
+      if (/^(mehr info|kurze analyse|analyse|check|checke|checken|pruef|prüf)/.test(text)) followUpAction = 'analyze';
+      else if (/^(speichern|save|hinzufuegen|hinzufügen|add)/.test(text)) followUpAction = 'save';
+      else if (/(dosis|timing|zeit|schedule|anpassen|update)/.test(text)) followUpAction = 'update';
+
+      const lp = event?.context?.last_proposal; // { kind: 'supplement'|'meal', data: {...} }
+
+      if (lp?.kind === 'supplement') {
+        if (followUpAction === 'analyze') {
+          await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'supplement-analysis', status:'RUNNING' });
+          const { data, error } = await supabase.functions.invoke('supplement-analysis', {
+            body: { userId, event, proposal: lp.data }, 
+            headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode },
+          });
+          await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'supplement-analysis', status: error?'ERROR':'OK' });
+          const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
+          await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
+          return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+        }
+        if (followUpAction === 'save' || followUpAction === 'update') {
+          await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'supplement-save', status:'RUNNING' });
+          const mode = followUpAction === 'save' ? 'insert' : 'update';
+          const body = { 
+            userId, 
+            mode, 
+            clientEventId: event.clientEventId ?? crypto.randomUUID(), 
+            item: lp.data?.items?.[lp.data.topPickIdx ?? 0] ?? lp.data?.items?.[0] 
+          };
+          const { data, error } = await supabase.functions.invoke('supplement-save', {
+            body, 
+            headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode },
+          });
+          await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'supplement-save', status: error?'ERROR':'OK', payload:{ action: data?.action } });
+          const text = data?.action === 'insert' ? '✔️ Gespeichert. Dosis/Timing anpassen?' :
+                       data?.action === 'update' ? '✅ Aktualisiert. Passt so?' : 
+                       'Schon vorhanden – willst du etwas ändern?';
+          return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+        }
+      }
+
+      if (lp?.kind === 'meal') {
+        if (followUpAction === 'analyze') {
+          await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'meal-analysis', status:'RUNNING' });
+          const { data, error } = await supabase.functions.invoke('meal-analysis', {
+            body: { userId, event, proposal: lp.data }, 
+            headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode },
+          });
+          await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-analysis', status: error?'ERROR':'OK' });
+          const text = data?.summary ?? 'Kurz gecheckt. Speichern oder später?';
+          return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+        }
+        if (followUpAction === 'save') {
+          await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'meal-save', status:'RUNNING' });
+          const { data, error } = await supabase.functions.invoke('meal-save', {
+            body: { userId, clientEventId: event.clientEventId ?? crypto.randomUUID(), item: lp.data }, 
+            headers: { 'x-trace-id': traceId,'x-source': source,'x-chat-mode': chatMode },
+          });
+          await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-save', status: error?'ERROR':'OK' });
+          const text = data?.success ? '🍽️ gespeichert!' : 'Konnte nicht speichern – nochmal?';
+          return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+        }
+      }
+
+      // unknown follow-up → gentle chips
+      return new Response(JSON.stringify({
+        kind:'choice_suggest',
+        prompt:'Wie machen wir weiter?',
+        options:['Kurze Analyse','Speichern','Später'],
+        traceId
+      }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+    }
+
+    // 2) REFLECT-FIRST: Initial TEXT/IMAGE, only if flag on and no follow-up
+    if (conversationFirstEnabled && !isFollowUp) {
       if (event.type === 'TEXT') {
         const intentQuick = detectIntentWithConfidence(event);
         await logTraceEvent(supabase, {

@@ -281,6 +281,7 @@ const onChipClick = useCallback(async (label: string) => {
     return;
   }
 
+  // Map Label → Follow-up Text
   let text = '';
   if (label.startsWith('Kurze Analyse')) text = 'mehr info';
   else if (label.startsWith('Speichern')) text = 'speichern';
@@ -288,13 +289,14 @@ const onChipClick = useCallback(async (label: string) => {
   if (!text) return;
 
   const clientEventId = uuidv4();
+  const ctx: any = { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), followup: true };
+  if (pendingSupplement) ctx.last_proposal = { kind: 'supplement', data: pendingSupplement.proposal };
+  if (pendingMeal) ctx.last_proposal = { kind: 'meal', data: pendingMeal.proposal };
+
   try {
-    const reply = await sendEvent(
-      user.id,
-      { type: 'TEXT', text, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}), ...(pendingMeal ? { last_proposal: { kind: 'meal', data: pendingMeal.proposal } } : {}) } } as any
-    );
+    const reply = await sendEvent(user.id, { type:'TEXT', text, clientEventId, context: ctx } as any);
     renderOrchestratorReply(reply);
-  } catch (_) {
+  } catch {
     toast.error('Konnte Auswahl nicht senden – bitte nochmal versuchen.');
   }
 }, [user?.id, mode, sendEvent, renderOrchestratorReply, pendingSupplement, pendingMeal, coach]);
@@ -1240,6 +1242,13 @@ chatInput={
             <div className="space-y-4 py-4">
               {messages.map(renderMessage)}
               {renderTypingIndicator()}
+              
+              {/* Ephemeral status bubble */}
+              {ephemeral && (
+                <div className="mx-3 my-2 text-sm text-muted-foreground">
+                  {ephemeral}
+                </div>
+              )}
               
               {/* Training Plan Draft Card */}
               {pendingPlanData && (
