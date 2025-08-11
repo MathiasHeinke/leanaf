@@ -191,6 +191,18 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
       if (error) throw error;
 
       const parsedMealData = parseAnalyzeResponse(data);
+      if (!parsedMealData && data) {
+        // Fallback: open dialog with editable zeros so the user isn't blocked
+        console.debug('analyze-meal: unrecognized payload, using fallback', data);
+        return {
+          text: data?.title || data?.text || 'Analysierte Mahlzeit',
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fats: 0,
+          meal_type: 'other'
+        } as MealData;
+      }
       return parsedMealData;
     } catch (error: any) {
       if (error.message?.includes('Weder Text noch Bild')) {
