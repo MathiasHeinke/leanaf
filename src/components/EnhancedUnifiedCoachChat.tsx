@@ -35,6 +35,7 @@ import { usePointsSystem } from '@/hooks/usePointsSystem';
 import { getMealBasePoints } from '@/utils/mealPointsHelper';
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { humanize } from '@/utils/humanize';
+import { useShadowState } from '@/hooks/useShadowState';
 
 // ============= HELPER FUNCTIONS =============
 async function generateIntelligentGreeting(
@@ -140,6 +141,9 @@ const [pendingChoices, setPendingChoices] = useState<null | { reply: Orchestrato
 const [lastProposal, setLastProposal] = useState<any | null>(null);
 const [choiceChips, setChoiceChips] = useState<string[]>([]);
 
+// Shadow state for delayed chips
+const { shadowTraceId, pendingChips, saveShadowTraceId, clearShadowTraceId, scheduleChips, clearChips } = useShadowState();
+
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
   useEffect(() => {
@@ -177,6 +181,12 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
     };
     setMessages(prev => [...prev, assistantMessage]);
     persistConversation('assistant', text);
+    
+    // Shadow state: save traceId and schedule delayed chips
+    if ((res as any).traceId) {
+      saveShadowTraceId((res as any).traceId);
+      scheduleChips((res as any).traceId);
+    }
     return;
   }
 

@@ -7,6 +7,8 @@ import { logTraceEvent } from "../telemetry.ts";
 import { loadCoachPersona } from "./persona.ts";
 import { toLucyTone } from "./tone.ts";
 import { loadRollingSummary } from "./memory.ts";
+import { llmOpenIntake, type Meta } from "./open-intake.ts";
+import { saveShadowState, loadShadowState } from "./shadow-state.ts";
 
 // CORS
 const corsHeaders = {
@@ -327,18 +329,50 @@ serve(async (req) => {
     // Follow-up hint from FE (important to avoid reflect loop)
     const isFollowUp = Boolean(event?.context?.followup) || Boolean(event?.context?.last_proposal);
 
-    // 1) FOLLOW-UP: Chips/action → direct Tools (no reflect)
-    if (conversationFirstEnabled && isFollowUp && event?.type === 'TEXT') {
+    // 1) OPEN-INTAKE: First response → LLM-first, conversational Lucy
+    if (!isFollowUp && event?.type === 'TEXT') {
+      const out = await llmOpenIntake({ 
+        userText: event.text ?? '', 
+        coachId, 
+        memoryHint 
+      });
+      
+      await saveShadowState(supabaseState, { userId, traceId, meta: out.meta });
+      
+      const reply = { 
+        kind: 'reflect' as const, 
+        text: toLucyTone(out.assistant_text, persona, { memoryHint }), 
+        traceId 
+      };
+      
+      await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+      return new Response(JSON.stringify(reply), { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // 2) FOLLOW-UP: Chips/action → Tools or continued conversation
+    if (isFollowUp && event?.type === 'TEXT') {
+      const shadowTraceId = event?.context?.shadowTraceId ?? traceId;
+      const meta = await loadShadowState(supabaseState, { userId, traceId: shadowTraceId });
+      
       // Parse follow-up intent
       const text = String(event?.text ?? '').toLowerCase().normalize('NFKD').replace(/\p{Diacritic}/gu,'').replace(/[^\p{L}\p{N}\s]/gu,' ').replace(/\s+/g,' ').trim();
-      let followUpAction: 'analyze' | 'save' | 'update' | 'unknown' = 'unknown';
-      if (/^(mehr info|kurze analyse|analyse|check|checke|checken|pruef|prüf)/.test(text)) followUpAction = 'analyze';
-      else if (/^(speichern|save|hinzufuegen|hinzufügen|add)/.test(text)) followUpAction = 'save';
-      else if (/(dosis|timing|zeit|schedule|anpassen|update)/.test(text)) followUpAction = 'update';
+      let followUpAction: 'analyze' | 'save' | 'update' | 'continue' = 'continue';
+      
+      // Explicit tool requests
+      if (/(analyse|analy|check|prüf|ueberpruef|interaktion|bewerte)/.test(text)) {
+        followUpAction = 'analyze';
+      } else if (/(speicher|hinzu|add|log|save)/.test(text)) {
+        followUpAction = 'save';
+      } else if (/(dosis|timing|zeit|schedule|anpassen|update|änder)/.test(text)) {
+        followUpAction = 'update';
+      }
 
       const lp = event?.context?.last_proposal; // { kind: 'supplement'|'meal', data: {...} }
 
-      if (lp?.kind === 'supplement') {
+      // Handle explicit tool requests
+      if (lp?.kind === 'supplement' && (followUpAction === 'analyze' || followUpAction === 'save' || followUpAction === 'update')) {
         if (followUpAction === 'analyze') {
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'supplement-analysis', status:'RUNNING' });
           const { data, error } = await supabase.functions.invoke('supplement-analysis', {
@@ -346,10 +380,10 @@ serve(async (req) => {
             headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode },
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'supplement-analysis', status: error?'ERROR':'OK' });
-           const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
-           await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
-           try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'message' } }); } catch {}
-           return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+          const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
+          const reply = asLucyMessage(text, traceId);
+          await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+          return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
         if (followUpAction === 'save' || followUpAction === 'update') {
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'supplement-save', status:'RUNNING' });
@@ -368,11 +402,13 @@ serve(async (req) => {
           const text = data?.action === 'insert' ? '✔️ Gespeichert. Dosis/Timing anpassen?' :
                        data?.action === 'update' ? '✅ Aktualisiert. Passt so?' : 
                        'Schon vorhanden – willst du etwas ändern?';
-          return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+          const reply = { kind:'message' as const, text: lucify(text), traceId };
+          await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+          return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
       }
 
-      if (lp?.kind === 'meal') {
+      if (lp?.kind === 'meal' && (followUpAction === 'analyze' || followUpAction === 'save')) {
         if (followUpAction === 'analyze') {
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'meal-analysis', status:'RUNNING' });
           const { data, error } = await supabase.functions.invoke('meal-analysis', {
@@ -381,9 +417,9 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-analysis', status: error?'ERROR':'OK' });
           const text = data?.summary ?? 'Kurz gecheckt. Speichern oder später?';
-          await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
-          try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'message' } }); } catch {}
-          return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+           const reply = asLucyMessage(text, traceId);
+           await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+           return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
         if (followUpAction === 'save') {
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'meal-save', status:'RUNNING' });
@@ -392,14 +428,36 @@ serve(async (req) => {
             headers: { 'x-trace-id': traceId,'x-source': source,'x-chat-mode': chatMode },
           });
            await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-save', status: error?'ERROR':'OK' });
-           const text = data?.success ? '🍽️ gespeichert!' : 'Konnte nicht speichern – nochmal?';
-           await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
-           try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'message' } }); } catch {}
-           return new Response(JSON.stringify({ kind:'message', text, traceId }), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+           const text = data?.success ? '🍽️ gespeichert! Was steht als nächstes an?' : 'Konnte nicht speichern – nochmal?';
+           const reply = asLucyMessage(text, traceId);
+           await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+           return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
       }
 
-      // unknown follow-up → gentle chips
+      // Continue conversation with open intake (no explicit tool request)
+      if (followUpAction === 'continue') {
+        const out = await llmOpenIntake({ 
+          userText: event.text ?? '', 
+          coachId, 
+          memoryHint 
+        });
+        
+        await saveShadowState(supabaseState, { userId, traceId, meta: out.meta });
+        
+        const reply = { 
+          kind: 'message' as const, 
+          text: toLucyTone(out.assistant_text, persona, { memoryHint }), 
+          traceId 
+        };
+        
+        await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+        return new Response(JSON.stringify(reply), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      // unknown follow-up → gentle chips (fallback)
       return new Response(JSON.stringify({
         kind:'choice_suggest',
         prompt:'Wie machen wir weiter?',

@@ -4029,6 +4029,30 @@ export type Database = {
         }
         Relationships: []
       }
+      shadow_state: {
+        Row: {
+          created_at: string
+          expires_at: string
+          meta: Json
+          trace_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          meta?: Json
+          trace_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          meta?: Json
+          trace_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sleep_tracking: {
         Row: {
           bedtime: string | null
