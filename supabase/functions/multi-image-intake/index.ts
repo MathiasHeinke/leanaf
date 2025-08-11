@@ -64,6 +64,20 @@ async function classifyOne(url: string) {
   return { url, kind: "unknown", items: [], notes: null };
 }
 
+// Timeout guard per image to avoid worker stalls
+async function withTimeout<T>(p: Promise<T>, ms = 10000): Promise<T> {
+  let t: number | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    // deno-lint-ignore no-explicit-any
+    t = setTimeout(() => reject(new Error("timeout")) as any, ms) as any;
+  });
+  try {
+    return await Promise.race([p, timeout]);
+  } finally {
+    if (t) clearTimeout(t as any);
+  }
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -106,6 +120,14 @@ serve(async (req: Request) => {
     status: "RUNNING",
     payload: { nImages: images.length, source, chatMode },
   });
+  await logTraceEvent(supabase, {
+    traceId,
+    userId,
+    stage: "reflect",
+    handler: "multi-image-intake",
+    status: "OK",
+    payload: { nImages: images.length, source, chatMode },
+  });
 
   // Server-side cap with friendly 400
   if (images.length > MAX_IMAGES) {
@@ -138,19 +160,19 @@ serve(async (req: Request) => {
         traceId,
         userId,
         stage: "tool_exec",
-        handler: "image_classifier",
+        handler: "image-classifier",
         status: "RUNNING",
         payload: { url },
       });
       try {
-        const out = await classifyOne(url);
+        const out = await withTimeout(classifyOne(url), 10000);
         const t1 = performance.now();
         results.push(out);
         await logTraceEvent(supabase, {
           traceId,
           userId,
           stage: "tool_result",
-          handler: "image_classifier",
+          handler: "image-classifier",
           status: "OK",
           latencyMs: Math.round(t1 - t0),
           payload: { url },
@@ -158,14 +180,14 @@ serve(async (req: Request) => {
       } catch (err: any) {
         const t1 = performance.now();
         await logTraceEvent(supabase, {
-          traceId,
-          userId,
-          stage: "tool_result",
-          handler: "image_classifier",
-          status: "ERROR",
-          latencyMs: Math.round(t1 - t0),
-          payload: { url },
-          errorMessage: String(err?.message ?? err ?? "error"),
+        traceId,
+        userId,
+        stage: "tool_result",
+        handler: "image-classifier",
+        status: "ERROR",
+        latencyMs: Math.round(t1 - t0),
+        payload: { url },
+        errorMessage: String(err?.message ?? err ?? "error"),
         });
       }
     }
@@ -215,7 +237,7 @@ serve(async (req: Request) => {
 
   // Response
   return new Response(
-    JSON.stringify({ ok: true, preview, consolidated, traceId, metrics: { classifyMs, mergeMs, totalMs } }),
+    JSON.stringify({ ok: true, preview, consolidated, traceId, max: MAX_IMAGES, metrics: { classifyMs, mergeMs, totalMs } }),
     {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json", "x-trace-id": traceId },

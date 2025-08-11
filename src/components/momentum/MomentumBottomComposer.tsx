@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupplementRecognition } from "@/hooks/useSupplementRecognition";
 import { Card, CardContent } from "@/components/ui/card";
+import { IMAGE_UPLOAD_MAX_DEFAULT } from "@/lib/constants";
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const MomentumBottomComposer: React.FC = () => {
@@ -27,8 +28,9 @@ export const MomentumBottomComposer: React.FC = () => {
   const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
 const fileInputRef = useRef<HTMLInputElement>(null);
 
-const MAX_IMAGES = 5;
 const multiImageEnabled = isEnabled('multiImageIntake');
+const [maxImages, setMaxImages] = useState<number>(IMAGE_UPLOAD_MAX_DEFAULT);
+const [lastDropIgnored, setLastDropIgnored] = useState<boolean>(false);
 const [ephemeral, setEphemeral] = useState<string | null>(null);
 const [multiPreview, setMultiPreview] = useState<{
   preview?: { title?: string; description?: string; bullets?: string[] };
@@ -49,10 +51,13 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
 
   // Enforce max files on selection
   let selected = files;
-  if (files.length > MAX_IMAGES) {
-    selected = files.slice(0, MAX_IMAGES);
+  if (files.length > maxImages) {
+    selected = files.slice(0, maxImages);
     const dropped = files.length - selected.length;
-    if (dropped > 0) toast.info(`Max. ${MAX_IMAGES} Bilder – ${dropped} ignoriert.`);
+    setLastDropIgnored(dropped > 0);
+    if (dropped > 0) toast.info(`Max. ${maxImages} Bilder – ${dropped} ignoriert.`);
+  } else {
+    setLastDropIgnored(false);
   }
 
   const urls = await uploadImages(selected);
@@ -75,9 +80,9 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
 
     // FE-side cap as a fallback
     let images = urls;
-    if (images.length > MAX_IMAGES) {
-      toast.info(`Sende nur die ersten ${MAX_IMAGES} Bilder.`);
-      images = images.slice(0, MAX_IMAGES);
+    if (images.length > maxImages) {
+      toast.info(`Sende nur die ersten ${maxImages} Bilder.`);
+      images = images.slice(0, maxImages);
     }
 
     try {
@@ -97,10 +102,20 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
       });
       setEphemeral(null);
 
-      if (error || !data?.ok) {
+      if (error) {
+        if (typeof error.message === 'string' && error.message.includes('too_many_images')) {
+          toast.info(`Maximal ${maxImages} Bilder. Bitte erneut auswählen.`);
+          return;
+        }
         toast.error('Dauert länger als üblich – bitte erneut senden.');
         return;
       }
+      if (!data?.ok) {
+        toast.error('Analyse fehlgeschlagen – bitte erneut senden.');
+        return;
+      }
+
+      if (typeof data.max === 'number') setMaxImages(data.max);
 
       const preview = data.preview ?? {};
       const consolidated = data.consolidated ?? {};
@@ -122,7 +137,7 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     } catch (err: any) {
       setEphemeral(null);
       if (err?.message?.includes('too_many_images')) {
-        toast.info(`Maximal ${MAX_IMAGES} Bilder. Bitte erneut auswählen.`);
+        toast.info(`Maximal ${maxImages} Bilder. Bitte erneut auswählen.`);
       } else {
         toast.error('Analyse fehlgeschlagen – bitte erneut versuchen.');
       }
@@ -226,8 +241,10 @@ const handleSubmit = useCallback(async () => {
             </Button>
             {/* Counter + hint */}
             <div className="flex items-center gap-2 -ml-2 mr-2">
-              <span className="text-xs text-muted-foreground tabular-nums">{uploadedImages.length}/{MAX_IMAGES}</span>
-              <span className="hidden sm:inline text-xs text-muted-foreground">Max. {MAX_IMAGES} – überzählige ignoriert</span>
+              <span className="text-xs text-muted-foreground tabular-nums">{uploadedImages.length}/{maxImages}</span>
+              {lastDropIgnored && (
+                <span className="hidden sm:inline text-xs text-muted-foreground">Max. {maxImages} – überzählige ignoriert</span>
+              )}
             </div>
 
             {/* Voice Button */}
