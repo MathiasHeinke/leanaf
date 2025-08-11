@@ -362,6 +362,11 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  const appendUploadedImages = useCallback((urls: string[]) => {
+    if (!urls || urls.length === 0) return;
+    setUploadedImages(prev => [...prev, ...urls]);
+  }, []);
+
   const resetForm = useCallback(() => {
     setInputText('');
     setUploadedImages([]);
@@ -425,6 +430,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     handlePhotoUpload,
     handleVoiceRecord,
     removeImage,
+    appendUploadedImages,
     resetForm,
     closeDialog,
     

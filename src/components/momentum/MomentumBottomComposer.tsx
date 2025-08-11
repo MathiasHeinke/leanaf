@@ -7,13 +7,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOrchestrator } from "@/hooks/useOrchestrator";
 import ChoiceBar from "@/components/ChoiceBar";
 import ConfirmMealModal from "@/components/ConfirmMealModal";
+import ConfirmSupplementModal from "@/components/ConfirmSupplementModal";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useSupplementRecognition } from "@/hooks/useSupplementRecognition";
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const MomentumBottomComposer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const { inputText, setInputText, uploadImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet } = useGlobalMealInput();
+  const { inputText, setInputText, uploadImages, appendUploadedImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet } = useGlobalMealInput();
   const { isEnabled } = useFeatureFlags();
   const orchestrationEnabled = isEnabled('auto_tool_orchestration');
   const { user } = useAuth();
@@ -21,7 +23,10 @@ export const MomentumBottomComposer: React.FC = () => {
 
   const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
   const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
+  const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { addRecognizedSupplementsToStack } = useSupplementRecognition();
 
   const handlePhotoTap = useCallback(() => {
     fileInputRef.current?.click();
@@ -30,12 +35,47 @@ export const MomentumBottomComposer: React.FC = () => {
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
     if (files.length) {
-      await uploadImages(files);
-      setActiveTab("photo");
-      openQuickMealSheet("photo");
-      e.currentTarget.value = "";
+      const urls = await uploadImages(files);
+      if (urls && urls.length) {
+        appendUploadedImages(urls);
+        setActiveTab("photo");
+        openQuickMealSheet("photo");
+        e.currentTarget.value = "";
+
+        if (orchestrationEnabled && user?.id) {
+          const groupTraceId = crypto.randomUUID();
+          for (const url of urls) {
+            try {
+              const reply = await sendEvent(
+                user.id,
+                {
+                  type: 'IMAGE',
+                  url,
+                  clientEventId: crypto.randomUUID(),
+                  context: { source: 'momentum', coachMode: 'nutrition', image_type: 'food' }
+                },
+                groupTraceId
+              );
+              if (reply.kind === 'message') {
+                toast.message(reply.text);
+                setClarify(null);
+              } else if (reply.kind === 'clarify') {
+                setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
+              } else if (reply.kind === 'confirm_save_meal') {
+                setConfirmMeal({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+                setClarify(null);
+              } else if (reply.kind === 'confirm_save_supplement') {
+                setConfirmSupplement({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+                setClarify(null);
+              }
+            } catch (e) {
+              console.debug('Orchestrator IMAGE sendEvent failed (non-blocking)', e);
+            }
+          }
+        }
+      }
     }
-  }, [uploadImages]);
+  }, [uploadImages, appendUploadedImages, orchestrationEnabled, user?.id, sendEvent, openQuickMealSheet]);
  
   const handleVoiceTap = useCallback(async () => {
     await handleVoiceRecord();
@@ -67,6 +107,9 @@ const handleSubmit = useCallback(async () => {
         setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
       } else if (reply.kind === 'confirm_save_meal') {
         setConfirmMeal({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
+        setClarify(null);
+      } else if (reply.kind === 'confirm_save_supplement') {
+        setConfirmSupplement({ open: true, prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
         setClarify(null);
       }
     } catch (e) {
@@ -153,6 +196,7 @@ const handleSubmit = useCallback(async () => {
             if (res.kind === 'message') { toast.message(res.text); setClarify(null); }
             if (res.kind === 'clarify') { setClarify({ prompt: res.prompt, options: res.options, traceId: res.traceId }); }
             if (res.kind === 'confirm_save_meal') { setConfirmMeal({ open: true, prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); setClarify(null); }
+            if (res.kind === 'confirm_save_supplement') { setConfirmSupplement({ open: true, prompt: res.prompt, proposal: res.proposal, traceId: res.traceId }); setClarify(null); }
           }} />
         </div>
       )}
@@ -183,6 +227,33 @@ const handleSubmit = useCallback(async () => {
           }
         }}
         onClose={() => setConfirmMeal(prev => ({ ...prev, open: false }))}
+      />
+
+      <ConfirmSupplementModal
+        open={confirmSupplement.open}
+        prompt={confirmSupplement.prompt}
+        proposal={confirmSupplement.proposal}
+        onConfirm={async () => {
+          try {
+            const p = confirmSupplement.proposal as any;
+            const items = Array.isArray(p?.items) ? p.items : [];
+            const recognized = items.map((i: any) => ({
+              product_name: i.name,
+              supplement_match: i.canonical,
+              supplement_id: null,
+              confidence: i.confidence,
+              quantity_estimate: i.dose ?? undefined,
+              notes: i.notes ?? undefined,
+            }));
+            await addRecognizedSupplementsToStack(recognized);
+            toast.success('Supplemente gespeichert');
+          } catch (e) {
+            toast.error('Speichern fehlgeschlagen');
+          } finally {
+            setConfirmSupplement(prev => ({ ...prev, open: false }));
+          }
+        }}
+        onClose={() => setConfirmSupplement(prev => ({ ...prev, open: false }))}
       />
 
       {/* Meal Sheet */}
