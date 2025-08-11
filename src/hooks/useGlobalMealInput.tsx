@@ -70,31 +70,72 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Streamlined data parsing function
   const parseAnalyzeResponse = useCallback((data: any) => {
-    // Format 1: Nested structure with 'total' object
-    if (data?.total && typeof data.total === 'object') {
-      return {
-        text: data.title || 'Analysierte Mahlzeit',
-        calories: data.total.calories || 0,
-        protein: data.total.protein || 0,
-        carbs: data.total.carbs || 0,
-        fats: data.total.fats || 0,
-        meal_type: 'other'
+    try {
+      if (!data) return null;
+
+      // Helper to coerce possible string numbers (e.g. "12,5")
+      const num = (v: any) => {
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') {
+          const n = parseFloat(v.replace(',', '.'));
+          return Number.isFinite(n) ? n : 0;
+        }
+        return 0;
       };
+
+      // Some functions may wrap payloads
+      const candidates = [data, data?.data, data?.result];
+
+      for (const d of candidates) {
+        if (!d) continue;
+        // Case 1: total object present
+        if (d.total && typeof d.total === 'object') {
+          return {
+            text: d.title || 'Analysierte Mahlzeit',
+            calories: num(d.total.calories),
+            protein: num(d.total.protein),
+            carbs: num(d.total.carbs),
+            fats: num(d.total.fats),
+            meal_type: 'other'
+          } as MealData;
+        }
+        // Case 2: flattened totals
+        if (d.calories !== undefined || d.protein !== undefined || d.carbs !== undefined || d.fats !== undefined) {
+          return {
+            text: d.title || 'Analysierte Mahlzeit',
+            calories: num(d.calories),
+            protein: num(d.protein),
+            carbs: num(d.carbs),
+            fats: num(d.fats),
+            meal_type: 'other'
+          } as MealData;
+        }
+        // Case 3: derive totals from items
+        if (Array.isArray(d.items) && d.items.length > 0) {
+          const totals = d.items.reduce(
+            (a: any, it: any) => ({
+              calories: a.calories + num(it.calories),
+              protein: a.protein + num(it.protein),
+              carbs: a.carbs + num(it.carbs),
+              fats: a.fats + num(it.fats)
+            }),
+            { calories: 0, protein: 0, carbs: 0, fats: 0 }
+          );
+          return {
+            text: d.title || 'Analysierte Mahlzeit',
+            calories: Math.round(totals.calories),
+            protein: Math.round(totals.protein * 10) / 10,
+            carbs: Math.round(totals.carbs * 10) / 10,
+            fats: Math.round(totals.fats * 10) / 10,
+            meal_type: 'other'
+          } as MealData;
+        }
+      }
+      return null;
+    } catch (e) {
+      console.warn('parseAnalyzeResponse: unexpected format', e, data);
+      return null;
     }
-    
-    // Format 2: Flattened structure
-    if (data?.calories !== undefined) {
-      return {
-        text: data.title || 'Analysierte Mahlzeit',
-        calories: data.calories || 0,
-        protein: data.protein || 0,
-        carbs: data.carbs || 0,
-        fats: data.fats || 0,
-        meal_type: 'other'
-      };
-    }
-    
-    return null;
   }, []);
 
   // Cleanup function for media recorder
