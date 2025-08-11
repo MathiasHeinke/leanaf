@@ -65,7 +65,7 @@ const SimpleUnifiedCoachChat: React.FC<SimpleUnifiedCoachChatProps> = ({
 // ============= ORCHESTRATOR INTEGRATION =============
 const { sendEvent } = useOrchestrator();
 const [isSending, setIsSending] = useState(false);
-const [clarify, setClarify] = useState<{ prompt: string; options: [string,string] } | null>(null);
+const [clarify, setClarify] = useState<{ prompt: string; options: string[] } | null>(null);
 const [confirm, setConfirm] = useState<{ open: boolean; prompt: string; proposal: any } | null>(null);
   
   // ============= CHAT INITIALIZATION =============

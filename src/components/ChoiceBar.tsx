@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ChoiceBarProps {
   prompt: string;
-  options: [string, string];
+  options: string[];
   onPick: (value: string) => void;
 }
 
@@ -10,7 +10,7 @@ export default function ChoiceBar({ prompt, options, onPick }: ChoiceBarProps) {
   return (
     <div className="mt-3 rounded-xl border border-border bg-muted/40 p-3">
       <div className="text-sm mb-2 text-foreground/90">{prompt}</div>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {options.map((o) => (
           <button
             key={o}

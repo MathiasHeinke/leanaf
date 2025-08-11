@@ -125,7 +125,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const { awardPoints, updateStreak } = usePointsSystem();
 
 // Orchestrator UI states
-const [clarify, setClarify] = useState<{ prompt: string; options: [string, string]; traceId?: string } | null>(null);
+const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
 const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
 const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
 

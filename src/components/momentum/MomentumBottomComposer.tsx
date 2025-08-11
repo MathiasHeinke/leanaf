@@ -19,7 +19,7 @@ export const MomentumBottomComposer: React.FC = () => {
   const { user } = useAuth();
   const { sendEvent } = useOrchestrator();
 
-  const [clarify, setClarify] = useState<{ prompt: string; options: [string, string]; traceId?: string } | null>(null);
+  const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
   const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
   const fileInputRef = useRef<HTMLInputElement>(null);
 

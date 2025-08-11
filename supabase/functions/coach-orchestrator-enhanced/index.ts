@@ -34,7 +34,7 @@ interface Intent {
 
 type OrchestratorReply =
   | { kind: "message"; text: string; end?: boolean; traceId?: string }
-  | { kind: "clarify"; prompt: string; options: [string, string]; traceId?: string }
+  | { kind: "clarify"; prompt: string; options: string[]; traceId?: string }
   | { kind: "confirm_save_meal"; prompt: string; proposal: any; traceId?: string };
 
 // Thresholds
@@ -500,9 +500,9 @@ serve(async (req) => {
 
     // supplement → lightweight intake first
     if (intent.name === "supplement") {
-      // IMAGE: human-first response using quick classifier, no modal yet
+      // IMAGE: quick classify + immediate full proposal for interactive confirm
       if (event.type === 'IMAGE') {
-        // Run a fast image classification to get name + confidence
+        // 1) Quick human summary via classifier
         const t0 = Date.now();
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'image-classifier', status: 'RUNNING', payload: { action: 'classify_image_quick' } });
         const { data: icData, error: icErr } = await supabase.functions.invoke('image-classifier', {
@@ -521,11 +521,74 @@ serve(async (req) => {
           `Timing-Vorschlag: ${suggestTimeFromType(name)}`,
         ].slice(0, 3);
 
-        // Reflect stage to keep traces readable
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect' as any, handler: 'coach-orchestrator-enhanced', status: 'OK', payload: { mode: 'humanize_supplement_image', name, pct } });
+        // 2) Build full proposal by running analysis so user can Save/Adjust immediately
+        const t1 = Date.now();
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-analysis', status: 'RUNNING', payload: { withImage: true } });
+        const { data, error } = await supabase.functions.invoke('supplement-analysis', {
+          body: { userId, imageUrl: (event as any).url, userQuestion: '' },
+          headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode ?? '' },
+        });
+        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-analysis', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t1 });
+        if (error) {
+          const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nSag mir kurz, ob du Infos willst oder speichern möchtest.`;
+          return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
 
-        const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nSoll ich’s speichern oder anpassen?`;
-        return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        const raw: any = data;
+        const recognized = (raw?.items && Array.isArray(raw.items))
+          ? raw.items
+          : (raw?.recognized_supplements && Array.isArray(raw.recognized_supplements))
+            ? raw.recognized_supplements.map((r: any) => ({
+                name: r.product_name || r.name || 'Unbekannt',
+                canonical: r.supplement_match ?? r.canonical ?? null,
+                dose: r.quantity_estimate ?? r.dose ?? null,
+                confidence: typeof r.confidence === 'number' ? r.confidence : (raw?.confidence_score ?? 0.7),
+                notes: r.notes ?? null,
+                image_url: (event as any)?.url ?? null,
+              }))
+            : [];
+
+        if (!recognized.length) {
+          const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nIch habe nichts Verlässliches erkannt – magst du mir kurz den Namen schreiben?`;
+          return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        const { data: existingStack } = await supabase
+          .from('user_supplements')
+          .select('id, canonical, name, dose, schedule')
+          .eq('user_id', userId);
+        const existing = (existingStack || []) as Array<{ id: number; canonical: string | null; name: string; dose: string | null; schedule: any | null }>;
+
+        let topPickIdx = 0; let best = -1;
+        recognized.forEach((it: any, idx: number) => { const c = typeof it.confidence === 'number' ? it.confidence : 0; if (c > best) { best = c; topPickIdx = idx; } });
+
+        const proposal = {
+          items: recognized.map((r: any) => {
+            const match = existing.find((e) =>
+              (r.canonical && e.canonical && e.canonical === r.canonical) ||
+              (e.name && r.name && (e.name.toLowerCase().includes(r.name.toLowerCase()) || r.name.toLowerCase().includes(e.name.toLowerCase())))
+            );
+            return {
+              name: r.name,
+              canonical: r.canonical ?? null,
+              dose: r.dose ?? null,
+              confidence: typeof r.confidence === 'number' ? r.confidence : 0.7,
+              notes: r.notes ?? null,
+              image_url: r.image_url ?? ((event as any)?.url ?? null),
+              existingId: match?.id ?? null,
+              existingDose: match?.dose ?? null,
+              existingSchedule: match?.schedule ?? null,
+            };
+          }),
+          topPickIdx,
+          imageUrl: (event as any)?.url ?? null,
+        };
+
+        const top = proposal.items[topPickIdx];
+        const pct2 = Math.round(Math.max(60, Math.min(98, (top.confidence || 0) * 100)));
+        const prompt = `💊 Kurz-Check\n${bullets.map(b => `• ${b}`).join('\n')}\n\n• Erkannt (Analyse): ${top.name} (Sicherheit ${pct2}%)`;
+        const reply: OrchestratorReply = { kind: 'confirm_save_supplement', prompt, proposal, traceId } as any;
+        return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
 
       // TEXT: only run analysis if explicitly asked

@@ -30,7 +30,7 @@ export type SupplementProposal = {
 
 export type OrchestratorReply =
   | { kind: 'message'; text: string; end?: boolean; traceId?: string }
-  | { kind: 'clarify'; prompt: string; options: [string, string]; traceId?: string }
+  | { kind: 'clarify'; prompt: string; options: string[]; traceId?: string }
   | { kind: 'confirm_save_meal'; prompt: string; proposal: MealProposal; traceId?: string }
   | { kind: 'confirm_save_supplement'; prompt: string; proposal: SupplementProposal; traceId?: string };
 
