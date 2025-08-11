@@ -76,7 +76,7 @@ function detectIntentWithConfidence(event: CoachEvent): Intent {
   return { name: "unknown", score: 0.2, toolCandidate: null };
 }
 
-const asMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text, traceId });
+// asMessage is defined inside the handler to apply persona tone
 
 // Robust analysis intent detector for supplements (covers prüfen/überprüfen/checken variants)
 const isAnalysisRequest = (t?: string) =>
@@ -195,7 +195,7 @@ serve(async (req) => {
     const persona = await loadCoachPersona(supabase, coachId);
     const memoryHint = await loadRollingSummary(supabase, userId, coachId);
     const lucify = (txt: string) => toLucyTone(String(txt || ''), persona, { memoryHint });
-    const asMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text: lucify(text), traceId });
+    const asLucyMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text: lucify(text), traceId });
 
     // Start timer for server ack measurement
     const t0 = Date.now();
@@ -241,7 +241,7 @@ serve(async (req) => {
         .limit(1);
       if (existingProcessed && existingProcessed.length > 0) {
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', payload: { dedupe: true, clientEventId, retried: retryHeader } });
-        return new Response(JSON.stringify(asMessage('Alles klar – ich habe dir bereits geantwortet.', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify(asLucyMessage('Alles klar – ich habe dir bereits geantwortet.', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       // Lightweight in-flight guard within this instance
       // deno-lint-ignore no-var
@@ -249,7 +249,7 @@ serve(async (req) => {
       if (!__inflight) { (globalThis as any).__inflightSet = new Set<string>(); __inflight = (globalThis as any).__inflightSet; }
       if (__inflight.has(clientEventId)) {
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'route_decision', handler: 'coach-orchestrator-enhanced', status: 'RUNNING', payload: { inflight: true, clientEventId, retried: retryHeader } });
-        return new Response(JSON.stringify(asMessage('⏳ Bin dran – einen Moment …', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify(asLucyMessage('⏳ Bin dran – einen Moment …', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       __inflight.add(clientEventId);
     }
@@ -261,7 +261,7 @@ serve(async (req) => {
         const retry = rl.retry_after_seconds ?? 30;
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'error', handler: 'coach-orchestrator-enhanced', status: 'ERROR', payload: { rate_limited: true, retry } });
         try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'rate_limited', p_data: { retry } }); } catch {}
-        return new Response(JSON.stringify(asMessage(`Zu viele Anfragen – bitte in ${retry}s nochmal.`, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 });
+        return new Response(JSON.stringify(asLucyMessage(`Zu viele Anfragen – bitte in ${retry}s nochmal.`, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 });
       }
     } catch {
       // ignore
@@ -301,7 +301,7 @@ serve(async (req) => {
            const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
            await logTraceEvent(supabase, { traceId, userId, stage:'reply_send', handler:'orchestrator', status:'OK', payload:{ kind:'message' } });
            try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'message' } }); } catch {}
-           return new Response(JSON.stringify(asMessage(text, traceId)), { headers:{...corsHeaders,'Content-Type':'application/json'} });
+           return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
         if (followUpAction === 'save' || followUpAction === 'update') {
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_exec', handler:'supplement-save', status:'RUNNING' });
@@ -451,7 +451,7 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-analysis', status: infoErr ? 'ERROR' : 'OK', latencyMs: Date.now() - tInfo });
           const analysisText = (infoData as any)?.analysis ?? 'Okay – kurzer Check: Keine kritischen Konflikte gefunden. Balance statt Perfektion ✨';
-          return new Response(JSON.stringify(asMessage(analysisText, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify(asLucyMessage(analysisText, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
         if (fu.kind === 'save') {
           const ceid = crypto.randomUUID();
@@ -476,7 +476,7 @@ serve(async (req) => {
           if (error) throw error;
           const act = (data as any)?.action;
           const msg = act === 'insert' ? `✔️ Gespeichert: ${pick.name}${pick.dose ? ` (${pick.dose})` : ''}.` : act === 'update' ? `👍 Aktualisiert: ${pick.name}.` : `Schon vorhanden – alles gut.`;
-          return new Response(JSON.stringify(asMessage(msg + ' Willst du Dosis oder Timing anpassen?', traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify(asLucyMessage(msg + ' Willst du Dosis oder Timing anpassen?', traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         if (fu.kind === 'update') {
           const ceid = crypto.randomUUID();
@@ -507,10 +507,10 @@ serve(async (req) => {
             parts.push(['Timing', [f, t].filter(Boolean).join(' ')].filter(Boolean).join(' '));
           }
           const friendly = parts.length ? parts.join(', ') : 'Einstellungen';
-          return new Response(JSON.stringify(asMessage(`✅ Aktualisiert: ${friendly}.`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify(asLucyMessage(`✅ Aktualisiert: ${friendly}.`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         // unknown follow-up → guiding question
-        return new Response(JSON.stringify(asMessage(`Soll ich ${pick.name} speichern oder etwas ändern? Beispiele: "ja", "mach 5 g abends".`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(asLucyMessage(`Soll ich ${pick.name} speichern oder etwas ändern? Beispiele: "ja", "mach 5 g abends".`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -594,7 +594,7 @@ serve(async (req) => {
         logUnmetTool: (args) => logUnmetTool(supabase, args),
         logTrace,
       }, { clarify: false, source });
-      const reply: OrchestratorReply = typeof out.reply === "string" ? asMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
+      const reply: OrchestratorReply = typeof out.reply === "string" ? asLucyMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
       await logTraceEvent(supabase, {
         traceId,
         userId,
@@ -620,7 +620,7 @@ serve(async (req) => {
       });
       if (error) throw error;
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'training-orchestrator', status: 'OK', latencyMs: Date.now() - t0 });
-      return new Response(JSON.stringify(asMessage((data as any)?.text ?? "Training erfasst.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify(asLucyMessage((data as any)?.text ?? "Training erfasst.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // meal → analyze-meal (analysis only)
@@ -635,7 +635,7 @@ serve(async (req) => {
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'analyze-meal', status: 'OK', latencyMs: Date.now() - t0 });
       const proposal = (data as any)?.proposal ?? (data as any)?.analysis ?? null;
       if (!proposal) {
-        return new Response(JSON.stringify(asMessage("Ich habe nichts Verlässliches erkannt – nenn mir kurz Menge & Zutaten, dann schätze ich dir die Makros.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(asLucyMessage("Ich habe nichts Verlässliches erkannt – nenn mir kurz Menge & Zutaten, dann schätze ich dir die Makros.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const reply: OrchestratorReply = { kind: "confirm_save_meal", prompt: "Bitte kurz bestätigen – dann speichere ich die Mahlzeit.", proposal, traceId };
       return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -650,14 +650,14 @@ serve(async (req) => {
         });
         if (error) throw error;
         const text = (data as any)?.text ?? (data as any)?.reply ?? "Gewicht gespeichert.";
-        return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } else {
         const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
           body: { mode: "weight", userId, clientEventId, event },
           headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
         });
         if (error) throw error;
-        return new Response(JSON.stringify(asMessage((data as any)?.text ?? "Gewicht gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(asLucyMessage((data as any)?.text ?? "Gewicht gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -670,14 +670,14 @@ serve(async (req) => {
         });
         if (error) throw error;
         const text = (data as any)?.text ?? (data as any)?.reply ?? "Tagebuch gespeichert.";
-        return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } else {
         const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
           body: { mode: "diary", userId, clientEventId, event },
           headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
         });
         if (error) throw error;
-        return new Response(JSON.stringify(asMessage((data as any)?.text ?? "Tagebuch gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(asLucyMessage((data as any)?.text ?? "Tagebuch gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -716,7 +716,7 @@ serve(async (req) => {
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-recognition', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t1 });
         if (error) {
           const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nSag mir kurz, ob du Infos willst oder speichern möchtest.`;
-          return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
         const raw: any = data;
@@ -735,7 +735,7 @@ serve(async (req) => {
 
         if (!recognized.length) {
           const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nIch habe nichts Verlässliches erkannt – magst du mir kurz den Namen schreiben?`;
-          return new Response(JSON.stringify(asMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
         const { data: existingStack } = await supabase
@@ -822,7 +822,7 @@ serve(async (req) => {
 
       if (!recognized.length) {
         const summary = typeof data === "string" ? data : ((raw as any)?.summary ?? (raw as any)?.text ?? JSON.stringify(raw).slice(0, 800));
-        return new Response(JSON.stringify(asMessage(`💊 Supplement-Analyse:\n${summary}`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(asLucyMessage(`💊 Supplement-Analyse:\n${summary}`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // pick top by confidence
@@ -877,7 +877,7 @@ serve(async (req) => {
       logUnmetTool: (args) => logUnmetTool(supabase, args),
       logTrace,
     }, { clarify: false, source });
-    const reply: OrchestratorReply = typeof out.reply === "string" ? asMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
+    const reply: OrchestratorReply = typeof out.reply === "string" ? asLucyMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
     return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     await logTrace({ traceId, stage: "error", data: { error: String(e) } });
