@@ -128,6 +128,8 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
 const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
 const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
+// Conversational-first: hold pending supplement proposal until user decides
+const [pendingSupplement, setPendingSupplement] = useState<{ prompt: string; proposal: any; traceId?: string } | null>(null);
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -173,12 +175,27 @@ const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prom
       setClarify(null);
       return;
     }
-    if ((res as any).kind === 'confirm_save_supplement') {
-      const anyRes = res as any;
-      setConfirmSupplement({ open: true, prompt: anyRes.prompt, proposal: anyRes.proposal, traceId: anyRes.traceId });
-      setClarify(null);
-      return;
-    }
+if ((res as any).kind === 'confirm_save_supplement') {
+  const anyRes = res as any;
+  const top = anyRes?.proposal?.items?.[anyRes?.proposal?.topPickIdx ?? 0];
+  const intro = `Ich sehe, du hast mir ein Bild gesendet – ich schaue kurz…\n${anyRes.prompt || ''}`.trim();
+  const assistantMessage: EnhancedChatMessage = {
+    id: `assistant-${Date.now()}`,
+    role: 'assistant',
+    content: intro,
+    created_at: new Date().toISOString(),
+    coach_personality: coach?.id || 'lucy',
+    coach_name: coach?.name || 'Coach',
+    coach_avatar: coach?.imageUrl,
+    coach_color: coach?.color,
+    coach_accent_color: coach?.accentColor,
+    metadata: anyRes.traceId ? { traceId: anyRes.traceId } : undefined,
+  };
+  setMessages(prev => [...prev, assistantMessage]);
+  setPendingSupplement({ prompt: anyRes.prompt, proposal: anyRes.proposal, traceId: anyRes.traceId });
+  setClarify(null);
+  return;
+}
   }, [coach]);
 
   const handleClarifyPick = useCallback(async (value: string) => {
@@ -844,7 +861,7 @@ if (enableAdvancedFeatures) {
         event = { type: 'END' };
       }
 
-      const reply = await sendEvent(user.id, { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode) } } as any);
+      const reply = await sendEvent(user.id, { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any);
       renderOrchestratorReply(reply);
       setInputText('');
       return;
@@ -894,6 +911,63 @@ if (enableAdvancedFeatures) {
           <div className="space-y-4 py-4">
             {messages.map(renderMessage)}
             {renderTypingIndicator()}
+            {pendingSupplement && (
+              <ChoiceBar
+                prompt={"Möchtest du mehr Infos, in den Stack aufnehmen oder später?"}
+                options={["Mehr Infos", "In Stack aufnehmen", "Später"]}
+                onPick={async (choice) => {
+                  if (!user?.id || !pendingSupplement?.proposal) return;
+                  const p: any = pendingSupplement.proposal;
+                  const idx = p.topPickIdx ?? 0;
+                  const item = p.items?.[idx];
+                  if (!item) { setPendingSupplement(null); return; }
+                  if (choice === 'Mehr Infos') {
+                    const waitMsg: EnhancedChatMessage = {
+                      id: `assistant-${Date.now()}`,
+                      role: 'assistant',
+                      content: 'Alles klar – ich schaue kurz in deinen Stack und mögliche Wechselwirkungen …',
+                      created_at: new Date().toISOString(),
+                      coach_personality: coach?.id || 'lucy',
+                      coach_name: coach?.name || 'Coach',
+                      coach_avatar: coach?.imageUrl,
+                      coach_color: coach?.color,
+                      coach_accent_color: coach?.accentColor
+                    };
+                    setMessages(prev => [...prev, waitMsg]);
+                    try {
+                      const { data: stack } = await supabase
+                        .from('user_supplements')
+                        .select('custom_name')
+                        .eq('user_id', user.id)
+                        .eq('is_active', true);
+                      const names = (stack || []).map((s: any) => s.custom_name).filter(Boolean);
+                      const supplements = [{ name: item.canonical || item.name }, ...names.map((n: string) => ({ name: n }))];
+                      const { data, error } = await supabase.functions.invoke('supplement-analysis', {
+                        body: { supplements, userProfile }
+                      });
+                      const analysisText = (data as any)?.analysis || 'Okay. Ich habe mir das angeschaut – keine besonderen Konflikte gefunden.';
+                      const resp: EnhancedChatMessage = {
+                        id: `assistant-${Date.now()}`,
+                        role: 'assistant',
+                        content: analysisText,
+                        created_at: new Date().toISOString(),
+                        coach_personality: coach?.id || 'lucy',
+                        coach_name: coach?.name || 'Coach',
+                        coach_avatar: coach?.imageUrl,
+                        coach_color: coach?.color,
+                        coach_accent_color: coach?.accentColor
+                      };
+                      setMessages(prev => [...prev, resp]);
+                    } catch (e) {
+                      toast.error('Analyse fehlgeschlagen – bitte kurz erneut fragen.');
+                    }
+                  } else if (choice === 'In Stack aufnehmen') {
+                    setConfirmSupplement({ open: true, prompt: pendingSupplement.prompt, proposal: pendingSupplement.proposal, traceId: pendingSupplement.traceId });
+                  }
+                  setPendingSupplement(null);
+                }}
+              />
+            )}
             
             {/* Training Plan Draft Card */}
             {pendingPlanData && (

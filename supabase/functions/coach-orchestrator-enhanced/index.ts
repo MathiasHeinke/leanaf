@@ -270,6 +270,25 @@ serve(async (req) => {
       const pick = lp?.items?.[pickIdx];
 
       if (pick) {
+        const wantsInfo = /\b(info|infos|information|mehr infos|wechselwirkung|wechselwirkungen|interaktionen|timing|einnehmen)\b/i.test(((event as any).text || '').toString());
+        if (wantsInfo) {
+          const tInfo = Date.now();
+          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-analysis', status: 'RUNNING', payload: { context: 'follow_up_info' } });
+          const { data: stack } = await supabase
+            .from('user_supplements')
+            .select('name, canonical')
+            .eq('user_id', userId)
+            .eq('is_active', true);
+          const names = (stack || []).map((s: any) => s.canonical || s.name).filter(Boolean);
+          const supplements = [{ name: pick.canonical ?? pick.name }, ...names.map((n: string) => ({ name: n }))];
+          const { data: infoData, error: infoErr } = await supabase.functions.invoke('supplement-analysis', {
+            body: { supplements, userProfile: null },
+            headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode ?? '' },
+          });
+          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-analysis', status: infoErr ? 'ERROR' : 'OK', latencyMs: Date.now() - tInfo });
+          const analysisText = (infoData as any)?.analysis ?? 'Okay – kurzer Check: Keine kritischen Konflikte gefunden. Balance statt Perfektion ✨';
+          return new Response(JSON.stringify(asMessage(analysisText, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
         if (fu.kind === 'save') {
           const ceid = crypto.randomUUID();
           const body = {
