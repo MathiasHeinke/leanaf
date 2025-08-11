@@ -79,14 +79,32 @@ async function upsertClientEvent(supabase: any, userId: string, clientEventId: s
   };
 }
 
-async function markFinal(supabase: any, userId: string, clientEventId: string, reply: any) {
-  const updateResult = await supabase.from('client_events')
+async function markFinal(supabase: any, userId: string, clientEventId: string, reply: any, traceId?: string) {
+  try {
+    await upsertClientEvent(supabase, userId, clientEventId);
+  } catch (_e) {
+    // ignore upsert errors, proceed to update
+  }
+  const updateResult = await supabase
+    .from('client_events')
     .update({ status: 'FINAL', last_reply: reply, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
     .eq('client_event_id', clientEventId);
   
   if (updateResult.error) {
     throw new Error(`client_events final update failed: ${updateResult.error.message}`);
+  }
+  
+  if (traceId) {
+    await logTraceEvent(supabase, {
+      traceId,
+      userId,
+      coachId: undefined,
+      stage: 'idempotency_final' as any,
+      handler: 'coach-orchestrator-enhanced',
+      status: 'OK',
+      payload: { clientEventId }
+    });
   }
 }
 
@@ -281,50 +299,8 @@ serve(async (req) => {
     const retryHeader = req.headers.get('x-retry') === '1';
     const clientEventId = (event as any).clientEventId || crypto.randomUUID();
     
-    let ce;
-    try {
-      ce = await upsertClientEvent(supabaseState, userId, clientEventId);
-    } catch (e) {
-      // Fallback: continue processing WITHOUT dedupe and log the issue
-      await logTraceEvent(supabase, {
-        traceId,
-        userId,
-        coachId: undefined,
-        stage: 'warn',
-        handler: 'idempotency',
-        status: 'ERROR',
-        payload: { errorMessage: String(e), clientEventId }
-      });
-      console.warn('client_events upsert failed:', e);
-      // Continue without dedupe rather than fail
-      ce = null;
-    }
-
-    // If row exists and FINAL → return *actual* last reply (not generic)
-    if (ce && !ce.created) {
-      if (ce.status === 'FINAL' && ce.lastReply) {
-        await logTraceEvent(supabase, { 
-          traceId, userId, coachId: undefined, 
-          stage: 'reply_send', 
-          handler: 'coach-orchestrator-enhanced', 
-          status: 'OK', 
-          payload: { dedupe: true, clientEventId, retried: retryHeader } 
-        });
-        return new Response(JSON.stringify(ce.lastReply), { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        });
-      }
-      if (ce.status === 'RECEIVED') {
-        const age = ce.createdAt ? Date.now() - new Date(ce.createdAt).getTime() : 0;
-        if (age < 120000) {
-          return new Response(JSON.stringify({ kind: 'noop', reason: 'in_progress' }), { 
-            status: 409, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          });
-        }
-        // STALE → process normally
-      }
-    }
+// Idempotency variant B: No early upsert to avoid stale RECEIVED rows.
+// clientEventId is carried forward; we will persist only upon final reply.
 
     // Rate limit check
     try {
@@ -693,7 +669,7 @@ serve(async (req) => {
       if (error) throw error;
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'training-orchestrator', status: 'OK', latencyMs: Date.now() - t0 });
       const finalReply = asLucyMessage((data as any)?.text ?? "Training erfasst.", traceId);
-      await markFinal(supabase, userId, clientEventId, finalReply);
+      await markFinal(supabaseState, userId, clientEventId, finalReply, traceId);
       return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -710,11 +686,11 @@ serve(async (req) => {
       const proposal = (data as any)?.proposal ?? (data as any)?.analysis ?? null;
       if (!proposal) {
         const finalReply = asLucyMessage("Ich habe nichts Verlässliches erkannt – nenn mir kurz Menge & Zutaten, dann schätze ich dir die Makros.", traceId);
-        await markFinal(supabase, userId, clientEventId, finalReply);
+        await markFinal(supabaseState, userId, clientEventId, finalReply, traceId);
         return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const reply: OrchestratorReply = { kind: "confirm_save_meal", prompt: "Bitte kurz bestätigen – dann speichere ich die Mahlzeit.", proposal, traceId };
-      await markFinal(supabase, userId, clientEventId, reply);
+      await markFinal(supabaseState, userId, clientEventId, reply, traceId);
       return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -956,14 +932,12 @@ serve(async (req) => {
     }, { clarify: false, source });
     const reply: OrchestratorReply = typeof out.reply === "string" ? asLucyMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
     
-    // Mark as final in client_events if idempotency is working
-    if (ce) {
-      try {
-        await markFinal(supabaseState, userId, clientEventId, reply);
-      } catch (e) {
-        console.warn('Failed to mark final in fallback:', e);
-        // Continue anyway
-      }
+    // Mark as final in client_events (persist final reply)
+    try {
+      await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+    } catch (e) {
+      console.warn('Failed to mark final in fallback:', e);
+      // Continue anyway
     }
     
     return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
