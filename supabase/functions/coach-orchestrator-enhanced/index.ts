@@ -319,7 +319,7 @@ serve(async (req) => {
       }
     }
 
-    // supplement → analysis only
+    // supplement → analysis only → return confirm_save_supplement proposal
     if (intent.name === "supplement") {
       const tool = event.type === "IMAGE" ? "supplement-recognition" : "supplement-analysis";
       const t0 = Date.now();
@@ -333,8 +333,54 @@ serve(async (req) => {
       });
       if (error) throw error;
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: tool, status: 'OK', latencyMs: Date.now() - t0, payload: { clientEventId } });
-      const summary = typeof data === "string" ? data : ((data as any)?.summary ?? (data as any)?.text ?? JSON.stringify(data).slice(0, 800));
-      return new Response(JSON.stringify(asMessage(`💊 Supplement-Analyse:\n${summary}`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      // Normalize response into items
+      const raw: any = data;
+      const recognized = (raw?.items && Array.isArray(raw.items))
+        ? raw.items
+        : (raw?.recognized_supplements && Array.isArray(raw.recognized_supplements))
+          ? raw.recognized_supplements.map((r: any) => ({
+              name: r.product_name || r.name || 'Unbekannt',
+              canonical: r.supplement_match ?? r.canonical ?? null,
+              dose: r.quantity_estimate ?? r.dose ?? null,
+              confidence: typeof r.confidence === 'number' ? r.confidence : (raw?.confidence_score ?? 0.7),
+              notes: r.notes ?? null,
+              image_url: (invokeBody as any)?.imageUrl ?? null,
+            }))
+          : [];
+
+      if (!recognized.length) {
+        const summary = typeof data === "string" ? data : ((raw as any)?.summary ?? (raw as any)?.text ?? JSON.stringify(raw).slice(0, 800));
+        return new Response(JSON.stringify(asMessage(`💊 Supplement-Analyse:\n${summary}`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // pick top by confidence
+      let topPickIdx = 0;
+      let best = -1;
+      recognized.forEach((it: any, idx: number) => {
+        const c = typeof it.confidence === 'number' ? it.confidence : 0;
+        if (c > best) { best = c; topPickIdx = idx; }
+      });
+
+      const proposal = {
+        items: recognized.map((r: any) => ({
+          name: r.name,
+          canonical: r.canonical ?? null,
+          dose: r.dose ?? null,
+          confidence: typeof r.confidence === 'number' ? r.confidence : 0.7,
+          notes: r.notes ?? null,
+          image_url: r.image_url ?? ((invokeBody as any)?.imageUrl ?? null)
+        })),
+        topPickIdx,
+        imageUrl: (invokeBody as any)?.imageUrl ?? null
+      };
+
+      const top = proposal.items[topPickIdx];
+      const pct = Math.round(Math.max(60, Math.min(98, (top.confidence || 0) * 100)));
+      const prompt = `💊 Supplement-Analyse\n• Erkannt: ${top.name} (Sicherheit ${pct}%)`;
+
+      const reply: OrchestratorReply = { kind: "confirm_save_supplement", prompt, proposal, traceId } as any;
+      return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Default fallback safety

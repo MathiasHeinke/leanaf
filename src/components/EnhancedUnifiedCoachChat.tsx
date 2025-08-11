@@ -30,6 +30,7 @@ import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useOrchestrator, OrchestratorReply } from '@/hooks/useOrchestrator';
 import ChoiceBar from '@/components/ChoiceBar';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
+import ConfirmSupplementModal from '@/components/ConfirmSupplementModal';
 import { usePointsSystem } from '@/hooks/usePointsSystem';
 import { getMealBasePoints } from '@/utils/mealPointsHelper';
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
@@ -123,9 +124,10 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   // Points & streaks
   const { awardPoints, updateStreak } = usePointsSystem();
 
-  // Orchestrator UI states
-  const [clarify, setClarify] = useState<{ prompt: string; options: [string, string]; traceId?: string } | null>(null);
-  const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
+// Orchestrator UI states
+const [clarify, setClarify] = useState<{ prompt: string; options: [string, string]; traceId?: string } | null>(null);
+const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
+const [confirmSupplement, setConfirmSupplement] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
 
   // ============= USER PROFILE (for plan generation) =============
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -168,6 +170,12 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
     }
     if (res.kind === 'confirm_save_meal') {
       setConfirmMeal({ open: true, prompt: res.prompt, proposal: res.proposal, traceId: res.traceId });
+      setClarify(null);
+      return;
+    }
+    if ((res as any).kind === 'confirm_save_supplement') {
+      const anyRes = res as any;
+      setConfirmSupplement({ open: true, prompt: anyRes.prompt, proposal: anyRes.proposal, traceId: anyRes.traceId });
       setClarify(null);
       return;
     }
@@ -954,6 +962,34 @@ if (enableAdvancedFeatures) {
             }
           }}
           onClose={() => setConfirmMeal(prev => ({ ...prev, open: false }))}
+        />
+        <ConfirmSupplementModal
+          open={confirmSupplement.open}
+          prompt={confirmSupplement.prompt}
+          proposal={confirmSupplement.proposal}
+          onConfirm={async (pickedIdx) => {
+            try {
+              if (!user?.id || !confirmSupplement.proposal) return;
+              const p: any = confirmSupplement.proposal;
+              const idx = typeof pickedIdx === 'number' ? pickedIdx : (p.topPickIdx ?? 0);
+              const item = p.items?.[idx];
+              if (!item) return;
+              const clientEventId = crypto.randomUUID();
+              const { data, error } = await supabase.functions.invoke('supplement-save', {
+                body: { userId: user.id, item, clientEventId },
+                headers: { 'x-trace-id': confirmSupplement.traceId || crypto.randomUUID(), 'x-source': 'chat' }
+              });
+              if (error) throw error;
+              window.dispatchEvent(new CustomEvent('supplement-recommendations-saved'));
+              toast.success('Supplement gespeichert');
+            } catch (e) {
+              console.error('supplement-save failed', e);
+              toast.error('Speichern fehlgeschlagen');
+            } finally {
+              setConfirmSupplement(prev => ({ ...prev, open: false }));
+            }
+          }}
+          onClose={() => setConfirmSupplement(prev => ({ ...prev, open: false }))}
         />
       </ChatLayout>
     );

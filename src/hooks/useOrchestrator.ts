@@ -13,10 +13,26 @@ export type MealProposal = {
   notes?: string;
 };
 
+export type SupplementItem = {
+  name: string;
+  canonical: string | null;
+  dose: string | null;
+  confidence: number;
+  notes?: string | null;
+  image_url?: string | null;
+};
+
+export type SupplementProposal = {
+  items: SupplementItem[];
+  topPickIdx: number;
+  imageUrl?: string | null;
+};
+
 export type OrchestratorReply =
   | { kind: 'message'; text: string; end?: boolean; traceId?: string }
   | { kind: 'clarify'; prompt: string; options: [string, string]; traceId?: string }
-  | { kind: 'confirm_save_meal'; prompt: string; proposal: MealProposal; traceId?: string };
+  | { kind: 'confirm_save_meal'; prompt: string; proposal: MealProposal; traceId?: string }
+  | { kind: 'confirm_save_supplement'; prompt: string; proposal: SupplementProposal; traceId?: string };
 
 export type CoachEvent =
   | { type: 'TEXT'; text: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general' } }
@@ -26,7 +42,7 @@ export type CoachEvent =
 function normalizeReply(raw: any): OrchestratorReply {
   if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
   const k = typeof raw?.kind === 'string' ? raw.kind.toLowerCase() : '';
-  if (k === 'message' || k === 'clarify' || k === 'confirm_save_meal') return raw as OrchestratorReply;
+  if (k === 'message' || k === 'clarify' || k === 'confirm_save_meal' || k === 'confirm_save_supplement') return raw as OrchestratorReply;
   const text = raw.reply ?? raw.content ?? (typeof raw === 'string' ? raw : 'OK');
   return { kind: 'message', text, end: raw.end, traceId: raw.traceId };
 }
