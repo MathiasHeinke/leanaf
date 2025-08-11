@@ -29,6 +29,20 @@ export type SupplementProposal = {
   imageUrl?: string | null;
 };
 
+export type LastProposal =
+  | { kind: 'supplement'; data: any }
+  | { kind: 'meal'; data: any }
+  | { kind: 'training'; data: any };
+
+export type CoachEventContext = {
+  source?: 'chat' | 'momentum' | 'quick-card' | 'gehirn';
+  coachMode?: string;
+  coachId?: string;
+  followup?: boolean;
+  last_proposal?: LastProposal;
+  image_type?: 'exercise' | 'food' | 'supplement' | 'body';
+};
+
 export type OrchestratorReply =
   | { kind: 'message'; text: string; end?: boolean; traceId?: string; meta?: any }
   | { kind: 'reflect'; text: string; traceId?: string; meta?: any }
@@ -38,9 +52,9 @@ export type OrchestratorReply =
   | { kind: 'confirm_save_supplement'; prompt: string; proposal: SupplementProposal; traceId?: string };
 
 export type CoachEvent =
-  | { type: 'TEXT'; text: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; coachId?: string } }
-  | { type: 'IMAGE'; url: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; image_type?: 'exercise'|'food'|'supplement'|'body'; coachId?: string } }
-  | { type: 'END'; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; coachId?: string } };
+  | { type: 'TEXT'; text: string; clientEventId?: string; context?: CoachEventContext }
+  | { type: 'IMAGE'; url: string; clientEventId?: string; context?: CoachEventContext }
+  | { type: 'END'; clientEventId?: string; context?: CoachEventContext };
 
 function normalizeReply(raw: any): OrchestratorReply {
   if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
