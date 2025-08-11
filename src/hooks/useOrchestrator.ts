@@ -83,24 +83,32 @@ export function useOrchestrator() {
       ]);
 
     try {
+      // Emit early client ack so UI feels responsive
+      try {
+        await supabase.rpc('log_trace_event', {
+          p_trace_id: headers['x-trace-id'],
+          p_stage: 'client_ack',
+          p_data: { source: headers['x-source'] }
+        });
+      } catch (_) { /* non-fatal */ }
       // Try enhanced with timeout, retry once on error/timeout
       try {
-        const data = await withTimeout(invokeEnhanced(), 25000);
+        const data = await withTimeout(invokeEnhanced(), 30000);
         return normalizeReply(data);
       } catch (e1) {
         if (e1 instanceof Error && e1.message === 'timeout') {
-          console.warn('orchestrator TIMEOUT', { cutoffMs: 25000 });
+          console.warn('orchestrator TIMEOUT', { cutoffMs: 30000 });
           try {
             await supabase.rpc('log_trace_event', {
               p_trace_id: headers['x-trace-id'],
               p_stage: 'client_timeout',
-              p_data: { cutoffMs: 25000 }
+              p_data: { cutoffMs: 30000 }
             });
           } catch (_) { /* non-fatal */ }
         }
         // mark retry so the server can log it in traces
         headers['x-retry'] = '1';
-        const data = await withTimeout(invokeEnhanced(), 10000);
+        const data = await withTimeout(invokeEnhanced(), 12000);
         return normalizeReply(data);
       }
     } catch (e) {
