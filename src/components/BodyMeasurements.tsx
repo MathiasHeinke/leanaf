@@ -35,6 +35,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [createNewEntry, setCreateNewEntry] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, getPointsForActivity } = usePointsSystem();
@@ -82,7 +83,6 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Starting form submission
     if (!user) return;
 
     // Check if at least one measurement is provided
@@ -97,9 +97,9 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
     setIsSubmitting(true);
     try {
-      const measurementData = {
+      // Build base payload WITHOUT date (never update date to avoid overwrites)
+      const baseData = {
         user_id: user.id,
-        date: getCurrentDateString(),
         neck: measurements.neck ? parseLocaleFloat(measurements.neck) : null,
         chest: measurements.chest ? parseLocaleFloat(measurements.chest) : null,
         waist: measurements.waist ? parseLocaleFloat(measurements.waist) : null,
@@ -110,49 +110,50 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
         notes: measurements.notes || null
       };
 
-      if (hasMeasurementsThisWeek) {
-        // Update existing measurements - no points awarded
-        // Updating existing measurements
-        const { error } = await supabase
-          .from('body_measurements')
-          .update(measurementData)
-          .eq('id', todaysMeasurements.id);
+      // Decide path: update existing of the day/week OR create new today
+      const mustInsert = createNewEntry || !hasMeasurementsThisWeek;
 
-        if (error) throw error;
-        // Update successful
-        toast.success('Körpermaße aktualisiert!');
-      } else {
-        // CRITICAL FIX: Use INSERT instead of UPSERT to prevent data overwriting
-        // Creating new measurements with safe INSERT
+      if (mustInsert) {
+        console.log('[BodyMeasurements] Creating NEW entry for today');
         const { error } = await supabase
           .from('body_measurements')
-          .insert(measurementData);
+          .insert({
+            ...baseData,
+            date: getCurrentDateString(),
+          });
 
         if (error) {
-          // If duplicate key error, show specific message
           if (error.code === '23505' || error.message?.includes('duplicate')) {
             toast.error('Körpermaße für heute bereits vorhanden. Bitte lade die Seite neu.');
+            setCreateNewEntry(false);
+            setIsEditing(false);
             return;
           }
           throw error;
         }
-        // Creation successful
 
         // Award points for body measurements
         await awardPoints('body_measurements', getPointsForActivity('body_measurements'), 'Körpermaße gemessen');
-
         toast.success('Körpermaße erfolgreich eingetragen!');
+      } else {
+        console.log('[BodyMeasurements] UPDATING existing entry (date will not be modified)');
+        const { error } = await supabase
+          .from('body_measurements')
+          .update(baseData) // no date field here
+          .eq('id', todaysMeasurements.id);
+
+        if (error) throw error;
+        toast.success('Körpermaße aktualisiert!');
       }
 
       setIsEditing(false);
+      setCreateNewEntry(false);
       onMeasurementsAdded?.();
-      // Measurements saved successfully, editing mode closed
     } catch (error) {
       console.error('Error saving measurements:', error);
       toast.error('Fehler beim Speichern der Körpermaße');
     } finally {
       setIsSubmitting(false);
-      // Form submission completed
     }
   };
 
@@ -215,6 +216,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     thigh: "",
                     notes: ""
                   });
+                  setCreateNewEntry(true);
                   setIsEditing(true);
                 }}
               >
@@ -286,7 +288,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-foreground">
-                {hasMeasurementsThisWeek ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
+                {hasMeasurementsThisWeek && !createNewEntry ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
               </h3>
               <InfoButton
                 title="Körpermaße - Messanleitung"
@@ -414,14 +416,17 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                   disabled={isSubmitting}
                   className="flex-1"
                 >
-                  {isSubmitting ? 'Speichere...' : (hasMeasurementsThisWeek ? 'Aktualisieren' : 'Maße hinzufügen')}
+                  {isSubmitting ? 'Speichere...' : (hasMeasurementsThisWeek && !createNewEntry ? 'Aktualisieren' : 'Maße hinzufügen')}
                 </Button>
                 
                 {isEditing && (
                   <Button 
                     type="button"
                     variant="outline"
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setCreateNewEntry(false);
+                    }}
                   >
                     Abbrechen
                   </Button>
