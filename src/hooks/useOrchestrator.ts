@@ -1,4 +1,5 @@
 // src/hooks/useOrchestrator.ts
+import { useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { intentFromText } from '@/intake/intent';
@@ -67,7 +68,26 @@ function normalizeReply(raw: any): OrchestratorReply {
 export function useOrchestrator() {
   const { isEnabled } = useFeatureFlags();
   const legacyEnabled = false;
+  
+  // Client event ID management
+  const currentClientEventId = useRef<string | null>(null);
+  
+  function beginUserAction(): string {
+    const clientEventId = crypto.randomUUID();
+    currentClientEventId.current = clientEventId;
+    return clientEventId;
+  }
+  
+  function endUserAction() {
+    currentClientEventId.current = null;
+  }
+  
   async function sendEvent(userId: string, ev: CoachEvent, traceId?: string): Promise<OrchestratorReply> {
+    // Ensure we have a clientEventId for proper idempotency
+    if (!ev.clientEventId) {
+      ev.clientEventId = currentClientEventId.current || beginUserAction();
+    }
+    
     const headers: Record<string, string> = {
       'x-trace-id': traceId ?? crypto.randomUUID(),
       'x-chat-mode': ev.context?.coachMode ?? '',
@@ -127,6 +147,7 @@ export function useOrchestrator() {
       // Try enhanced with timeout, retry once on error/timeout
       try {
         const data = await withTimeout(invokeEnhanced(), 30000);
+        endUserAction();
         return normalizeReply(data);
       } catch (e1) {
         if (e1 instanceof Error && e1.message === 'timeout') {
@@ -142,6 +163,7 @@ export function useOrchestrator() {
         // mark retry so the server can log it in traces
         headers['x-retry'] = '1';
         const data = await withTimeout(invokeEnhanced(), 12000);
+        endUserAction();
         return normalizeReply(data);
       }
     } catch (e) {
@@ -157,5 +179,5 @@ export function useOrchestrator() {
     }
   }
 
-  return { sendEvent };
+  return { sendEvent, beginUserAction, endUserAction };
 }

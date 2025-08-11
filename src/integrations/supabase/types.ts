@@ -559,6 +559,33 @@ export type Database = {
         }
         Relationships: []
       }
+      client_events: {
+        Row: {
+          client_event_id: string
+          created_at: string
+          last_reply: Json | null
+          status: Database["public"]["Enums"]["client_event_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_event_id: string
+          created_at?: string
+          last_reply?: Json | null
+          status?: Database["public"]["Enums"]["client_event_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_event_id?: string
+          created_at?: string
+          last_reply?: Json | null
+          status?: Database["public"]["Enums"]["client_event_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       coach_chat_memory: {
         Row: {
           coach_id: string
@@ -6011,6 +6038,10 @@ export type Database = {
         }
         Returns: Json
       }
+      cleanup_old_client_events: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       cleanup_old_rate_limits: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -6322,6 +6353,7 @@ export type Database = {
         | "marketing"
         | "support"
         | "super_admin"
+      client_event_status: "RECEIVED" | "FINAL" | "CANCELLED" | "STALE"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6457,6 +6489,7 @@ export const Constants = {
         "support",
         "super_admin",
       ],
+      client_event_status: ["RECEIVED", "FINAL", "CANCELLED", "STALE"],
     },
   },
 } as const

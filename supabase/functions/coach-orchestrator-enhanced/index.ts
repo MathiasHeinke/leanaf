@@ -47,6 +47,33 @@ type OrchestratorReply =
 // Thresholds
 const THRESHOLDS = { tool: 0.7, clarify: 0.4 };
 
+// Client event helpers for proper idempotency
+async function upsertClientEvent(supabase: any, userId: string, clientEventId: string) {
+  const { data, error } = await supabase
+    .from('client_events')
+    .insert({ user_id: userId, client_event_id: clientEventId, status: 'RECEIVED' })
+    .select('status, last_reply, created_at')
+    .single();
+
+  if (!error) return { created: true, status: 'RECEIVED' as const };
+
+  // conflict → fetch existing
+  const { data: row } = await supabase
+    .from('client_events')
+    .select('status, last_reply, created_at')
+    .eq('user_id', userId)
+    .eq('client_event_id', clientEventId)
+    .maybeSingle();
+
+  return { created: false, status: row?.status, lastReply: row?.last_reply, createdAt: row?.created_at };
+}
+
+async function markFinal(supabase: any, userId: string, clientEventId: string, reply: any) {
+  await supabase.from('client_events')
+    .update({ status: 'FINAL', last_reply: reply, updated_at: new Date().toISOString() })
+    .eq('user_id', userId).eq('client_event_id', clientEventId);
+}
+
 // Helpers
 const getTraceId = (req: Request) => req.headers.get("x-trace-id") || crypto.randomUUID();
 const clarifyOptions = (intent: Intent): [string, string] => {
@@ -227,31 +254,24 @@ serve(async (req) => {
       // ignore rpc errors
     }
 
-    // Idempotency & retry info
+    // Robust idempotency with dedicated state table
     const retryHeader = req.headers.get('x-retry') === '1';
-    const clientEventId = (event as any).clientEventId as string | undefined;
-    if (clientEventId) {
-      // Check if already processed (prior reply_send with same clientEventId)
-      const { data: existingProcessed } = await supabase
-        .from('coach_traces')
-        .select('id')
-        .eq('stage', 'reply_send')
-        // @ts-ignore - JSONB contains filter supported at runtime
-        .contains('data', { clientEventId })
-        .limit(1);
-      if (existingProcessed && existingProcessed.length > 0) {
+    const clientEventId = (event as any).clientEventId || crypto.randomUUID();
+    
+    const ce = await upsertClientEvent(supabase, userId, clientEventId);
+    if (!ce.created) {
+      if (ce.status === 'FINAL' && ce.lastReply) {
+        // idempotent: return the actual last reply (NOT generic message)
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', payload: { dedupe: true, clientEventId, retried: retryHeader } });
-        return new Response(JSON.stringify(asLucyMessage('Alles klar – ich habe dir bereits geantwortet.', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify(ce.lastReply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      // Lightweight in-flight guard within this instance
-      // deno-lint-ignore no-var
-      var __inflight = (globalThis as any).__inflightSet as Set<string> | undefined;
-      if (!__inflight) { (globalThis as any).__inflightSet = new Set<string>(); __inflight = (globalThis as any).__inflightSet; }
-      if (__inflight.has(clientEventId)) {
+      // in progress: check age
+      const ageMs = ce.createdAt ? Date.now() - new Date(ce.createdAt).getTime() : 0;
+      if (ce.status === 'RECEIVED' && ageMs < 120000) {
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'route_decision', handler: 'coach-orchestrator-enhanced', status: 'RUNNING', payload: { inflight: true, clientEventId, retried: retryHeader } });
-        return new Response(JSON.stringify(asLucyMessage('⏳ Bin dran – einen Moment …', traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ kind: 'noop', text: '', traceId, reason: 'in_progress' }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
-      __inflight.add(clientEventId);
+      // STALE/CANCELLED → continue normal processing
     }
 
     // Rate limit check
@@ -620,7 +640,9 @@ serve(async (req) => {
       });
       if (error) throw error;
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'training-orchestrator', status: 'OK', latencyMs: Date.now() - t0 });
-      return new Response(JSON.stringify(asLucyMessage((data as any)?.text ?? "Training erfasst.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const finalReply = asLucyMessage((data as any)?.text ?? "Training erfasst.", traceId);
+      await markFinal(supabase, userId, clientEventId, finalReply);
+      return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // meal → analyze-meal (analysis only)
@@ -635,9 +657,12 @@ serve(async (req) => {
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'analyze-meal', status: 'OK', latencyMs: Date.now() - t0 });
       const proposal = (data as any)?.proposal ?? (data as any)?.analysis ?? null;
       if (!proposal) {
-        return new Response(JSON.stringify(asLucyMessage("Ich habe nichts Verlässliches erkannt – nenn mir kurz Menge & Zutaten, dann schätze ich dir die Makros.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const finalReply = asLucyMessage("Ich habe nichts Verlässliches erkannt – nenn mir kurz Menge & Zutaten, dann schätze ich dir die Makros.", traceId);
+        await markFinal(supabase, userId, clientEventId, finalReply);
+        return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const reply: OrchestratorReply = { kind: "confirm_save_meal", prompt: "Bitte kurz bestätigen – dann speichere ich die Mahlzeit.", proposal, traceId };
+      await markFinal(supabase, userId, clientEventId, reply);
       return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -878,6 +903,7 @@ serve(async (req) => {
       logTrace,
     }, { clarify: false, source });
     const reply: OrchestratorReply = typeof out.reply === "string" ? asLucyMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
+    await markFinal(supabase, userId, clientEventId, reply);
     return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     await logTrace({ traceId, stage: "error", data: { error: String(e) } });
