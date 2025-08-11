@@ -38,9 +38,9 @@ export type OrchestratorReply =
   | { kind: 'confirm_save_supplement'; prompt: string; proposal: SupplementProposal; traceId?: string };
 
 export type CoachEvent =
-  | { type: 'TEXT'; text: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general' } }
-  | { type: 'IMAGE'; url: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; image_type?: 'exercise'|'food'|'supplement'|'body' } }
-  | { type: 'END'; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general' } };
+  | { type: 'TEXT'; text: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; coachId?: string } }
+  | { type: 'IMAGE'; url: string; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; image_type?: 'exercise'|'food'|'supplement'|'body'; coachId?: string } }
+  | { type: 'END'; clientEventId: string; context?: { source: 'chat'|'momentum'|'quick-card'; coachMode?: 'training'|'nutrition'|'general'; coachId?: string } };
 
 function normalizeReply(raw: any): OrchestratorReply {
   if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
