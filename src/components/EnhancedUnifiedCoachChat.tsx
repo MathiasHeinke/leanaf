@@ -21,7 +21,7 @@ interface EnhancedChatInputProps {
   onTypingChange?: (typing: boolean) => void;
 }
 
-import { useEnhancedChat, EnhancedChatMessage } from '@/hooks/useEnhancedChat';
+import type { EnhancedChatMessage } from '@/hooks/useEnhancedChat';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
@@ -369,55 +369,8 @@ const messagesEndRef = useRef<HTMLDivElement>(null);
 const lastSendTimeRef = useRef<number | null>(null);
 const awaitingFirstPaintRef = useRef<boolean>(false);
 
-  // ============= ENHANCED CHAT INTEGRATION =============
-  const { 
-    sendMessage: sendEnhancedMessage, 
-    isLoading: isChatLoading, 
-    error: chatError,
-    lastMetadata,
-    clearError,
-    clearHistory,
-    getConversationStats,
-    conversationHistory,
-    memoryContext,
-    isMemoryUpdating
-  } = useEnhancedChat({
-    onError: (error) => {
-      console.error('❌ Enhanced chat error:', error);
-      
-      const errorMessage: EnhancedChatMessage = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: '❌ Entschuldigung, es gab ein technisches Problem. Meine erweiterten Funktionen sind momentan nicht verfügbar, aber ich versuche es weiter.',
-        created_at: new Date().toISOString(),
-        coach_personality: coach?.id || 'lucy',
-        coach_name: coach?.name || 'Coach',
-        coach_avatar: coach?.imageUrl,
-        coach_color: coach?.color,
-        coach_accent_color: coach?.accentColor
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      toast.error('Erweiterte Coach-Funktionen nicht verfügbar', {
-        description: 'Grundfunktionen sind weiterhin verfügbar.'
-      });
-    },
-    onSuccess: (response, metadata) => {
-      console.log('✅ Enhanced chat response received:', { 
-        responseLength: response.length,
-        metadata
-      });
-      
-      if (metadata?.hasMemory || metadata?.hasRag || metadata?.hasDaily) {
-        toast.success('Coach-Antwort mit vollem Kontext', {
-          description: `Memory: ${metadata.hasMemory ? '✅' : '❌'}, Wissen: ${metadata.hasRag ? '✅' : '❌'}, Tagesverlauf: ${metadata.hasDaily ? '✅' : '❌'}`
-        });
-      }
-    },
-    enableMemory: enableAdvancedFeatures,
-    enableRag: enableAdvancedFeatures,
-    enableProactive: enableAdvancedFeatures
-  });
+  // Legacy enhanced chat removed – orchestrator-only path
+
   
   // ============= CHAT INITIALIZATION =============
   useEffect(() => {
@@ -563,7 +516,7 @@ if (enableAdvancedFeatures) {
 
   // ============= SEND MESSAGE =============
   const handleSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
-    if (!message.trim() || !user?.id || isChatLoading) return;
+    if (!message.trim() || !user?.id || isOrchestratorLoading) return;
     const messageText = message.trim();
 
     // Check if this is a training plan analysis request
@@ -628,11 +581,11 @@ if (enableAdvancedFeatures) {
     } catch (error) {
       console.error('Error sending message:', error);
     }
-  }, [user?.id, coach, sendEnhancedMessage, isChatLoading, lastMetadata, mode]);
+  }, [user?.id, coach, isOrchestratorLoading, mode]);
 
   // Handle training plan creation
   const handleCreateTrainingPlan = useCallback(async () => {
-    if (!user?.id || isChatLoading || isCreatingPlan) return;
+    if (!user?.id || isOrchestratorLoading || isCreatingPlan) return;
     setShowQuickAction(false);
     setIsCreatingPlan(true);
 
@@ -708,7 +661,7 @@ if (enableAdvancedFeatures) {
     } finally {
       setIsCreatingPlan(false);
     }
-  }, [user?.id, coach, isChatLoading, isCreatingPlan, messages]);
+  }, [user?.id, coach, isOrchestratorLoading, isCreatingPlan, messages]);
 
   // ============= PLAN HANDLERS =============
   const handleSavePlan = useCallback(async (planData: any) => {
@@ -938,7 +891,7 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
 
 // ============= RENDER TYPING INDICATOR =============
 const renderTypingIndicator = () => {
-  if (!isChatLoading && !isOrchestratorLoading) return null;
+  if (!isOrchestratorLoading) return null;
   return <TypingIndicator name={coach?.name || 'Coach'} />;
 };
 
@@ -1084,7 +1037,7 @@ chatInput={
               inputText={inputText}
               setInputText={setInputText}
               onSendMessage={handleEnhancedSendMessage}
-              isLoading={isChatLoading}
+              isLoading={isOrchestratorLoading}
               placeholder="Nachricht eingeben..."
               onTypingChange={setUserTyping}
             />
@@ -1098,7 +1051,6 @@ chatInput={
           onCollapseChange={setBannerCollapsed}
           onDailyReset={() => {
             setMessages([]);
-            clearHistory();
           }}
         />
 
@@ -1310,7 +1262,7 @@ chatInput={
             inputText={inputText}
             setInputText={setInputText}
             onSendMessage={handleEnhancedSendMessage}
-            isLoading={isChatLoading}
+            isLoading={isOrchestratorLoading}
             placeholder="Nachricht eingeben..."
             onTypingChange={setUserTyping}
           />
