@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Flame, ChevronDown, ChevronUp, Clock, Utensils } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 
 type Totals = {
   caloriesUsed: number;
@@ -30,6 +31,8 @@ export type CaloriesCardProps = {
   meals: RawMeal[];
   frequent?: Frequent;
   onAddQuickMeal?: (text: string) => void;
+  onEditMeal?: (meal: any) => void;
+  onDeleteMeal?: (mealId: string) => void;
 };
 
 function formatNumber(n: number) {
@@ -58,13 +61,25 @@ function SmartChip({ text, onClick }: { text: string; onClick?: () => void }) {
   );
 }
 
-function MealRow({ meal }: { meal: any }) {
+function MealRow({
+  meal,
+  targets,
+  onEditMeal,
+  onDeleteMeal,
+}: {
+  meal: any;
+  targets: { protein: number; carbs: number; fat: number };
+  onEditMeal?: (meal: any) => void;
+  onDeleteMeal?: (mealId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const ts = meal.ts || meal.created_at;
   const time = ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--";
   const kcal = meal.kcal ?? meal.calories ?? 0;
   const title = meal.title || meal.name || "Meal";
-  const imageUrl = meal.imageUrl || (Array.isArray(meal.images) ? meal.images[0] : undefined);
+  const imageUrl = meal.imageUrl || (Array.isArray(meal.images) ? meal.images[0] : meal.photo_url || meal.image_url);
+
+  const pct = (v: number, t: number) => (t > 0 ? Math.min(100, Math.max(0, (Number(v || 0) / Number(t)) * 100)) : 0);
 
   return (
     <div className="border rounded-md">
@@ -73,30 +88,67 @@ function MealRow({ meal }: { meal: any }) {
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50"
         onClick={() => setOpen((v) => !v)}
       >
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <div className="text-sm font-medium truncate max-w-[12rem]">{time} · {title}</div>
+        <div className="flex items-center gap-2 min-w-0">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={`${title} mini`}
+              className="h-6 w-6 rounded-sm object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <Utensils className="h-4 w-4 text-muted-foreground" />
+          )}
+          <div className="text-sm font-medium truncate">{time} · {title}</div>
         </div>
-        <div className="text-sm font-semibold">{formatNumber(kcal)} kcal {open ? <ChevronUp className="inline h-4 w-4 ml-1" /> : <ChevronDown className="inline h-4 w-4 ml-1" />}</div>
+        <div className="text-sm font-semibold whitespace-nowrap">
+          {formatNumber(kcal)} kcal {open ? <ChevronUp className="inline h-4 w-4 ml-1" /> : <ChevronDown className="inline h-4 w-4 ml-1" />}
+        </div>
       </button>
       {open && (
         <div className="px-3 pb-3">
           {imageUrl && (
             <img src={imageUrl} alt={`${title} foto`} className="mt-2 w-full rounded-md object-cover max-h-44" loading="lazy" />
           )}
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            <MacroPill label="Protein" left={meal.protein || 0} />
-            <MacroPill label="Kohlenhydrate" left={meal.carbs || 0} />
-            <MacroPill label="Fett" left={meal.fats || meal.fat || 0} />
+          <div className="mt-3 space-y-2">
+            {/* Macros colored with progress */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col gap-1">
+                <div className="text-xs font-medium text-[hsl(var(--protein))]">P {formatNumber(meal.protein || 0)}g</div>
+                <Progress value={pct(meal.protein || 0, targets.protein || 0)} indicatorClassName="bg-[hsl(var(--protein))]" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="text-xs font-medium text-[hsl(var(--carbs))]">K {formatNumber(meal.carbs || 0)}g</div>
+                <Progress value={pct(meal.carbs || 0, targets.carbs || 0)} indicatorClassName="bg-[hsl(var(--carbs))]" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="text-xs font-medium text-[hsl(var(--fats))]">F {formatNumber(meal.fats ?? meal.fat ?? 0)}g</div>
+                <Progress value={pct(meal.fats ?? meal.fat ?? 0, targets.fat || 0)} indicatorClassName="bg-[hsl(var(--fats))]" />
+              </div>
+            </div>
+
+            {(onEditMeal || onDeleteMeal) && (
+              <div className="flex items-center gap-2 pt-1">
+                {onEditMeal && (
+                  <button type="button" className="text-xs underline text-muted-foreground hover:text-foreground" onClick={() => onEditMeal(meal)}>
+                    Bearbeiten
+                  </button>
+                )}
+                {onDeleteMeal && (
+                  <button type="button" className="text-xs underline text-destructive hover:opacity-80" onClick={() => onDeleteMeal(String(meal.id))}>
+                    Löschen
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-          <div className="mt-3 text-xs text-muted-foreground">ID: {meal.id}</div>
         </div>
       )}
     </div>
   );
 }
 
-export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal }: CaloriesCardProps) {
+export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, onEditMeal, onDeleteMeal }: CaloriesCardProps) {
   const [open, setOpen] = useState(true);
   const [showMeals, setShowMeals] = useState(false);
 
