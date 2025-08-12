@@ -36,6 +36,9 @@ import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { IndexOnboardingOverlay } from '@/components/IndexOnboardingOverlay';
 import { InteractiveOnboardingSlider } from '@/components/onboarding/InteractiveOnboardingSlider';
 import { cn } from '@/lib/utils';
+import { DateNavigation } from "@/components/DateNavigation";
+import { CaloriesCard } from "@/components/calories/CaloriesCard";
+import { useFrequentMeals } from "@/hooks/useFrequentMeals";
 
 
 const Index = () => {
@@ -72,6 +75,9 @@ const Index = () => {
     const savedOrder = localStorage.getItem('quickInputCardOrder');
     return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'measurements', 'supplements', 'fluids', 'mindset'];
   });
+
+  // Frequent meals for smart chips
+  const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
 
   // Check authentication and redirect if needed
   useEffect(() => {
@@ -392,6 +398,13 @@ const Index = () => {
     loadTodaysData(currentDate);
   };
 
+  const handleAddQuickMeal = (text: string) => {
+    mealInputHook.setInputText(text);
+    try {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    } catch {}
+  };
+
   const handleMealSuccess = async () => {
     await fetchMealsForDate(currentDate);
     mealInputHook.resetForm();
@@ -569,6 +582,13 @@ const Index = () => {
         />
       )}
       
+      {/* Sticky Date Navigation under GlobalHeader */}
+      <div className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
+        </div>
+      </div>
+      
       <div className="space-y-5">
         <Link to="/momentum-board" className="block rounded-2xl border border-border shadow-sm p-4 bg-card hover:bg-muted transition-colors">
           <div className="text-xs font-medium mb-1">Neu</div>
@@ -576,6 +596,27 @@ const Index = () => {
           <p className="text-sm text-muted-foreground">Dein tägliches Momentum: Defizit, Protein, Wasser, Training – alles auf einen Blick.</p>
           <div className="mt-3 inline-flex items-center rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium">Jetzt öffnen</div>
         </Link>
+
+        <CaloriesCard
+          date={currentDate}
+          totals={{
+            caloriesUsed: calorieSummary.consumed,
+            caloriesTarget: dailyGoals?.calories || 2000,
+            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0) +
+                     todaysFluids.reduce((sum, fluid) => sum + ((fluid.protein_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0) +
+                   todaysFluids.reduce((sum, fluid) => sum + ((fluid.carbs_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            fat: meals.reduce((sum, meal) => sum + (meal.fats || meal.fat || 0), 0) +
+                 todaysFluids.reduce((sum, fluid) => sum + ((fluid.fats_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            targetProtein: dailyGoals?.protein || 150,
+            targetCarbs: dailyGoals?.carbs || 250,
+            targetFat: dailyGoals?.fats || 65,
+          }}
+          meals={meals}
+          frequent={frequentMeals}
+          onAddQuickMeal={handleAddQuickMeal}
+        />
+
         <DailyProgress
           dailyTotals={{
             calories: calorieSummary.consumed,
