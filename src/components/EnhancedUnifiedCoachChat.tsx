@@ -1050,7 +1050,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
     const t0 = performance.now();
     const reply = await sendEvent(
       user.id,
-      { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any
+      { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', followup: messages.some(m => m.role === 'assistant'), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any
     );
 
     // Client metric: server_ack_ms

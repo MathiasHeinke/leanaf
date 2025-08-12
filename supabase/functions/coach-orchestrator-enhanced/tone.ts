@@ -13,12 +13,12 @@ export function composeVoice(p: CoachPersona, opts?: { memoryHint?: string }) {
 Regeln:
 - ${p.style_rules.join('\n- ')}
 - schreibe in DU-Form (deutsch), locker, aber kompetent
-- keine Codeblocks, kein „Als KI…"
-- Abschluss mit einer sanften Rückfrage (${p.sign_off ?? 'Okay?'})`;
+- keine Codeblocks, kein „Als KI…"`;
 }
 
+
 export function toLucyTone(raw: string, persona: { sign_off: string; emojis: string[] }, opts: ToneOpts = {}) {
-  const { addSignOff = true, limitEmojis = 1, respectQuestion = true } = opts;
+  const { addSignOff = false, limitEmojis = 1, respectQuestion = true } = opts;
 
   let text = String(raw || "")
     .replace(/```[\s\S]*?```/g, "")

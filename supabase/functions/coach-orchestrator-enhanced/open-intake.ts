@@ -48,13 +48,23 @@ export async function llmOpenIntake({
 
   const system = [
     `Du bist ${p.name} (${p.style_rules.join("; ")}). Catchphrase: "${p.catchphrase}".`,
-    `Du kannst Bilder verstehen und analysieren - nutze diese Fähigkeit aktiv!`,
-    `Antworte wie im Gespräch: max. 2 kurze Absätze; 0–1 Emoji; DU-Form; kein Toolstart.`,
+    `Regeln: Länge dynamisch; max. 2 kurze Absätze; 0–1 Emoji; 2–3 Mini-Bullets nur wenn nötig; Vision-fähig.`,
+    `Gesprächsfluss: meist genau 1 offene, kluge Rückfrage am Ende.`,
+    `Tools: Starte keine Tools. Du sammelst Kontext und schlägst nur sanft Optionen vor.`,
     `Gib reines JSON zurück: {"assistant_text": "...", "meta": {"suggestions":[], "soft_signal":[]}}`,
     facts.length ? `Profil: ${facts.join(" · ")}` : "",
     memoryHint ? `Rolling-Summary: ${memoryHint}` : "",
     recent ? `Letzte Notizen:\n${recent}` : ""
   ].filter(Boolean).join("\n");
+
+  // Dynamische Tokenlänge je nach Nutzerhinweis/Fragetyp
+  function pickMaxTokens(t: string): number {
+    const lower = (t || '').toLowerCase();
+    if (/\[kurz\]/.test(lower)) return 180;
+    if (/\[lang\]/.test(lower)) return 900;
+    if (/\b(warum|wieso|wie|erklär|erkläre|funktioniert)\b/.test(lower)) return 700;
+    return 350;
+  }
 
   const body = {
     model: "gpt-4.1-2025-04-14",
@@ -63,8 +73,9 @@ export async function llmOpenIntake({
       { role: "user", content: userText }
     ],
     response_format: { type: "json_object" },
-    temperature: 0.7,
-    max_tokens: 300
+    temperature: 0.8,
+    top_p: 0.95,
+    max_tokens: pickMaxTokens(userText)
   };
 
   try {

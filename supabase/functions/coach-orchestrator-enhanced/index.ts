@@ -390,7 +390,7 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'supplement-analysis', status: error?'ERROR':'OK' });
           const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
-          const reply = asLucyMessage(text, traceId);
+          const reply: OrchestratorReply = { kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId };
           await markFinal(supabaseState, userId, clientEventId, reply, traceId);
           return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
@@ -456,15 +456,15 @@ serve(async (req) => {
           coachId, 
           memoryHint,
           profile,
-          recentSummaries
+          recentSummaries,
+          supabase
         });
         
         await saveShadowState(supabaseState, { userId, traceId, meta: out.meta });
         
-        const p = personaPreset(coachId);
         const reply = { 
           kind: 'message' as const, 
-          text: toLucyTone(out.assistant_text, p, { addSignOff: true, limitEmojis: 1, respectQuestion: true }), 
+          text: toLucyTone(out.assistant_text, persona, { addSignOff: false, limitEmojis: 1, respectQuestion: true }), 
           traceId 
         };
         
@@ -574,7 +574,7 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-analysis', status: infoErr ? 'ERROR' : 'OK', latencyMs: Date.now() - tInfo });
           const analysisText = (infoData as any)?.analysis ?? 'Okay – kurzer Check: Keine kritischen Konflikte gefunden. Balance statt Perfektion ✨';
-          return new Response(JSON.stringify(asLucyMessage(analysisText, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(analysisText, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
         if (fu.kind === 'save') {
           const ceid = crypto.randomUUID();
@@ -599,7 +599,7 @@ serve(async (req) => {
           if (error) throw error;
           const act = (data as any)?.action;
           const msg = act === 'insert' ? `✔️ Gespeichert: ${pick.name}${pick.dose ? ` (${pick.dose})` : ''}.` : act === 'update' ? `👍 Aktualisiert: ${pick.name}.` : `Schon vorhanden – alles gut.`;
-          return new Response(JSON.stringify(asLucyMessage(msg + ' Willst du Dosis oder Timing anpassen?', traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(msg + ' Willst du Dosis oder Timing anpassen?', persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         if (fu.kind === 'update') {
           const ceid = crypto.randomUUID();
@@ -630,7 +630,7 @@ serve(async (req) => {
             parts.push(['Timing', [f, t].filter(Boolean).join(' ')].filter(Boolean).join(' '));
           }
           const friendly = parts.length ? parts.join(', ') : 'Einstellungen';
-          return new Response(JSON.stringify(asLucyMessage(`✅ Aktualisiert: ${friendly}.`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(`✅ Aktualisiert: ${friendly}.`, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         // unknown follow-up → guiding question
         return new Response(JSON.stringify(asLucyMessage(`Soll ich ${pick.name} speichern oder etwas ändern? Beispiele: "ja", "mach 5 g abends".`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -743,7 +743,8 @@ serve(async (req) => {
       });
       if (error) throw error;
       await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'training-orchestrator', status: 'OK', latencyMs: Date.now() - t0 });
-      const finalReply = asLucyMessage((data as any)?.text ?? "Training erfasst.", traceId);
+      const finalText = (data as any)?.text ?? "Training erfasst.";
+      const finalReply: OrchestratorReply = { kind: 'message', text: toLucyTone(finalText, persona, { addSignOff: true, respectQuestion: true }), traceId };
       await markFinal(supabaseState, userId, clientEventId, finalReply, traceId);
       return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -778,14 +779,14 @@ serve(async (req) => {
         });
         if (error) throw error;
         const text = (data as any)?.text ?? (data as any)?.reply ?? "Gewicht gespeichert.";
-        return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } else {
         const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
           body: { mode: "weight", userId, clientEventId, event },
           headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
         });
         if (error) throw error;
-        return new Response(JSON.stringify(asLucyMessage((data as any)?.text ?? "Gewicht gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone((data as any)?.text ?? "Gewicht gespeichert.", persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -798,14 +799,14 @@ serve(async (req) => {
         });
         if (error) throw error;
         const text = (data as any)?.text ?? (data as any)?.reply ?? "Tagebuch gespeichert.";
-        return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } else {
         const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
           body: { mode: "diary", userId, clientEventId, event },
           headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
         });
         if (error) throw error;
-        return new Response(JSON.stringify(asLucyMessage((data as any)?.text ?? "Tagebuch gespeichert.", traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone((data as any)?.text ?? "Tagebuch gespeichert.", persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -950,7 +951,7 @@ serve(async (req) => {
 
       if (!recognized.length) {
         const summary = typeof data === "string" ? data : ((raw as any)?.summary ?? (raw as any)?.text ?? JSON.stringify(raw).slice(0, 800));
-        return new Response(JSON.stringify(asLucyMessage(`💊 Supplement-Analyse:\n${summary}`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(`💊 Supplement-Analyse:\n${summary}`, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // pick top by confidence
