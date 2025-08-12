@@ -251,6 +251,14 @@ async function collectRawData(userId: string, date: string, timezone: string = '
     .order('created_at', { ascending: true })
     .limit(20);
 
+  // Mindset Journal (diary entries)
+  const { data: diaryEntries } = await supabase
+    .from('diary_entries')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('date', date)
+    .order('created_at', { ascending: true });
+
   // Quick workouts for the day
   const { data: quickWorkouts } = await supabase
     .from('workouts')
@@ -282,9 +290,10 @@ async function collectRawData(userId: string, date: string, timezone: string = '
     sessions?.length || 
     sleep || 
     weight ||
-    supplements?.length
+    supplements?.length ||
+    (diaryEntries?.length || 0)
   );
-  
+
   return {
     hasData,
     fastMeals: mealTotals,  
@@ -390,12 +399,30 @@ function deriveKPIs(raw: any) {
     taken_count: raw.supplements.filter((s: any) => s.taken).length
   };
 
+  // Mindset KPIs (Journal)
+  const mindset = (() => {
+    const entries = raw.diaryEntries || [];
+    const count = entries.length;
+    const moodCount: Record<string, number> = {};
+    let totalLen = 0;
+    const lastEntry = count ? entries[count - 1] : null;
+    entries.forEach((e: any) => {
+      const mood = e.mood || 'neutral';
+      moodCount[mood] = (moodCount[mood] || 0) + 1;
+      totalLen += (e.content?.length || 0);
+    });
+    const avg_len = count ? Math.round(totalLen / count) : 0;
+    const excerpt = lastEntry?.content ? String(lastEntry.content).slice(0, 160) : null;
+    return { entries_count: count, mood_distribution: moodCount, avg_length: avg_len, last_entry_excerpt: excerpt };
+  })();
+
   return {
     nutrition,
     training,
     recovery,
     hydration,
-    supplements
+    supplements,
+    mindset
   };
 }
 
@@ -560,6 +587,21 @@ function buildBlueprintJson(date: string, kpi: any, raw: any) {
       }))
     },
 
+    // Mindset Journal
+    mindset: {
+      entries_count: kpi.mindset?.entries_count || 0,
+      mood_distribution: kpi.mindset?.mood_distribution || {},
+      avg_length: kpi.mindset?.avg_length || 0,
+      last_entry_excerpt: kpi.mindset?.last_entry_excerpt || null,
+      entries: (raw.diaryEntries || []).slice(0, 10).map((e: any) => ({
+        id: e.id,
+        created_at: e.created_at,
+        mood: e.mood,
+        entry_type: e.entry_type,
+        content_excerpt: e.content ? String(e.content).slice(0, 200) : null
+      }))
+    },
+
     // Coaching conversations
     coaching: {
       sentiment: analyzeSentiment(raw.conversations),
@@ -703,6 +745,10 @@ function calculateCompletenessScore(raw: any) {
   // Supplements (weight: 10%)
   maxScore += 10;
   if (raw.supplements.length > 0) score += 10;
+
+  // Journal (weight: 10%)
+  maxScore += 10;
+  if ((raw.diaryEntries || []).length > 0) score += 10;
 
   return maxScore > 0 ? Math.round((score / maxScore) * 100) / 100 : 0;
 }
