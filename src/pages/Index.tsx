@@ -26,7 +26,8 @@ import { useBadgeChecker } from "@/hooks/useBadgeChecker";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { MealInput } from "@/components/MealInput";
+import { MealInputLean } from "@/components/MealInputLean";
+import { EnhancedMealInput } from "@/components/EnhancedMealInput";
 import { toast } from "sonner";
 
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
@@ -795,8 +796,8 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Floating Meal Input */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent">
+      {/* Floating Meal Input (hidden, kept for compatibility) */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent hidden" data-testid="mealinput_lean-container">
         <div className="max-w-md mx-auto px-4 pb-3 pt-2 bg-transparent">
           <div className={cn(
             "relative",
@@ -808,7 +809,7 @@ const Index = () => {
                 <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-blue-600"></div>
               </div>
             )}
-            <MealInput 
+            <MealInputLean 
               inputText={mealInputHook.inputText}
               setInputText={mealInputHook.setInputText}
               onSubmitMeal={() => {
@@ -830,6 +831,9 @@ const Index = () => {
           </div>
         </div>
       </div>
+
+      {/* Enhanced Meal Input (visible) */}
+      <EnhancedMealInput />
 
       {/* Meal Confirmation Dialog */}
       {mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData && (
