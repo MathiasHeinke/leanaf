@@ -15,7 +15,7 @@ import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
 import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { QuickMindsetInput } from "@/components/QuickMindsetInput";
-import { BodyMeasurements } from "@/components/BodyMeasurements";
+import { QuickMeasurementsCard } from "@/components/momentum/quick/QuickMeasurementsCard";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
@@ -571,7 +571,7 @@ const Index = () => {
       case 'measurements':
         return (
           <SortableCard key="measurements" id="measurements">
-            <BodyMeasurements 
+            <QuickMeasurementsCard 
               onMeasurementsAdded={handleMeasurementsAdded}
               todaysMeasurements={todaysMeasurements}
             />

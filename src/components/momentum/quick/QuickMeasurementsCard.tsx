@@ -1,0 +1,174 @@
+import React, { useState, useEffect } from 'react';
+import { QuickCardShell } from './QuickCardShell';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { BodyMeasurements } from '@/components/BodyMeasurements';
+import { Ruler, TrendingUp } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface QuickMeasurementsCardProps {
+  todaysMeasurements?: any;
+  onMeasurementsAdded?: () => void;
+}
+
+export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
+  todaysMeasurements,
+  onMeasurementsAdded
+}) => {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+
+  const hasMeasurements = todaysMeasurements && todaysMeasurements.id;
+
+  // Create summary text for closed mode
+  const getSummaryText = () => {
+    if (!hasMeasurements) return 'Noch nicht gemessen';
+    
+    const parts = [];
+    if (todaysMeasurements.waist) parts.push(`Taille: ${todaysMeasurements.waist}cm`);
+    if (todaysMeasurements.belly) parts.push(`Bauch: ${todaysMeasurements.belly}cm`);
+    if (todaysMeasurements.hips) parts.push(`Hüfte: ${todaysMeasurements.hips}cm`);
+    
+    return parts.length > 0 ? parts.slice(0, 2).join(' • ') : 'Maße erfasst';
+  };
+
+  return (
+    <>
+      <QuickCardShell
+        title="Körpermaße"
+        icon={<Ruler className="h-4 w-4" />}
+        status={getSummaryText()}
+        statusIcon={hasMeasurements ? <TrendingUp className="h-3 w-3" /> : undefined}
+        quickActions={hasMeasurements ? [] : [
+          {
+            label: 'Jetzt messen',
+            onClick: () => setDetailsOpen(true),
+            variant: 'default'
+          },
+          {
+            label: 'Anleitung',
+            onClick: () => setIsOpen(true),
+            variant: 'outline'
+          }
+        ]}
+        detailsAction={{
+          label: 'Details',
+          onClick: () => setDetailsOpen(true)
+        }}
+      >
+        <Card className="overflow-hidden">
+          <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            <CollapsibleTrigger className="w-full">
+              <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
+                    <Ruler className="h-4 w-4 text-cyan-600" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-medium text-foreground">
+                      {hasMeasurements ? "Maße erfasst! 📏" : "Körpermaße"}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {hasMeasurements ? "Tap für Details" : "Wöchentliche Messungen für beste Trends"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {hasMeasurements && (
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">
+                        Letzte Messung
+                      </div>
+                      <div className="text-sm font-medium">
+                        {new Date(todaysMeasurements.date).toLocaleDateString('de-DE')}
+                      </div>
+                    </div>
+                  )}
+                  {isOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                {hasMeasurements ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+                      {todaysMeasurements?.neck && (
+                        <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
+                      )}
+                      {todaysMeasurements?.chest && (
+                        <div><strong>Brust:</strong> {todaysMeasurements.chest}cm</div>
+                      )}
+                      {todaysMeasurements?.waist && (
+                        <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
+                      )}
+                      {todaysMeasurements?.belly && (
+                        <div><strong>Bauch:</strong> {todaysMeasurements.belly}cm</div>
+                      )}
+                      {todaysMeasurements?.hips && (
+                        <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
+                      )}
+                      {todaysMeasurements?.arms && (
+                        <div><strong>Arme:</strong> {todaysMeasurements.arms}cm</div>
+                      )}
+                      {todaysMeasurements?.thigh && (
+                        <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
+                      )}
+                    </div>
+                    
+                    <div className="bg-card rounded-lg p-3 border-l-4 border-cyan-500">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        <strong>Progress-Tipp:</strong> Nächste Messung in 7 Tagen 📅
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Körperumfänge zeigen oft bessere Fortschritte als nur das Gewicht, da sie Muskelaufbau und Fettabbau getrennt erfassen.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-950/20 dark:to-blue-950/20 rounded-lg p-4">
+                      <h4 className="font-medium text-foreground mb-2">📏 Warum Körpermaße wichtig sind</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Körperumfänge sind oft bessere Indikatoren für deine Fortschritte als nur das Gewicht, da sie Muskelaufbau und Fettabbau getrennt erfassen.
+                      </p>
+                      <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground">
+                        <div>• <strong>Taille & Bauch:</strong> Zeigen Fettabbau am Körpermitte</div>
+                        <div>• <strong>Arme & Brust:</strong> Reflektieren Muskelaufbau</div>
+                        <div>• <strong>Wöchentlich messen:</strong> Für beste Trend-Erkennung</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </Card>
+      </QuickCardShell>
+
+      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Körpermaße Details</SheetTitle>
+          </SheetHeader>
+          <div className="mt-6">
+            <BodyMeasurements 
+              onMeasurementsAdded={() => {
+                onMeasurementsAdded?.();
+                setDetailsOpen(false);
+              }} 
+              todaysMeasurements={todaysMeasurements} 
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+};

@@ -111,7 +111,7 @@ export const QuickWeightCard: React.FC = () => {
           quickActions={hasWeightToday ? [] : [
             {
               label: 'Gewicht eintragen',
-              onClick: () => setShowQuickForm(true),
+              onClick: () => setDetailsOpen(true),
               variant: 'default'
             }
           ]}
