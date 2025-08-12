@@ -37,6 +37,7 @@ import { GehirnPage } from "./pages/Gehirn";
 import TraceDebug from "./pages/TraceDebug";
 import TransformationJourneyPage from "./pages/TransformationJourney";
 import MomentumBoard from "./pages/MomentumBoard";
+import TestSummaryPage from "./pages/TestSummary";
 import { MealInputProvider } from "@/hooks/useGlobalMealInput";
 
 const queryClient = new QueryClient();
@@ -87,6 +88,7 @@ const App = () => (
                       <Route path="/marketing" element={<Marketing />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/gehirn" element={<GehirnPage />} />
+                      <Route path="/test-summary" element={<TestSummaryPage />} />
                       {/* Redirect old subscription route */}
                       <Route path="/subscription" element={<Navigate to="/credits" replace />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
