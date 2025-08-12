@@ -81,7 +81,7 @@ function getMealQuality(score: number): string {
   return "Verbesserbar";
 }
 
-function MacroPill({ label, left, unit = "g", macroType }: { label: string; left: number; unit?: string; macroType?: 'protein' | 'carbs' | 'fat' }) {
+function MacroPill({ label, left, max, unit = "g", macroType }: { label: string; left: number; max?: number; unit?: string; macroType?: 'protein' | 'carbs' | 'fat' }) {
   const colorClass = macroType ? {
     protein: "text-protein border-protein/20 bg-protein/10",
     carbs: "text-carbs border-carbs/20 bg-carbs/10", 
@@ -94,7 +94,12 @@ function MacroPill({ label, left, unit = "g", macroType }: { label: string; left
       colorClass
     )}>
       <div className="text-xs text-muted-foreground/80">{label}</div>
-      <div className="text-sm font-semibold">{formatNumber(left)}{unit}</div>
+      <div className="text-sm font-semibold">
+        {formatNumber(left)}{unit}
+        {typeof max === 'number' ? (
+          <span className="text-muted-foreground ml-1">/ {formatNumber(max)}{unit}</span>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -332,11 +337,11 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <div className="font-semibold">{formatNumber(totals.caloriesUsed)} / {formatNumber(totals.caloriesTarget)} kcal</div>
             <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-protein">P {formatNumber(totals.protein || 0)}g</span>
+            <span className="font-medium text-protein">P {formatNumber(totals.protein || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetProtein || 0)}g</span></span>
             <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-carbs">K {formatNumber(totals.carbs || 0)}g</span>
+            <span className="font-medium text-carbs">K {formatNumber(totals.carbs || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetCarbs || 0)}g</span></span>
             <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-fats">F {formatNumber(totals.fat || 0)}g</span>
+            <span className="font-medium text-fats">F {formatNumber(totals.fat || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetFat || 0)}g</span></span>
           </div>
         )}
 
@@ -364,9 +369,9 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
 
         {/* Macros left with colors */}
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <MacroPill label="Protein" left={proteinLeft} macroType="protein" />
-          <MacroPill label="Kohlenhydrate" left={carbsLeft} macroType="carbs" />
-          <MacroPill label="Fett" left={fatLeft} macroType="fat" />
+          <MacroPill label="Protein" left={proteinLeft} max={totals.targetProtein || 0} macroType="protein" />
+          <MacroPill label="Kohlenhydrate" left={carbsLeft} max={totals.targetCarbs || 0} macroType="carbs" />
+          <MacroPill label="Fett" left={fatLeft} max={totals.targetFat || 0} macroType="fat" />
         </div>
 
 

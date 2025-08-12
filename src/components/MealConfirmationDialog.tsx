@@ -22,7 +22,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
-import { CalendarIcon, MessageSquare, X } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
@@ -61,36 +61,13 @@ export const MealConfirmationDialog = ({
   });
 
   const [mealDate, setMealDate] = useState<Date>(new Date());
-  const [coachPersonality, setCoachPersonality] = useState<string>('motivierend');
   const [verificationMessage, setVerificationMessage] = useState('');
   const [showVerification, setShowVerification] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [mealEvaluation, setMealEvaluation] = useState<any>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
-  // Fetch user's coach personality
-  useEffect(() => {
-    const fetchCoachPersonality = async () => {
-      if (!user?.id) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('coach_personality')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        
-        if (error) return;
-        if (data?.coach_personality) {
-          setCoachPersonality(data.coach_personality);
-        }
-      } catch (error) {
-        // Silent fail
-      }
-    };
-
-    fetchCoachPersonality();
-  }, [user?.id]);
+  
 
   // Initialize editable values
   useEffect(() => {
@@ -166,25 +143,6 @@ export const MealConfirmationDialog = ({
       toast.error('Fehler bei der Überprüfung: ' + (error.message || 'Unbekannter Fehler'));
     } finally {
       setIsVerifying(false);
-    }
-  };
-
-  // Generate coach comment based on personality
-  const getCoachComment = () => {
-    const mealTitle = analyzedMealData?.title || t('meal.title').toLowerCase();
-    
-    switch (coachPersonality) {
-      case 'hart':
-        return `💪 ${mealTitle}? Solide Wahl! Prüf die Nährwerte und dann ran an die Arbeit - deine Ziele warten nicht!`;
-      case 'soft':
-        return `🌟 ${mealTitle} sieht wunderbar aus! Schau dir die Nährwerte in Ruhe an - du machst das großartig.`;
-      case 'lustig':
-        return `😄 ${mealTitle}! Nicht schlecht für einen Anfänger! 😉 Check die Nährwerte und lass uns weitermachen!`;
-      case 'ironisch':
-        return `🤔 ${mealTitle}... interessante Wahl. Schau dir mal die Nährwerte an - vielleicht überrascht es dich.`;
-      case 'motivierend':
-      default:
-        return `🚀 ${mealTitle}! Tolle Auswahl! Diese Mahlzeit bringt dich deinen Zielen näher.`;
     }
   };
 
@@ -574,7 +532,6 @@ export const MealConfirmationDialog = ({
                     onClick={() => setShowVerification(true)}
                     className="w-full"
                   >
-                    <MessageSquare className="h-4 w-4 mr-2" />
                     Mit KI überprüfen
                   </Button>
                 ) : (
