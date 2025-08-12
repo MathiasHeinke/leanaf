@@ -334,14 +334,30 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
 
         {/* Collapsed summary when card is closed */}
         {!open && (
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <div className="font-semibold">{formatNumber(totals.caloriesUsed)} / {formatNumber(totals.caloriesTarget)} kcal</div>
-            <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-protein">P {formatNumber(totals.protein || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetProtein || 0)}g</span></span>
-            <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-carbs">K {formatNumber(totals.carbs || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetCarbs || 0)}g</span></span>
-            <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-fats">F {formatNumber(totals.fat || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetFat || 0)}g</span></span>
+          <div className="mt-3 space-y-1 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="font-semibold">
+                {formatNumber(totals.caloriesUsed)} / {formatNumber(totals.caloriesTarget)} kcal
+              </div>
+              <Progress
+                className="h-2 w-24 md:w-32"
+                value={(totals.caloriesTarget > 0 ? Math.min(100, Math.max(0, (Number(totals.caloriesUsed || 0) / Number(totals.caloriesTarget)) * 100)) : 0)}
+                aria-label="Kalorien-Fortschritt"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-medium text-protein">
+                P {formatNumber(totals.protein || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetProtein || 0)}g</span>
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="font-medium text-carbs">
+                K {formatNumber(totals.carbs || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetCarbs || 0)}g</span>
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="font-medium text-fats">
+                F {formatNumber(totals.fat || 0)}g <span className="text-muted-foreground">/ {formatNumber(totals.targetFat || 0)}g</span>
+              </span>
+            </div>
           </div>
         )}
 
