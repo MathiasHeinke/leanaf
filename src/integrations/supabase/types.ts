@@ -789,6 +789,48 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_personas: {
+        Row: {
+          bio_short: string | null
+          catchphrase: string | null
+          created_at: string
+          emojis: Json
+          id: string
+          name: string
+          sign_off: string | null
+          style_rules: Json
+          title: string | null
+          updated_at: string
+          voice: string | null
+        }
+        Insert: {
+          bio_short?: string | null
+          catchphrase?: string | null
+          created_at?: string
+          emojis?: Json
+          id: string
+          name: string
+          sign_off?: string | null
+          style_rules?: Json
+          title?: string | null
+          updated_at?: string
+          voice?: string | null
+        }
+        Update: {
+          bio_short?: string | null
+          catchphrase?: string | null
+          created_at?: string
+          emojis?: Json
+          id?: string
+          name?: string
+          sign_off?: string | null
+          style_rules?: Json
+          title?: string | null
+          updated_at?: string
+          voice?: string | null
+        }
+        Relationships: []
+      }
       coach_pipeline_status: {
         Row: {
           avg_embedding_quality: number | null

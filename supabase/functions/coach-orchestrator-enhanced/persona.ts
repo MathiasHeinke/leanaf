@@ -1,3 +1,4 @@
+
 export type CoachPersona = {
   id: string;
   name: string;
@@ -8,12 +9,18 @@ export type CoachPersona = {
   catchphrase?: string;
 };
 
+function normalizeVoice(v?: string): CoachPersona['voice'] {
+  const allowed: CoachPersona['voice'][] = ['warm', 'pragmatisch', 'locker'];
+  if (v && allowed.includes(v as any)) return v as CoachPersona['voice'];
+  return 'warm';
+}
+
 export function personaPreset(coachId: string) {
   if (coachId === "lucy") {
     return {
       id: "lucy",
       name: "Dr. Lucy Martinez",
-      voice: "warm",
+      voice: "warm" as const,
       style_rules: [
         "PhD Chrononutrition; Coach & Yoga-Lehrerin; Barcelona → Berlin",
         "Empathisch, motivierend, achtsam, vegan-freundlich",
@@ -25,16 +32,46 @@ export function personaPreset(coachId: string) {
       emojis: ["✨","🌿","✅"]
     };
   }
-  return { id: coachId, sign_off: "Okay?", emojis: ["🙂"], style_rules: [], catchphrase: "" };
+  return { id: coachId, sign_off: "Okay?", emojis: ["🙂"], style_rules: [], catchphrase: "", voice: "warm" as const, name: coachId.charAt(0).toUpperCase() + coachId.slice(1) };
 }
 
 // Minimal preset; later can be loaded from DB
 export async function loadCoachPersona(_supabase: any, coachId?: string): Promise<CoachPersona> {
-  const preset = personaPreset(coachId || 'lucy');
+  const id = coachId || 'lucy';
+  // Try DB first
+  try {
+    const { data, error } = await _supabase
+      .from('coach_personas')
+      .select('id, name, title, bio_short, style_rules, catchphrase, sign_off, emojis, voice')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!error && data) {
+      // Normalize and coerce types
+      const style_rules = Array.isArray(data.style_rules) ? data.style_rules as string[] : [];
+      const emojis = Array.isArray(data.emojis) ? data.emojis as string[] : [];
+      const persona: CoachPersona = {
+        id: data.id,
+        name: data.name || (id.charAt(0).toUpperCase() + id.slice(1)),
+        voice: normalizeVoice(data.voice),
+        style_rules,
+        sign_off: data.sign_off || undefined,
+        emojis,
+        catchphrase: data.catchphrase || undefined
+      };
+      return persona;
+    }
+  } catch (e) {
+    // Swallow and fallback to preset
+    console.warn('[persona] DB lookup failed; falling back to preset', { coachId: id, error: String(e) });
+  }
+
+  // Fallback to preset
+  const preset = personaPreset(id);
   return {
     id: preset.id,
     name: preset.name || preset.id.charAt(0).toUpperCase() + preset.id.slice(1),
-    voice: 'warm',
+    voice: normalizeVoice((preset as any).voice),
     style_rules: preset.style_rules,
     sign_off: preset.sign_off,
     emojis: preset.emojis,
