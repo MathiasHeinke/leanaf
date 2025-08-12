@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { QuickCardShell } from './QuickCardShell';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { BodyMeasurements } from '@/components/BodyMeasurements';
 import { Ruler, TrendingUp } from 'lucide-react';
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface QuickMeasurementsCardProps {
   todaysMeasurements?: any;
@@ -18,7 +15,6 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
   onMeasurementsAdded
 }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
 
   const hasMeasurements = todaysMeasurements && todaysMeasurements.id;
 
@@ -46,11 +42,6 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
             label: 'Jetzt messen',
             onClick: () => setDetailsOpen(true),
             variant: 'default'
-          },
-          {
-            label: 'Anleitung',
-            onClick: () => setIsOpen(true),
-            variant: 'outline'
           }
         ]}
         detailsAction={{
@@ -59,98 +50,57 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
         }}
         dataState={hasMeasurements ? 'done' : 'empty'}
         progressPercent={hasMeasurements ? 100 : 0}
+        showStateDecorations={false}
       >
-        <div className="overflow-hidden rounded-lg border border-border/40">
-          <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-            <CollapsibleTrigger className="w-full">
-              <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10">
-                    <Ruler className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-medium text-foreground">
-                      {hasMeasurements ? "Maße erfasst! 📏" : "Körpermaße"}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {hasMeasurements ? "Tippe für Details" : "Wöchentliche Messungen für beste Trends"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {hasMeasurements && (
-                    <div className="text-right">
-                      <div className="text-xs text-muted-foreground">Letzte Messung</div>
-                      <div className="text-sm font-medium">
-                        {new Date(todaysMeasurements.date).toLocaleDateString('de-DE')}
-                      </div>
-                    </div>
-                  )}
-                  {isOpen ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
+        {hasMeasurements ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+              {todaysMeasurements?.neck && (
+                <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
+              )}
+              {todaysMeasurements?.chest && (
+                <div><strong>Brust:</strong> {todaysMeasurements.chest}cm</div>
+              )}
+              {todaysMeasurements?.waist && (
+                <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
+              )}
+              {todaysMeasurements?.belly && (
+                <div><strong>Bauch:</strong> {todaysMeasurements.belly}cm</div>
+              )}
+              {todaysMeasurements?.hips && (
+                <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
+              )}
+              {todaysMeasurements?.arms && (
+                <div><strong>Arme:</strong> {todaysMeasurements.arms}cm</div>
+              )}
+              {todaysMeasurements?.thigh && (
+                <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
+              )}
+            </div>
+            <div className="bg-card rounded-lg p-3 border-l-4 border-primary">
+              <p className="text-xs text-muted-foreground mb-1">
+                <strong>Progress-Tipp:</strong> Nächste Messung in 7 Tagen 📅
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Körperumfänge zeigen oft bessere Fortschritte als nur das Gewicht.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="bg-gradient-to-r from-primary/5 to-accent/5 dark:from-primary/10 dark:to-accent/10 rounded-lg p-4">
+              <h4 className="font-medium text-foreground mb-2">📏 Warum Körpermaße wichtig sind</h4>
+              <p className="text-sm text-muted-foreground mb-3">
+                Körperumfänge sind oft bessere Indikatoren für deine Fortschritte als nur das Gewicht.
+              </p>
+              <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground">
+                <div>• <strong>Taille & Bauch:</strong> Zeigen Fettabbau am Körpermitte</div>
+                <div>• <strong>Arme & Brust:</strong> Reflektieren Muskelaufbau</div>
+                <div>• <strong>Wöchentlich messen:</strong> Für beste Trend-Erkennung</div>
               </div>
-            </CollapsibleTrigger>
-
-            <CollapsibleContent>
-              <div className="p-4 pt-0">
-                {hasMeasurements ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-                      {todaysMeasurements?.neck && (
-                        <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
-                      )}
-                      {todaysMeasurements?.chest && (
-                        <div><strong>Brust:</strong> {todaysMeasurements.chest}cm</div>
-                      )}
-                      {todaysMeasurements?.waist && (
-                        <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
-                      )}
-                      {todaysMeasurements?.belly && (
-                        <div><strong>Bauch:</strong> {todaysMeasurements.belly}cm</div>
-                      )}
-                      {todaysMeasurements?.hips && (
-                        <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
-                      )}
-                      {todaysMeasurements?.arms && (
-                        <div><strong>Arme:</strong> {todaysMeasurements.arms}cm</div>
-                      )}
-                      {todaysMeasurements?.thigh && (
-                        <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
-                      )}
-                    </div>
-
-                    <div className="bg-card rounded-lg p-3 border-l-4 border-primary">
-                      <p className="text-xs text-muted-foreground mb-1">
-                        <strong>Progress-Tipp:</strong> Nächste Messung in 7 Tagen 📅
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Körperumfänge zeigen oft bessere Fortschritte als nur das Gewicht, da sie Muskelaufbau und Fettabbau getrennt erfassen.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="bg-gradient-to-r from-primary/5 to-accent/5 dark:from-primary/10 dark:to-accent/10 rounded-lg p-4">
-                      <h4 className="font-medium text-foreground mb-2">📏 Warum Körpermaße wichtig sind</h4>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Körperumfänge sind oft bessere Indikatoren für deine Fortschritte als nur das Gewicht, da sie Muskelaufbau und Fettabbau getrennt erfassen.
-                      </p>
-                      <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground">
-                        <div>• <strong>Taille & Bauch:</strong> Zeigen Fettabbau am Körpermitte</div>
-                        <div>• <strong>Arme & Brust:</strong> Reflektieren Muskelaufbau</div>
-                        <div>• <strong>Wöchentlich messen:</strong> Für beste Trend-Erkennung</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
+            </div>
+          </div>
+        )}
       </QuickCardShell>
 
       <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>

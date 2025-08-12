@@ -559,7 +559,7 @@ const Index = () => {
     switch (cardType) {
       case 'sleep':
         return (
-          <SortableCard key="sleep" id="sleep">
+          <SortableCard key="sleep" id="sleep" state={todaysSleep && (todaysSleep.sleep_hours != null || todaysSleep.bedtime != null) ? 'done' : 'empty'}>
             <QuickSleepInput 
               onSleepAdded={handleSleepAdded}
               todaysSleep={todaysSleep}

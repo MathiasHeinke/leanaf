@@ -34,6 +34,7 @@ interface QuickCardShellProps {
   // New state system
   dataState?: 'empty' | 'partial' | 'done';
   progressPercent?: number;
+  showStateDecorations?: boolean;
 }
 
 export const QuickCardShell: React.FC<QuickCardShellProps> = ({
@@ -47,7 +48,8 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
   children,
   className,
   dataState = 'empty',
-  progressPercent = 0
+  progressPercent = 0,
+  showStateDecorations = true
 }) => {
   // State-based styling
   const getStateStyles = () => {
@@ -80,7 +82,7 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
   return (
     <Card className={cn(
       "rounded-2xl shadow-sm p-6 animate-fade-in transition-all duration-300 hover:shadow-md",
-      stateStyles.cardClass,
+      showStateDecorations ? stateStyles.cardClass : undefined,
       className
     )}>
       {/* Header */}
@@ -94,14 +96,16 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "inline-flex h-2.5 w-2.5 rounded-full ring-2",
-                  stateStyles.dotClass,
-                  "animate-[pulse_3s_ease-in-out_infinite]"
-                )}
-                aria-hidden
-              />
+              {showStateDecorations && (
+                <span
+                  className={cn(
+                    "inline-flex h-2.5 w-2.5 rounded-full ring-2",
+                    stateStyles.dotClass,
+                    "animate-[pulse_3s_ease-in-out_infinite]"
+                  )}
+                  aria-hidden
+                />
+              )}
               <h3 className="font-semibold text-foreground">{title}</h3>
             </div>
             {status && (
