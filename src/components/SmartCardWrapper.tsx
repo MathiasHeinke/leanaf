@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify';
 import { SmartCard } from './SmartCard';
 import { CardDiary } from './CardDiary';
-
+import { CardMeal } from './CardMeal';
 import { CardGoalCheckin } from './CardGoalCheckin';
 import { WorkoutPlanDraftCard } from './WorkoutPlanDraftCard';
 
@@ -179,6 +179,9 @@ export const SmartCardWrapper = ({ card, payload }: any) => {
     
     case 'diary':
       return <CardDiary payload={payload} />;
+    
+    case 'meal':
+      return <CardMeal payload={payload} />;
     
     case 'goalCheckin':
       return <CardGoalCheckin payload={payload} />;

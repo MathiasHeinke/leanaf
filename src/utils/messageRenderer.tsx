@@ -1,7 +1,7 @@
 import React from 'react';
 import { SmartCard } from '@/components/SmartCard';
 import { SupplementCard } from '@/components/SupplementCard';
-
+import { MealCard } from '@/components/MealCard';
 import { ExerciseCard } from '@/components/ExerciseCard';
 import { MindsetCard } from '@/components/MindsetCard';
 import { TrainingPlanCard } from '@/components/TrainingPlanCard';
@@ -76,6 +76,13 @@ export function renderMessage(
           />
         );
       
+      case 'meal':
+        return (
+          <MealCard
+            key={cardMessage.id}
+            meal={cardMessage.payload.meal}
+          />
+        );
       
       case 'exercise':
         return (

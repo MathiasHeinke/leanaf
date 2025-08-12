@@ -8,7 +8,7 @@ import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { MealList } from "@/components/MealList";
-
+import { DailyProgress } from "@/components/DailyProgress";
 import { QuickWeightInput } from "@/components/QuickWeightInput";
 import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { QuickSleepInput } from "@/components/QuickSleepInput";
@@ -654,6 +654,12 @@ const Index = () => {
       </div>
 
       <div className="space-y-5">
+        <Link to="/momentum-board" className="block rounded-2xl border border-border shadow-sm p-4 bg-card hover:bg-muted transition-colors">
+          <div className="text-xs font-medium mb-1">Neu</div>
+          <div className="text-lg font-semibold">Momentum‑Board</div>
+          <p className="text-sm text-muted-foreground">Dein tägliches Momentum: Defizit, Protein, Wasser, Training – alles auf einen Blick.</p>
+          <div className="mt-3 inline-flex items-center rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium">Jetzt öffnen</div>
+        </Link>
 
         <CaloriesCard
           date={currentDate}
@@ -713,6 +719,27 @@ const Index = () => {
           />
         )}
 
+        <DailyProgress
+          dailyTotals={{
+            calories: calorieSummary.consumed,
+            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0) + 
+                    todaysFluids.reduce((sum, fluid) => sum + ((fluid.protein_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0) + 
+                  todaysFluids.reduce((sum, fluid) => sum + ((fluid.carbs_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            fats: meals.reduce((sum, meal) => sum + (meal.fats || 0), 0) + 
+                 todaysFluids.reduce((sum, fluid) => sum + ((fluid.fats_per_100ml || 0) * (fluid.amount_ml / 100)), 0)
+          }}
+          userProfile={userProfile}
+          dailyGoal={{
+            calories: dailyGoals?.calories || 2000,
+            protein: dailyGoals?.protein || 150,
+            carbs: dailyGoals?.carbs || 250,
+            fats: dailyGoals?.fats || 65
+          }}
+          userGoal={userProfile?.goal || 'maintain'}
+          currentDate={currentDate}
+          onDateChange={handleDateChange}
+        />
 
         {/* Sortable Quick Input Cards */}
         <DndContext 
