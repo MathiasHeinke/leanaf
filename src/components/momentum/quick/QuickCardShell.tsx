@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreVertical } from 'lucide-react';
+import { MoreVertical, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface QuickAction {
@@ -35,6 +35,10 @@ interface QuickCardShellProps {
   dataState?: 'empty' | 'partial' | 'done';
   progressPercent?: number;
   showStateDecorations?: boolean;
+  // Collapsible behavior
+  collapsible?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const QuickCardShell: React.FC<QuickCardShellProps> = ({
@@ -49,8 +53,22 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
   className,
   dataState = 'empty',
   progressPercent = 0,
-  showStateDecorations = true
+  showStateDecorations = true,
+  collapsible = true,
+  defaultOpen = false,
+  onOpenChange
 }) => {
+  const [open, setOpen] = useState<boolean>(defaultOpen);
+
+  const handleHeaderClick = (e: React.MouseEvent) => {
+    if (!collapsible) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, [role="button"], a, input, label')) return;
+    const next = !open;
+    setOpen(next);
+    onOpenChange?.(next);
+  };
+
   // State-based styling
   const getStateStyles = () => {
     switch (dataState) {
@@ -86,7 +104,10 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
       className
     )}>
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+      <div
+        className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4"
+        onClick={handleHeaderClick}
+      >
         <div className="flex items-center gap-3">
           <div className={cn(
             "h-8 w-8 rounded-xl flex items-center justify-center transition-all duration-300",
@@ -106,7 +127,7 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
                   aria-hidden
                 />
               )}
-              <h3 className="font-semibold text-foreground">{title}</h3>
+              <h3 className="font-semibold text-foreground select-none">{title}</h3>
             </div>
             {status && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -118,14 +139,14 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
           {/* Quick Actions */}
           {quickActions.map((action, index) => (
             <Button
               key={index}
               size="sm"
               variant={action.variant || 'secondary'}
-              onClick={action.onClick}
+              onClick={(e) => { e.stopPropagation(); action.onClick(); }}
               disabled={action.disabled}
               className="hover-scale"
             >
@@ -137,18 +158,19 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
           {dropdownActions.length > 0 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={(e) => e.stopPropagation()}>
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent 
                 align="end" 
                 className="z-50 bg-white dark:bg-neutral-950 border border-border shadow-lg"
+                onClick={(e) => e.stopPropagation()}
               >
                 {dropdownActions.map((action, index) => (
                   <DropdownMenuItem
                     key={index}
-                    onClick={action.onClick}
+                    onClick={(e) => { e.stopPropagation(); action.onClick(); }}
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     {action.icon}
@@ -164,10 +186,23 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
             <Button
               size="sm"
               variant="outline"
-              onClick={detailsAction.onClick}
+              onClick={(e) => { e.stopPropagation(); detailsAction.onClick(); }}
               className="hover-scale"
             >
               {detailsAction.label}
+            </Button>
+          )}
+
+          {/* Chevron toggle */}
+          {collapsible && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={(e) => { e.stopPropagation(); const next = !open; setOpen(next); onOpenChange?.(next); }}
+              aria-label={open ? 'Einklappen' : 'Ausklappen'}
+            >
+              <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
             </Button>
           )}
         </div>
@@ -186,7 +221,7 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
       )}
 
       {/* Body */}
-      {children && (
+      {children && (!collapsible || open) && (
         <div className="space-y-3">
           {children}
         </div>
