@@ -302,6 +302,15 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
           </div>
         )}
 
+        {/* Smart Chips for frequent meals - visible in both collapsed and expanded states */}
+        {chips.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {chips.map((c) => (
+              <SmartChip key={c} text={c} onClick={() => onAddQuickMeal?.(c)} />
+            ))}
+          </div>
+        )}
+
         <CollapsibleContent>
         {/* Header numbers */}
         <div className="mt-3 grid grid-cols-2 gap-3">
@@ -322,14 +331,6 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
           <MacroPill label="Fett" left={fatLeft} macroType="fat" />
         </div>
 
-        {/* Smart chips */}
-        {chips.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {chips.map((c) => (
-              <SmartChip key={c} text={c} onClick={() => onAddQuickMeal?.(c)} />
-            ))}
-          </div>
-        )}
 
         {/* Meals list toggle */}
         <div className="mt-4">
