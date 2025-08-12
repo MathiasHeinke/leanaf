@@ -1391,6 +1391,7 @@ export type Database = {
           id: string
           kpi_xxl_json: Json | null
           macro_distribution: Json | null
+          mindset_data: Json
           recovery_metrics: Json | null
           schema_version: string | null
           sleep_score: number | null
@@ -1417,6 +1418,7 @@ export type Database = {
           id?: string
           kpi_xxl_json?: Json | null
           macro_distribution?: Json | null
+          mindset_data?: Json
           recovery_metrics?: Json | null
           schema_version?: string | null
           sleep_score?: number | null
@@ -1443,6 +1445,7 @@ export type Database = {
           id?: string
           kpi_xxl_json?: Json | null
           macro_distribution?: Json | null
+          mindset_data?: Json
           recovery_metrics?: Json | null
           schema_version?: string | null
           sleep_score?: number | null
@@ -3285,6 +3288,111 @@ export type Database = {
           target?: number | null
           updated_at?: string
           user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      monthly_summaries: {
+        Row: {
+          avg_calories_per_day: number | null
+          avg_carbs_per_day: number | null
+          avg_fats_per_day: number | null
+          avg_protein_per_day: number | null
+          compliance_metrics: Json | null
+          created_at: string
+          hydration_avg_ml: number | null
+          hydration_avg_score: number | null
+          hydration_total_ml: number | null
+          id: string
+          inputs_avg_per_day: number | null
+          inputs_count: number | null
+          macro_distribution_month: Json | null
+          month: number
+          rest_days: number | null
+          sleep_avg_score: number | null
+          steps_avg: number | null
+          steps_total: number | null
+          summary_md: string | null
+          summary_struct_json: Json | null
+          supplements_count: number | null
+          top_foods_month: Json | null
+          total_calories: number | null
+          total_carbs: number | null
+          total_fats: number | null
+          total_protein: number | null
+          updated_at: string
+          user_id: string
+          workout_volume_avg: number | null
+          workout_volume_total: number | null
+          workouts_count: number | null
+          year: number
+        }
+        Insert: {
+          avg_calories_per_day?: number | null
+          avg_carbs_per_day?: number | null
+          avg_fats_per_day?: number | null
+          avg_protein_per_day?: number | null
+          compliance_metrics?: Json | null
+          created_at?: string
+          hydration_avg_ml?: number | null
+          hydration_avg_score?: number | null
+          hydration_total_ml?: number | null
+          id?: string
+          inputs_avg_per_day?: number | null
+          inputs_count?: number | null
+          macro_distribution_month?: Json | null
+          month: number
+          rest_days?: number | null
+          sleep_avg_score?: number | null
+          steps_avg?: number | null
+          steps_total?: number | null
+          summary_md?: string | null
+          summary_struct_json?: Json | null
+          supplements_count?: number | null
+          top_foods_month?: Json | null
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_protein?: number | null
+          updated_at?: string
+          user_id: string
+          workout_volume_avg?: number | null
+          workout_volume_total?: number | null
+          workouts_count?: number | null
+          year: number
+        }
+        Update: {
+          avg_calories_per_day?: number | null
+          avg_carbs_per_day?: number | null
+          avg_fats_per_day?: number | null
+          avg_protein_per_day?: number | null
+          compliance_metrics?: Json | null
+          created_at?: string
+          hydration_avg_ml?: number | null
+          hydration_avg_score?: number | null
+          hydration_total_ml?: number | null
+          id?: string
+          inputs_avg_per_day?: number | null
+          inputs_count?: number | null
+          macro_distribution_month?: Json | null
+          month?: number
+          rest_days?: number | null
+          sleep_avg_score?: number | null
+          steps_avg?: number | null
+          steps_total?: number | null
+          summary_md?: string | null
+          summary_struct_json?: Json | null
+          supplements_count?: number | null
+          top_foods_month?: Json | null
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_protein?: number | null
+          updated_at?: string
+          user_id?: string
+          workout_volume_avg?: number | null
+          workout_volume_total?: number | null
+          workouts_count?: number | null
           year?: number
         }
         Relationships: []
@@ -5493,6 +5601,108 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_summaries: {
+        Row: {
+          avg_calories_per_day: number | null
+          avg_carbs_per_day: number | null
+          avg_fats_per_day: number | null
+          avg_protein_per_day: number | null
+          compliance_metrics: Json | null
+          created_at: string
+          hydration_avg_ml: number | null
+          hydration_avg_score: number | null
+          hydration_total_ml: number | null
+          id: string
+          inputs_avg_per_day: number | null
+          inputs_count: number | null
+          iso_week: number
+          iso_year: number
+          rest_days: number | null
+          sleep_avg_score: number | null
+          steps_avg: number | null
+          steps_total: number | null
+          summary_struct_json: Json | null
+          supplements_count: number | null
+          total_calories: number | null
+          total_carbs: number | null
+          total_fats: number | null
+          total_protein: number | null
+          updated_at: string
+          user_id: string
+          week_end: string
+          week_start: string
+          workout_volume_avg: number | null
+          workout_volume_total: number | null
+          workouts_count: number | null
+        }
+        Insert: {
+          avg_calories_per_day?: number | null
+          avg_carbs_per_day?: number | null
+          avg_fats_per_day?: number | null
+          avg_protein_per_day?: number | null
+          compliance_metrics?: Json | null
+          created_at?: string
+          hydration_avg_ml?: number | null
+          hydration_avg_score?: number | null
+          hydration_total_ml?: number | null
+          id?: string
+          inputs_avg_per_day?: number | null
+          inputs_count?: number | null
+          iso_week: number
+          iso_year: number
+          rest_days?: number | null
+          sleep_avg_score?: number | null
+          steps_avg?: number | null
+          steps_total?: number | null
+          summary_struct_json?: Json | null
+          supplements_count?: number | null
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_protein?: number | null
+          updated_at?: string
+          user_id: string
+          week_end: string
+          week_start: string
+          workout_volume_avg?: number | null
+          workout_volume_total?: number | null
+          workouts_count?: number | null
+        }
+        Update: {
+          avg_calories_per_day?: number | null
+          avg_carbs_per_day?: number | null
+          avg_fats_per_day?: number | null
+          avg_protein_per_day?: number | null
+          compliance_metrics?: Json | null
+          created_at?: string
+          hydration_avg_ml?: number | null
+          hydration_avg_score?: number | null
+          hydration_total_ml?: number | null
+          id?: string
+          inputs_avg_per_day?: number | null
+          inputs_count?: number | null
+          iso_week?: number
+          iso_year?: number
+          rest_days?: number | null
+          sleep_avg_score?: number | null
+          steps_avg?: number | null
+          steps_total?: number | null
+          summary_struct_json?: Json | null
+          supplements_count?: number | null
+          total_calories?: number | null
+          total_carbs?: number | null
+          total_fats?: number | null
+          total_protein?: number | null
+          updated_at?: string
+          user_id?: string
+          week_end?: string
+          week_start?: string
+          workout_volume_avg?: number | null
+          workout_volume_total?: number | null
+          workouts_count?: number | null
+        }
+        Relationships: []
+      }
       weight_history: {
         Row: {
           body_fat_percentage: number | null
@@ -6143,6 +6353,14 @@ export type Database = {
         Args: { max_age?: unknown }
         Returns: number
       }
+      compute_monthly_summary: {
+        Args: { p_user_id: string; p_year: number; p_month: number }
+        Returns: Json
+      }
+      compute_weekly_summary: {
+        Args: { p_user_id: string; p_week_start: string }
+        Returns: Json
+      }
       consume_credits_for_feature: {
         Args: { p_feature_type: string; p_deduct?: boolean }
         Returns: Json
@@ -6175,6 +6393,10 @@ export type Database = {
       fast_sets_volume: {
         Args: { p_user: string; p_d: string }
         Returns: number
+      }
+      get_coach_analytics_7d: {
+        Args: { p_user_id: string }
+        Returns: Json
       }
       get_credits_status: {
         Args: Record<PropertyKey, never>

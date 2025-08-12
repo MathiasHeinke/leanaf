@@ -1,9 +1,13 @@
+
 import React, { useState } from 'react';
 import SummaryGenerator from '@/components/SummaryGenerator';
 import { DebugConsole, DebugEvent } from '@/components/debug/DebugConsole';
 import { RequestInspector } from '@/components/debug/RequestInspector';
 import { DayDetailsPanel } from '@/components/summary/DayDetailsPanel';
+import { WeeklySummarySection } from '@/components/summary/WeeklySummarySection';
+import { MonthlySummarySection } from '@/components/summary/MonthlySummarySection';
 import SEO from '@/components/SEO';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const TestSummaryPage = () => {
   const [events, setEvents] = useState<DebugEvent[]>([]);
@@ -17,17 +21,25 @@ const TestSummaryPage = () => {
   return (
     <>
       <SEO
-        title="XL-Summary Test & Debug"
-        description="Interaktive XL-Summary Generierung mit Debug-Konsole und Request-Inspector."
+        title="Summary Test & Debug Dashboard"
+        description="Comprehensive testing environment for daily, weekly, and monthly summary generation with debug capabilities."
         canonical="/test-summary"
       />
       <div className="container mx-auto p-6">
         <header className="mb-6">
-          <h1 className="text-3xl font-bold">XL-Summary Test & Debug</h1>
-          <p className="text-muted-foreground">Teste die neue XL-Summary Generation und sieh dir Details & Logs an.</p>
+          <h1 className="text-3xl font-bold">Summary Test & Debug Dashboard</h1>
+          <p className="text-muted-foreground">Test and debug daily, weekly, and monthly summary generation systems.</p>
         </header>
-        <main className="grid grid-cols-1 gap-6">
-          <section>
+
+        <Tabs defaultValue="daily" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="daily">Daily Summaries</TabsTrigger>
+            <TabsTrigger value="weekly">Weekly Summaries</TabsTrigger>
+            <TabsTrigger value="monthly">Monthly Summaries</TabsTrigger>
+            <TabsTrigger value="debug">Debug Console</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="daily" className="space-y-6">
             <SummaryGenerator
               onDebug={handleDebug}
               onRequest={(p) => {
@@ -43,17 +55,23 @@ const TestSummaryPage = () => {
                 handleDebug({ ts: Date.now(), level: 'info', message: 'ui:select:date', data: { date: d } });
               }}
             />
-            <div className="mt-6">
-              <RequestInspector request={lastRequest} response={lastResponse} />
-            </div>
-          </section>
+            
+            <RequestInspector request={lastRequest} response={lastResponse} />
+            <DayDetailsPanel date={selectedDate} />
+          </TabsContent>
 
-          <DayDetailsPanel date={selectedDate} />
-        </main>
+          <TabsContent value="weekly" className="space-y-6">
+            <WeeklySummarySection />
+          </TabsContent>
 
-        <div className="mt-6">
-          <DebugConsole events={events} onClear={clearEvents} />
-        </div>
+          <TabsContent value="monthly" className="space-y-6">
+            <MonthlySummarySection />
+          </TabsContent>
+
+          <TabsContent value="debug" className="space-y-6">
+            <DebugConsole events={events} onClear={clearEvents} />
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   );
