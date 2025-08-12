@@ -168,28 +168,29 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
   const chips = (frequent?.[daypart] || []).slice(0, 3);
 
   return (
-    <Collapsible open={open}>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Flame className="h-5 w-5 text-primary" />
             <h2 className="text-base font-semibold">Kalorien</h2>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? (
-              <>
-                Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-              </>
-            ) : (
-              <>
-                Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-              </>
-            )}
-          </button>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {open ? (
+                <>
+                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
+                </>
+              )}
+            </button>
+          </CollapsibleTrigger>
         </div>
 
         {/* Collapsed summary when card is closed */}
