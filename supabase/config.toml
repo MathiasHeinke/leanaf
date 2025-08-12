@@ -1,4 +1,3 @@
-
 project_id = "gzczjscctgyxjyodhnhk"
 
 [functions.enhanced-coach-non-streaming]
@@ -102,3 +101,12 @@ verify_jwt = false
 [functions.supplement-save]
 verify_jwt = true
 
+# Newly adjusted to allow system backfills and reports without JWT friction
+[functions.generate-day-summary-v2]
+verify_jwt = false
+
+[functions.daily-summary-report]
+verify_jwt = false
+
+[functions.trigger-backfill]
+verify_jwt = false
