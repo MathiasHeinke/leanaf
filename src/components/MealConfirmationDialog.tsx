@@ -356,7 +356,7 @@ export const MealConfirmationDialog = ({
         <AlertDialogHeader>
           <AlertDialogTitle>{t('meal.confirm')}</AlertDialogTitle>
           <AlertDialogDescription>
-            {getCoachComment()}
+            Bitte prüfe und bestätige die Nährwerte.
           </AlertDialogDescription>
           
           {confidence === 'low' && (
