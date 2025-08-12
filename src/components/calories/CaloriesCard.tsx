@@ -235,7 +235,19 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
               {meals.length === 0 ? (
                 <div className="text-sm text-muted-foreground">Keine Mahlzeiten erfasst.</div>
               ) : (
-                meals.map((m: any) => <MealRow key={m.id} meal={m} />)
+                meals.map((m: any) => (
+                  <MealRow
+                    key={m.id}
+                    meal={m}
+                    targets={{
+                      protein: totals.targetProtein || 0,
+                      carbs: totals.targetCarbs || 0,
+                      fat: totals.targetFat || 0,
+                    }}
+                    onEditMeal={onEditMeal}
+                    onDeleteMeal={onDeleteMeal}
+                  />
+                ))
               )}
             </div>
           )}
