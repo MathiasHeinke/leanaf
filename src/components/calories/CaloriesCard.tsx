@@ -138,7 +138,7 @@ function MealRow({
   // Extended meal information
   const mealType = ts ? getMealType(ts) : "Unbekannt";
   const fullDateTime = ts ? formatFullDateTime(ts) : "Unbekannt";
-  const score = getMealScore(meal);
+  const score = Number(meal.quality_score ?? getMealScore(meal));
   const quality = getMealQuality(score);
 
   const pct = (v: number, t: number) => (t > 0 ? Math.min(100, Math.max(0, (Number(v || 0) / Number(t)) * 100)) : 0);
@@ -292,7 +292,14 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
     return "night" as const;
   })();
 
-  const chips = (frequent?.[daypart] || []).slice(0, 3);
+  const primaryChips = (frequent?.[daypart] || []);
+  const allChips = Array.from(new Set([
+    ...(frequent?.morning || []),
+    ...(frequent?.noon || []),
+    ...(frequent?.evening || []),
+    ...(frequent?.night || []),
+  ]));
+  const chips = (primaryChips.length > 0 ? primaryChips : allChips).slice(0, 3);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>

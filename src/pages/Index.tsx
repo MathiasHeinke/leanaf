@@ -40,6 +40,8 @@ import { DateNavigation } from "@/components/DateNavigation";
 import { CaloriesCard } from "@/components/calories/CaloriesCard";
 import { MealEditDialog } from "@/components/MealEditDialog";
 import { useFrequentMeals } from "@/hooks/useFrequentMeals";
+import { MomentumXPBar } from "@/components/momentum/MomentumXPBar";
+import confetti from "canvas-confetti";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -70,6 +72,11 @@ const Index = () => {
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
   const [todaysFluids, setTodaysFluids] = useState<any[]>([]);
+
+  // XP state for Momentum bar on Index
+  const [pointsLoading, setPointsLoading] = useState(true);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [pointsToNext, setPointsToNext] = useState(100);
 
   // Card order state
   const [cardOrder, setCardOrder] = useState<string[]>(() => {
@@ -103,6 +110,12 @@ const Index = () => {
   useEffect(() => {
     if (user) {
       loadUserData();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadUserPoints();
     }
   }, [user]);
 
@@ -166,6 +179,26 @@ const Index = () => {
       console.error('Error loading user data:', error);
     } finally {
       setDataLoading(false);
+    }
+  };
+
+  const loadUserPoints = async () => {
+    if (!user) return;
+    try {
+      setPointsLoading(true);
+      const { data, error } = await supabase
+        .from('user_points')
+        .select('total_points, points_to_next_level')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!error && data) {
+        setTotalPoints(data.total_points ?? 0);
+        setPointsToNext(data.points_to_next_level ?? 100);
+      }
+    } catch (e) {
+      console.error('Error loading user points:', e);
+    } finally {
+      setPointsLoading(false);
     }
   };
 
@@ -440,6 +473,7 @@ const Index = () => {
       await updateStreak('meal_tracking');
     }
     
+    await loadUserPoints();
     // Check for new badges after meal submission
     setTimeout(() => checkBadges(), 1000);
   };
@@ -608,6 +642,17 @@ const Index = () => {
         </div>
       </div>
       
+      <div className="container mx-auto px-4 max-w-4xl mt-3">
+        <MomentumXPBar 
+          xp={pointsToNext ? (totalPoints % pointsToNext) : totalPoints}
+          goal={pointsToNext || 100}
+          loading={pointsLoading}
+          onBurst={() => {
+            confetti({ particleCount: 120, spread: 70, origin: { y: 0.8 }, scalar: 1.1 });
+          }}
+        />
+      </div>
+
       <div className="space-y-5">
         <Link to="/momentum-board" className="block rounded-2xl border border-border shadow-sm p-4 bg-card hover:bg-muted transition-colors">
           <div className="text-xs font-medium mb-1">Neu</div>

@@ -47,7 +47,7 @@ export function useFrequentMeals(userId?: string, lookbackDays = 45) {
         };
 
         (meals || []).forEach((m: any) => {
-          const title = (m.title || m.name || m.text || "Meal").trim();
+          const title = (m.text || m.title || m.name || "Meal").trim();
           const hour = new Date(m.created_at).getHours();
           const part = getDaypartFromHour(hour);
           counts[part][title] = (counts[part][title] || 0) + 1;
