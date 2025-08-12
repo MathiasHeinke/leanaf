@@ -485,7 +485,7 @@ if (enableAdvancedFeatures) {
         coach_avatar: coach?.imageUrl,
         coach_color: coach?.color,
         coach_accent_color: coach?.accentColor,
-        metadata: lastMetadata
+        metadata: undefined
       };
       setMessages(prev => [...prev, followupMsg]);
     })
