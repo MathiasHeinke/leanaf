@@ -63,12 +63,19 @@ export function DayDetailsPanel({ date }: { date: string | null }) {
         </header>
         {summary && (
           <div className="space-y-4">
-            {summary.summary_text && (
-              <article className="rounded-xl border p-3">
-                <h3 className="text-sm font-medium mb-2">Zusammenfassung (Text)</h3>
-                <p className="text-sm whitespace-pre-wrap">{summary.summary_text}</p>
-              </article>
-            )}
+            {(() => {
+              const text =
+                summary.summary_xl_md ||
+                summary.summary_xxl_md ||
+                summary.summary_md ||
+                summary.summary_text;
+              return text ? (
+                <article className="rounded-xl border p-3">
+                  <h3 className="text-sm font-medium mb-2">Zusammenfassung (Text)</h3>
+                  <p className="text-sm whitespace-pre-wrap">{text}</p>
+                </article>
+              ) : null;
+            })()}
             <article className="rounded-xl border p-3">
               <h3 className="text-sm font-medium mb-2">Strukturierte Daten (JSON)</h3>
               <JsonPanel data={summary.summary_struct_json || summary} maxHeight={240} />
