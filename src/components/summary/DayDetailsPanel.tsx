@@ -30,8 +30,8 @@ export function DayDetailsPanel({ date }: { date: string | null }) {
   const [trends14, setTrends14] = useState<any | null>(null);
   const [trends28, setTrends28] = useState<any | null>(null);
 
-  const dateObj = useMemo(() => (date ? toDate(date) : null), [date]);
-  const { meals, todayMl, loading: inputsLoading } = useIndexSnapshot(dateObj || new Date());
+  const dateObj = useMemo(() => (date ? toDate(date) : new Date()), [date]);
+  const { meals, todayMl, loading: inputsLoading } = useIndexSnapshot(dateObj);
 
   useEffect(() => {
     let cancelled = false;
