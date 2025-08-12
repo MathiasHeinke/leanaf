@@ -36,7 +36,7 @@ import { AdminPage } from "./pages/Admin";
 import { GehirnPage } from "./pages/Gehirn";
 import TraceDebug from "./pages/TraceDebug";
 import TransformationJourneyPage from "./pages/TransformationJourney";
-import MomentumBoard from "./pages/MomentumBoard";
+
 import TestSummaryPage from "./pages/TestSummary";
 import { MealInputProvider } from "@/hooks/useGlobalMealInput";
 
@@ -73,7 +73,7 @@ const App = () => (
                       <Route path="/training" element={<TrainingPlus />} />
                       <Route path="/plus" element={<Navigate to="/momentum" replace />} />
                       <Route path="/momentum" element={<Momentum />} />
-                      <Route path="/momentum-board" element={<MomentumBoard />} />
+                      <Route path="/momentum-board" element={<Navigate to="/momentum" replace />} />
                       <Route path="/transformation" element={<TransformationJourneyPage />} />
                       <Route path="/history" element={<HistoryPage />} />
                       <Route path="/analyse" element={<AnalysePage />} />
