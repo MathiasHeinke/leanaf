@@ -1,5 +1,5 @@
 import React, { useState, useCallback, Suspense, lazy, useRef, useEffect } from "react";
-import { Camera, Mic, ArrowRight, Square } from "lucide-react";
+import { Camera, Mic, ArrowRight, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
@@ -18,7 +18,7 @@ const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").th
 
 export const MomentumBottomComposer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const { inputText, setInputText, uploadImages, appendUploadedImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet, uploadedImages } = useGlobalMealInput();
+  const { inputText, setInputText, uploadImages, appendUploadedImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet, uploadedImages, removeImage } = useGlobalMealInput();
   const { isEnabled } = useFeatureFlags();
   const orchestrationEnabled = isEnabled('auto_tool_orchestration');
   const { user } = useAuth();
@@ -241,6 +241,30 @@ const handleSubmit = useCallback(async () => {
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
         <div className="container mx-auto px-4 py-3 max-w-5xl">
+          {uploadedImages.length > 0 && (
+            <div className="mb-2">
+              <div className="flex items-center gap-2 overflow-x-auto py-1">
+                {uploadedImages.map((url, idx) => (
+                  <div key={url + idx} className="relative flex-shrink-0">
+                    <img
+                      src={url}
+                      alt={`Hochgeladene Mahlzeit ${idx + 1}`}
+                      loading="lazy"
+                      className="h-10 w-10 rounded-md object-cover border border-border"
+                    />
+                    <button
+                      type="button"
+                      aria-label="Entfernen"
+                      onClick={() => removeImage(idx)}
+                      className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             {/* Photo Button */}
             <Button
