@@ -6354,7 +6354,14 @@ export type Database = {
         Returns: number
       }
       compute_monthly_summary: {
-        Args: { p_user_id: string; p_year: number; p_month: number }
+        Args:
+          | { p_user_id: string; p_year: number; p_month: number }
+          | {
+              p_user_id: string
+              p_year: number
+              p_month: number
+              p_force?: boolean
+            }
         Returns: Json
       }
       compute_weekly_summary: {
@@ -6368,6 +6375,10 @@ export type Database = {
       current_user_has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
+      }
+      days_in_month: {
+        Args: { p_year: number; p_month: number }
+        Returns: number
       }
       deduct_credits: {
         Args: { p_user_id: string; p_credits: number }

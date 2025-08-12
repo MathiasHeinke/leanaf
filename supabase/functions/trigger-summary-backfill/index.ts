@@ -59,6 +59,9 @@ Deno.serve(async (req) => {
               userId,
               weekStart: weekStart.toISOString().split('T')[0],
               force
+            },
+            headers: {
+              'x-internal-call': 'true'
             }
           });
 
@@ -98,6 +101,9 @@ Deno.serve(async (req) => {
               year: targetYear,
               month: adjustedMonth,
               force
+            },
+            headers: {
+              'x-internal-call': 'true'
             }
           });
 
