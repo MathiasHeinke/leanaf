@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Flame, ChevronDown, ChevronUp, Clock, Utensils } from "lucide-react";
+import { Flame, ChevronDown, ChevronUp, Clock, Utensils, Edit2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 type Totals = {
   caloriesUsed: number;
@@ -39,10 +40,60 @@ function formatNumber(n: number) {
   return Math.max(0, Math.round(n));
 }
 
-function MacroPill({ label, left, unit = "g" }: { label: string; left: number; unit?: string }) {
+function truncateTitle(title: string, maxLength: number = 20): string {
+  if (title.length <= maxLength) return title;
+  return title.substring(0, maxLength - 3) + "...";
+}
+
+function getMealType(timestamp: string | Date): string {
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+  const hour = date.getHours();
+  
+  if (hour >= 5 && hour < 11) return "Frühstück";
+  if (hour >= 11 && hour < 15) return "Mittag";
+  if (hour >= 15 && hour < 19) return "Snack";
+  if (hour >= 19 && hour < 23) return "Abend";
+  return "Nacht";
+}
+
+function formatFullDateTime(timestamp: string | Date): string {
+  const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+  return date.toLocaleDateString('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function getMealScore(meal: any): number {
+  // Simple scoring based on macro balance and calories
+  const baseScore = Math.min(10, Math.floor((meal.kcal || 0) / 50));
+  const macroBonus = (meal.protein || 0) > 10 ? 2 : 0;
+  return Math.min(10, baseScore + macroBonus);
+}
+
+function getMealQuality(score: number): string {
+  if (score >= 8) return "Excellent";
+  if (score >= 6) return "Gut";
+  if (score >= 4) return "Okay";
+  return "Verbesserbar";
+}
+
+function MacroPill({ label, left, unit = "g", macroType }: { label: string; left: number; unit?: string; macroType?: 'protein' | 'carbs' | 'fat' }) {
+  const colorClass = macroType ? {
+    protein: "text-protein border-protein/20 bg-protein/10",
+    carbs: "text-carbs border-carbs/20 bg-carbs/10", 
+    fat: "text-fats border-fats/20 bg-fats/10"
+  }[macroType] : "";
+
   return (
-    <div className="flex flex-col items-center justify-center rounded-md border bg-card px-3 py-2">
-      <div className="text-xs text-muted-foreground">{label}</div>
+    <div className={cn(
+      "flex flex-col items-center justify-center rounded-md border bg-card px-3 py-2",
+      colorClass
+    )}>
+      <div className="text-xs text-muted-foreground/80">{label}</div>
       <div className="text-sm font-semibold">{formatNumber(left)}{unit}</div>
     </div>
   );
@@ -66,11 +117,13 @@ function MealRow({
   targets,
   onEditMeal,
   onDeleteMeal,
+  isExpanded,
 }: {
   meal: any;
   targets: { protein: number; carbs: number; fat: number };
   onEditMeal?: (meal: any) => void;
   onDeleteMeal?: (mealId: string) => void;
+  isExpanded: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ts = meal.ts || meal.created_at;
@@ -78,6 +131,15 @@ function MealRow({
   const kcal = meal.kcal ?? meal.calories ?? 0;
   const title = meal.title || meal.name || "Meal";
   const imageUrl = meal.imageUrl || (Array.isArray(meal.images) ? meal.images[0] : meal.photo_url || meal.image_url);
+  
+  // Optimized title display based on parent expansion state
+  const displayTitle = isExpanded ? title : truncateTitle(title);
+  
+  // Extended meal information
+  const mealType = ts ? getMealType(ts) : "Unbekannt";
+  const fullDateTime = ts ? formatFullDateTime(ts) : "Unbekannt";
+  const score = getMealScore(meal);
+  const quality = getMealQuality(score);
 
   const pct = (v: number, t: number) => (t > 0 ? Math.min(100, Math.max(0, (Number(v || 0) / Number(t)) * 100)) : 0);
 
@@ -99,7 +161,7 @@ function MealRow({
           ) : (
             <Utensils className="h-4 w-4 text-muted-foreground" />
           )}
-          <div className="text-sm font-medium truncate">{time} · {title}</div>
+          <div className="text-sm font-medium truncate">{time} · {displayTitle}</div>
         </div>
         <div className="text-sm font-semibold whitespace-nowrap">
           {formatNumber(kcal)} kcal {open ? <ChevronUp className="inline h-4 w-4 ml-1" /> : <ChevronDown className="inline h-4 w-4 ml-1" />}
@@ -110,32 +172,66 @@ function MealRow({
           {imageUrl && (
             <img src={imageUrl} alt={`${title} foto`} className="mt-2 w-full rounded-md object-cover max-h-44" loading="lazy" />
           )}
+          
+          {/* Full title when expanded */}
+          <div className="mt-3">
+            <h4 className="font-semibold text-base">{title}</h4>
+          </div>
+          
+          {/* Extended meal information */}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant="outline" className="text-xs">
+              <Clock className="h-3 w-3 mr-1" />
+              {fullDateTime}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {mealType}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {score}/10 Punkte
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {quality}
+            </Badge>
+          </div>
+          
           <div className="mt-3 space-y-2">
             {/* Macros colored with progress */}
             <div className="grid grid-cols-3 gap-2">
               <div className="flex flex-col gap-1">
-                <div className="text-xs font-medium text-[hsl(var(--protein))]">P {formatNumber(meal.protein || 0)}g</div>
-                <Progress value={pct(meal.protein || 0, targets.protein || 0)} indicatorClassName="bg-[hsl(var(--protein))]" />
+                <div className="text-xs font-medium text-protein">P {formatNumber(meal.protein || 0)}g</div>
+                <Progress value={pct(meal.protein || 0, targets.protein || 0)} indicatorClassName="bg-protein" />
               </div>
               <div className="flex flex-col gap-1">
-                <div className="text-xs font-medium text-[hsl(var(--carbs))]">K {formatNumber(meal.carbs || 0)}g</div>
-                <Progress value={pct(meal.carbs || 0, targets.carbs || 0)} indicatorClassName="bg-[hsl(var(--carbs))]" />
+                <div className="text-xs font-medium text-carbs">K {formatNumber(meal.carbs || 0)}g</div>
+                <Progress value={pct(meal.carbs || 0, targets.carbs || 0)} indicatorClassName="bg-carbs" />
               </div>
               <div className="flex flex-col gap-1">
-                <div className="text-xs font-medium text-[hsl(var(--fats))]">F {formatNumber(meal.fats ?? meal.fat ?? 0)}g</div>
-                <Progress value={pct(meal.fats ?? meal.fat ?? 0, targets.fat || 0)} indicatorClassName="bg-[hsl(var(--fats))]" />
+                <div className="text-xs font-medium text-fats">F {formatNumber(meal.fats ?? meal.fat ?? 0)}g</div>
+                <Progress value={pct(meal.fats ?? meal.fat ?? 0, targets.fat || 0)} indicatorClassName="bg-fats" />
               </div>
             </div>
 
+            {/* Improved action buttons */}
             {(onEditMeal || onDeleteMeal) && (
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 pt-2">
                 {onEditMeal && (
-                  <button type="button" className="text-xs underline text-muted-foreground hover:text-foreground" onClick={() => onEditMeal(meal)}>
+                  <button 
+                    type="button" 
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border bg-background hover:bg-muted transition-colors"
+                    onClick={() => onEditMeal(meal)}
+                  >
+                    <Edit2 className="h-3 w-3" />
                     Bearbeiten
                   </button>
                 )}
                 {onDeleteMeal && (
-                  <button type="button" className="text-xs underline text-destructive hover:opacity-80" onClick={() => onDeleteMeal(String(meal.id))}>
+                  <button 
+                    type="button" 
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-destructive/20 bg-destructive/5 text-destructive hover:bg-destructive/10 transition-colors"
+                    onClick={() => onDeleteMeal(String(meal.id))}
+                  >
+                    <Trash2 className="h-3 w-3" />
                     Löschen
                   </button>
                 )}
@@ -198,11 +294,11 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <div className="font-semibold">{formatNumber(totals.caloriesUsed)} / {formatNumber(totals.caloriesTarget)} kcal</div>
             <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-[hsl(var(--protein))]">P {formatNumber(totals.protein || 0)}g</span>
+            <span className="font-medium text-protein">P {formatNumber(totals.protein || 0)}g</span>
             <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-[hsl(var(--carbs))]">K {formatNumber(totals.carbs || 0)}g</span>
+            <span className="font-medium text-carbs">K {formatNumber(totals.carbs || 0)}g</span>
             <span className="text-muted-foreground">·</span>
-            <span className="font-medium text-[hsl(var(--fats))]">F {formatNumber(totals.fat || 0)}g</span>
+            <span className="font-medium text-fats">F {formatNumber(totals.fat || 0)}g</span>
           </div>
         )}
 
@@ -219,11 +315,11 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
           </div>
         </div>
 
-        {/* Macros left */}
+        {/* Macros left with colors */}
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <MacroPill label="Protein" left={proteinLeft} />
-          <MacroPill label="Kohlenhydrate" left={carbsLeft} />
-          <MacroPill label="Fett" left={fatLeft} />
+          <MacroPill label="Protein" left={proteinLeft} macroType="protein" />
+          <MacroPill label="Kohlenhydrate" left={carbsLeft} macroType="carbs" />
+          <MacroPill label="Fett" left={fatLeft} macroType="fat" />
         </div>
 
         {/* Smart chips */}
@@ -261,6 +357,7 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
                     }}
                     onEditMeal={onEditMeal}
                     onDeleteMeal={onDeleteMeal}
+                    isExpanded={open}
                   />
                 ))
               )}
