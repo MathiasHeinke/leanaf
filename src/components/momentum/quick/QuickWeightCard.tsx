@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { QuickCardShell } from './QuickCardShell';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { QuickWeightInput } from '@/components/QuickWeightInput';
@@ -24,7 +24,14 @@ export const QuickWeightCard: React.FC = () => {
   const [quickWeight, setQuickWeight] = useState('');
   const [quickBodyFat, setQuickBodyFat] = useState('');
   const [loading, setLoading] = useState(false);
+  const weightInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (showQuickForm) {
+      // Focus the weight input shortly after render
+      setTimeout(() => weightInputRef.current?.focus(), 0);
+    }
+  }, [showQuickForm]);
   const loadTodaysWeight = useCallback(async () => {
     if (!user) return;
 
@@ -101,13 +108,13 @@ export const QuickWeightCard: React.FC = () => {
         icon={<Scale className="h-4 w-4" />}
         status={hasWeightToday ? `${todaysWeight?.weight} kg` : 'Noch nicht erfasst'}
         statusIcon={hasWeightToday ? <TrendingUp className="h-3 w-3" /> : undefined}
-        quickActions={hasWeightToday ? [] : [
-          {
-            label: 'Erfassen',
-            onClick: () => setShowQuickForm(true),
-            variant: 'default'
-          }
-        ]}
+          quickActions={hasWeightToday ? [] : [
+            {
+              label: 'Gewicht eintragen',
+              onClick: () => setShowQuickForm(true),
+              variant: 'default'
+            }
+          ]}
         detailsAction={{
           label: 'Details',
           onClick: () => setDetailsOpen(true)
@@ -119,10 +126,12 @@ export const QuickWeightCard: React.FC = () => {
               <div>
                 <label className="text-xs text-muted-foreground block mb-1">Gewicht (kg)</label>
                 <NumericInput
+                  ref={weightInputRef}
                   value={quickWeight}
                   onChange={setQuickWeight}
                   placeholder="75.5"
                   className="h-8"
+                  autoFocus
                 />
               </div>
               <div>

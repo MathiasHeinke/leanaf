@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -185,6 +185,11 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   );
   const [isCollapsed, setIsCollapsed] = useState(hasEntriesForDate);
 
+  useEffect(() => {
+    if (transcribedText && isCollapsed) {
+      setIsCollapsed(false);
+    }
+  }, [transcribedText, isCollapsed]);
   const todayEntries = recentEntries.filter(entry => 
     new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
@@ -231,6 +236,16 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
               </div>
             )}
           </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 w-8 p-0 mr-1"
+            onClick={() => startRecording()}
+            disabled={isRecording || isVoiceLoading}
+            title="Schnellaufnahme"
+          >
+            <Mic className="h-4 w-4" />
+          </Button>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
               <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />

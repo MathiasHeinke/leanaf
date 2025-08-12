@@ -193,24 +193,26 @@ export const QuickTrainingCard: React.FC = () => {
   // Build dynamic quick actions based on favorites
   const quickActionsHeader = (() => {
     const actions: { label: string; onClick: () => void; disabled?: boolean; variant?: any }[] = [];
-    let addedWorkout = false;
-    let addedRest = false;
+    const labelsAdded = new Set<string>();
     favoriteTypes.forEach((t) => {
-      if (t === 'pause' && !addedRest) {
+      if (t === 'pause' && !labelsAdded.has('Ruhetag')) {
         actions.push({ label: 'Ruhetag', onClick: addRestDay, disabled: loading, variant: 'secondary' });
-        addedRest = true;
-      } else if (!addedWorkout) {
-        actions.push({ label: 'Workout', onClick: () => navigate('/training'), disabled: false, variant: 'secondary' });
-        addedWorkout = true;
+        labelsAdded.add('Ruhetag');
+      } else if (t !== 'pause') {
+        const label = getWorkoutTypeLabel(t);
+        if (!labelsAdded.has(label)) {
+          actions.push({ label, onClick: () => setDetailsOpen(true), disabled: false, variant: 'secondary' });
+          labelsAdded.add(label);
+        }
       }
     });
+    // Fallbacks to ensure we always have two actions
     if (actions.length < 2) {
-      if (!addedWorkout) {
-        actions.push({ label: 'Workout', onClick: () => navigate('/training'), variant: 'secondary' });
-        addedWorkout = true;
-      } else if (!addedRest) {
+      if (!labelsAdded.has('Workout')) {
+        actions.push({ label: 'Workout', onClick: () => setDetailsOpen(true), variant: 'secondary' });
+      }
+      if (!labelsAdded.has('Ruhetag')) {
         actions.push({ label: 'Ruhetag', onClick: addRestDay, disabled: loading, variant: 'secondary' });
-        addedRest = true;
       }
     }
     return actions.slice(0, 2);

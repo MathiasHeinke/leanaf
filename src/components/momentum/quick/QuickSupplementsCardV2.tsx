@@ -233,19 +233,71 @@ export const QuickSupplementsCardV2: React.FC = () => {
 
   const visibleTimings = getVisibleTimings();
   const currentSupplements = getSupplementsForTiming(currentTimeSlot);
-  const pendingCount = currentSupplements.filter(supplement => 
+  const pendingSupplements = currentSupplements.filter(supplement => 
     !todayIntake[supplement.id]?.[currentTimeSlot]
-  ).length;
+  );
+  const pendingCount = pendingSupplements.length;
 
-  const quickActions = pendingCount > 0 ? currentSupplements
-    .filter(supplement => !todayIntake[supplement.id]?.[currentTimeSlot])
-    .slice(0, 3)
-    .map(supplement => ({
-      label: supplement.supplement_name || 'Unbekannt',
-      onClick: () => toggleIntake(supplement.id, currentTimeSlot, true),
-      variant: 'outline' as const,
-      disabled: loading
-    })) : [];
+  const markAllForCurrentSlot = async () => {
+    if (!user || pendingCount === 0) return;
+    setLoading(true);
+
+    // Optimistic update for all pending
+    setTodayIntake(prev => {
+      const updated = { ...prev } as TodayIntake;
+      pendingSupplements.forEach(s => {
+        updated[s.id] = { ...(updated[s.id] || {}), [currentTimeSlot]: true };
+      });
+      return updated;
+    });
+
+    try {
+      const today = getCurrentDateString();
+      const rows = pendingSupplements.map(s => ({
+        user_id: user.id,
+        user_supplement_id: s.id,
+        date: today,
+        timing: currentTimeSlot,
+        taken: true
+      }));
+      const { error } = await supabase
+        .from('supplement_intake_log')
+        .upsert(rows);
+      if (error) throw error;
+      const slotLabel = currentTimeSlot === 'morning' ? 'Morgens' : currentTimeSlot === 'afternoon' ? 'Mittags' : 'Abends';
+      toast.success(`${slotLabel} erledigt ✓`);
+    } catch (e) {
+      console.error('markAllForCurrentSlot failed', e);
+      // Rollback
+      setTodayIntake(prev => {
+        const updated = { ...prev } as TodayIntake;
+        pendingSupplements.forEach(s => {
+          updated[s.id] = { ...(updated[s.id] || {}), [currentTimeSlot]: false };
+        });
+        return updated;
+      });
+      toast.error('Fehler beim Aktualisieren');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const quickActions = pendingCount > 0 
+    ? [
+        {
+          label: (currentTimeSlot === 'morning' ? 'Morgens' : currentTimeSlot === 'afternoon' ? 'Mittags' : 'Abends') + ' erledigt',
+          onClick: markAllForCurrentSlot,
+          variant: 'default' as const,
+          disabled: loading
+        },
+        ...pendingSupplements.slice(0, 3).map(supplement => ({
+          label: supplement.supplement_name || 'Unbekannt',
+          onClick: () => toggleIntake(supplement.id, currentTimeSlot, true),
+          variant: 'outline' as const,
+          disabled: loading
+        }))
+      ]
+    : [];
 
   const expandAction = visibleTimings.length < getAllTimingsWithSupplements().length ? {
     label: 'Mehr anzeigen',

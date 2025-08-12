@@ -46,26 +46,44 @@ export const QuickHydrationCard: React.FC = () => {
   }, [user]);
 
   const loadFavorites = useCallback(async () => {
+    if (!user) return;
     try {
+      const since = new Date();
+      since.setDate(since.getDate() - 30);
+      const sinceStr = since.toISOString().slice(0, 10);
       const { data, error } = await supabase
-        .from('fluid_database')
-        .select('id, name, default_amount')
-        .order('name', { ascending: true })
-        .limit(5);
+        .from('user_fluids')
+        .select('custom_name, amount_ml, date')
+        .eq('user_id', user.id)
+        .gte('date', sinceStr);
 
       if (error) throw error;
 
-      const favoritesArray: FluidFavorite[] = (data || []).map((row: any) => ({
-        name: row.name,
-        amount: Math.round(row.default_amount || 250),
-        count: 0,
-      }));
+      const counts: Record<string, { count: number; amounts: number[] }> = {};
+      (data || []).forEach((row: any) => {
+        const name = row.custom_name || 'Wasser';
+        if (!counts[name]) counts[name] = { count: 0, amounts: [] };
+        counts[name].count += 1;
+        counts[name].amounts.push(row.amount_ml || 250);
+      });
+
+      const mode = (arr: number[]) => {
+        const freq: Record<number, number> = {};
+        arr.forEach(n => { freq[n] = (freq[n] || 0) + 1; });
+        const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+        return sorted.length ? Number(sorted[0][0]) : Math.round((arr.reduce((s, n) => s + n, 0) / (arr.length || 1)) / 50) * 50;
+      };
+
+      const favoritesArray: FluidFavorite[] = Object.entries(counts)
+        .map(([name, info]) => ({ name, amount: mode(info.amounts), count: info.count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
 
       setFavorites(favoritesArray);
     } catch (error) {
       console.error('Error loading favorites:', error);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadTodayIntake();
@@ -120,19 +138,25 @@ export const QuickHydrationCard: React.FC = () => {
         dataState={dataState}
         progressPercent={progressPercent}
         status={`${todayIntake} / ${DAILY_GOAL} ml`}
-        quickActions={[
+        quickActions={favorites.length >= 2 ? [
           {
-            label: '+250ml',
-            onClick: () => addFluid(250),
+            label: `${favorites[0].name} ${favorites[0].amount}ml`,
+            onClick: () => addFluid(favorites[0].amount, favorites[0].name),
             disabled: loading
           },
           {
-            label: '+500ml',
-            onClick: () => addFluid(500),
+            label: `${favorites[1].name} ${favorites[1].amount}ml`,
+            onClick: () => addFluid(favorites[1].amount, favorites[1].name),
             disabled: loading
           }
+        ] : [
+          { label: '+250ml', onClick: () => addFluid(250), disabled: loading },
+          { label: '+500ml', onClick: () => addFluid(500), disabled: loading }
         ]}
-        dropdownActions={favorites.map(fav => ({
+        dropdownActions={(favorites.length ? favorites : [
+          { name: 'Wasser', amount: 250, count: 0 },
+          { name: 'Wasser', amount: 500, count: 0 }
+        ]).map(fav => ({
           label: `${fav.name} ${fav.amount}ml`,
           icon: getFluidIcon(fav.name),
           onClick: () => addFluid(fav.amount, fav.name)
