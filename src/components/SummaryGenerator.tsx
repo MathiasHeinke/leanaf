@@ -6,7 +6,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Calendar, TrendingUp, Target } from 'lucide-react';
 
-const SummaryGenerator = () => {
+type SummaryGeneratorProps = {
+  onDebug?: (event: { ts: number; level: 'info' | 'warn' | 'error' | 'debug'; message: string; data?: any }) => void;
+  onRequest?: (payload: any) => void;
+  onResponse?: (resp: { data: any; error: any }) => void;
+  onSelectDate?: (date: string) => void;
+};
+
+const SummaryGenerator = ({ onDebug, onRequest, onResponse, onSelectDate }: SummaryGeneratorProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [results, setResults] = useState<any>(null);
   const { toast } = useToast();
@@ -14,9 +21,11 @@ const SummaryGenerator = () => {
   const generateSummaries = async (daysBack: number = 14, forceUpdate: boolean = false) => {
     try {
       setIsGenerating(true);
+      onDebug?.({ ts: Date.now(), level: 'info', message: 'generate:start', data: { daysBack, forceUpdate } });
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        onDebug?.({ ts: Date.now(), level: 'warn', message: 'auth:missing' });
         toast({
           title: "Fehler",
           description: "Du musst angemeldet sein",
@@ -30,13 +39,16 @@ const SummaryGenerator = () => {
         description: `Verarbeite die letzten ${daysBack} Tage`,
       });
 
+      const payload = { userId: user.id, daysBack, forceUpdate };
+      onRequest?.(payload);
+      onDebug?.({ ts: Date.now(), level: 'debug', message: 'invoke:start', data: payload });
+
       const { data, error } = await supabase.functions.invoke('generate-daily-summary-xl', {
-        body: {
-          userId: user.id,
-          daysBack,
-          forceUpdate
-        }
+        body: payload
       });
+
+      onResponse?.({ data, error });
+      onDebug?.({ ts: Date.now(), level: error ? 'error' : 'info', message: 'invoke:done', data: error ? { error } : { summary: data?.summary } });
 
       if (error) throw error;
 
@@ -49,6 +61,7 @@ const SummaryGenerator = () => {
 
     } catch (error) {
       console.error('Error generating summaries:', error);
+      onDebug?.({ ts: Date.now(), level: 'error', message: 'generate:error', data: { error: (error as any)?.message || error } });
       toast({
         title: "Fehler",
         description: "Summaries konnten nicht erstellt werden",
@@ -56,6 +69,7 @@ const SummaryGenerator = () => {
       });
     } finally {
       setIsGenerating(false);
+      onDebug?.({ ts: Date.now(), level: 'debug', message: 'generate:finally', data: { isGenerating: false } });
     }
   };
 
@@ -138,7 +152,12 @@ const SummaryGenerator = () => {
 
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {results.results.map((result: any, index: number) => (
-                <div key={index} className="flex items-center justify-between p-2 border rounded">
+                <div
+                  key={index}
+                  onClick={() => onSelectDate?.(result.date)}
+                  className="flex items-center justify-between p-2 border rounded cursor-pointer hover:bg-muted/50"
+                  title="Details für diesen Tag anzeigen"
+                >
                   <span className="font-mono text-sm">{result.date}</span>
                   <Badge 
                     variant={
