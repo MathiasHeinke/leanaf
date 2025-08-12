@@ -621,30 +621,9 @@ if (enableAdvancedFeatures) {
         return;
       }
 
-      // Default: send to enhanced AI system
-      const response = await sendEnhancedMessage(messageText, coach?.id || 'lucy');
-      if (response) {
-        const assistantMessage: EnhancedChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: response,
-          created_at: new Date().toISOString(),
-          coach_personality: coach?.id || 'lucy',
-          coach_name: coach?.name || 'Coach',
-          coach_avatar: coach?.imageUrl,
-          coach_color: coach?.color,
-          coach_accent_color: coach?.accentColor,
-          metadata: lastMetadata
-        };
-        setMessages(prev => [...prev, assistantMessage]);
-
-        if (isTrainingPlanAnalysis) {
-          setShowQuickAction(true);
-        }
-        if (lastMetadata?.planData) {
-          setPendingPlanData(lastMetadata.planData);
-        }
-      }
+      // Default: route via Orchestrator
+      await handleEnhancedSendMessage(messageText, mediaUrls, selectedTool);
+      return;
 
     } catch (error) {
       console.error('Error sending message:', error);

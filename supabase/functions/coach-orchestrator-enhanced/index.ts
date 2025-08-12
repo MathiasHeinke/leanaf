@@ -411,7 +411,7 @@ serve(async (req) => {
           const text = data?.action === 'insert' ? '✔️ Gespeichert. Dosis/Timing anpassen?' :
                        data?.action === 'update' ? '✅ Aktualisiert. Passt so?' : 
                        'Schon vorhanden – willst du etwas ändern?';
-          const reply = { kind:'message' as const, text: lucify(text), traceId };
+          const reply: OrchestratorReply = { kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId };
           await markFinal(supabaseState, userId, clientEventId, reply, traceId);
           return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
@@ -426,7 +426,7 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-analysis', status: error?'ERROR':'OK' });
           const text = data?.summary ?? 'Kurz gecheckt. Speichern oder später?';
-           const reply = asLucyMessage(text, traceId);
+           const reply: OrchestratorReply = { kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId };
            await markFinal(supabaseState, userId, clientEventId, reply, traceId);
            return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
@@ -438,7 +438,7 @@ serve(async (req) => {
           });
            await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-save', status: error?'ERROR':'OK' });
            const text = data?.success ? '🍽️ gespeichert! Was steht als nächstes an?' : 'Konnte nicht speichern – nochmal?';
-           const reply = asLucyMessage(text, traceId);
+           const reply: OrchestratorReply = { kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId };
            await markFinal(supabaseState, userId, clientEventId, reply, traceId);
            return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
