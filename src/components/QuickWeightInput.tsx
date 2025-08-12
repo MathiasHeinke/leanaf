@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Scale, Plus, Edit, CheckCircle, Upload, X, TrendingUp, TrendingDown, Camera } from "lucide-react";
+import { Scale, Plus, Edit, CheckCircle, Upload, X, TrendingUp, TrendingDown, Camera, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -14,8 +14,9 @@ import { getCurrentDateString } from "@/utils/dateHelpers";
 import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
-import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
-import { CoachFeedbackCard } from "./CoachFeedbackCard";
+import { Card } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -42,6 +43,19 @@ const parsePhotoUrls = (photoUrls: any): string[] => {
   return [];
 };
 
+function SmartChip({ text, onClick }: { text: string; onClick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
+    >
+      <Scale className="h-3.5 w-3.5 mr-1.5" />
+      <span className="truncate max-w-[10rem]">{text}</span>
+    </button>
+  );
+}
+
 export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInputProps) => {
   const [weight, setWeight] = useState("");
   const [debouncedWeight, setDebouncedWeight] = useState("");
@@ -55,6 +69,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
   const [showPointsAnimation, setShowPointsAnimation] = useState(false);
   const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, updateStreak, getPointsForActivity } = usePointsSystem();
@@ -142,16 +157,12 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
       const today = getCurrentDateString();
       
-      // Saving weight entry
-
       // Upload new photos if any
       let newPhotoUrls: string[] = [];
       if (selectedFiles.length > 0) {
-        // Uploading photos
         const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
         if (uploadResult.success) {
           newPhotoUrls = uploadResult.urls;
-          // Photos uploaded successfully
         } else {
           console.error('📸 [QuickWeightInput] Photo upload failed:', uploadResult.errors);
           toast.error('Fehler beim Hochladen der Bilder');
@@ -174,8 +185,6 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
       if (hasWeightToday && todaysWeight?.id) {
         // Update existing weight entry - no points awarded
-        // Updating existing entry
-        
         const { error } = await supabase
           .from('weight_history')
           .update({
@@ -192,13 +201,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           console.error('🔄 [QuickWeightInput] Update failed:', error);
           throw error;
         }
-        
-        // Weight entry updated successfully
-        // UI-Feedback bereits durch direkte Anzeige der Änderung
       } else {
         // Create new weight entry with fallback strategy
-        // Creating new weight entry
-        
         try {
           // Try upsert first (preferred method with unique constraint)
           const { error: upsertError } = await supabase
@@ -219,8 +223,6 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               if (insertError) {
                 // If insert fails due to duplicate, try update
                 if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
-                  // Duplicate detected, updating existing entry
-                  
                   const { error: updateError } = await supabase
                     .from('weight_history')
                     .update({
@@ -238,37 +240,27 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
                     console.error('🔄 [QuickWeightInput] Fallback update failed:', updateError);
                     throw updateError;
                   }
-                  
-                  // Fallback update successful
                 } else {
                   console.error('🆕 [QuickWeightInput] Insert failed with non-duplicate error:', insertError);
                   throw insertError;
                 }
-              } else {
-                // Insert successful
               }
             } catch (fallbackError) {
               console.error('💥 [QuickWeightInput] All fallback strategies failed:', fallbackError);
               throw fallbackError;
             }
-          } else {
-            // Upsert successful
           }
 
           // Award points for weight tracking (only for new entries)
           try {
-            // Awarding points for weight tracking
             await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen');
             await updateStreak('weight_tracking');
 
             // Show points animation
             setShowPointsAnimation(true);
             setTimeout(() => setShowPointsAnimation(false), 3000);
-            
-            // Points awarded successfully
           } catch (pointsError) {
             console.error('🎯 [QuickWeightInput] Points award failed (non-critical):', pointsError);
-            // Continue without failing the entire operation
           }
 
         toast.success('Gewicht erfolgreich eingetragen!');
@@ -310,321 +302,368 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
   const isCompleted = hasWeightToday && !isEditing;
 
+  // Smart Chips for quick weight actions
+  const weightChips = [
+    { label: "+0.5kg", action: () => {
+      if (hasWeightToday) {
+        setWeight((parseFloat(todaysWeight.weight) + 0.5).toString());
+        setIsEditing(true);
+      }
+    }},
+    { label: "-0.5kg", action: () => {
+      if (hasWeightToday) {
+        setWeight(Math.max(0, parseFloat(todaysWeight.weight) - 0.5).toString());
+        setIsEditing(true);
+      }
+    }},
+    { label: "Foto hinzufügen", action: () => {
+      setShowPhotoUpload(true);
+      setIsEditing(true);
+    }}
+  ];
+
   return (
-    <CollapsibleQuickInput
-      title={hasWeightToday && !isEditing ? "Gewicht erfasst! 📊" : "Gewichtsmessung"}
-      icon={<Scale className="h-4 w-4 text-white" />}
-      isCompleted={isCompleted}
-      defaultOpen={false}
-      theme="violet"
-    >
-      {hasWeightToday && !isEditing ? (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-blue-600" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-foreground">Gewicht erfasst! 📊</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <InfoButton
-                title="Gewichts-Tracking"
-                description="Regelmäßige Gewichtsmessungen helfen dir, deine Fortschritte zu verfolgen und deine Ziele zu erreichen."
-                scientificBasis="Studien zeigen: Tägliches Wiegen kann beim Abnehmen doppelt so effektiv sein wie wöchentliches Wiegen."
-                tips={[
-                  "Wiege dich immer zur gleichen Tageszeit",
-                  "Am besten morgens nach dem Aufstehen",
-                  "Natürliche Schwankungen sind völlig normal",
-                  "Der Wochentrend ist wichtiger als Einzelwerte"
-                ]}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="text-blue-600 border-blue-300 hover:bg-blue-50"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            </div>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Scale className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-semibold">Gewicht</h2>
           </div>
-          
-          {/* Points badges directly under title */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <PointsBadge 
-              points={2} 
-              bonusPoints={todaysWeight.bonus_points > 0 ? todaysWeight.bonus_points : undefined}
-              icon="⚖️"
-              animated={false}
-              variant="secondary"
-            />
-          </div>
-          
-          <p className="text-sm text-muted-foreground">
-            {parseFloat(todaysWeight.weight).toFixed(1)} kg
-            {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
-            {todaysWeight.muscle_percentage && ` • ${parseFloat(todaysWeight.muscle_percentage).toFixed(1)}% Muskeln`}
-          </p>
-          
-          {showPointsAnimation && (
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <PointsBadge 
-                points={5} 
-                bonusPoints={todaysWeight.bonus_points > 0 ? todaysWeight.bonus_points : undefined}
-                icon="⚖️"
-                animated={showPointsAnimation}
-                variant="secondary"
-              />
-            </div>
-          )}
-          
-          {(() => {
-            const photos = parsePhotoUrls(todaysWeight.photo_urls);
-            return photos.length > 0 ? (
-              <div className="mb-3">
-                <div className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">
-                  Fortschrittsfotos:
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {photos.map((photo, index) => (
-                    <div key={index} className="relative group">
-                      <img 
-                        src={photo} 
-                        alt={`Fortschrittsfoto ${index + 1}`}
-                        className="w-16 h-16 object-cover rounded-lg border border-blue-200 dark:border-blue-700 cursor-pointer"
-                        onClick={() => window.open(photo, '_blank')}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null;
-          })()}
-          
-          {/* Coach Feedback First */}
-          {user?.id && todaysWeight && (
-            <div className="mb-3">
-              <CoachFeedbackCard
-                coachName="Lucy"
-                coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
-                type="weight"
-                weightData={todaysWeight}
-                userId={user.id}
-              />
-            </div>
-          )}
-          
-          {/* Tips in matching blue theme */}
-          <div className="bg-blue-100/50 dark:bg-blue-900/30 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
-            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-              <strong>Tipp:</strong> Wiege dich zur gleichen Tageszeit für beste Vergleichbarkeit!
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">
-              • Morgens nach dem Aufstehen und Toilettengang
-              • Vor dem Frühstück und ohne Kleidung
-              • Natürliche Schwankungen von ±1kg sind normal
-              • Der Trend über mehrere Wochen ist wichtiger als einzelne Werte
-            </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-              <strong>Nächste Messung:</strong> Morgen 📅
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/20 p-4 rounded-2xl border border-blue-200 dark:border-blue-800">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-xl">
-              <Scale className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-blue-800 dark:text-blue-200">
-                {hasWeightToday ? 'Gewicht bearbeiten' : 'Gewicht erfassen'}
-              </h3>
-            </div>
-            <InfoButton
-              title="Gewichts-Tracking"
-              description="Regelmäßige Gewichtsmessungen helfen dir, deine Fortschritte zu verfolgen und deine Ziele zu erreichen."
-              scientificBasis="Studien zeigen: Tägliches Wiegen kann beim Abnehmen doppelt so effektiv sein wie wöchentliches Wiegen."
-              tips={[
-                "Wiege dich immer zur gleichen Tageszeit",
-                "Am besten morgens nach dem Aufstehen",
-                "Natürliche Schwankungen sind völlig normal",
-                "Der Wochentrend ist wichtiger als Einzelwerte"
-              ]}
-            />
-          </div>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="weight">Gewicht (kg) *</Label>
-                <NumericInput
-                  id="weight"
-                  value={weight}
-                  onChange={(value) => setWeight(value)}
-                  placeholder="75.5"
-                  step={0.1}
-                  min={1}
-                  max={500}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="bodyFat">Körperfett (%)</Label>
-                <NumericInput
-                  id="bodyFat"
-                  value={bodyFat}
-                  onChange={(value) => setBodyFat(value)}
-                  placeholder="15.0"
-                  step={0.1}
-                  min={0}
-                  max={100}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="muscleMass">Muskelmasse (%)</Label>
-                <NumericInput
-                  id="muscleMass"
-                  value={muscleMass}
-                  onChange={(value) => setMuscleMass(value)}
-                  placeholder="40.0"
-                  step={0.1}
-                  min={0}
-                  max={100}
-                />
-              </div>
-            </div>
-
-            {/* Photo Upload Toggle */}
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowPhotoUpload(!showPhotoUpload)}
-                className="w-full mb-2"
-              >
-                <Camera className="h-4 w-4 mr-2" />
-                {showPhotoUpload ? 'Progress Fotos ausblenden' : 'Progress Fotos hinzufügen (optional)'}
-              </Button>
-              
-              {showPhotoUpload && (
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {open ? (
                 <>
-                  {/* Existing Photos */}
-                  {existingPhotos.length > 0 && (
-                    <div className="mb-2">
-                      <p className="text-xs text-gray-600 mb-1">Vorhandene Fotos:</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {existingPhotos.map((url, index) => (
-                          <div key={index} className="relative">
-                            <img
-                              src={url}
-                              alt={`Existing ${index + 1}`}
-                              className="w-16 h-16 object-cover rounded border"
-                            />
-                            {isEditing && (
-                              <button
-                                type="button"
-                                onClick={() => removeExistingPhoto(index)}
-                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* New Photos Upload */}
-                  <div>
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="photo-upload"
-                    />
-                    <label
-                      htmlFor="photo-upload"
-                      className="flex items-center justify-center w-full p-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-500 transition-colors"
-                    >
-                      <Upload className="h-4 w-4 mr-2 text-gray-600" />
-                      <span className="text-sm text-gray-600">Neue Bilder hinzufügen</span>
-                    </label>
-                  </div>
-                  
-                  {/* Selected New Files */}
-                  {selectedFiles.length > 0 && (
-                    <div className="mt-2">
-                      <p className="text-xs text-gray-600 mb-1">Neue Fotos:</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {selectedFiles.map((file, index) => (
-                          <div key={index} className="relative">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`New Preview ${index + 1}`}
-                              className="w-16 h-16 object-cover rounded border"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeFile(index)}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
                 </>
               )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notizen</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Notizen..."
-                rows={3}
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button 
-                type="submit" 
-                disabled={isSubmitting || !debouncedWeight}
-                className="flex-1"
-              >
-                {isSubmitting ? 'Speichere...' : (isEditing ? 'Aktualisieren' : 'Gewicht hinzufügen')}
-              </Button>
-              
-              {isEditing && (
-                <Button 
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setWeight('');
-                    setBodyFat('');
-                    setMuscleMass('');
-                    setNotes('');
-                    setSelectedFiles([]);
-                  }}
-                >
-                  Abbrechen
-                </Button>
-              )}
-            </div>
-          </form>
+            </button>
+          </CollapsibleTrigger>
         </div>
-      )}
-    </CollapsibleQuickInput>
+
+        {/* Collapsed summary when card is closed */}
+        {!open && isCompleted && (
+          <div className="mt-3 space-y-1 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="font-semibold">
+                {parseFloat(todaysWeight.weight).toFixed(1)} kg
+                {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
+              </div>
+              <div className="h-2 w-2 rounded-full bg-primary"></div>
+            </div>
+          </div>
+        )}
+
+        {/* Smart Chips for quick actions - visible in both collapsed and expanded states */}
+        {hasWeightToday && weightChips.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {weightChips.map((chip, index) => (
+              <SmartChip key={index} text={chip.label} onClick={chip.action} />
+            ))}
+          </div>
+        )}
+
+        <CollapsibleContent>
+          {hasWeightToday && !isEditing ? (
+            <div className="mt-3 space-y-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-primary" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground">Gewicht erfasst! 📊</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <InfoButton
+                    title="Gewichts-Tracking"
+                    description="Regelmäßige Gewichtsmessungen helfen dir, deine Fortschritte zu verfolgen und deine Ziele zu erreichen."
+                    scientificBasis="Studien zeigen: Tägliches Wiegen kann beim Abnehmen doppelt so effektiv sein wie wöchentliches Wiegen."
+                    tips={[
+                      "Wiege dich immer zur gleichen Tageszeit",
+                      "Am besten morgens nach dem Aufstehen",
+                      "Natürliche Schwankungen sind völlig normal",
+                      "Der Wochentrend ist wichtiger als Einzelwerte"
+                    ]}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="text-primary border-primary/30 hover:bg-primary/10"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Points badges directly under title */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <PointsBadge 
+                  points={2} 
+                  bonusPoints={todaysWeight.bonus_points > 0 ? todaysWeight.bonus_points : undefined}
+                  icon="⚖️"
+                  animated={false}
+                  variant="secondary"
+                />
+              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                {parseFloat(todaysWeight.weight).toFixed(1)} kg
+                {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
+                {todaysWeight.muscle_percentage && ` • ${parseFloat(todaysWeight.muscle_percentage).toFixed(1)}% Muskeln`}
+              </p>
+              
+              {showPointsAnimation && (
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <PointsBadge 
+                    points={5} 
+                    bonusPoints={todaysWeight.bonus_points > 0 ? todaysWeight.bonus_points : undefined}
+                    icon="⚖️"
+                    animated={showPointsAnimation}
+                    variant="secondary"
+                  />
+                </div>
+              )}
+              
+              {(() => {
+                const photos = parsePhotoUrls(todaysWeight.photo_urls);
+                return photos.length > 0 ? (
+                  <div className="mb-3">
+                    <div className="text-sm font-medium text-muted-foreground mb-2">
+                      Fortschrittsfotos:
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {photos.map((photo, index) => (
+                        <div key={index} className="relative group">
+                          <img 
+                            src={photo} 
+                            alt={`Fortschrittsfoto ${index + 1}`}
+                            className="w-16 h-16 object-cover rounded-lg border border-border cursor-pointer"
+                            onClick={() => window.open(photo, '_blank')}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+              
+              {/* Tips in matching theme */}
+              <div className="bg-muted/30 rounded-lg p-3 border">
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong>Tipp:</strong> Wiege dich zur gleichen Tageszeit für beste Vergleichbarkeit!
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  • Morgens nach dem Aufstehen und Toilettengang
+                  • Vor dem Frühstück und ohne Kleidung
+                  • Natürliche Schwankungen von ±1kg sind normal
+                  • Der Trend über mehrere Wochen ist wichtiger als einzelne Werte
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 p-4 rounded-2xl border">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-muted rounded-xl">
+                  <Scale className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold">
+                    {hasWeightToday ? 'Gewicht bearbeiten' : 'Gewicht erfassen'}
+                  </h3>
+                </div>
+                <InfoButton
+                  title="Gewichts-Tracking"
+                  description="Regelmäßige Gewichtsmessungen helfen dir, deine Fortschritte zu verfolgen und deine Ziele zu erreichen."
+                  scientificBasis="Studien zeigen: Tägliches Wiegen kann beim Abnehmen doppelt so effektiv sein wie wöchentliches Wiegen."
+                  tips={[
+                    "Wiege dich immer zur gleichen Tageszeit",
+                    "Am besten morgens nach dem Aufstehen",
+                    "Natürliche Schwankungen sind völlig normal",
+                    "Der Wochentrend ist wichtiger als Einzelwerte"
+                  ]}
+                />
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="weight">Gewicht (kg) *</Label>
+                    <NumericInput
+                      id="weight"
+                      value={weight}
+                      onChange={(value) => setWeight(value)}
+                      placeholder="75.5"
+                      step={0.1}
+                      min={1}
+                      max={500}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="bodyFat">Körperfett (%)</Label>
+                    <NumericInput
+                      id="bodyFat"
+                      value={bodyFat}
+                      onChange={(value) => setBodyFat(value)}
+                      placeholder="15.0"
+                      step={0.1}
+                      min={0}
+                      max={100}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="muscleMass">Muskelmasse (%)</Label>
+                    <NumericInput
+                      id="muscleMass"
+                      value={muscleMass}
+                      onChange={(value) => setMuscleMass(value)}
+                      placeholder="40.0"
+                      step={0.1}
+                      min={0}
+                      max={100}
+                    />
+                  </div>
+                </div>
+
+                {/* Photo Upload Toggle */}
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPhotoUpload(!showPhotoUpload)}
+                    className="w-full mb-2"
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    {showPhotoUpload ? 'Progress Fotos ausblenden' : 'Progress Fotos hinzufügen (optional)'}
+                  </Button>
+                  
+                  {showPhotoUpload && (
+                    <>
+                      {/* Existing Photos */}
+                      {existingPhotos.length > 0 && (
+                        <div className="mb-2">
+                          <p className="text-xs text-muted-foreground mb-1">Vorhandene Fotos:</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {existingPhotos.map((url, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={url}
+                                  alt={`Existing ${index + 1}`}
+                                  className="w-16 h-16 object-cover rounded border"
+                                />
+                                {isEditing && (
+                                  <button
+                                    type="button"
+                                    onClick={() => removeExistingPhoto(index)}
+                                    className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-destructive/80"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* New Photos Upload */}
+                      <div>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={handleFileSelect}
+                          className="hidden"
+                          id="photo-upload"
+                        />
+                        <label
+                          htmlFor="photo-upload"
+                          className="flex items-center justify-center w-full p-3 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-border/80 transition-colors"
+                        >
+                          <Upload className="h-4 w-4 mr-2 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Neue Bilder hinzufügen</span>
+                        </label>
+                      </div>
+                      
+                      {/* Selected New Files */}
+                      {selectedFiles.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-muted-foreground mb-1">Neue Fotos:</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {selectedFiles.map((file, index) => (
+                              <div key={index} className="relative">
+                                <img
+                                  src={URL.createObjectURL(file)}
+                                  alt={`New Preview ${index + 1}`}
+                                  className="w-16 h-16 object-cover rounded border"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeFile(index)}
+                                  className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-destructive/80"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notizen</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Notizen..."
+                    rows={3}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting || !debouncedWeight}
+                    className="flex-1"
+                  >
+                    {isSubmitting ? 'Speichere...' : (isEditing ? 'Aktualisieren' : 'Gewicht hinzufügen')}
+                  </Button>
+                  
+                  {isEditing && (
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setWeight('');
+                        setBodyFat('');
+                        setMuscleMass('');
+                        setNotes('');
+                        setSelectedFiles([]);
+                      }}
+                    >
+                      Abbrechen
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </div>
+          )}
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };
