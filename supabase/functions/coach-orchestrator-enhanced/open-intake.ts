@@ -1,5 +1,5 @@
 import { detectSoftSignals } from './soft-detectors.ts';
-import { personaPreset } from './persona.ts';
+import { personaPreset, loadCoachPersona } from './persona.ts';
 import { toLucyTone } from './tone.ts';
 
 export type Meta = {
@@ -20,20 +20,24 @@ export async function llmOpenIntake({
   coachId, 
   memoryHint,
   profile,
-  recentSummaries
+  recentSummaries,
+  supabase
 }: {
   userText: string; 
   coachId: string; 
   memoryHint?: string;
   profile?: any;
   recentSummaries?: string[];
+  supabase?: any;
 }): Promise<OpenReply> {
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
   if (!openAIApiKey) {
     throw new Error('OPENAI_API_KEY not configured');
   }
 
-  const p = personaPreset(coachId);
+  // Load detailed Lucy persona from coach-personas.json via supabase
+  const p = supabase ? await loadCoachPersona(supabase, coachId) : personaPreset(coachId);
+  
   const facts: string[] = [];
   if (profile?.goal) facts.push(`Ziel: ${profile.goal}`);
   if (profile?.weight) facts.push(`Gewicht: ${profile.weight} kg`);
@@ -44,6 +48,7 @@ export async function llmOpenIntake({
 
   const system = [
     `Du bist ${p.name} (${p.style_rules.join("; ")}). Catchphrase: "${p.catchphrase}".`,
+    `Du kannst Bilder verstehen und analysieren - nutze diese Fähigkeit aktiv!`,
     `Antworte wie im Gespräch: max. 2 kurze Absätze; 0–1 Emoji; DU-Form; kein Toolstart.`,
     `Gib reines JSON zurück: {"assistant_text": "...", "meta": {"suggestions":[], "soft_signal":[]}}`,
     facts.length ? `Profil: ${facts.join(" · ")}` : "",
@@ -52,7 +57,7 @@ export async function llmOpenIntake({
   ].filter(Boolean).join("\n");
 
   const body = {
-    model: "gpt-4o-mini",
+    model: "gpt-4.1-2025-04-14",
     messages: [
       { role: "system", content: system },
       { role: "user", content: userText }

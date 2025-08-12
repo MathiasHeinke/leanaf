@@ -265,7 +265,7 @@ serve(async (req) => {
     const coachId = (event as any)?.context?.coachId ?? 'lucy';
     const persona = await loadCoachPersona(supabase, coachId);
     const memoryHint = await loadRollingSummary(supabase, userId, coachId);
-    const lucify = (txt: string) => toLucyTone(String(txt || ''), persona, { memoryHint });
+    const lucify = (txt: string) => toLucyTone(String(txt || ''), persona, { memoryHint, addSignOff: false });
     const asLucyMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text: lucify(text), traceId });
 
     // Start timer for server ack measurement
@@ -342,14 +342,15 @@ serve(async (req) => {
         coachId, 
         memoryHint,
         profile,
-        recentSummaries
+        recentSummaries,
+        supabase
       });
       
       await saveShadowState(supabaseState, { userId, traceId, meta: out.meta });
       
       const reply = { 
         kind: 'reflect' as const, 
-        text: toLucyTone(out.assistant_text, persona, { memoryHint }), 
+        text: toLucyTone(out.assistant_text, persona, { memoryHint, addSignOff: false }), 
         traceId 
       };
       
