@@ -6354,14 +6354,12 @@ export type Database = {
         Returns: number
       }
       compute_monthly_summary: {
-        Args:
-          | { p_user_id: string; p_year: number; p_month: number }
-          | {
-              p_user_id: string
-              p_year: number
-              p_month: number
-              p_force?: boolean
-            }
+        Args: {
+          p_user_id: string
+          p_year: number
+          p_month: number
+          p_force?: boolean
+        }
         Returns: Json
       }
       compute_weekly_summary: {

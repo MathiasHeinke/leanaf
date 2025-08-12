@@ -10,7 +10,8 @@ interface BackfillRequest {
   userId: string;
   summaryType: 'weekly' | 'monthly' | 'both';
   weeks?: number; // Number of weeks to backfill (default: 4)
-  months?: number; // Number of months to backfill (default: 3)
+  months?: number; // Number of calendar months to backfill (default: 3)
+  days?: number; // Optional: use rolling N days for monthly backfill (e.g., 30)
   force?: boolean;
 }
 
@@ -31,6 +32,7 @@ Deno.serve(async (req) => {
       summaryType, 
       weeks = 4, 
       months = 3, 
+      days = 0,
       force = false 
     }: BackfillRequest = await req.json();
 
@@ -86,20 +88,40 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Monthly backfill
+    // Monthly backfill (supports rolling N days, e.g., 30)
     if (summaryType === 'monthly' || summaryType === 'both') {
-      for (let i = 0; i < months; i++) {
-        const now = new Date();
-        const targetMonth = now.getMonth() - i;
-        const targetYear = now.getFullYear() + Math.floor(targetMonth / 12);
-        const adjustedMonth = ((targetMonth % 12) + 12) % 12 + 1;
+      // Determine which (year, month) pairs to process
+      const monthsToProcess: { year: number; month: number }[] = [];
 
+      if (days && days > 0) {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - (days - 1));
+
+        // Walk months from start to end, include each month once
+        const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+        const endMarker = new Date(end.getFullYear(), end.getMonth(), 1);
+        while (cursor <= endMarker) {
+          monthsToProcess.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
+          cursor.setMonth(cursor.getMonth() + 1);
+        }
+      } else {
+        for (let i = 0; i < months; i++) {
+          const now = new Date();
+          const targetMonth = now.getMonth() - i;
+          const targetYear = now.getFullYear() + Math.floor(targetMonth / 12);
+          const adjustedMonth = ((targetMonth % 12) + 12) % 12 + 1;
+          monthsToProcess.push({ year: targetYear, month: adjustedMonth });
+        }
+      }
+
+      for (const m of monthsToProcess) {
         try {
           const response = await supabase.functions.invoke('generate-monthly-summary', {
             body: {
               userId,
-              year: targetYear,
-              month: adjustedMonth,
+              year: m.year,
+              month: m.month,
               force
             },
             headers: {
@@ -109,7 +131,7 @@ Deno.serve(async (req) => {
 
           results.push({
             type: 'monthly',
-            period: `${targetYear}-${String(adjustedMonth).padStart(2, '0')}`,
+            period: `${m.year}-${String(m.month).padStart(2, '0')}`,
             status: response.data?.status || 'completed',
             data: response.data
           });
@@ -117,12 +139,12 @@ Deno.serve(async (req) => {
           // Small delay to avoid overwhelming the system
           await new Promise(resolve => setTimeout(resolve, 200));
         } catch (error) {
-          console.error(`Error processing month ${i}:`, error);
+          console.error(`Error processing month ${m.year}-${String(m.month).padStart(2, '0')}:`, error);
           results.push({
             type: 'monthly',
-            period: `${targetYear}-${String(adjustedMonth).padStart(2, '0')}`,
+            period: `${m.year}-${String(m.month).padStart(2, '0')}`,
             status: 'error',
-            error: error.message
+            error: (error as any).message
           });
         }
       }
