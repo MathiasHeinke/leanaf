@@ -54,21 +54,24 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
     switch (dataState) {
       case 'done':
         return {
-          cardClass: 'border-primary/40 bg-primary/5 dark:bg-primary/10',
-          iconClass: 'bg-primary/20 text-primary',
-          progressClass: 'bg-primary'
+          cardClass: 'border-primary/40 bg-primary/5 dark:bg-primary/10 ring-1 ring-primary/30 shadow-[0_0_32px_hsl(var(--primary)/0.25)]',
+          iconClass: 'bg-primary/15 text-primary',
+          progressClass: 'bg-primary',
+          dotClass: 'bg-primary ring-primary/30'
         };
       case 'partial':
         return {
-          cardClass: 'border-amber-500/40 bg-amber-50 dark:bg-amber-950/20',
-          iconClass: 'bg-amber-500/20 text-amber-600 dark:text-amber-400',
-          progressClass: 'bg-amber-500'
+          cardClass: 'border-accent/40 bg-accent/5 dark:bg-accent/10 ring-1 ring-accent/30 shadow-[0_0_28px_hsl(var(--accent)/0.22)]',
+          iconClass: 'bg-accent/15 text-accent',
+          progressClass: 'bg-accent',
+          dotClass: 'bg-accent ring-accent/30'
         };
       default: // empty
         return {
-          cardClass: 'border-border/40 bg-background',
+          cardClass: 'border-destructive/30 bg-background ring-1 ring-destructive/20',
           iconClass: 'bg-muted text-muted-foreground',
-          progressClass: 'bg-muted'
+          progressClass: 'bg-muted',
+          dotClass: 'bg-destructive ring-destructive/30'
         };
     }
   };
@@ -90,7 +93,17 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
             {icon}
           </div>
           <div>
-            <h3 className="font-semibold text-foreground">{title}</h3>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "inline-flex h-2.5 w-2.5 rounded-full ring-2",
+                  stateStyles.dotClass,
+                  "animate-[pulse_3s_ease-in-out_infinite]"
+                )}
+                aria-hidden
+              />
+              <h3 className="font-semibold text-foreground">{title}</h3>
+            </div>
             {status && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 {statusIcon}

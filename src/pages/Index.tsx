@@ -43,6 +43,7 @@ import { MealEditDialog } from "@/components/MealEditDialog";
 import { useFrequentMeals } from "@/hooks/useFrequentMeals";
 import { MomentumXPBar } from "@/components/momentum/MomentumXPBar";
 import confetti from "canvas-confetti";
+import { GripVertical } from "lucide-react";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -494,7 +495,7 @@ const Index = () => {
     }
   };
 
-  const SortableCard = ({ id, children }: { id: string; children: React.ReactNode }) => {
+  const SortableCard = ({ id, state = 'empty', children }: { id: string; state?: 'empty' | 'partial' | 'done'; children: React.ReactNode }) => {
     const {
       attributes,
       listeners,
@@ -508,16 +509,32 @@ const Index = () => {
       transform: CSS.Transform.toString(transform),
       transition,
       opacity: isDragging ? 0.5 : 1,
-    };
+    } as React.CSSProperties;
+
+    const glowClass = state === 'done'
+      ? 'shadow-[0_0_32px_hsl(var(--primary)/0.22)] ring-1 ring-primary/30'
+      : state === 'partial'
+      ? 'shadow-[0_0_28px_hsl(var(--accent)/0.20)] ring-1 ring-accent/30'
+      : 'ring-1 ring-destructive/20';
+
+    const dotClass = state === 'done'
+      ? 'bg-primary ring-primary/30'
+      : state === 'partial'
+      ? 'bg-accent ring-accent/30'
+      : 'bg-destructive ring-destructive/30';
 
     return (
-      <div ref={setNodeRef} style={style} className="relative">
-        <div
+      <div ref={setNodeRef} style={style} className={`relative ${glowClass} rounded-xl`}>
+        <button
           {...attributes}
           {...listeners}
-          className="absolute top-2 left-2 w-6 h-6 cursor-grab active:cursor-grabbing opacity-30 hover:opacity-60 transition-opacity z-10 bg-muted/20 hover:bg-muted/40 rounded"
+          className="absolute top-2 left-2 h-8 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 transition-opacity z-10 rounded-full bg-muted/50 hover:bg-muted/70 text-muted-foreground"
+          title="Karte verschieben"
           aria-label="Karte verschieben"
-        />
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <span className={`pointer-events-none absolute top-2 right-2 h-2.5 w-2.5 rounded-full ring-2 ${dotClass} animate-[pulse_3s_ease-in-out_infinite]`} />
         {children}
       </div>
     );

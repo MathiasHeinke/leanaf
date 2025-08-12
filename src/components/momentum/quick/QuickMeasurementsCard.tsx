@@ -3,7 +3,7 @@ import { QuickCardShell } from './QuickCardShell';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { BodyMeasurements } from '@/components/BodyMeasurements';
 import { Ruler, TrendingUp } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -57,30 +57,30 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
           label: 'Details',
           onClick: () => setDetailsOpen(true)
         }}
+        dataState={hasMeasurements ? 'done' : 'empty'}
+        progressPercent={hasMeasurements ? 100 : 0}
       >
-        <Card className="overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-border/40">
           <Collapsible open={isOpen} onOpenChange={setIsOpen}>
             <CollapsibleTrigger className="w-full">
               <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-gradient-to-r from-cyan-500/10 to-blue-500/10">
-                    <Ruler className="h-4 w-4 text-cyan-600" />
+                  <div className="p-2 rounded-lg bg-gradient-to-r from-primary/10 to-accent/10">
+                    <Ruler className="h-4 w-4 text-primary" />
                   </div>
                   <div className="text-left">
                     <h3 className="font-medium text-foreground">
                       {hasMeasurements ? "Maße erfasst! 📏" : "Körpermaße"}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {hasMeasurements ? "Tap für Details" : "Wöchentliche Messungen für beste Trends"}
+                      {hasMeasurements ? "Tippe für Details" : "Wöchentliche Messungen für beste Trends"}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {hasMeasurements && (
                     <div className="text-right">
-                      <div className="text-xs text-muted-foreground">
-                        Letzte Messung
-                      </div>
+                      <div className="text-xs text-muted-foreground">Letzte Messung</div>
                       <div className="text-sm font-medium">
                         {new Date(todaysMeasurements.date).toLocaleDateString('de-DE')}
                       </div>
@@ -94,9 +94,9 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
                 </div>
               </div>
             </CollapsibleTrigger>
-            
+
             <CollapsibleContent>
-              <CardContent className="pt-0">
+              <div className="p-4 pt-0">
                 {hasMeasurements ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
@@ -122,8 +122,8 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
                         <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
                       )}
                     </div>
-                    
-                    <div className="bg-card rounded-lg p-3 border-l-4 border-cyan-500">
+
+                    <div className="bg-card rounded-lg p-3 border-l-4 border-primary">
                       <p className="text-xs text-muted-foreground mb-1">
                         <strong>Progress-Tipp:</strong> Nächste Messung in 7 Tagen 📅
                       </p>
@@ -134,7 +134,7 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-cyan-950/20 dark:to-blue-950/20 rounded-lg p-4">
+                    <div className="bg-gradient-to-r from-primary/5 to-accent/5 dark:from-primary/10 dark:to-accent/10 rounded-lg p-4">
                       <h4 className="font-medium text-foreground mb-2">📏 Warum Körpermaße wichtig sind</h4>
                       <p className="text-sm text-muted-foreground mb-3">
                         Körperumfänge sind oft bessere Indikatoren für deine Fortschritte als nur das Gewicht, da sie Muskelaufbau und Fettabbau getrennt erfassen.
@@ -147,10 +147,10 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
                     </div>
                   </div>
                 )}
-              </CardContent>
+              </div>
             </CollapsibleContent>
           </Collapsible>
-        </Card>
+        </div>
       </QuickCardShell>
 
       <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
