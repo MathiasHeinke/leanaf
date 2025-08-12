@@ -4,7 +4,10 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -15,9 +18,8 @@ import { PremiumGate } from "@/components/PremiumGate";
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
-import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
-import { CoachFeedbackCard } from "./CoachFeedbackCard";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
+import { cn } from "@/lib/utils";
 
 interface QuickWorkoutInputProps {
   onWorkoutAdded?: () => void;
@@ -189,11 +191,23 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
   };
 
   const isCompleted = !!hasWorkoutToday;
+  const [isCollapsed, setIsCollapsed] = useState(!isEditing && hasWorkoutToday);
 
-  // Shared body content used in both modes (collapsible vs. card-only)
-  const content = (
-    <>
-      {hasWorkoutToday && !isEditing ? (
+  // Calculate total workout time for the week
+  const weeklyWorkoutTime = todaysWorkouts.reduce((total, w) => total + (w.duration_minutes || 0), 0);
+  const progressPercent = Math.min((weeklyWorkoutTime / 150) * 100, 100); // 150 min weekly goal
+
+  // Smart chip actions
+  const smartChips = [
+    { label: "Krafttraining 45min", action: () => { setWorkoutType("kraft"); setDuration([45]); setIsEditing(true); } },
+    { label: "Cardio 30min", action: () => { setWorkoutType("cardio"); setDuration([30]); setIsEditing(true); } },
+    { label: "Spaziergang", action: () => { setWorkoutType("cardio"); setDuration([20]); setDistanceKm("2"); setIsEditing(true); } }
+  ];
+
+  if (asCard) {
+    return (
+      <div className="space-y-4">
+        {hasWorkoutToday && !isEditing ? (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <CheckCircle className={`h-5 w-5 ${asCard ? "text-foreground/70" : "text-cyan-600"}`} />
@@ -288,17 +302,6 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             ))}
           </div>
           
-          {/* Coach Feedback First */}
-          <div className="mb-3">
-            <CoachFeedbackCard 
-              coachName="Markus"
-              coachAvatar="/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png"
-              workoutData={todaysWorkouts}
-              userId={user?.id}
-              type="workout"
-            />
-          </div>
-          
           {/* Tips in matching cyan theme */}
           <div className={`rounded-lg p-3 ${asCard ? "bg-muted/30" : "bg-cyan-100/50 border border-cyan-200"}`}>
             <p className={`text-xs mb-2 ${asCard ? "text-muted-foreground" : "text-cyan-700"}`}>
@@ -315,13 +318,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             </p>
           </div>
         </div>
-      ) : (
-        <PremiumGate 
-          feature="workout_tracking"
-          hideable={true}
-          fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
-        >
-          <div className={`p-4 ${asCard ? "p-0 rounded-none border-0 bg-transparent" : "bg-card rounded-2xl border"}`}>
+        ) : (
+          <PremiumGate 
+            feature="workout_tracking"
+            hideable={true}
+            fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
+          >
+            <div className="p-4 bg-card rounded-2xl border">
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2 bg-muted rounded-xl">
                 <Dumbbell className="h-5 w-5" />
@@ -500,28 +503,276 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             </form>
           </div>
         </PremiumGate>
-      )}
-    </>
-  );
-
-  // Card-only mode (for overlays/modals): no outer wrapper/card here.
-  // The parent (e.g., DialogContent) will provide the single card container.
-  if (asCard) {
-    return (
-      <>{content}</>
+        )}
+      </div>
     );
   }
 
-  // Default collapsible variant (existing behavior)
   return (
-    <CollapsibleQuickInput
-      title={hasWorkoutToday && !isEditing ? "Workout erledigt! 💪" : "Training & Bewegung"}
-      icon={<Dumbbell className="h-4 w-4 text-white" />}
-      isCompleted={isCompleted}
-      defaultOpen={false}
-      theme="purple"
-    >
-      {content}
-    </CollapsibleQuickInput>
+    <Card className="relative">
+      <Collapsible open={!isCollapsed} onOpenChange={setIsCollapsed}>
+        <div className="flex items-center gap-3 p-5">
+          <Dumbbell className="h-5 w-5 text-primary" />
+          <div className="flex-1">
+            <h3 className="text-base font-semibold">
+              {hasWorkoutToday && !isEditing ? "Workout erledigt! 💪" : "Workout & Training"}
+            </h3>
+            {isCollapsed && hasWorkoutToday && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-muted-foreground">
+                  {todaysWorkouts.length === 1 ? '1 Workout' : `${todaysWorkouts.length} Workouts`} • {weeklyWorkoutTime} Min
+                </span>
+                <Progress value={progressPercent} className="h-1 w-16" />
+              </div>
+            )}
+            {isCollapsed && !hasWorkoutToday && (
+              <div className="flex gap-1 mt-2">
+                {smartChips.map((chip, index) => (
+                  <Button 
+                    key={index}
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => { chip.action(); setIsCollapsed(false); }}
+                    className="text-xs h-6 px-2"
+                  >
+                    {chip.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            {hasWorkoutToday && !isEditing ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle className="h-5 w-5 text-primary" />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-foreground">
+                      {todaysWorkouts.length === 1 ? 'Workout erledigt! 💪' : `${todaysWorkouts.length} Workouts erledigt! 💪`}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <InfoButton
+                      title="Workout & Regeneration"
+                      description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
+                      scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche plus ausreichende Regeneration reduzieren das Krankheitsrisiko um bis zu 40%."
+                      tips={[
+                        "Krafttraining 2-3x pro Woche für optimalen Muskelaufbau",
+                        "Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung",
+                        "Mindestens 1-2 Ruhetage pro Woche für Regeneration",
+                        "Progressive Steigerung für kontinuierliche Fortschritte"
+                      ]}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddNewWorkout}
+                      className="text-primary border-primary/30 hover:bg-primary/10"
+                      title="Weiteres Workout hinzufügen"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Points badges */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <PointsBadge 
+                    points={3 * todaysWorkouts.filter(w => w.workout_type !== 'pause').length} 
+                    bonusPoints={todaysWorkouts.reduce((sum, w) => sum + (w.bonus_points || 0), 0)}
+                    icon="💪"
+                    animated={false}
+                    variant="secondary"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  {todaysWorkouts.map((workout, index) => (
+                    <div key={workout.id} className="flex items-center justify-between rounded-lg p-3 bg-muted/20">
+                      <div className="flex-1">
+                        <p className="text-sm text-foreground">
+                          <span className="font-medium">
+                            {workout.workout_type === 'kraft' ? 'Krafttraining' : 
+                             workout.workout_type === 'cardio' ? 'Cardio' : 
+                             workout.workout_type === 'pause' ? 'Pause/Ruhetag' : 'Anderes'}
+                          </span>
+                          {workout.workout_type === 'pause' ? (
+                            <span className="ml-2">🛌 Regeneration</span>
+                          ) : (
+                            <>
+                              <span className="ml-2">{workout.duration_minutes || 0} Min</span>
+                              <span className="mx-1">•</span>
+                              <span>Intensität: {workout.intensity || 0}/10</span>
+                            </>
+                          )}
+                          {workout.distance_km > 0 && (
+                            <span className="ml-2">• {workout.distance_km} km</span>
+                          )}
+                          {workout.steps > 0 && (
+                            <span className="ml-2">• {workout.steps.toLocaleString()} Schritte</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditWorkout(workout)}
+                          className="p-1 h-auto text-foreground/70 hover:bg-muted/20"
+                          title="Workout bearbeiten"
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteWorkout(workout)}
+                          className="p-1 h-auto text-foreground/70 hover:bg-muted/20"
+                          title="Workout löschen"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="rounded-lg p-3 bg-muted/30">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    <strong>Tipp:</strong> Effektives Training braucht die richtige Balance!
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    • Krafttraining 2-3x pro Woche für optimalen Muskelaufbau<br/>
+                    • Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung<br/>
+                    • Mindestens 1-2 Ruhetage pro Woche für Regeneration<br/>
+                    • Progressive Steigerung für kontinuierliche Fortschritte
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <PremiumGate 
+                feature="workout_tracking"
+                hideable={true}
+                fallbackMessage="Workout-Tracking ist ein Premium Feature. Upgrade für detailliertes Training-Tracking!"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-muted rounded-xl">
+                      <Dumbbell className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">
+                        {hasWorkoutToday ? 'Workout bearbeiten' : 'Workout eintragen'}
+                      </h3>
+                    </div>
+                    <InfoButton
+                      title="Workout & Regeneration"
+                      description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
+                      scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche plus ausreichende Regeneration reduzieren das Krankheitsrisiko um bis zu 40%."
+                      tips={[
+                        "Krafttraining 2-3x pro Woche für optimalen Muskelaufbau",
+                        "Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung",
+                        "Mindestens 1-2 Ruhetage pro Woche für Regeneration",
+                        "Progressive Steigerung für kontinuierliche Fortschritte"
+                      ]}
+                    />
+                  </div>
+                  
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">
+                        Trainingsart
+                      </label>
+                      <Select value={workoutType} onValueChange={setWorkoutType}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="kraft">Krafttraining</SelectItem>
+                          <SelectItem value="cardio">Cardio</SelectItem>
+                          <SelectItem value="pause">Pause/Ruhetag</SelectItem>
+                          <SelectItem value="other">Anderes</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {workoutType === 'pause' ? (
+                      <div className="rounded-lg p-4 border">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="p-2 bg-muted rounded-xl">
+                            <Moon className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h4 className="font-semibold">Perfekte Entscheidung! 🌙</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Regeneration ist genauso wichtig wie Training
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          <p className="mb-2"><strong>Warum Ruhetage wichtig sind:</strong></p>
+                          <ul className="list-disc list-inside space-y-1 text-xs">
+                            <li>Muskeln wachsen während der Ruhephase</li>
+                            <li>Verletzungsrisiko wird reduziert</li>
+                            <li>Motivation und Energie werden wieder aufgeladen</li>
+                            <li>Hormonhaushalt regeneriert sich optimal</li>
+                          </ul>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">
+                            Dauer: {duration[0]} Minuten
+                          </label>
+                          <Slider
+                            value={duration}
+                            onValueChange={setDuration}
+                            max={180}
+                            min={5}
+                            step={5}
+                            className="w-full"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-sm font-medium mb-2 block">
+                            Intensität: {intensity[0]}/10
+                          </label>
+                          <Slider
+                            value={intensity}
+                            onValueChange={setIntensity}
+                            max={10}
+                            min={1}
+                            step={1}
+                            className="w-full"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || !user}
+                      className="w-full"
+                    >
+                      {isSubmitting ? 'Speichere...' : 'Workout speichern'}
+                    </Button>
+                  </form>
+                </div>
+              </PremiumGate>
+            )}
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 };

@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera } from "lucide-react";
-import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
+import { Card, CardContent } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown } from "lucide-react";
 import { useMindsetJournal } from "@/hooks/useMindsetJournal";
 import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
 import { VoiceVisualizer } from "@/components/mindset-journal/VoiceVisualizer";
@@ -181,19 +183,64 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   const hasEntriesForDate = recentEntries.some(entry => 
     new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
+  const [isCollapsed, setIsCollapsed] = useState(hasEntriesForDate);
+
+  const todayEntries = recentEntries.filter(entry => 
+    new Date(entry.date).toISOString().split('T')[0] === currentDateStr
+  );
+  const avgMoodScore = todayEntries.length > 0 
+    ? todayEntries.reduce((sum, entry) => sum + (entry.mood_score || 0), 0) / todayEntries.length
+    : 0;
+  const moodProgress = ((avgMoodScore + 5) / 10) * 100; // Convert -5 to +5 scale to 0-100%
+
+  // Smart chip actions
+  const smartChips = [
+    { label: "Dankbarkeit", action: () => { setManualText("Heute bin ich dankbar für "); } },
+    { label: "Reflektion", action: () => { setManualText("Heute habe ich gelernt, dass "); } },
+    { label: "Ziele", action: () => { setManualText("Morgen möchte ich "); } }
+  ];
 
   return (
-    <CollapsibleQuickInput
-      title="Mindset Journal"
-      icon={<Brain className="h-5 w-5" />}
-      theme="violet"
-      isCompleted={hasEntriesForDate}
-      completedText={hasEntriesForDate ? `${recentEntries.filter(entry => 
-        new Date(entry.date).toISOString().split('T')[0] === currentDateStr
-      ).length} Einträge` : undefined}
-      defaultOpen={!hasEntriesForDate}
-    >
-      <div className="space-y-4">
+    <Card className="relative">
+      <Collapsible open={!isCollapsed} onOpenChange={setIsCollapsed}>
+        <div className="flex items-center gap-3 p-5">
+          <Brain className="h-5 w-5 text-primary" />
+          <div className="flex-1">
+            <h3 className="text-base font-semibold">Mindset Journal</h3>
+            {isCollapsed && hasEntriesForDate && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-muted-foreground">
+                  {todayEntries.length} Einträge • Stimmung: {avgMoodScore > 0 ? '😊' : avgMoodScore < 0 ? '😔' : '😐'}
+                </span>
+                <Progress value={moodProgress} className="h-1 w-16" />
+              </div>
+            )}
+            {isCollapsed && !hasEntriesForDate && (
+              <div className="flex gap-1 mt-2">
+                {smartChips.map((chip, index) => (
+                  <Button 
+                    key={index}
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => { chip.action(); setIsCollapsed(false); }}
+                    className="text-xs h-6 px-2"
+                  >
+                    {chip.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            <div className="space-y-4">
         {/* Smart Prompt */}
         {currentPrompt && (
           <div className="p-3 rounded-lg bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 border border-violet-200/50 dark:border-violet-800/30">
@@ -417,7 +464,10 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
           onOpenChange={setShowDetailWidget}
           selectedDate={currentDateStr}
         />
-      </div>
-    </CollapsibleQuickInput>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 };

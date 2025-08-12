@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
 import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,8 +17,7 @@ import { InfoButton } from "@/components/InfoButton";
 import { PremiumGate } from "@/components/PremiumGate";
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
-import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
-import { CoachFeedbackCard } from "./CoachFeedbackCard";
+import { cn } from "@/lib/utils";
 
 interface QuickSleepInputProps {
   onSleepAdded?: () => void;
@@ -323,15 +324,60 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   };
 
   const isCompleted = !!hasSleepToday;
+  const [isCollapsed, setIsCollapsed] = useState(!isEditing && hasSleepToday);
+
+  // Calculate sleep quality percentage for progress
+  const sleepQualityPercent = hasSleepToday ? ((todaysSleep?.sleep_quality || 0) / 10) * 100 : 0;
+
+  // Smart chip actions
+  const smartChips = [
+    { label: "7h Schlaf", action: () => { setBedtime([23]); setWakeTime([6]); setIsEditing(true); } },
+    { label: "8h Schlaf", action: () => { setBedtime([22.5]); setWakeTime([6.5]); setIsEditing(true); } },
+    { label: "Schlechte Nacht", action: () => { setSleepQuality([3]); setIsEditing(true); } }
+  ];
 
   return (
-    <CollapsibleQuickInput
-      title={hasSleepToday && !isEditing ? "Schlaf erfasst! 😴" : "Schlaf & Regeneration"}
-      icon={<Moon className="h-4 w-4 text-white" />}
-      isCompleted={isCompleted}
-      defaultOpen={false}
-      theme="indigo"
-    >
+    <Card className="relative">
+      <Collapsible open={!isCollapsed} onOpenChange={setIsCollapsed}>
+        <div className="flex items-center gap-3 p-5">
+          <Moon className="h-5 w-5 text-primary" />
+          <div className="flex-1">
+            <h3 className="text-base font-semibold">
+              {hasSleepToday && !isEditing ? "Schlaf erfasst! 😴" : "Schlaf & Regeneration"}
+            </h3>
+            {isCollapsed && hasSleepToday && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-muted-foreground">
+                  {todaysSleep?.sleep_hours || 0}h • Qualität: {todaysSleep?.sleep_quality || 0}/10
+                </span>
+                <Progress value={sleepQualityPercent} className="h-1 w-16" />
+              </div>
+            )}
+            {isCollapsed && !hasSleepToday && (
+              <div className="flex gap-1 mt-2">
+                {smartChips.map((chip, index) => (
+                  <Button 
+                    key={index}
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => { chip.action(); setIsCollapsed(false); }}
+                    className="text-xs h-6 px-2"
+                  >
+                    {chip.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
+          <CardContent className="pt-0">
       {hasSleepToday && !isEditing ? (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
@@ -409,31 +455,15 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </div>
           )}
           
-          {/* Coach Feedback First */}
-          <div className="mb-3">
-            <CoachFeedbackCard 
-              coachName="Kai"
-              coachAvatar="/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
-              sleepData={{
-                ...todaysSleep,
-                screenTime: screenTimeEvening[0],
-                libido: morningLibido[0],
-                motivation: motivationLevel[0],
-                lastMealTime: lastMealTime[0]
-              }}
-              userId={user?.id}
-              type="sleep"
-            />
-          </div>
           
-          <div className="bg-indigo-50 rounded-lg p-3 border border-indigo-200">
-            <p className="text-xs text-indigo-700 mb-2">
+          <div className="rounded-lg p-3 bg-muted/30">
+            <p className="text-xs text-muted-foreground mb-2">
               <strong>Tipp:</strong> Optimiere deinen Schlaf für bessere Regeneration!
             </p>
-            <p className="text-xs text-indigo-600">
-              • 7-9 Stunden Schlaf für optimale Regeneration
-              • Feste Schlafzeiten unterstützen den Biorhythmus
-              • Bildschirme 1h vor dem Schlafen vermeiden
+            <p className="text-xs text-muted-foreground">
+              • 7-9 Stunden Schlaf für optimale Regeneration<br/>
+              • Feste Schlafzeiten unterstützen den Biorhythmus<br/>
+              • Bildschirme 1h vor dem Schlafen vermeiden<br/>
               • Kühles, dunkles Schlafzimmer für bessere Schlafqualität
             </p>
             <p className="text-xs text-indigo-600 mt-2">
@@ -982,6 +1012,9 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           </div>
         </PremiumGate>
       )}
-    </CollapsibleQuickInput>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 };

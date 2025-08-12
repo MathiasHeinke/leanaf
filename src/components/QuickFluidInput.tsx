@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { CollapsibleQuickInput } from './CollapsibleQuickInput';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
@@ -8,15 +7,16 @@ import { Badge } from './ui/badge';
 import { Card, CardContent } from './ui/card';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { Progress } from './ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Droplets, Plus, X, Clock, Calendar as CalendarIcon, AlertTriangle, CheckCircle, Edit, Trash2, Copy, Check } from 'lucide-react';
+import { Droplets, Plus, X, Clock, Calendar as CalendarIcon, AlertTriangle, CheckCircle, Edit, Trash2, Copy, Check, ChevronDown } from 'lucide-react';
 import { Textarea } from './ui/textarea';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { getCurrentDateString } from "@/utils/dateHelpers";
-
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { de } from 'date-fns/locale';
 
@@ -419,17 +419,60 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const hasFluidEntries = todaysFluids.length > 0;
   const totalFluidAmount = todaysFluids.reduce((sum, f) => sum + f.amount_ml, 0);
   const isCompleted = hasFluidEntries;
+  const [isCollapsed, setIsCollapsed] = useState(hasFluidEntries);
+
+  // Calculate progress toward daily water goal (2000ml)
+  const waterGoal = 2000;
+  const waterProgress = Math.min((totalWater / waterGoal) * 100, 100);
+
+  // Smart chip actions
+  const smartChips = [
+    { label: "250ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
+    { label: "500ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
+    { label: "Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
+  ];
 
   return (
-    <CollapsibleQuickInput
-      title="Flüssigkeiten"
-      icon={<Droplets className="h-4 w-4" />}
-      theme="jade"
-      isCompleted={isCompleted}
-      defaultOpen={false}
-      completedText={hasFluidEntries ? `${totalFluidAmount}ml getrunken` : undefined}
-    >
-      <div className="space-y-4">
+    <Card className="relative">
+      <Collapsible open={!isCollapsed} onOpenChange={setIsCollapsed}>
+        <div className="flex items-center gap-3 p-5">
+          <Droplets className="h-5 w-5 text-primary" />
+          <div className="flex-1">
+            <h3 className="text-base font-semibold">Flüssigkeiten</h3>
+            {isCollapsed && hasFluidEntries && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-muted-foreground">
+                  {totalWater}ml Wasser • {totalFluidAmount}ml gesamt
+                </span>
+                <Progress value={waterProgress} className="h-1 w-16" />
+              </div>
+            )}
+            {isCollapsed && !hasFluidEntries && (
+              <div className="flex gap-1 mt-2">
+                {smartChips.map((chip, index) => (
+                  <Button 
+                    key={index}
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => { chip.action(); setIsCollapsed(false); }}
+                    className="text-xs h-6 px-2"
+                  >
+                    {chip.label}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            <div className="space-y-4">
         {/* Summary Stats */}
         <div className="grid grid-cols-2 gap-2 mb-2">
           <Card className="p-2">
@@ -860,7 +903,10 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
             </Button>
           </Card>
         )}
-      </div>
-    </CollapsibleQuickInput>
+            </div>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
+    </Card>
   );
 };
