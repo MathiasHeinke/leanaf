@@ -266,14 +266,35 @@ async function collectRawData(userId: string, date: string, timezone: string = '
     .eq('user_id', userId)
     .eq('date', date);
 
-  // Extract RPC response data correctly - fixing the data access
+  // Extract RPC response data correctly - RPC returns tuple (calories, protein, carbs, fats)
   const fmRaw = Array.isArray(fastMeals.data) ? fastMeals.data[0] : fastMeals.data;
-  const mealTotals = {
-    calories: Number(fmRaw?.calories ?? 0) || 0,
-    protein: Number(fmRaw?.protein ?? 0) || 0,
-    carbs: Number(fmRaw?.carbs ?? 0) || 0,
-    fats: Number(fmRaw?.fats ?? 0) || 0,
-  };
+  console.log('🔍 Raw RPC fastMeals result:', fmRaw);
+  
+  // Handle RPC tuple response: fast_meal_totals returns (calories, protein, carbs, fats)
+  let mealTotals = { calories: 0, protein: 0, carbs: 0, fats: 0 };
+  if (fmRaw && typeof fmRaw === 'object') {
+    // If it's a record/tuple object like {calories: x, protein: y, ...}
+    if ('calories' in fmRaw) {
+      mealTotals = {
+        calories: Number(fmRaw.calories ?? 0) || 0,
+        protein: Number(fmRaw.protein ?? 0) || 0,
+        carbs: Number(fmRaw.carbs ?? 0) || 0,
+        fats: Number(fmRaw.fats ?? 0) || 0,
+      };
+    } else {
+      // If it's a plain object with numeric properties, handle as array-like
+      const values = Object.values(fmRaw);
+      if (values.length >= 4) {
+        mealTotals = {
+          calories: Number(values[0]) || 0,
+          protein: Number(values[1]) || 0,
+          carbs: Number(values[2]) || 0,
+          fats: Number(values[3]) || 0,
+        };
+      }
+    }
+  }
+  
   const volumeTotal = Number(fastVolume.data ?? 0) || 0;
   const fluidTotal = Number(fastFluids.data ?? 0) || 0;
 
@@ -309,7 +330,8 @@ async function collectRawData(userId: string, date: string, timezone: string = '
     fluids: fluids || [],
     supplements: supplements || [],
     conversations: conversations || [],
-    quickWorkouts: quickWorkouts || []
+    quickWorkouts: quickWorkouts || [],
+    diaryEntries: diaryEntries || []
   };
 }
 
