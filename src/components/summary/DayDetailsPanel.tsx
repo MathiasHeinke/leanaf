@@ -233,7 +233,7 @@ export function DayDetailsPanel({ date }: { date: string | null }) {
         )}
       </div>
 
-      {/* Coach-Kontext: Ziele, Abstinenz, Körperdaten, Vergleiche, Trends *//
+      {/* Coach-Kontext: Ziele, Abstinenz, Körperdaten, Vergleiche, Trends */}
       <div className="rounded-2xl border bg-muted/30 p-4 space-y-4">
         <h3 className="text-base font-semibold mb-2">Coach-Kontext</h3>
 
