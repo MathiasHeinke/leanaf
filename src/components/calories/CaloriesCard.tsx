@@ -192,6 +192,20 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
           </button>
         </div>
 
+        {/* Collapsed summary when card is closed */}
+        {!open && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <div className="font-semibold">{formatNumber(totals.caloriesUsed)} / {formatNumber(totals.caloriesTarget)} kcal</div>
+            <span className="text-muted-foreground">·</span>
+            <span className="font-medium text-[hsl(var(--protein))]">P {formatNumber(totals.protein || 0)}g</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="font-medium text-[hsl(var(--carbs))]">K {formatNumber(totals.carbs || 0)}g</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="font-medium text-[hsl(var(--fats))]">F {formatNumber(totals.fat || 0)}g</span>
+          </div>
+        )}
+
+        <CollapsibleContent>
         {/* Header numbers */}
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-md border bg-muted/30 p-3">
@@ -252,6 +266,7 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
             </div>
           )}
         </div>
+        </CollapsibleContent>
       </Card>
     </Collapsible>
   );
