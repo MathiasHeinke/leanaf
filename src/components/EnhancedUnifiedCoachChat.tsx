@@ -21,7 +21,27 @@ interface EnhancedChatInputProps {
   onTypingChange?: (typing: boolean) => void;
 }
 
-import type { EnhancedChatMessage } from '@/hooks/useEnhancedChat';
+// Local type definition - no longer importing from unused hook
+interface EnhancedChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string;
+  created_at?: string;
+  coach_personality?: string;
+  coach_name?: string;
+  coach_avatar?: string;
+  coach_color?: string;
+  coach_accent_color?: string;
+  metadata?: {
+    traceId?: string;
+    tokensUsed?: number;
+    duration?: number;
+    hasMemory?: boolean;
+    hasRag?: boolean;
+    hasDaily?: boolean;
+  };
+}
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
