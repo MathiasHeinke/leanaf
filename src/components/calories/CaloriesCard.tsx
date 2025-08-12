@@ -129,7 +129,7 @@ function MealRow({
   const ts = meal.ts || meal.created_at;
   const time = ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--";
   const kcal = meal.kcal ?? meal.calories ?? 0;
-  const title = meal.title || meal.name || "Meal";
+  const title = meal.title || meal.name || meal.dish_name || meal.food_name || meal.description || "Unbenanntes Gericht";
   const imageUrl = meal.imageUrl || (Array.isArray(meal.images) ? meal.images[0] : meal.photo_url || meal.image_url);
   
   // Optimized title display based on parent expansion state
@@ -163,8 +163,39 @@ function MealRow({
           )}
           <div className="text-sm font-medium truncate">{time} · {displayTitle}</div>
         </div>
-        <div className="text-sm font-semibold whitespace-nowrap">
-          {formatNumber(kcal)} kcal {open ? <ChevronUp className="inline h-4 w-4 ml-1" /> : <ChevronDown className="inline h-4 w-4 ml-1" />}
+        <div className="flex items-center gap-2 text-sm font-semibold whitespace-nowrap">
+          {formatNumber(kcal)} kcal
+          {(onEditMeal || onDeleteMeal) && (
+            <div className="flex items-center gap-1 ml-1">
+              {onEditMeal && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEditMeal(meal);
+                  }}
+                  className="p-1 hover:bg-secondary rounded transition-colors"
+                  title="Bearbeiten"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </button>
+              )}
+              {onDeleteMeal && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteMeal(meal.id);
+                  }}
+                  className="p-1 hover:bg-destructive/20 hover:text-destructive rounded transition-colors"
+                  title="Löschen"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+          {open ? <ChevronUp className="inline h-4 w-4 ml-1" /> : <ChevronDown className="inline h-4 w-4 ml-1" />}
         </div>
       </button>
       {open && (
