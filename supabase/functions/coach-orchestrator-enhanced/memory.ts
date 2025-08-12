@@ -27,7 +27,7 @@ export async function loadUserProfile(supabase: any, userId: string) {
   }
 }
 
-export async function loadRecentDailySummaries(supabase: any, userId: string, limit = 3) {
+export async function loadRecentDailySummaries(supabase: any, userId: string, limit = 7) {
   try {
     const { data, error } = await supabase
       .from('daily_summaries')
@@ -39,5 +39,21 @@ export async function loadRecentDailySummaries(supabase: any, userId: string, li
     return (data || []).map(r => r.summary_md).filter(Boolean);
   } catch (_e) {
     return [];
+  }
+}
+
+export async function loadCoachAnalytics7d(supabase: any, userId: string) {
+  try {
+    const { data, error } = await supabase.rpc('get_coach_analytics_7d', { 
+      p_user_id: userId 
+    });
+    if (error) {
+      console.warn('Failed to load 7d analytics:', error);
+      return {};
+    }
+    return data || {};
+  } catch (_e) {
+    console.warn('Error loading 7d analytics:', _e);
+    return {};
   }
 }
