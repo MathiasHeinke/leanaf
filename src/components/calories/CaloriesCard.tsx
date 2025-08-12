@@ -129,7 +129,7 @@ function MealRow({
   const ts = meal.ts || meal.created_at;
   const time = ts ? new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "--:--";
   const kcal = meal.kcal ?? meal.calories ?? 0;
-  const title = meal.title || meal.name || meal.dish_name || meal.food_name || meal.description || "Unbenanntes Gericht";
+  const title = meal.title || meal.text || meal.name || meal.dish_name || meal.food_name || meal.description || "Unbenanntes Gericht";
   const imageUrl = meal.imageUrl || (Array.isArray(meal.images) ? meal.images[0] : meal.photo_url || meal.image_url);
   
   // Optimized title display based on parent expansion state

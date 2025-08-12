@@ -38,8 +38,8 @@ import { InteractiveOnboardingSlider } from '@/components/onboarding/Interactive
 import { cn } from '@/lib/utils';
 import { DateNavigation } from "@/components/DateNavigation";
 import { CaloriesCard } from "@/components/calories/CaloriesCard";
+import { MealEditDialog } from "@/components/MealEditDialog";
 import { useFrequentMeals } from "@/hooks/useFrequentMeals";
-
 
 const Index = () => {
   const { t } = useTranslation();
@@ -55,6 +55,7 @@ const Index = () => {
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
+  const [editingMeal, setEditingMeal] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calorieSummary, setCalorieSummary] = useState<{ consumed: number; burned: number }>({ consumed: 0, burned: 0 });
@@ -365,6 +366,24 @@ const Index = () => {
     await fetchMealsForDate(currentDate);
   };
 
+  const handleEditMeal = (meal: any) => {
+    setEditingMeal(meal);
+  };
+
+  const handleDeleteMeal = async (mealId: string) => {
+    const { error } = await supabase
+      .from('meals')
+      .delete()
+      .eq('id', mealId)
+      .eq('user_id', user.id);
+    if (error) {
+      console.error('Error deleting meal:', error);
+      toast.error('Löschen fehlgeschlagen');
+    } else {
+      toast.success('Mahlzeit gelöscht');
+      await fetchMealsForDate(currentDate);
+    }
+  };
   const handleWeightAdded = async (newWeightData?: any) => {
     // Immediately update todaysWeight state with the new data
     if (newWeightData) {
@@ -615,7 +634,45 @@ const Index = () => {
           meals={meals}
           frequent={frequentMeals}
           onAddQuickMeal={handleAddQuickMeal}
+          onEditMeal={handleEditMeal}
+          onDeleteMeal={handleDeleteMeal}
         />
+
+        {editingMeal && (
+          <MealEditDialog
+            meal={{
+              id: editingMeal.id,
+              text: editingMeal.text,
+              calories: editingMeal.calories,
+              protein: editingMeal.protein,
+              carbs: editingMeal.carbs,
+              fats: editingMeal.fats,
+              created_at: editingMeal.created_at,
+              meal_type: editingMeal.meal_type,
+              images: editingMeal.images,
+              leftover_images: editingMeal.leftover_images,
+              consumption_percentage: editingMeal.consumption_percentage,
+              leftover_analysis_metadata: editingMeal.leftover_analysis_metadata,
+            }}
+            open={true}
+            onClose={() => setEditingMeal(null)}
+            onUpdate={async (mealId, updates) => {
+              const { error } = await supabase
+                .from('meals')
+                .update(updates)
+                .eq('id', mealId)
+                .eq('user_id', user.id);
+              if (error) {
+                console.error('Error updating meal:', error);
+                toast.error('Aktualisierung fehlgeschlagen');
+              } else {
+                toast.success('Mahlzeit aktualisiert');
+                setEditingMeal(null);
+                await fetchMealsForDate(currentDate);
+              }
+            }}
+          />
+        )}
 
         <DailyProgress
           dailyTotals={{
