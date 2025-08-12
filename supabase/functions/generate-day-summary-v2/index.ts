@@ -173,7 +173,7 @@ async function collectRawData(userId: string, date: string, timezone: string = '
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', userId)
+    .eq('user_id', userId)
     .maybeSingle();
 
   // Daily goals
@@ -188,9 +188,10 @@ async function collectRawData(userId: string, date: string, timezone: string = '
     .from('meals')
     .select('*')
     .eq('user_id', userId)
-    .or(`date.eq.${date},created_at::date.eq.${date}`)
-    .order('created_at', { ascending: false })
-    .limit(10);
+    .eq('date', date)
+    .order('created_at', { ascending: true });
+
+  console.log('🍽️ Meals fetched', { count: meals?.length || 0, kcal: (meals || []).reduce((s: number, m: any) => s + (Number(m.calories) || 0), 0) });
 
   // Exercise sessions
   const { data: sessions } = await supabase
@@ -207,9 +208,9 @@ async function collectRawData(userId: string, date: string, timezone: string = '
       exercises:exercise_id (name, muscle_groups, exercise_type)
     `)
     .eq('user_id', userId)
-    .or(`date.eq.${date},and(created_at.gte.${utcDayStart.toISOString()},created_at.lte.${utcDayEnd.toISOString()})`)
-    .order('created_at', { ascending: false })
-    .limit(15);
+    .eq('date', date)
+    .order('created_at', { ascending: true })
+    .limit(200);
 
   // Sleep data
   const { data: sleep } = await supabase
@@ -232,8 +233,7 @@ async function collectRawData(userId: string, date: string, timezone: string = '
     .from('user_fluids')
     .select('*')
     .eq('user_id', userId)
-    .or(`date.eq.${date},and(consumed_at.gte.${utcDayStart.toISOString()},consumed_at.lte.${utcDayEnd.toISOString()})`)
-    .limit(20);
+    .eq('date', date);
 
   // Supplements
   const { data: supplements } = await supabase
@@ -253,15 +253,21 @@ async function collectRawData(userId: string, date: string, timezone: string = '
 
   // Quick workouts for the day
   const { data: quickWorkouts } = await supabase
-    .from('quick_workouts')
+    .from('workouts')
     .select('*')
     .eq('user_id', userId)
     .eq('date', date);
 
   // Extract RPC response data correctly - fixing the data access
-  const mealTotals = fastMeals.data || { calories: 0, protein: 0, carbs: 0, fats: 0 };
-  const volumeTotal = typeof fastVolume.data === 'number' ? fastVolume.data : 0;
-  const fluidTotal = typeof fastFluids.data === 'number' ? fastFluids.data : 0;
+  const fmRaw = Array.isArray(fastMeals.data) ? fastMeals.data[0] : fastMeals.data;
+  const mealTotals = {
+    calories: Number(fmRaw?.calories ?? 0) || 0,
+    protein: Number(fmRaw?.protein ?? 0) || 0,
+    carbs: Number(fmRaw?.carbs ?? 0) || 0,
+    fats: Number(fmRaw?.fats ?? 0) || 0,
+  };
+  const volumeTotal = Number(fastVolume.data ?? 0) || 0;
+  const fluidTotal = Number(fastFluids.data ?? 0) || 0;
 
   console.log('🔍 Extracted RPC Data:', { 
     mealTotals,
@@ -327,14 +333,14 @@ function deriveKPIs(raw: any) {
       protein_g: totalProtein,
       carbs_g: totalCarbs,
       fat_g: totalFats,
-      fiber_g: raw.meals.reduce((sum: number, m: any) => sum + (m.fiber || 0), 0),
-      sugar_g: raw.meals.reduce((sum: number, m: any) => sum + (m.sugar || 0), 0),
-      drink_kcal: raw.fluids.reduce((sum: number, f: any) => sum + (f.calories || 0), 0)
+      fiber_g: (raw.meals || []).reduce((sum: number, m: any) => sum + (Number(m.fiber) || 0), 0),
+      sugar_g: (raw.meals || []).reduce((sum: number, m: any) => sum + (Number(m.sugar) || 0), 0),
+      drink_kcal: (raw.fluids || []).reduce((sum: number, f: any) => sum + (Number(f.calories) || 0), 0)
     },
     macro_pct: calculateMacroPercentages(raw.fastMeals),
-    top_foods: getTopFoods(raw.meals),
-    meal_timing: getMealTiming(raw.meals),
-    meals_count: raw.meals.length
+    top_foods: getTopFoods(raw.meals || []),
+    meal_timing: getMealTiming(raw.meals || []),
+    meals_count: (raw.meals || []).length
   };
 
   // Training KPIs - Fixed NULL handling
