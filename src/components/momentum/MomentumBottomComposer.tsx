@@ -1,4 +1,4 @@
-import React, { useState, useCallback, Suspense, lazy, useRef } from "react";
+import React, { useState, useCallback, Suspense, lazy, useRef, useEffect } from "react";
 import { Camera, Mic, ArrowRight, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSupplementRecognition } from "@/hooks/useSupplementRecognition";
 import { Card, CardContent } from "@/components/ui/card";
 import { IMAGE_UPLOAD_MAX_DEFAULT } from "@/lib/constants";
+import { quickAddBus } from "@/components/quick/quickAddBus";
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const MomentumBottomComposer: React.FC = () => {
@@ -41,6 +42,17 @@ const [multiPreview, setMultiPreview] = useState<{
 } | null>(null);
 
 const { addRecognizedSupplementsToStack } = useSupplementRecognition();
+
+  // Bind QuickAdd "meal" to open the composer sheet
+  useEffect(() => {
+    const unsubscribe = quickAddBus.subscribe((action) => {
+      if (action.type === 'meal') {
+        setActiveTab('text');
+        openQuickMealSheet('text');
+      }
+    });
+    return unsubscribe;
+  }, [openQuickMealSheet]);
 
   const handlePhotoTap = useCallback(() => {
     fileInputRef.current?.click();
@@ -280,6 +292,12 @@ const handleSubmit = useCallback(async () => {
                 onChange={(e) => setInputText(e.target.value)}
                 onClick={handleTextTap}
                 onFocus={handleTextTap}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
                 className="w-full h-10 px-4 bg-muted/50 border border-border rounded-full text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>

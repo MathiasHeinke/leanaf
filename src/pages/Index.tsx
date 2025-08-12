@@ -834,6 +834,20 @@ const Index = () => {
 
       {/* Enhanced Meal Input (visible) */}
       <EnhancedMealInput />
+      {onboardingState.mealInputHighlighted && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50">
+          <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
+            Gib hier deine erste Mahlzeit ein 👇
+            <button
+              type="button"
+              onClick={() => onboardingState.clearMealInputHighlight()}
+              className="ml-2 underline"
+            >
+              Ok
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Meal Confirmation Dialog */}
       {mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData && (
