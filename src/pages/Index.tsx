@@ -9,13 +9,13 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { MealList } from "@/components/MealList";
 
+import { QuickWeightInput } from "@/components/QuickWeightInput";
+import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
+import { QuickSleepInput } from "@/components/QuickSleepInput";
+import { QuickSupplementInput } from "@/components/QuickSupplementInput";
+import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { QuickMindsetInput } from "@/components/QuickMindsetInput";
 import { QuickMeasurementsCard } from "@/components/momentum/quick/QuickMeasurementsCard";
-import { QuickSleepCard } from "@/components/momentum/quick/QuickSleepCard";
-import { QuickWeightCard } from "@/components/momentum/quick/QuickWeightCard";
-import { QuickTrainingCard } from "@/components/momentum/quick/QuickTrainingCard";
-import { QuickSupplementsCard } from "@/components/momentum/quick/QuickSupplementsCard";
-import { QuickHydrationCard } from "@/components/momentum/quick/QuickHydrationCard";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
@@ -511,8 +511,20 @@ const Index = () => {
       opacity: isDragging ? 0.5 : 1,
     } as React.CSSProperties;
 
+    const glowClass = state === 'done'
+      ? 'shadow-[0_0_32px_hsl(var(--primary)/0.22)] ring-1 ring-primary/30'
+      : state === 'partial'
+      ? 'shadow-[0_0_28px_hsl(var(--accent)/0.20)] ring-1 ring-accent/30'
+      : 'ring-1 ring-destructive/20';
+
+    const dotClass = state === 'done'
+      ? 'bg-primary ring-primary/30'
+      : state === 'partial'
+      ? 'bg-accent ring-accent/30'
+      : 'bg-destructive ring-destructive/30';
+
     return (
-      <div ref={setNodeRef} style={style} className="relative rounded-xl">
+      <div ref={setNodeRef} style={style} className={`relative ${glowClass} rounded-xl`}>
         <button
           {...attributes}
           {...listeners}
@@ -522,6 +534,7 @@ const Index = () => {
         >
           <GripVertical className="h-4 w-4" />
         </button>
+        <span className={`pointer-events-none absolute top-2 right-2 h-2.5 w-2.5 rounded-full ring-2 ${dotClass} animate-[pulse_3s_ease-in-out_infinite]`} />
         {children}
       </div>
     );
@@ -547,19 +560,29 @@ const Index = () => {
       case 'sleep':
         return (
           <SortableCard key="sleep" id="sleep" state={todaysSleep && (todaysSleep.sleep_hours != null || todaysSleep.bedtime != null) ? 'done' : 'empty'}>
-            <QuickSleepCard />
+            <QuickSleepInput 
+              onSleepAdded={handleSleepAdded}
+              todaysSleep={todaysSleep}
+            />
           </SortableCard>
         );
       case 'weight':
         return (
           <SortableCard key="weight" id="weight">
-            <QuickWeightCard />
+            <QuickWeightInput 
+              onWeightAdded={handleWeightAdded}
+              todaysWeight={todaysWeight}
+            />
           </SortableCard>
         );
       case 'workout':
         return (
           <SortableCard key="workout" id="workout">
-            <QuickTrainingCard />
+            <QuickWorkoutInput 
+              onWorkoutAdded={handleWorkoutAdded}
+              todaysWorkout={todaysWorkout}
+              todaysWorkouts={todaysWorkouts}
+            />
           </SortableCard>
         );
       case 'measurements':
@@ -574,13 +597,13 @@ const Index = () => {
       case 'supplements':
         return (
           <SortableCard key="supplements" id="supplements">
-            <QuickSupplementsCard />
+            <QuickSupplementInput />
           </SortableCard>
         );
       case 'fluids':
         return (
           <SortableCard key="fluids" id="fluids">
-            <QuickHydrationCard />
+            <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} />
           </SortableCard>
         );
       case 'mindset':

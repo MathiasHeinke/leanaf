@@ -183,7 +183,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   const hasEntriesForDate = recentEntries.some(entry => 
     new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(hasEntriesForDate);
 
   useEffect(() => {
     if (transcribedText && isCollapsed) {
@@ -210,7 +210,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <div className="flex items-center gap-3 p-5">
           <Brain className="h-5 w-5 text-primary" />
-          <div className="flex-1 cursor-pointer select-none" onClick={() => setIsCollapsed(prev => !prev)}>
+          <div className="flex-1">
             <h3 className="text-base font-semibold">Mindset Journal</h3>
             {isCollapsed && hasEntriesForDate && (
               <div className="flex items-center gap-2 mt-1">
