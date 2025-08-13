@@ -255,7 +255,7 @@ export const QuickSupplementInput = () => {
 
         {/* Smart Chips for timing groups - visible in both collapsed and expanded states */}
         {smartChips.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-3">
             {smartChips.map((chip) => (
               <TimingChip
                 key={chip.timing}

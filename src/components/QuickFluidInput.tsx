@@ -490,7 +490,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const hasFluidEntries = todaysFluids.length > 0;
   const totalFluidAmount = todaysFluids.reduce((sum, f) => sum + f.amount_ml, 0);
   const isCompleted = hasFluidEntries;
-  const [isCollapsed, setIsCollapsed] = useState(hasFluidEntries);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [showFluids, setShowFluids] = useState(false);
 
   // Calculate progress toward daily water goal (2000ml)

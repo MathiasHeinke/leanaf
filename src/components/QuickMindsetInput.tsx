@@ -183,7 +183,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   const hasEntriesForDate = recentEntries.some(entry => 
     new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
-  const [isCollapsed, setIsCollapsed] = useState(hasEntriesForDate);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   useEffect(() => {
     if (transcribedText && isCollapsed) {
@@ -266,7 +266,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
         )}
 
         {/* Smart Chips - visible in both collapsed and expanded states like CaloriesCard */}
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap gap-3">
           {smartChips.map((chip, index) => (
             <button
               key={index}

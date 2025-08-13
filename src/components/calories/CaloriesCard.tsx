@@ -281,7 +281,7 @@ function MealRow({
 }
 
 export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, onEditMeal, onDeleteMeal }: CaloriesCardProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [showMeals, setShowMeals] = useState(false);
 
   const kcalLeft = Math.max(0, (totals.caloriesTarget || 0) - (totals.caloriesUsed || 0));
