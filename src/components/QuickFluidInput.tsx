@@ -772,7 +772,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
                 </Button>
               ))}
             </div>
-            {/* Summary Progress */}
+            {/* Water breakdown */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Wasser heute</span>
@@ -781,9 +781,32 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
                 </Badge>
               </div>
               <div className="space-y-2">
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {totalWater} ml
-                </div>
+                {/* Show individual water drinks */}
+                {todaysFluids.filter(f => isWaterDrink(f)).length > 0 ? (
+                  <div className="space-y-1">
+                    {todaysFluids
+                      .filter(f => isWaterDrink(f))
+                      .map((fluid, index) => (
+                        <div key={index} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            {fluid.fluid_name || fluid.custom_name}
+                          </span>
+                          <span className="font-medium text-blue-600 dark:text-blue-400">
+                            {fluid.amount_ml} ml
+                          </span>
+                        </div>
+                      ))
+                    }
+                    <div className="border-t pt-1 flex justify-between font-semibold">
+                      <span>Gesamt:</span>
+                      <span className="text-blue-600 dark:text-blue-400">{totalWater} ml</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {totalWater} ml
+                  </div>
+                )}
                 <div className="text-sm text-muted-foreground">
                   Ziel: {waterGoal} ml
                 </div>
