@@ -58,47 +58,47 @@ function ProgressHalfRing({
   const dashLength = circumference * p;
   const gapLength = circumference - dashLength;
   
-  // Korrekte SVG-Winkel (0° = rechts, 90° = unten, 180° = links, 270° = oben)
-  // Für linken Ring: von unten-links (225°) nach oben-links (135°)  
-  // Für rechten Ring: von unten-rechts (315°) nach oben-rechts (45°)
-  const startAngle = isLeft ? 225 : 315; // Startpunkt in SVG-Graden
-  const endAngle = isLeft ? 135 : 45;    // Endpunkt in SVG-Graden
+  // Alternative Lösung: strokeDasharray für präzise Kontrolle
+  // Halbkreis von unten nach oben mit korrektem Startpunkt
+  const circumferenceHalf = Math.PI * radius; // Halbkreis-Umfang
+  const progressLength = circumferenceHalf * p; // Gefüllte Länge
+  const dashArray = `${progressLength} ${circumferenceHalf}`;
   
-  // Startpunkt berechnen
-  const startX = radius * Math.cos(startAngle * Math.PI / 180);
-  const startY = radius * Math.sin(startAngle * Math.PI / 180);
+  // Für linken Ring: Start bei 270° (oben), offset für Start bei 225° (unten-links)
+  // Für rechten Ring: Start bei 270° (oben), offset für Start bei 315° (unten-rechts)
+  const baseOffset = circumferenceHalf * 0.75; // 3/4 des Halbkreises = Start unten
+  const leftRingOffset = isLeft ? baseOffset : baseOffset + circumferenceHalf * 0.5;
   
-  // Endpunkt berechnen  
-  const endX = radius * Math.cos(endAngle * Math.PI / 180);
-  const endY = radius * Math.sin(endAngle * Math.PI / 180);
-  
-  // Large-arc-flag: 0 für Halbkreis (immer kleiner als 180°)
-  // Sweep-flag: 0 für gegen Uhrzeigersinn, 1 für im Uhrzeigersinn
-  const sweepFlag = isLeft ? 0 : 1;
+  // Vollständiger Halbkreis-Pfad
+  const pathD = isLeft 
+    ? `M 0,${radius} A ${radius},${radius} 0 0,0 0,${-radius}` // Linker Halbkreis: von unten nach oben
+    : `M 0,${radius} A ${radius},${radius} 0 0,1 0,${-radius}`; // Rechter Halbkreis: von unten nach oben
   
   return (
     <g>
       {/* Glow-Effekt */}
       {withGlow && (
         <path
-          d={`M ${startX} ${startY} A ${radius} ${radius} 0 0 ${sweepFlag} ${endX} ${endY}`}
+          d={pathD}
           fill="none"
           stroke={`url(#${id}-gradient)`}
           strokeWidth={width * 1.25}
           strokeLinecap="round"
-          strokeDasharray={`${dashLength} ${gapLength}`}
+          strokeDasharray={dashArray}
+          strokeDashoffset={leftRingOffset}
           filter="url(#blur-soft)"
         />
       )}
       
       {/* Hauptstrich */}
       <path
-        d={`M ${startX} ${startY} A ${radius} ${radius} 0 0 ${sweepFlag} ${endX} ${endY}`}
+        d={pathD}
         fill="none"
         stroke={`url(#${id}-gradient)`}
         strokeWidth={width}
         strokeLinecap="round"
-        strokeDasharray={`${dashLength} ${gapLength}`}
+        strokeDasharray={dashArray}
+        strokeDashoffset={leftRingOffset}
         className="transition-all duration-300 ease-out"
       />
     </g>
