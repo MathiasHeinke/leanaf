@@ -104,10 +104,12 @@ export const CollapsibleQuickInput = ({
 
   return (
     <div className={cn(
-      "rounded-2xl border transition-all duration-200",
+      "relative rounded-2xl border transition-all duration-200",
       isCompleted ? cn("border-border/40", styles.headerCompleted) : "border-border/30",
       className
     )}>
+      {/* Red decorative dot (always visible) */}
+      <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Button
         variant="ghost"
         className={cn(
@@ -124,9 +126,6 @@ export const CollapsibleQuickInput = ({
             {icon}
           </div>
           <span className="font-medium text-left">{title}</span>
-          {isCompleted && (
-            <div className={cn("h-2 w-2 rounded-full", styles.completedDot)} />
-          )}
         </div>
         <div className="flex items-center gap-2">
           {isCompleted ? (
@@ -136,11 +135,7 @@ export const CollapsibleQuickInput = ({
           ) : (
             <span className="text-xs font-medium text-muted-foreground">jetzt ausfüllen</span>
           )}
-          {isOpen ? (
-            <ChevronDown className="h-4 w-4 transition-transform" />
-          ) : (
-            <ChevronRight className="h-4 w-4 transition-transform" />
-          )}
+          <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
         </div>
       </Button>
       

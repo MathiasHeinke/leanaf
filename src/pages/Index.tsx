@@ -523,13 +523,12 @@ const Index = () => {
         <button
           {...attributes}
           {...listeners}
-          className="absolute top-2 left-2 h-8 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 transition-opacity z-10 rounded-full bg-muted/50 hover:bg-muted/70 text-muted-foreground"
+          className="absolute top-2 right-2 h-8 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 transition-opacity z-10 rounded-full bg-muted/50 hover:bg-muted/70 text-muted-foreground"
           title="Karte verschieben"
           aria-label="Karte verschieben"
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <span className={`pointer-events-none absolute top-2 right-2 h-2.5 w-2.5 rounded-full ring-2 ${dotClass} animate-[pulse_3s_ease-in-out_infinite]`} />
         {children}
       </div>
     );
