@@ -48,14 +48,7 @@ import { GripVertical } from "lucide-react";
 const Index = () => {
   const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
-  const { isPremium, trial } = useSubscription();
-  const { hasFeatureAccess } = useFeatureAccess();
   const navigate = useNavigate();
-  const mealInputHook = useGlobalMealInput();
-  const { checkBadges } = useBadgeChecker();
-  const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
-  const { isTrackingEnabled } = useTrackingPreferences();
-  const onboardingState = useOnboardingState();
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
@@ -105,6 +98,15 @@ const Index = () => {
     );
   }
 
+  // All auth-dependent hooks (after auth check)
+  const { isPremium, trial } = useSubscription();
+  const { hasFeatureAccess } = useFeatureAccess();
+  const mealInputHook = useGlobalMealInput();
+  const { checkBadges } = useBadgeChecker();
+  const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
+  const { isTrackingEnabled } = useTrackingPreferences();
+  const onboardingState = useOnboardingState();
+  
   // Frequent meals for smart chips (after auth check)
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
 
