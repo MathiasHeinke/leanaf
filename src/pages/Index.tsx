@@ -759,6 +759,9 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           </div>
         </div>
         */}
+        
+        {/* Unterer Abstand für DashboardMealComposer */}
+        <div className="pb-28"></div>
       </div>
 
       {/* Floating Meal Input (hidden, kept for compatibility) */}
