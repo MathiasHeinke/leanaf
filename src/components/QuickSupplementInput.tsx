@@ -196,34 +196,37 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
     setGroupOpen(initial);
   }, [currentSlot, userSupplements.length]);
 
-  const markAllForCurrentSlot = async () => {
-    if (!user || slotSupps.length === 0) return;
+  const markAllForSlot = async (slot: string) => {
+    if (!user) return;
+    const group = userSupplements.filter((s) => (s.timing || []).includes(slot));
+    if (group.length === 0) return;
     try {
       setLoading(true);
       const today = getCurrentDateString();
-      const rows = slotSupps
-        .filter(s => !todayIntake[s.id]?.[currentSlot])
-        .map(s => ({ user_id: user.id, user_supplement_id: s.id, date: today, timing: currentSlot, taken: true }));
+      const rows = group
+        .filter((s) => !todayIntake[s.id]?.[slot])
+        .map((s) => ({ user_id: user.id, user_supplement_id: s.id, date: today, timing: slot, taken: true }));
       if (rows.length > 0) {
-        const { error } = await supabase.from('supplement_intake_log').upsert(rows);
+        const { error } = await supabase.from("supplement_intake_log").upsert(rows);
         if (error) throw error;
       }
-      setTodayIntake(prev => {
+      setTodayIntake((prev) => {
         const updated = { ...prev };
-        slotSupps.forEach(s => {
-          updated[s.id] = { ...(updated[s.id] || {}), [currentSlot]: true };
+        group.forEach((s) => {
+          updated[s.id] = { ...(updated[s.id] || {}), [slot]: true };
         });
         return updated;
       });
-      toast.success(`${getSlotLabel(currentSlot)} erledigt`);
+      toast.success(`${getSlotLabel(slot)} erledigt`);
     } catch (e) {
-      console.error('Error markAllForCurrentSlot', e);
-      toast.error('Fehler beim Markieren');
+      console.error("Error markAllForSlot", e);
+      toast.error("Fehler beim Markieren");
     } finally {
       setLoading(false);
     }
   };
 
+  const markAllForCurrentSlot = async () => markAllForSlot(currentSlot);
   const smartChips = slotSupps.length > 0 ? [{
     label: `${getSlotLabel(currentSlot)} ${takenInSlot}/${slotSupps.length}`,
     action: () => markAllForCurrentSlot()
@@ -300,12 +303,23 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
                           {takenInGroup}/{groupSupps.length}
                         </Badge>
                       </div>
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4 transition-transform",
-                          groupOpen?.[value] && "rotate-180"
-                        )}
-                      />
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={takenInGroup === groupSupps.length || loading}
+                          className="h-6 px-2 text-xs"
+                          onClick={(e) => { e.stopPropagation(); markAllForSlot(value); }}
+                        >
+                          Alle erledigen
+                        </Button>
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 transition-transform",
+                            groupOpen?.[value] && "rotate-180"
+                          )}
+                        />
+                      </div>
                     </div>
 
                     {groupOpen?.[value] && (
