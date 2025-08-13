@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -115,7 +115,7 @@ export const CollapsibleQuickInput = ({
       className
     )}>
       {/* Red decorative dot (always visible) */}
-      <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
+      
       <Button
         variant="ghost"
         className={cn(
@@ -135,14 +135,15 @@ export const CollapsibleQuickInput = ({
           <span className="font-medium text-left">{title}</span>
         </div>
         <div className="flex items-center gap-2">
-          {isCompleted ? (
-            <span className={cn("text-xs font-medium", styles.completedText)}>
-              {completedText || '✓ Erledigt'}
+          {isOpen ? (
+            <span className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+              Einklappen <ChevronUp className="ml-1 h-4 w-4" />
             </span>
           ) : (
-            <span className="text-xs font-medium text-muted-foreground">jetzt ausfüllen</span>
+            <span className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+              Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
+            </span>
           )}
-          <ChevronDown className={cn("h-4 w-4 transition-transform", isOpen && "rotate-180")} />
         </div>
       </Button>
       

@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2, ChevronDown } from "lucide-react";
+import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -548,8 +548,6 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             </Button>
           </CollapsibleTrigger>
         </div>
-
-        <CollapsibleContent>
           <CardContent className="pt-0">
             {hasWorkoutToday && !isEditing ? (
               <div className="space-y-4">

@@ -325,9 +325,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
   return (
   <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className="p-4 relative">
-        <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
-        <div className="flex items-center justify-between" onClick={() => setOpen(prev => !prev)}>
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-primary" />
             <h2 className="text-base font-semibold">Gewicht</h2>
@@ -335,10 +334,13 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center h-8 w-8 justify-center rounded-md text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
             >
-              <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+              {open ? (
+                <>Einklappen <ChevronUp className="ml-1 h-4 w-4" /></>
+              ) : (
+                <>Ausklappen <ChevronDown className="ml-1 h-4 w-4" /></>
+              )}
             </button>
           </CollapsibleTrigger>
         </div>

@@ -12,7 +12,7 @@ import { Progress } from './ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Droplets, Plus, X, Clock, Calendar as CalendarIcon, AlertTriangle, CheckCircle, Edit, Trash2, Copy, Check, ChevronDown } from 'lucide-react';
+import { Droplets, Plus, X, Clock, Calendar as CalendarIcon, AlertTriangle, CheckCircle, Edit, Trash2, Copy, Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Textarea } from './ui/textarea';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -490,8 +490,6 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
             </Button>
           </CollapsibleTrigger>
         </div>
-
-        <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="space-y-4">
         {/* Summary Stats */}

@@ -238,47 +238,50 @@ export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false 
 
 
   return (
-    <Card className="relative">
-      <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
+    <Card className="p-4">
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5" onClick={() => setIsCollapsed(prev => !prev)}>
-          <Pill className="h-5 w-5 text-primary" />
-          <div className="flex-1">
-            <h3 className="text-base font-semibold">
-              Supplemente{totalTodayIntakes > 0 ? ` (${totalTodayIntakes} genommen)` : ''}
-            </h3>
-            {isCollapsed && userSupplements.length > 0 && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-muted-foreground">
-                  {totalTodayIntakes}/{totalScheduledIntakes} genommen
-                </span>
-                <Progress value={completionPercent} className="h-1 w-16" />
-              </div>
-            )}
-            {isCollapsed && !hideSmartChips && smartChips.length > 0 && (
-              <div className="flex gap-1 mt-2">
-                {smartChips.map((chip, index) => (
-                  <Button 
-                    key={index}
-                    variant="outline" 
-                    size="sm" 
-                    onClick={chip.action}
-                    className="text-xs h-6 px-2"
-                  >
-                    {chip.label}
-                  </Button>
-                ))}
-              </div>
-            )}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Pill className="h-5 w-5 text-primary" />
+            <div>
+              <h3 className="text-base font-semibold">
+                Supplemente{totalTodayIntakes > 0 ? ` (${totalTodayIntakes} genommen)` : ''}
+              </h3>
+              {isCollapsed && userSupplements.length > 0 && (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-sm text-muted-foreground">
+                    {totalTodayIntakes}/{totalScheduledIntakes} genommen
+                  </span>
+                  <Progress value={completionPercent} className="h-2 w-16" />
+                </div>
+              )}
+              {isCollapsed && !hideSmartChips && smartChips.length > 0 && (
+                <div className="flex gap-1 mt-2">
+                  {smartChips.map((chip, index) => (
+                    <Button 
+                      key={index}
+                      variant="outline" 
+                      size="sm" 
+                      onClick={chip.action}
+                      className="text-xs h-6 px-2"
+                    >
+                      {chip.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()} className="h-8 w-8 p-0">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-            </Button>
+            <button type="button" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+              {!isCollapsed ? (
+                <>Einklappen <ChevronUp className="ml-1 h-4 w-4" /></>
+              ) : (
+                <>Ausklappen <ChevronDown className="ml-1 h-4 w-4" /></>
+              )}
+            </button>
           </CollapsibleTrigger>
         </div>
-
-        <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="space-y-3">
               {timingOptions.map(({ value, label }) => {
