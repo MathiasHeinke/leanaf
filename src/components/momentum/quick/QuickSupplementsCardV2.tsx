@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pill, Check, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface TodayIntake {
@@ -29,10 +29,10 @@ export const QuickSupplementsCardV2: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [expandedTimings, setExpandedTimings] = useState<Set<string>>(new Set());
 
-  const getCurrentTimeSlot = (): 'morning' | 'afternoon' | 'evening' => {
+  const getCurrentTimeSlot = (): 'morning' | 'noon' | 'evening' => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return 'morning';
-    if (hour >= 12 && hour < 18) return 'afternoon';
+    if (hour >= 12 && hour < 18) return 'noon';
     return 'evening';
   };
 
@@ -168,14 +168,14 @@ export const QuickSupplementsCardV2: React.FC = () => {
   const getTimingLabel = (timing: string) => {
     switch (timing) {
       case 'morning': return 'Morgens';
-      case 'afternoon': return 'Mittags';
+      case 'noon': return 'Mittags';
       case 'evening': return 'Abends';
       default: return timing;
     }
   };
 
   const getAllTimingsWithSupplements = () => {
-    const allTimings: ('morning' | 'afternoon' | 'evening')[] = ['morning', 'afternoon', 'evening'];
+    const allTimings: ('morning' | 'noon' | 'evening')[] = ['morning', 'noon', 'evening'];
     return allTimings.filter(timing => getSupplementsForTiming(timing).length > 0);
   };
 
@@ -264,7 +264,7 @@ export const QuickSupplementsCardV2: React.FC = () => {
         .from('supplement_intake_log')
         .upsert(rows);
       if (error) throw error;
-      const slotLabel = currentTimeSlot === 'morning' ? 'Morgens' : currentTimeSlot === 'afternoon' ? 'Mittags' : 'Abends';
+      const slotLabel = currentTimeSlot === 'morning' ? 'Morgens' : currentTimeSlot === 'noon' ? 'Mittags' : 'Abends';
       toast.success(`${slotLabel} erledigt ✓`);
     } catch (e) {
       console.error('markAllForCurrentSlot failed', e);
@@ -285,7 +285,7 @@ export const QuickSupplementsCardV2: React.FC = () => {
   const quickActions = pendingCount > 0 
     ? [
         {
-          label: (currentTimeSlot === 'morning' ? 'Morgens' : currentTimeSlot === 'afternoon' ? 'Mittags' : 'Abends') + ' erledigt',
+          label: (currentTimeSlot === 'morning' ? 'Morgens' : currentTimeSlot === 'noon' ? 'Mittags' : 'Abends') + ' erledigt',
           onClick: markAllForCurrentSlot,
           variant: 'default' as const,
           disabled: loading

@@ -617,14 +617,14 @@ const Index = () => {
         );
       case 'supplements':
         return (
-          <div key="supplements" className="space-y-3">
-            <SupplementSmartChips />
-            <SortableCard id="supplements" state={
-              supplementsRequiredCount === 0 ? 'empty' : (supplementsTakenCount >= supplementsRequiredCount ? 'done' : (supplementsTakenCount > 0 ? 'partial' : 'empty'))
-            }>
+          <SortableCard key="supplements" id="supplements" state={
+            supplementsRequiredCount === 0 ? 'empty' : (supplementsTakenCount >= supplementsRequiredCount ? 'done' : (supplementsTakenCount > 0 ? 'partial' : 'empty'))
+          }>
+            <div className="space-y-3">
+              <SupplementSmartChips />
               <QuickSupplementInput onProgressUpdate={(taken, required) => { setSupplementsTakenCount(taken); setSupplementsRequiredCount(required); }} />
-            </SortableCard>
-          </div>
+            </div>
+          </SortableCard>
         );
       case 'fluids':
         return (

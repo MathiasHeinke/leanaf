@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface UserSupplement {
   id: string;
@@ -22,10 +22,10 @@ export const SupplementSmartChips: React.FC = () => {
   const [todayIntake, setTodayIntake] = useState<TodayIntake[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const getCurrentTimeSlot = (): 'morning' | 'afternoon' | 'evening' => {
+  const getCurrentTimeSlot = (): 'morning' | 'noon' | 'evening' => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return 'morning';
-    if (hour >= 12 && hour < 18) return 'afternoon';
+    if (hour >= 12 && hour < 18) return 'noon';
     return 'evening';
   };
 
@@ -142,7 +142,7 @@ export const SupplementSmartChips: React.FC = () => {
   const getTimeLabel = () => {
     switch (currentTimeSlot) {
       case 'morning': return 'Morgens';
-      case 'afternoon': return 'Mittags';
+      case 'noon': return 'Mittags';
       case 'evening': return 'Abends';
     }
   };
