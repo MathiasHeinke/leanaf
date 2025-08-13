@@ -461,9 +461,8 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     
     // Add frequent database entries first (these are the actual drinks from database)
     frequentFluids.databaseEntries.slice(0, 3).forEach(entry => {
-      const icon = entry.icon_name || '🥤';
       chips.push({
-        label: `${icon} ${entry.name}`,
+        label: `+ ${entry.default_amount}ml ${entry.name}`,
         action: () => { 
           setSelectedFluid(entry.id); 
           setCustomName(''); 
@@ -479,7 +478,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
         // Find a popular water drink from database for the amount
         const waterDrink = fluids.find(f => f.category === 'water');
         chips.push({
-          label: `💧 ${amount}ml`,
+          label: `+ ${amount}ml Wasser`,
           action: () => { 
             if (waterDrink) {
               setSelectedFluid(waterDrink.id); 
@@ -503,9 +502,8 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
         
       if (popularDrinks.length > 0) {
         popularDrinks.forEach(drink => {
-          const icon = drink.icon_name || '🥤';
           chips.push({
-            label: `${icon} ${drink.name}`,
+            label: `+ ${drink.default_amount}ml ${drink.name}`,
             action: () => { 
               setSelectedFluid(drink.id); 
               setCustomName(''); 
@@ -517,9 +515,9 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       } else {
         // Final fallback if no database entries
         chips.push(
-          { label: "💧 250ml", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
-          { label: "💧 500ml", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
-          { label: "☕ Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
+          { label: "+ 250ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
+          { label: "+ 500ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
+          { label: "+ 200ml Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
         );
       }
     }
