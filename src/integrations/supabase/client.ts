@@ -20,9 +20,17 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'X-Client-Info': 'food-scribe-daily-log'
     },
     fetch: (url, options = {}) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      
       return fetch(url, {
         ...options,
-        signal: AbortSignal.timeout(300000) // 5min timeout for all requests
+        signal: controller.signal
+      }).finally(() => {
+        clearTimeout(timeoutId);
+      }).catch((error) => {
+        console.warn('Supabase request failed:', error);
+        throw error;
       });
     }
   },

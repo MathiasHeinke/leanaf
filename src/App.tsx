@@ -39,28 +39,30 @@ import TransformationJourneyPage from "./pages/TransformationJourney";
 
 import TestSummaryPage from "./pages/TestSummary";
 import { MealInputProvider } from "@/hooks/useGlobalMealInput";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem={true}
-      disableTransitionOnChange={false}
-    >
-      <TranslationProvider>
-        <AuthProvider>
-          <MealInputProvider>
-            <SubscriptionProvider>
-              <EnhancedSecurityManager>
-                <Sonner />
-                <BrowserRouter>
-                <SidebarProvider>
-                  <Layout>
-                    <AdminOnboardingAccess />
-                    <Routes>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem={true}
+        disableTransitionOnChange={false}
+      >
+        <TranslationProvider>
+          <AuthProvider>
+            <MealInputProvider>
+              <SubscriptionProvider>
+                <EnhancedSecurityManager>
+                  <Sonner />
+                  <BrowserRouter>
+                  <SidebarProvider>
+                    <Layout>
+                      <AdminOnboardingAccess />
+                      <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/onboarding" element={<Onboarding />} />
@@ -93,17 +95,18 @@ const App = () => (
                       <Route path="/subscription" element={<Navigate to="/credits" replace />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Layout>
-                </SidebarProvider>
-              </BrowserRouter>
-            </EnhancedSecurityManager>
-          </SubscriptionProvider>
-        </MealInputProvider>
-        </AuthProvider>
-      </TranslationProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+                      </Routes>
+                    </Layout>
+                  </SidebarProvider>
+                </BrowserRouter>
+              </EnhancedSecurityManager>
+            </SubscriptionProvider>
+          </MealInputProvider>
+          </AuthProvider>
+        </TranslationProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
