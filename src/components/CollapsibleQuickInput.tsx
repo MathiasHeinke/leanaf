@@ -102,6 +102,12 @@ export const CollapsibleQuickInput = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const styles = themeStyles[theme];
 
+  const handleToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsOpen(prev => !prev);
+  };
+
   return (
     <div className={cn(
       "relative rounded-2xl border transition-all duration-200",
@@ -116,7 +122,8 @@ export const CollapsibleQuickInput = ({
           "w-full h-auto p-4 justify-between transition-colors rounded-2xl",
           isCompleted ? "" : styles.header
         )}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
+        type="button"
       >
         <div className="flex items-center gap-3">
           <div className={cn(

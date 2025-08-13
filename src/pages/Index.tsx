@@ -44,6 +44,7 @@ import { useFrequentMeals } from "@/hooks/useFrequentMeals";
 import { MomentumXPBar } from "@/components/momentum/MomentumXPBar";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
+import { SupplementSmartChips } from "@/components/momentum/SupplementSmartChips";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -616,11 +617,14 @@ const Index = () => {
         );
       case 'supplements':
         return (
-          <SortableCard key="supplements" id="supplements" state={
-            supplementsRequiredCount === 0 ? 'empty' : (supplementsTakenCount >= supplementsRequiredCount ? 'done' : (supplementsTakenCount > 0 ? 'partial' : 'empty'))
-          }>
-            <QuickSupplementInput onProgressUpdate={(taken, required) => { setSupplementsTakenCount(taken); setSupplementsRequiredCount(required); }} />
-          </SortableCard>
+          <div key="supplements" className="space-y-3">
+            <SupplementSmartChips />
+            <SortableCard id="supplements" state={
+              supplementsRequiredCount === 0 ? 'empty' : (supplementsTakenCount >= supplementsRequiredCount ? 'done' : (supplementsTakenCount > 0 ? 'partial' : 'empty'))
+            }>
+              <QuickSupplementInput onProgressUpdate={(taken, required) => { setSupplementsTakenCount(taken); setSupplementsRequiredCount(required); }} />
+            </SortableCard>
+          </div>
         );
       case 'fluids':
         return (

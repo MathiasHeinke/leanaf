@@ -191,12 +191,12 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
   return (
     <CollapsibleQuickInput
-      title={"Körpermaße"}
+      title="Körpermaße"
       icon={<Ruler className="h-5 w-5 text-white" />}
       isCompleted={isCompleted}
       defaultOpen={false}
       theme="cyan"
-      completedText="Diese Woche erfasst"
+      completedText={isCompleted ? "✓ Erledigt" : undefined}
     >
       {hasMeasurementsThisWeek && !isEditing ? (
         <div className="space-y-4">
