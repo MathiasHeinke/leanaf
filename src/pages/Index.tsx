@@ -27,7 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { MealInputLean } from "@/components/MealInputLean";
-import { EnhancedMealInput } from "@/components/EnhancedMealInput";
+import { DashboardMealComposer } from "@/components/DashboardMealComposer";
 import { toast } from "sonner";
 
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
@@ -41,7 +41,7 @@ import { DateNavigation } from "@/components/DateNavigation";
 import { CaloriesCard } from "@/components/calories/CaloriesCard";
 import { MealEditDialog } from "@/components/MealEditDialog";
 import { useFrequentMeals } from "@/hooks/useFrequentMeals";
-import { MomentumXPBar } from "@/components/momentum/MomentumXPBar";
+import { DashboardXPBar } from "@/components/DashboardXPBar";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
 
@@ -661,7 +661,7 @@ const Index = () => {
       </div>
       
       <div className="container mx-auto px-4 max-w-4xl mt-3">
-        <MomentumXPBar 
+        <DashboardXPBar 
           xp={pointsToNext ? (totalPoints % pointsToNext) : totalPoints}
           goal={pointsToNext || 100}
           loading={pointsLoading}
@@ -822,8 +822,8 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Enhanced Meal Input (visible) */}
-      <EnhancedMealInput />
+      {/* Dashboard Meal Composer (visible) */}
+      <DashboardMealComposer />
       {onboardingState.mealInputHighlighted && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50">
           <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
