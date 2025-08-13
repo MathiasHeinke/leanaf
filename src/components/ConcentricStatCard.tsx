@@ -58,19 +58,30 @@ function ProgressHalfRing({
   const dashLength = circumference * p;
   const gapLength = circumference - dashLength;
   
-  // Für linken Ring: von unten-links nach oben-links (gegen Uhrzeigersinn)
-  // Für rechten Ring: von unten-rechts nach oben-rechts (im Uhrzeigersinn)
-  const startAngle = isLeft ? 225 : 315; // Startpunkt: unten-links bzw. unten-rechts
-  const pathDirection = isLeft ? -90 : 90; // Richtung der Füllung
+  // Korrekte SVG-Winkel (0° = rechts, 90° = unten, 180° = links, 270° = oben)
+  // Für linken Ring: von unten-links (225°) nach oben-links (135°)  
+  // Für rechten Ring: von unten-rechts (315°) nach oben-rechts (45°)
+  const startAngle = isLeft ? 225 : 315; // Startpunkt in SVG-Graden
+  const endAngle = isLeft ? 135 : 45;    // Endpunkt in SVG-Graden
+  
+  // Startpunkt berechnen
+  const startX = radius * Math.cos(startAngle * Math.PI / 180);
+  const startY = radius * Math.sin(startAngle * Math.PI / 180);
+  
+  // Endpunkt berechnen  
+  const endX = radius * Math.cos(endAngle * Math.PI / 180);
+  const endY = radius * Math.sin(endAngle * Math.PI / 180);
+  
+  // Large-arc-flag: 0 für Halbkreis (immer kleiner als 180°)
+  // Sweep-flag: 0 für gegen Uhrzeigersinn, 1 für im Uhrzeigersinn
+  const sweepFlag = isLeft ? 0 : 1;
   
   return (
     <g>
       {/* Glow-Effekt */}
       {withGlow && (
         <path
-          d={`M ${radius * Math.cos((startAngle - 90) * Math.PI / 180)} ${radius * Math.sin((startAngle - 90) * Math.PI / 180)} 
-             A ${radius} ${radius} 0 0 ${isLeft ? 0 : 1} 
-             ${radius * Math.cos((startAngle + pathDirection - 90) * Math.PI / 180)} ${radius * Math.sin((startAngle + pathDirection - 90) * Math.PI / 180)}`}
+          d={`M ${startX} ${startY} A ${radius} ${radius} 0 0 ${sweepFlag} ${endX} ${endY}`}
           fill="none"
           stroke={`url(#${id}-gradient)`}
           strokeWidth={width * 1.25}
@@ -82,9 +93,7 @@ function ProgressHalfRing({
       
       {/* Hauptstrich */}
       <path
-        d={`M ${radius * Math.cos((startAngle - 90) * Math.PI / 180)} ${radius * Math.sin((startAngle - 90) * Math.PI / 180)} 
-           A ${radius} ${radius} 0 0 ${isLeft ? 0 : 1} 
-           ${radius * Math.cos((startAngle + pathDirection - 90) * Math.PI / 180)} ${radius * Math.sin((startAngle + pathDirection - 90) * Math.PI / 180)}`}
+        d={`M ${startX} ${startY} A ${radius} ${radius} 0 0 ${sweepFlag} ${endX} ${endY}`}
         fill="none"
         stroke={`url(#${id}-gradient)`}
         strokeWidth={width}
