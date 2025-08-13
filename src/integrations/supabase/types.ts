@@ -3397,66 +3397,6 @@ export type Database = {
         }
         Relationships: []
       }
-      onboarding_sequences: {
-        Row: {
-          completed: boolean | null
-          created_at: string
-          id: string
-          next_email_at: string | null
-          paused: boolean | null
-          sequence_step: number | null
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          completed?: boolean | null
-          created_at?: string
-          id?: string
-          next_email_at?: string | null
-          paused?: boolean | null
-          sequence_step?: number | null
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          completed?: boolean | null
-          created_at?: string
-          id?: string
-          next_email_at?: string | null
-          paused?: boolean | null
-          sequence_step?: number | null
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      onboarding_stats: {
-        Row: {
-          created_at: string
-          current_coupons_used: number
-          id: string
-          max_coupons: number
-          total_users: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          current_coupons_used?: number
-          id?: string
-          max_coupons?: number
-          total_users?: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          current_coupons_used?: number
-          id?: string
-          max_coupons?: number
-          total_users?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
       orchestrator_traces: {
         Row: {
           coach_id: string | null
@@ -6448,10 +6388,6 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
-      }
-      increment_onboarding_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
       }
       is_admin_by_email: {
         Args: Record<PropertyKey, never>

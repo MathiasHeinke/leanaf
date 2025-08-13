@@ -658,7 +658,7 @@ const EmailMarketingAdmin = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="newsletter">Newsletter</SelectItem>
-                        <SelectItem value="onboarding">Onboarding</SelectItem>
+                        <SelectItem value="engagement">Engagement</SelectItem>
                         <SelectItem value="engagement">Engagement</SelectItem>
                         <SelectItem value="welcome">Willkommen</SelectItem>
                         <SelectItem value="confirmation">Bestätigung</SelectItem>
@@ -1006,7 +1006,7 @@ const EmailMarketingAdmin = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="newsletter">Newsletter</SelectItem>
-                        <SelectItem value="onboarding">Onboarding</SelectItem>
+                        <SelectItem value="engagement">Engagement</SelectItem>
                         <SelectItem value="engagement">Engagement</SelectItem>
                         <SelectItem value="promotional">Werbung</SelectItem>
                       </SelectContent>
@@ -1069,7 +1069,7 @@ const EmailMarketingAdmin = () => {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 gap-6">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Onboarding-Sequenz</h3>
+                  <h3 className="text-lg font-semibold">E-Mail Sequenzen</h3>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
