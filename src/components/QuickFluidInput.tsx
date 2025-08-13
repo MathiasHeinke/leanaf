@@ -389,9 +389,35 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     return diffDays;
   };
 
+  // Helper function to detect if a drink is water-based
+  const isWaterDrink = (fluid: UserFluid): boolean => {
+    // If it's from database with water category
+    if (fluid.fluid_category === 'water') {
+      return true;
+    }
+    
+    // If it's a custom entry, check name for water-related keywords
+    if (fluid.custom_name) {
+      const name = fluid.custom_name.toLowerCase();
+      const waterKeywords = [
+        'wasser',
+        'mineralwasser', 
+        'leitungswasser',
+        'sprudelwasser',
+        'stilleswasser',
+        'stilles wasser',
+        'wasserstill'
+      ];
+      
+      return waterKeywords.some(keyword => name.includes(keyword));
+    }
+    
+    return false;
+  };
+
   const getTotalWaterIntake = () => {
     return todaysFluids
-      .filter(f => f.fluid_category === 'water')
+      .filter(f => isWaterDrink(f))
       .reduce((sum, f) => sum + f.amount_ml, 0);
   };
 
