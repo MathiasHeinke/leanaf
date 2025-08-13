@@ -186,8 +186,6 @@ export const QuickSupplementsCard: React.FC = () => {
           label: 'Details',
           onClick: () => setDetailsOpen(true)
         }}
-        collapsible={true}
-        defaultOpen={false}
       >
         <div className="space-y-3">
           {supplements.slice(0, 3).map(supplement => {

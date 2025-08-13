@@ -165,8 +165,6 @@ export const QuickHydrationCard: React.FC = () => {
           label: 'Details',
           onClick: () => setDetailsOpen(true)
         }}
-        collapsible={true}
-        defaultOpen={false}
       >
         <div className="space-y-2">
           <Progress value={progressPercent} className="h-2" />

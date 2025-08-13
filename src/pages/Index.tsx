@@ -9,11 +9,11 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { MealList } from "@/components/MealList";
 
-import { QuickWeightCard } from "@/components/momentum/quick/QuickWeightCard";
-import { QuickTrainingCard } from "@/components/momentum/quick/QuickTrainingCard";
-import { QuickSleepCard } from "@/components/momentum/quick/QuickSleepCard";
-import { QuickSupplementsCard } from "@/components/momentum/quick/QuickSupplementsCard";
-import { QuickHydrationCard } from "@/components/momentum/quick/QuickHydrationCard";
+import { QuickWeightInput } from "@/components/QuickWeightInput";
+import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
+import { QuickSleepInput } from "@/components/QuickSleepInput";
+import { QuickSupplementInput } from "@/components/QuickSupplementInput";
+import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { QuickMindsetInput } from "@/components/QuickMindsetInput";
 import { QuickMeasurementsCard } from "@/components/momentum/quick/QuickMeasurementsCard";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
@@ -558,24 +558,63 @@ const Index = () => {
 
     switch (cardType) {
       case 'sleep':
-        return <QuickSleepCard />;
+        return (
+          <SortableCard key="sleep" id="sleep" state={todaysSleep && (todaysSleep.sleep_hours != null || todaysSleep.bedtime != null) ? 'done' : 'empty'}>
+            <QuickSleepInput 
+              onSleepAdded={handleSleepAdded}
+              todaysSleep={todaysSleep}
+            />
+          </SortableCard>
+        );
       case 'weight':
-        return <QuickWeightCard />;
+        return (
+          <SortableCard key="weight" id="weight">
+            <QuickWeightInput 
+              onWeightAdded={handleWeightAdded}
+              todaysWeight={todaysWeight}
+            />
+          </SortableCard>
+        );
       case 'workout':
-        return <QuickTrainingCard />;
+        return (
+          <SortableCard key="workout" id="workout">
+            <QuickWorkoutInput 
+              onWorkoutAdded={handleWorkoutAdded}
+              todaysWorkout={todaysWorkout}
+              todaysWorkouts={todaysWorkouts}
+            />
+          </SortableCard>
+        );
       case 'measurements':
         return (
-          <QuickMeasurementsCard
-            todaysMeasurements={todaysMeasurements}
-            onMeasurementsAdded={handleMeasurementsAdded}
-          />
+          <SortableCard key="measurements" id="measurements">
+            <QuickMeasurementsCard 
+              onMeasurementsAdded={handleMeasurementsAdded}
+              todaysMeasurements={todaysMeasurements}
+            />
+          </SortableCard>
         );
       case 'supplements':
-        return <QuickSupplementsCard />;
+        return (
+          <SortableCard key="supplements" id="supplements">
+            <QuickSupplementInput />
+          </SortableCard>
+        );
       case 'fluids':
-        return <QuickHydrationCard />;
+        return (
+          <SortableCard key="fluids" id="fluids">
+            <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} />
+          </SortableCard>
+        );
       case 'mindset':
-        return <QuickMindsetInput />;
+        return (
+          <SortableCard key="mindset" id="mindset">
+            <QuickMindsetInput 
+              onMindsetAdded={() => loadTodaysData(currentDate)}
+              currentDate={currentDate}
+            />
+          </SortableCard>
+        );
       default:
         return null;
     }
@@ -716,11 +755,7 @@ const Index = () => {
                 const trackingType = trackingTypeMap[cardType as keyof typeof trackingTypeMap];
                 // Always show mindset journal regardless of tracking preferences
                 return cardType === 'mindset' || !trackingType || isTrackingEnabled(trackingType);
-              }).map(cardType => (
-                <SortableCard key={cardType} id={cardType}>
-                  {renderCardByType(cardType)}
-                </SortableCard>
-              ))}
+              }).map(cardType => renderCardByType(cardType))}
             </div>
           </SortableContext>
         </DndContext>

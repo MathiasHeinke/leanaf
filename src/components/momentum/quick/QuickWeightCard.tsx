@@ -119,10 +119,6 @@ export const QuickWeightCard: React.FC = () => {
           label: 'Details',
           onClick: () => setDetailsOpen(true)
         }}
-        dataState={hasWeightToday ? 'done' : 'empty'}
-        progressPercent={hasWeightToday ? 100 : 0}
-        collapsible={true}
-        defaultOpen={false}
       >
         {showQuickForm && (
           <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
