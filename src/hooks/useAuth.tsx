@@ -139,23 +139,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [cleanupAuthState]);
 
-  // Memoize user data loading to prevent redundant calls
+  // Memoize user data loading to prevent redundant calls with guards
   const handleUserDataLoading = useCallback(async (user: User) => {
+    if (!user?.id) return; // Guard against invalid user
+    
     try {
       await checkIfNewUserAndRedirect(user);
     } catch (error) {
       console.error('Error loading user data:', error);
+      // Fallback navigation on error
+      if (!isPreviewMode && window.location.pathname === '/auth') {
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
+      }
     }
   }, []);
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     let isMounted = true;
+    let isHandlingAuth = false; // Prevent race conditions
     
-    // Set up auth state listener FIRST
+    // Set up auth state listener FIRST with additional guards
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (!isMounted) return;
+        if (!isMounted || isHandlingAuth) return;
         
         // Only synchronous state updates here
         setSession(session);
@@ -164,14 +173,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Handle auth events - defer Supabase calls with setTimeout
         if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
+          isHandlingAuth = true;
           timeoutId = setTimeout(() => {
-            if (isMounted) {
-              handleUserDataLoading(session.user);
+            if (isMounted && session?.user?.id) {
+              handleUserDataLoading(session.user).finally(() => {
+                isHandlingAuth = false;
+              });
+            } else {
+              isHandlingAuth = false;
             }
           }, 0); // Use 0 to prevent deadlock
         }
         
         if (event === 'SIGNED_OUT') {
+          isHandlingAuth = false;
           cleanupAuthState();
           setSession(null);
           setUser(null);
