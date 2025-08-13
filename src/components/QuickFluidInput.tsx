@@ -184,6 +184,48 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     setAlcoholAbstinence(data);
   };
 
+  const addFluidDirectly = async (fluidId: string | null, customFluidName: string | null, amountMl: number) => {
+    if (!user) {
+      toast.error('Benutzer nicht angemeldet');
+      return;
+    }
+
+    try {
+      const fluidData = {
+        user_id: user.id,
+        fluid_id: fluidId,
+        custom_name: customFluidName,
+        amount_ml: amountMl,
+        notes: null
+      };
+
+      const { error } = await supabase
+        .from('user_fluids')
+        .insert([fluidData]);
+
+      if (error) throw error;
+
+      // Get fluid name for toast
+      const fluidName = fluidId 
+        ? fluids.find(f => f.id === fluidId)?.name || 'Getränk'
+        : customFluidName || 'Getränk';
+      
+      toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
+      
+      // Reload data
+      loadTodaysFluids();
+      
+      // Trigger parent update to refresh main page
+      onFluidUpdate?.();
+      
+      // Global refresh for header/mission
+      triggerDataRefresh();
+    } catch (error) {
+      console.error('Error adding fluid directly:', error);
+      toast.error('Fehler beim Hinzufügen des Getränks');
+    }
+  };
+
   const handleAddFluid = async () => {
     const amountValue = parseFloat(amount);
     if (!user || (!selectedFluid && !customName) || !amount || isNaN(amountValue)) {
@@ -463,12 +505,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     frequentFluids.databaseEntries.slice(0, 3).forEach(entry => {
       chips.push({
         label: `+ ${entry.default_amount}ml ${entry.name}`,
-        action: () => { 
-          setSelectedFluid(entry.id); 
-          setCustomName(''); 
-          setAmount(entry.default_amount.toString()); 
-          setShowAddForm(true); 
-        }
+        action: () => addFluidDirectly(entry.id, null, entry.default_amount)
       });
     });
     
@@ -479,16 +516,12 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
         const waterDrink = fluids.find(f => f.category === 'water');
         chips.push({
           label: `+ ${amount}ml Wasser`,
-          action: () => { 
+          action: () => {
             if (waterDrink) {
-              setSelectedFluid(waterDrink.id); 
-              setAmount(amount.toString()); 
+              addFluidDirectly(waterDrink.id, null, amount);
             } else {
-              setSelectedFluid(''); 
-              setCustomName('Wasser'); 
-              setAmount(amount.toString()); 
+              addFluidDirectly(null, 'Wasser', amount);
             }
-            setShowAddForm(true); 
           }
         });
       });
@@ -504,20 +537,15 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
         popularDrinks.forEach(drink => {
           chips.push({
             label: `+ ${drink.default_amount}ml ${drink.name}`,
-            action: () => { 
-              setSelectedFluid(drink.id); 
-              setCustomName(''); 
-              setAmount(drink.default_amount.toString()); 
-              setShowAddForm(true); 
-            }
+            action: () => addFluidDirectly(drink.id, null, drink.default_amount)
           });
         });
       } else {
         // Final fallback if no database entries
         chips.push(
-          { label: "+ 250ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
-          { label: "+ 500ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
-          { label: "+ 200ml Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
+          { label: "+ 250ml Wasser", action: () => addFluidDirectly(null, 'Wasser', 250) },
+          { label: "+ 500ml Wasser", action: () => addFluidDirectly(null, 'Wasser', 500) },
+          { label: "+ 200ml Kaffee", action: () => addFluidDirectly(null, 'Kaffee', 200) }
         );
       }
     }
