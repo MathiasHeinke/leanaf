@@ -63,7 +63,9 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
   }
 
   const urls = await uploadImages(selected);
-  e.currentTarget.value = "";
+  if (e.currentTarget) {
+    e.currentTarget.value = "";
+  }
 
   if (!urls || urls.length === 0) return;
 
@@ -428,7 +430,6 @@ const handleSubmit = useCallback(async () => {
           <QuickMealSheet
             open={quickMealSheetOpen}
             onOpenChange={(open) => !open && closeQuickMealSheet()}
-            initialTab={activeTab}
           />
         )}
       </Suspense>
@@ -438,6 +439,10 @@ const handleSubmit = useCallback(async () => {
         open={confirmMeal.open}
         prompt={confirmMeal.prompt}
         proposal={confirmMeal.proposal}
+        onConfirm={() => {
+          // Handle meal confirmation
+          setConfirmMeal({ open: false, prompt: '', proposal: null, traceId: undefined });
+        }}
         onClose={() => setConfirmMeal({ open: false, prompt: '', proposal: null, traceId: undefined })}
       />
 
@@ -445,6 +450,10 @@ const handleSubmit = useCallback(async () => {
         open={confirmSupplement.open}
         prompt={confirmSupplement.prompt}
         proposal={confirmSupplement.proposal}
+        onConfirm={(pickedIdx, patch) => {
+          // Handle supplement confirmation
+          setConfirmSupplement({ open: false, prompt: '', proposal: null, traceId: undefined });
+        }}
         onClose={() => setConfirmSupplement({ open: false, prompt: '', proposal: null, traceId: undefined })}
       />
     </>

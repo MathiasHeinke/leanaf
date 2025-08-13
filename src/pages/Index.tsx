@@ -15,7 +15,7 @@ import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
 import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { QuickMindsetInput } from "@/components/QuickMindsetInput";
-import { QuickMeasurementsCard } from "@/components/momentum/quick/QuickMeasurementsCard";
+// Removed: QuickMeasurementsCard - migrated functionality to standalone components
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
@@ -83,7 +83,7 @@ const Index = () => {
   // Card order state
   const [cardOrder, setCardOrder] = useState<string[]>(() => {
     const savedOrder = localStorage.getItem('quickInputCardOrder');
-    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'measurements', 'supplements', 'fluids', 'mindset'];
+    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'supplements', 'fluids', 'mindset'];
   });
 
   // Frequent meals for smart chips
@@ -586,14 +586,8 @@ const Index = () => {
           </SortableCard>
         );
       case 'measurements':
-        return (
-          <SortableCard key="measurements" id="measurements">
-            <QuickMeasurementsCard 
-              onMeasurementsAdded={handleMeasurementsAdded}
-              todaysMeasurements={todaysMeasurements}
-            />
-          </SortableCard>
-        );
+        // Measurements functionality removed - was part of Momentum
+        return null;
       case 'supplements':
         return (
           <SortableCard key="supplements" id="supplements">
