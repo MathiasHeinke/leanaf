@@ -10,7 +10,8 @@ import { getGoalStatus, UserGoal } from "@/utils/goalBasedMessaging";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { HistoryTable } from "./HistoryTable";
 import { WeightHistory } from "./WeightHistory";
-import { Utensils, Scale, Dumbbell, Activity } from "lucide-react";
+import { JournalHistory } from "./JournalHistory";
+import { Utensils, Scale, Dumbbell, Activity, Brain } from "lucide-react";
 import { WorkoutHistoryTab } from "./WorkoutHistoryTab";
 import { QuickInputHistory } from "./QuickInputHistory";
 
@@ -497,10 +498,14 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       {/* Tabs */}
       <Tabs defaultValue="table" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="table" className="flex items-center gap-2">
             <Utensils className="h-4 w-4" />
             Ernährung
+          </TabsTrigger>
+          <TabsTrigger value="journal" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Journal
           </TabsTrigger>
           <TabsTrigger value="quick-input" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
@@ -523,6 +528,10 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
             onUpdateMeal={updateMeal}
             onDuplicateMeal={duplicateMeal}
           />
+        </TabsContent>
+
+        <TabsContent value="journal" className="space-y-3 mt-4">
+          <JournalHistory timeRange={timeRange} />
         </TabsContent>
 
         <TabsContent value="quick-input" className="space-y-3 mt-4">

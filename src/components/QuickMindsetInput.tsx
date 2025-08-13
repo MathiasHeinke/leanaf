@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp } from "lucide-react";
+import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { useMindsetJournal } from "@/hooks/useMindsetJournal";
 import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
 import { VoiceVisualizer } from "@/components/mindset-journal/VoiceVisualizer";
@@ -265,7 +265,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
           </div>
         )}
 
-        {/* Smart Chips - visible in both collapsed and expanded states like CaloriesCard */}
+        {/* Smart Chips & Journal Indicator */}
         <div className="mt-3 flex flex-wrap gap-3">
           {smartChips.map((chip, index) => (
             <button
@@ -281,6 +281,16 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
               <span className="truncate max-w-[10rem]">{chip.label}</span>
             </button>
           ))}
+          {hasEntriesForDate && (
+            <button
+              type="button"
+              onClick={() => setShowDetailWidget(true)}
+              className="inline-flex items-center rounded-full border bg-violet-100 hover:bg-violet-200 dark:bg-violet-900/50 dark:hover:bg-violet-900/70 px-3 py-1 text-xs transition-colors text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-700"
+            >
+              <FileText className="h-3.5 w-3.5 mr-1.5" />
+              <span>Einträge anzeigen</span>
+            </button>
+          )}
         </div>
 
         <CollapsibleContent>
@@ -413,9 +423,9 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
                     <div className="flex items-center justify-between p-2 bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30 rounded-md">
                       <div className="flex items-center gap-2 text-xs text-violet-700 dark:text-violet-300">
                         <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-                        <span>Audio permanent gespeichert</span>
+                        <span>Audio für Journal gespeichert</span>
                         <Badge variant="outline" className="text-xs border-success/30 text-success">
-                          Persistent
+                          Permanent
                         </Badge>
                       </div>
                       <div className="flex gap-1">
