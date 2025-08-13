@@ -9,14 +9,12 @@ import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { EnhancedSecurityManager } from "@/components/EnhancedSecurityManager";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Layout } from "@/components/Layout";
-import { AdminOnboardingAccess } from "@/components/AdminOnboardingAccess";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import Profile from "./pages/Profile";
 import Credits from "./pages/Credits";
 import CreditsSuccess from "./pages/CreditsSuccess";
-import Onboarding from "./pages/Onboarding";
 import CoachPage from "./pages/Coach";
 import TrainingPlus from "./pages/TrainingPlus";
 // Momentum page removed - functionality migrated to Index
@@ -61,11 +59,9 @@ const App = () => (
                   <BrowserRouter>
                   <SidebarProvider>
                     <Layout>
-                      <AdminOnboardingAccess />
                       <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
-                      <Route path="/onboarding" element={<Onboarding />} />
                       <Route path="/account" element={<Account />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/credits" element={<Credits />} />

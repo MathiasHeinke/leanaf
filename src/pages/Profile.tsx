@@ -19,10 +19,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { intelligentCalorieCalculator, type CalorieCalculationResult } from '@/utils/intelligentCalorieCalculator';
-import { ProfileOnboardingOverlay } from '@/components/ProfileOnboardingOverlay';
-import { CompletionSuccessCard } from '@/components/CompletionSuccessCard';
 import { TrackingPreferences } from '@/components/TrackingPreferences';
-import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import { ProfileFieldIndicator } from '@/components/ProfileFieldIndicator';
 import { MedicalScreening } from '@/components/MedicalScreening';
@@ -72,7 +69,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const { user } = useAuth();
   const { language, setLanguage } = useTranslation();
   const navigate = useNavigate();
-  const { showProfileOnboarding, completeProfileOnboarding, showIndexOnboarding } = useOnboardingState();
+  
   const { completionStatus, isProfileComplete: profileComplete, refreshCompletion } = useProfileCompletion();
 
   // State for profile completion validation and success dialog
@@ -527,7 +524,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   const handleSuccessDialogContinue = () => {
     setShowSuccessDialog(false);
-    completeProfileOnboarding();
     navigate('/');
   };
 
@@ -544,18 +540,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   return (
     <>
-      {/* Onboarding Overlays - Only show if profile is not complete */}
-      <ProfileOnboardingOverlay 
-        isOpen={showProfileOnboarding && !isProfileComplete}
-        onClose={completeProfileOnboarding}
-        userName={preferredName || user?.email?.split('@')[0] || 'Champion'}
-      />
-      
-      <CompletionSuccessCard
-        isOpen={showSuccessDialog}
-        onClose={() => setShowSuccessDialog(false)}
-        onContinue={handleSuccessDialogContinue}
-      />
 
       <div className="p-4 max-w-lg mx-auto">
         <div className="space-y-6 pb-20">

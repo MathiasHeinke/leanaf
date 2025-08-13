@@ -33,9 +33,6 @@ import { toast } from "sonner";
 import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useOnboardingState } from '@/hooks/useOnboardingState';
-import { IndexOnboardingOverlay } from '@/components/IndexOnboardingOverlay';
-import { InteractiveOnboardingSlider } from '@/components/onboarding/InteractiveOnboardingSlider';
 import { cn } from '@/lib/utils';
 import { DateNavigation } from "@/components/DateNavigation";
 import { CaloriesCard } from "@/components/calories/CaloriesCard";
@@ -105,7 +102,6 @@ const Index = () => {
   const { checkBadges } = useBadgeChecker();
   const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
   const { isTrackingEnabled } = useTrackingPreferences();
-  const onboardingState = useOnboardingState();
   
   // Frequent meals for smart chips (after auth check)
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
@@ -628,26 +624,6 @@ const Index = () => {
 
   return (
     <>
-      {/* Interactive Onboarding Slider - Show for new users */}
-      {onboardingState.showInteractiveOnboarding && (
-        <InteractiveOnboardingSlider
-          isOpen={onboardingState.showInteractiveOnboarding}
-          onClose={() => onboardingState.updateOnboardingState({ showInteractiveOnboarding: false })}
-          onComplete={onboardingState.completeInteractiveOnboarding}
-        />
-      )}
-
-      {/* Index Onboarding - Show after profile completion */}
-      {onboardingState.showIndexOnboarding && (
-        <IndexOnboardingOverlay
-          isOpen={onboardingState.showIndexOnboarding}
-          onClose={onboardingState.completeIndexOnboarding}
-          onHighlightMealInput={() => {
-            onboardingState.completeIndexOnboarding();
-            setTimeout(() => onboardingState.highlightMealInput(), 500);
-          }}
-        />
-      )}
       
       {/* Sticky Date Navigation under GlobalHeader */}
       <div className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -785,25 +761,11 @@ const Index = () => {
       {/* Floating Meal Input (hidden, kept for compatibility) */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent hidden" data-testid="mealinput_lean-container">
         <div className="max-w-md mx-auto px-4 pb-3 pt-2 bg-transparent">
-          <div className={cn(
-            "relative",
-            onboardingState.mealInputHighlighted && "ring-4 ring-blue-500 ring-opacity-50 rounded-lg animate-pulse"
-          )}>
-            {onboardingState.mealInputHighlighted && (
-              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg z-10">
-                Gib hier deine erste Mahlzeit ein 👆
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-blue-600"></div>
-              </div>
-            )}
+          <div className="relative">
             <MealInputLean 
               inputText={mealInputHook.inputText}
               setInputText={mealInputHook.setInputText}
-              onSubmitMeal={() => {
-                mealInputHook.handleSubmitMeal();
-                if (onboardingState.mealInputHighlighted) {
-                  onboardingState.clearMealInputHighlight();
-                }
-              }}
+              onSubmitMeal={mealInputHook.handleSubmitMeal}
               onPhotoUpload={mealInputHook.handlePhotoUpload}
               onVoiceRecord={mealInputHook.handleVoiceRecord}
               isAnalyzing={mealInputHook.isAnalyzing}
@@ -820,20 +782,6 @@ const Index = () => {
 
       {/* Dashboard Meal Composer (visible) */}
       <DashboardMealComposer />
-      {onboardingState.mealInputHighlighted && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50">
-          <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
-            Gib hier deine erste Mahlzeit ein 👇
-            <button
-              type="button"
-              onClick={() => onboardingState.clearMealInputHighlight()}
-              className="ml-2 underline"
-            >
-              Ok
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Meal Confirmation Dialog */}
       {mealInputHook.showConfirmationDialog && mealInputHook.analyzedMealData && (
