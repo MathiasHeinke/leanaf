@@ -74,6 +74,9 @@ const Index = () => {
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
   const [todaysFluids, setTodaysFluids] = useState<any[]>([]);
+  const [hasRecentMeasurement, setHasRecentMeasurement] = useState<boolean>(false);
+  const [supplementsTakenCount, setSupplementsTakenCount] = useState<number>(0);
+  const [supplementsRequiredCount, setSupplementsRequiredCount] = useState<number>(0);
 
   // XP state for Momentum bar on Index
   const [pointsLoading, setPointsLoading] = useState(true);
@@ -268,6 +271,29 @@ const Index = () => {
         console.error('Error loading measurements:', measurementsError);
       } else {
         setTodaysMeasurements(measurementsData);
+      }
+
+      // Load most recent measurements on or before selected date to compute 7-day freshness
+      const { data: latestMeas, error: latestMeasError } = await supabase
+        .from('body_measurements')
+        .select('date')
+        .eq('user_id', user.id)
+        .lte('date', dateString)
+        .order('date', { ascending: false })
+        .limit(1);
+      if (latestMeasError) {
+        console.error('Error loading latest measurement date:', latestMeasError);
+        setHasRecentMeasurement(false);
+      } else {
+        const lastDateStr = latestMeas && latestMeas.length > 0 ? latestMeas[0].date : null;
+        if (lastDateStr) {
+          const last = new Date(lastDateStr);
+          const selected = new Date(dateString);
+          const diffDays = Math.abs((selected.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+          setHasRecentMeasurement(diffDays <= 7);
+        } else {
+          setHasRecentMeasurement(false);
+        }
       }
 
       // Load today's fluids
@@ -581,7 +607,7 @@ const Index = () => {
         );
       case 'measurements':
         return (
-          <SortableCard key="measurements" id="measurements" state={todaysMeasurements ? 'done' : 'empty'}>
+          <SortableCard key="measurements" id="measurements" state={hasRecentMeasurement ? 'done' : 'empty'}>
             <QuickMeasurementsInput 
               onMeasurementsAdded={handleMeasurementsAdded}
               todaysMeasurements={todaysMeasurements}
@@ -590,8 +616,10 @@ const Index = () => {
         );
       case 'supplements':
         return (
-          <SortableCard key="supplements" id="supplements">
-            <QuickSupplementInput />
+          <SortableCard key="supplements" id="supplements" state={
+            supplementsRequiredCount === 0 ? 'empty' : (supplementsTakenCount >= supplementsRequiredCount ? 'done' : (supplementsTakenCount > 0 ? 'partial' : 'empty'))
+          }>
+            <QuickSupplementInput onProgressUpdate={(taken, required) => { setSupplementsTakenCount(taken); setSupplementsRequiredCount(required); }} />
           </SortableCard>
         );
       case 'fluids':
@@ -756,28 +784,7 @@ const Index = () => {
 
         {/* Smart Coach Insights removed per user request */}
 
-        <div>
-          <div className="mb-4">
-            <div className="flex items-center gap-3 mb-3">
-              <Badge className="opacity-80">{meals.length} Mahlzeiten</Badge>
-            </div>
-            {loading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : (
-              <MealList 
-                meals={meals}
-                onMealUpdate={() => {
-                  fetchMealsForDate(currentDate);
-                }}
-                selectedDate={currentDate.toISOString().split('T')[0]}
-              />
-            )}
-          </div>
-        </div>
+        {/* Mahlzeiten-Liste ausgeblendet gemäß Anforderung */}
       </div>
 
       {/* Floating Meal Input (hidden, kept for compatibility) */}

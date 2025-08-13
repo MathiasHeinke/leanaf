@@ -181,6 +181,26 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     setAlcoholAbstinence(data);
   };
 
+  const addQuickFluid = async (amountMl: number, name: string) => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('user_fluids')
+        .insert([{ user_id: user.id, fluid_id: null, custom_name: name, amount_ml: amountMl, notes: null }]);
+      if (error) throw error;
+      toast.success(`${amountMl}ml ${name} hinzugefügt`);
+      await loadTodaysFluids();
+      onFluidUpdate?.();
+      triggerDataRefresh();
+    } catch (e) {
+      console.error('Error quick-adding fluid:', e);
+      toast.error('Fehler beim schnellen Hinzufügen');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddFluid = async () => {
     const amountValue = parseFloat(amount);
     if (!user || (!selectedFluid && !customName) || !amount || isNaN(amountValue)) {
@@ -427,13 +447,14 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
 
   // Smart chip actions
   const smartChips = [
-    { label: "250ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
-    { label: "500ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
-    { label: "Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
+    { label: "+250ml Wasser", action: () => addQuickFluid(250, 'Wasser') },
+    { label: "+500ml Wasser", action: () => addQuickFluid(500, 'Wasser') },
+    { label: "+200ml Kaffee", action: () => addQuickFluid(200, 'Kaffee') }
   ];
 
   return (
     <Card className="relative">
+      <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <div className="flex items-center gap-3 p-5" onClick={() => isCollapsed && setIsCollapsed(false)}>
           <Droplets className="h-5 w-5 text-primary" />
@@ -447,14 +468,14 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
                 <Progress value={waterProgress} className="h-1 w-16" />
               </div>
             )}
-            {isCollapsed && !hasFluidEntries && (
+            {isCollapsed && (
               <div className="flex gap-1 mt-2">
                 {smartChips.map((chip, index) => (
                   <Button 
                     key={index}
                     variant="outline" 
                     size="sm" 
-                    onClick={() => { chip.action(); setIsCollapsed(false); }}
+                    onClick={chip.action}
                     className="text-xs h-6 px-2"
                   >
                     {chip.label}

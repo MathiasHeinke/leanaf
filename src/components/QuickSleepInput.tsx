@@ -338,6 +338,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
 
   return (
     <Card className="relative">
+      <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <div className="flex items-center gap-3 p-5" onClick={() => isCollapsed && setIsCollapsed(false)}>
           <Moon className="h-5 w-5 text-primary" />

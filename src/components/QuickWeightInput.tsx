@@ -325,7 +325,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
   return (
   <Collapsible open={open} onOpenChange={setOpen}>
-      <Card className="p-4">
+      <Card className="p-4 relative">
+        <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
         <div className="flex items-center justify-between" onClick={() => !open && setOpen(true)}>
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-primary" />
