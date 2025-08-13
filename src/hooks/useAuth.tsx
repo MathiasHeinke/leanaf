@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { secureLogger } from '@/utils/secureLogger';
@@ -12,9 +12,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Move outside component to prevent re-renders
-const isPreviewMode = typeof window !== 'undefined' && window.location.hostname.includes('lovable.app');
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -27,23 +24,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Detect if running in Lovable Preview mode
+  const isPreviewMode = window.location.hostname.includes('lovable.app');
 
-  const cleanupAuthState = useCallback(() => {
-    try {
-      Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
-      });
-      Object.keys(sessionStorage || {}).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          sessionStorage.removeItem(key);
-        }
-      });
-    } catch (error) {
-      console.error('Error cleaning auth state:', error);
-    }
-  }, []);
+  const cleanupAuthState = () => {
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    Object.keys(sessionStorage || {}).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  };
 
   const checkIfNewUserAndRedirect = async (user: User) => {
     try {
@@ -122,7 +118,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signOut = useCallback(async () => {
+  const signOut = async () => {
     try {
       cleanupAuthState();
       setSession(null);
@@ -137,56 +133,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error('Sign out error occurred');
       window.location.replace('/auth');
     }
-  }, [cleanupAuthState]);
-
-  // Memoize user data loading to prevent redundant calls with guards
-  const handleUserDataLoading = useCallback(async (user: User) => {
-    if (!user?.id) return; // Guard against invalid user
-    
-    try {
-      await checkIfNewUserAndRedirect(user);
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      // Fallback navigation on error
-      if (!isPreviewMode && window.location.pathname === '/auth') {
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 100);
-      }
-    }
-  }, []);
+  };
 
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    let isMounted = true;
-    let isHandlingAuth = false; // Prevent race conditions
     
-    // Set up auth state listener FIRST with additional guards
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (!isMounted || isHandlingAuth) return;
-        
-        // Only synchronous state updates here
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Handle auth events - defer Supabase calls with setTimeout
+        // Handle auth events with debouncing
         if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
-          isHandlingAuth = true;
           timeoutId = setTimeout(() => {
-            if (isMounted && session?.user?.id) {
-              handleUserDataLoading(session.user).finally(() => {
-                isHandlingAuth = false;
-              });
-            } else {
-              isHandlingAuth = false;
-            }
-          }, 0); // Use 0 to prevent deadlock
+            checkIfNewUserAndRedirect(session.user);
+          }, 100);
         }
         
         if (event === 'SIGNED_OUT') {
-          isHandlingAuth = false;
           cleanupAuthState();
           setSession(null);
           setUser(null);
@@ -203,46 +169,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     // Check for existing session only once
-    const getInitialSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (!isMounted) return;
-        
-        if (error) {
-          console.error('Session fetch error:', error.message);
-          cleanupAuthState();
-        } else {
-          setSession(session);
-          setUser(session?.user ?? null);
-        }
-      } catch (error) {
-        if (!isMounted) return;
-        console.error('Error fetching session:', error);
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Session fetch error:', error.message);
         cleanupAuthState();
-        setSession(null);
-        setUser(null);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
       }
-    };
-
-    getInitialSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    }).catch(() => {
+      cleanupAuthState();
+      setSession(null);
+      setUser(null);
+      setLoading(false);
+    });
 
     return () => {
-      isMounted = false;
       if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, [cleanupAuthState, handleUserDataLoading]);
+  }, []);
 
-  const value = useMemo(() => ({
+  const value = {
     user,
     session,
     loading,
     signOut,
-  }), [user, session, loading, signOut]);
+  };
 
   return (
     <AuthContext.Provider value={value}>

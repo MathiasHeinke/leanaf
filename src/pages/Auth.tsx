@@ -37,8 +37,9 @@ const Auth = () => {
   const { logAuthAttempt, logSuspiciousActivity } = useSecurityMonitoring();
   const navigate = useNavigate();
 
-  // Stabilized rate limiter check - only run once on mount
   useEffect(() => {
+    
+    // Check rate limiting on component mount
     const clientId = `${navigator.userAgent}_${window.location.href}`;
     if (!rateLimiter.isAllowed(clientId)) {
       const remaining = rateLimiter.getRemainingAttempts(clientId);
@@ -50,14 +51,7 @@ const Auth = () => {
         });
       }
     }
-  }, []); // Empty dependency array to prevent re-renders
-
-  // Separate effect for user redirect handling
-  useEffect(() => {
-    if (user && window.location.pathname === '/auth') {
-      navigate('/');
-    }
-  }, [user, navigate]);
+  }, [user, navigate, rateLimiter, logSuspiciousActivity]);
 
   const cleanupAuthState = () => {
     try {

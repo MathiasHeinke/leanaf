@@ -7,7 +7,7 @@ export type MealEntryUI = {
   carbs: number;
   fat: number;
   imageUrl?: string | null;
-  source: 'index';
+  source: 'index' | 'momentum';
 };
 
 export const mapFromIndex = (r: any): MealEntryUI => ({
@@ -22,3 +22,14 @@ export const mapFromIndex = (r: any): MealEntryUI => ({
   source: 'index',
 });
 
+export const mapFromMomentum = (m: any): MealEntryUI => ({
+  id: m.id,
+  ts: m.ts ?? m.created_at,
+  title: m.name ?? m.title ?? m.text ?? 'Meal',
+  kcal: Number(m.kcal ?? m?.nutrition?.kcal ?? 0),
+  protein: Number(m.protein ?? m?.nutrition?.protein ?? 0),
+  carbs: Number(m.carbs ?? m?.nutrition?.carbs ?? 0),
+  fat: Number(m.fat ?? m?.nutrition?.fat ?? 0),
+  imageUrl: m.photo_url ?? m.image_url ?? null,
+  source: 'momentum',
+});

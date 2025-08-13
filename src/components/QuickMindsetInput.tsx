@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
+import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown } from "lucide-react";
 import { useMindsetJournal } from "@/hooks/useMindsetJournal";
 import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
 import { VoiceVisualizer } from "@/components/mindset-journal/VoiceVisualizer";
@@ -183,7 +183,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   const hasEntriesForDate = recentEntries.some(entry => 
     new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(hasEntriesForDate);
 
   useEffect(() => {
     if (transcribedText && isCollapsed) {
@@ -207,7 +207,6 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
 
   return (
     <Card className="relative">
-      <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <div className="flex items-center gap-3 p-5">
           <Brain className="h-5 w-5 text-primary" />
@@ -216,7 +215,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
             {isCollapsed && hasEntriesForDate && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-muted-foreground">
-                  {todayEntries.length} Eintrag{todayEntries.length !== 1 ? 'äge' : ''} • {avgMoodScore > 0 ? '😊' : avgMoodScore < 0 ? '😔' : '😐'} Stimmung
+                  {todayEntries.length} Einträge • Stimmung: {avgMoodScore > 0 ? '😊' : avgMoodScore < 0 ? '😔' : '😐'}
                 </span>
                 <Progress value={moodProgress} className="h-1 w-16" />
               </div>
@@ -228,7 +227,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
                     key={index}
                     variant="outline" 
                     size="sm" 
-                    onClick={(e) => { e.stopPropagation(); chip.action(); setIsCollapsed(false); }}
+                    onClick={() => { chip.action(); setIsCollapsed(false); }}
                     className="text-xs h-6 px-2"
                   >
                     {chip.label}
@@ -237,26 +236,21 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {hasEntriesForDate && (
-              <CheckCircle className="h-5 w-5 text-emerald-500" />
-            )}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              onClick={(e) => { e.stopPropagation(); startRecording(); }}
-              disabled={isRecording || isVoiceLoading}
-              title="Schnellaufnahme"
-            >
-              <Mic className="h-4 w-4" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 w-8 p-0 mr-1"
+            onClick={() => startRecording()}
+            disabled={isRecording || isVoiceLoading}
+            title="Schnellaufnahme"
+          >
+            <Mic className="h-4 w-4" />
+          </Button>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
             </Button>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-              </Button>
-            </CollapsibleTrigger>
-          </div>
+          </CollapsibleTrigger>
         </div>
 
         <CollapsibleContent>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -102,28 +102,19 @@ export const CollapsibleQuickInput = ({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const styles = themeStyles[theme];
 
-  const handleToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsOpen(prev => !prev);
-  };
-
   return (
     <div className={cn(
-      "relative rounded-2xl border transition-all duration-200",
+      "rounded-2xl border transition-all duration-200",
       isCompleted ? cn("border-border/40", styles.headerCompleted) : "border-border/30",
       className
     )}>
-      {/* Red decorative dot (always visible) */}
-      
       <Button
         variant="ghost"
         className={cn(
           "w-full h-auto p-4 justify-between transition-colors rounded-2xl",
           isCompleted ? "" : styles.header
         )}
-        onClick={handleToggle}
-        type="button"
+        onClick={() => setIsOpen(!isOpen)}
       >
         <div className="flex items-center gap-3">
           <div className={cn(
@@ -133,16 +124,22 @@ export const CollapsibleQuickInput = ({
             {icon}
           </div>
           <span className="font-medium text-left">{title}</span>
+          {isCompleted && (
+            <div className={cn("h-2 w-2 rounded-full", styles.completedDot)} />
+          )}
         </div>
         <div className="flex items-center gap-2">
-          {isOpen ? (
-            <span className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-              Einklappen <ChevronUp className="ml-1 h-4 w-4" />
+          {isCompleted ? (
+            <span className={cn("text-xs font-medium", styles.completedText)}>
+              {completedText || '✓ Erledigt'}
             </span>
           ) : (
-            <span className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-              Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-            </span>
+            <span className="text-xs font-medium text-muted-foreground">jetzt ausfüllen</span>
+          )}
+          {isOpen ? (
+            <ChevronDown className="h-4 w-4 transition-transform" />
+          ) : (
+            <ChevronRight className="h-4 w-4 transition-transform" />
           )}
         </div>
       </Button>

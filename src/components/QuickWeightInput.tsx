@@ -17,7 +17,6 @@ import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -324,7 +323,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
   ];
 
   return (
-  <Collapsible open={open} onOpenChange={setOpen}>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -337,9 +336,13 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
               className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
             >
               {open ? (
-                <>Einklappen <ChevronUp className="ml-1 h-4 w-4" /></>
+                <>
+                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
+                </>
               ) : (
-                <>Ausklappen <ChevronDown className="ml-1 h-4 w-4" /></>
+                <>
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
+                </>
               )}
             </button>
           </CollapsibleTrigger>
@@ -350,7 +353,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
               <div className="font-semibold">
-                {parseFloat(todaysWeight.weight).toFixed(1)}kg • {todaysWeight.body_fat_percentage ? `${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA` : 'Kein KFA'}
+                {parseFloat(todaysWeight.weight).toFixed(1)} kg
+                {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
               </div>
               <div className="h-2 w-2 rounded-full bg-primary"></div>
             </div>

@@ -32,7 +32,7 @@ export const StreakLevelHeader: React.FC = () => {
     <PlusCard>
       <CardContent className="flex items-center justify-between py-4">
         <div>
-          <div className="text-sm text-muted-foreground">Dashboard</div>
+          <div className="text-sm text-muted-foreground">Momentum‑Board</div>
           <div className="text-2xl font-semibold">Streak & Rewards</div>
         </div>
         <div className="flex items-center gap-2">

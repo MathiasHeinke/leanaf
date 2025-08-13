@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Moon, Plus, Edit, CheckCircle, ChevronDown, ChevronUp, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye, Info } from "lucide-react";
+import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -324,7 +324,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   };
 
   const isCompleted = !!hasSleepToday;
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(!isEditing && hasSleepToday);
 
   // Calculate sleep quality percentage for progress
   const sleepQualityPercent = hasSleepToday ? ((todaysSleep?.sleep_quality || 0) / 10) * 100 : 0;
@@ -338,7 +338,6 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
 
   return (
     <Card className="relative">
-      <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <div className="flex items-center gap-3 p-5">
           <Moon className="h-5 w-5 text-primary" />
@@ -349,7 +348,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             {isCollapsed && hasSleepToday && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-muted-foreground">
-                  {todaysSleep?.sleep_hours || 0}h • {todaysSleep?.sleep_quality || 0}/10 Qualität
+                  {todaysSleep?.sleep_hours || 0}h • Qualität: {todaysSleep?.sleep_quality || 0}/10
                 </span>
                 <Progress value={sleepQualityPercent} className="h-1 w-16" />
               </div>
@@ -361,7 +360,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                     key={index}
                     variant="outline" 
                     size="sm" 
-                    onClick={(e) => { e.stopPropagation(); chip.action(); setIsCollapsed(false); }}
+                    onClick={() => { chip.action(); setIsCollapsed(false); }}
                     className="text-xs h-6 px-2"
                   >
                     {chip.label}
@@ -370,20 +369,13 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {isCompleted && (
-              <CheckCircle className="h-5 w-5 text-emerald-500" />
-            )}
-            {isCompleted && (
-              <PointsBadge points={4} icon="😴" variant="secondary" />
-            )}
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-              </Button>
-            </CollapsibleTrigger>
-          </div>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
         </div>
+
         <CollapsibleContent>
           <CardContent className="pt-0">
       {hasSleepToday && !isEditing ? (

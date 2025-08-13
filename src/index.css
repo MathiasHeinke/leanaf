@@ -527,7 +527,7 @@
   h3 { @apply font-display font-semibold tracking-tight leading-snug; }
 }
 
-/* Reusable hero/card wrapper for the Dashboard */
+/* Reusable hero/card wrapper for the Momentum Board */
 @layer components {
   .board-hero {
     @apply glass-card rounded-2xl border border-border/50 p-5 md:p-6;

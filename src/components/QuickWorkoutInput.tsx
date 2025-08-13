@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -191,7 +191,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
   };
 
   const isCompleted = !!hasWorkoutToday;
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(!isEditing && hasWorkoutToday);
 
   // Calculate total workout time for the week
   const weeklyWorkoutTime = todaysWorkouts.reduce((total, w) => total + (w.duration_minutes || 0), 0);
@@ -510,7 +510,6 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
 
   return (
     <Card className="relative">
-      <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <div className="flex items-center gap-3 p-5">
           <Dumbbell className="h-5 w-5 text-primary" />
@@ -521,7 +520,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             {isCollapsed && hasWorkoutToday && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-muted-foreground">
-                  {weeklyWorkoutTime}min • {todaysWorkouts.length} Workout{todaysWorkouts.length !== 1 ? 's' : ''}
+                  {todaysWorkouts.length === 1 ? '1 Workout' : `${todaysWorkouts.length} Workouts`} • {weeklyWorkoutTime} Min
                 </span>
                 <Progress value={progressPercent} className="h-1 w-16" />
               </div>
@@ -533,7 +532,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
                     key={index}
                     variant="outline" 
                     size="sm" 
-                    onClick={(e) => { e.stopPropagation(); chip.action(); setIsCollapsed(false); }}
+                    onClick={() => { chip.action(); setIsCollapsed(false); }}
                     className="text-xs h-6 px-2"
                   >
                     {chip.label}
@@ -542,18 +541,13 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {isCompleted && (
-              <CheckCircle className="h-5 w-5 text-emerald-500" />
-            )}
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-              </Button>
-            </CollapsibleTrigger>
-          </div>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+            </Button>
+          </CollapsibleTrigger>
         </div>
-        
+
         <CollapsibleContent>
           <CardContent className="pt-0">
             {hasWorkoutToday && !isEditing ? (

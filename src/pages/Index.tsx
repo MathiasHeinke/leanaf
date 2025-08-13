@@ -15,7 +15,7 @@ import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
 import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { QuickMindsetInput } from "@/components/QuickMindsetInput";
-import { QuickMeasurementsInput } from "@/components/QuickMeasurementsInput";
+import { QuickMeasurementsCard } from "@/components/momentum/quick/QuickMeasurementsCard";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
@@ -27,12 +27,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { MealInputLean } from "@/components/MealInputLean";
+import { EnhancedMealInput } from "@/components/EnhancedMealInput";
 import { toast } from "sonner";
 
-// TEMP DISABLED: Drag & Drop functionality
-// import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
-// import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
-// import { CSS } from '@dnd-kit/utilities';
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { IndexOnboardingOverlay } from '@/components/IndexOnboardingOverlay';
 import { InteractiveOnboardingSlider } from '@/components/onboarding/InteractiveOnboardingSlider';
@@ -41,8 +41,7 @@ import { DateNavigation } from "@/components/DateNavigation";
 import { CaloriesCard } from "@/components/calories/CaloriesCard";
 import { MealEditDialog } from "@/components/MealEditDialog";
 import { useFrequentMeals } from "@/hooks/useFrequentMeals";
-import { DashboardXPBar } from "@/components/DashboardXPBar";
-import { DashboardSupplementChips } from "@/components/DashboardSupplementChips";
+import { MomentumXPBar } from "@/components/momentum/MomentumXPBar";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
 
@@ -75,11 +74,8 @@ const Index = () => {
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
   const [todaysFluids, setTodaysFluids] = useState<any[]>([]);
-  const [hasRecentMeasurement, setHasRecentMeasurement] = useState<boolean>(false);
-  const [supplementsTakenCount, setSupplementsTakenCount] = useState<number>(0);
-  const [supplementsRequiredCount, setSupplementsRequiredCount] = useState<number>(0);
 
-  // XP state for Dashboard bar on Index
+  // XP state for Momentum bar on Index
   const [pointsLoading, setPointsLoading] = useState(true);
   const [totalPoints, setTotalPoints] = useState(0);
   const [pointsToNext, setPointsToNext] = useState(100);
@@ -260,41 +256,23 @@ const Index = () => {
         setTodaysWeight(weightData);
       }
 
-      // Load today's measurements
+      // Load this week's measurements (within last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
       const { data: measurementsData, error: measurementsError } = await supabase
         .from('body_measurements')
         .select('*')
         .eq('user_id', user.id)
-        .eq('date', dateString)
+        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+        .order('date', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (measurementsError) {
         console.error('Error loading measurements:', measurementsError);
       } else {
         setTodaysMeasurements(measurementsData);
-      }
-
-      // Load most recent measurements on or before selected date to compute 7-day freshness
-      const { data: latestMeas, error: latestMeasError } = await supabase
-        .from('body_measurements')
-        .select('date')
-        .eq('user_id', user.id)
-        .lte('date', dateString)
-        .order('date', { ascending: false })
-        .limit(1);
-      if (latestMeasError) {
-        console.error('Error loading latest measurement date:', latestMeasError);
-        setHasRecentMeasurement(false);
-      } else {
-        const lastDateStr = latestMeas && latestMeas.length > 0 ? latestMeas[0].date : null;
-        if (lastDateStr) {
-          const last = new Date(lastDateStr);
-          const selected = new Date(dateString);
-          const diffDays = Math.abs((selected.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
-          setHasRecentMeasurement(diffDays <= 7);
-        } else {
-          setHasRecentMeasurement(false);
-        }
       }
 
       // Load today's fluids
@@ -502,38 +480,36 @@ const Index = () => {
     setTimeout(() => checkBadges(), 1000);
   };
 
-  // TEMP DISABLED: Drag & Drop functionality
-  // const handleDragEnd = (event: DragEndEvent) => {
-  //   const { active, over } = event;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
 
-  //   if (over && active.id !== over.id) {
-  //     setCardOrder((items) => {
-  //       const oldIndex = items.indexOf(active.id as string);
-  //       const newIndex = items.indexOf(over.id as string);
+    if (over && active.id !== over.id) {
+      setCardOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
         
-  //       const newOrder = arrayMove(items, oldIndex, newIndex);
-  //       localStorage.setItem('quickInputCardOrder', JSON.stringify(newOrder));
-  //       return newOrder;
-  //     });
-  //   }
-  // };
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        localStorage.setItem('quickInputCardOrder', JSON.stringify(newOrder));
+        return newOrder;
+      });
+    }
+  };
 
-  // TEMP DISABLED: Drag & Drop functionality - Simple card wrapper
   const SortableCard = ({ id, state = 'empty', children }: { id: string; state?: 'empty' | 'partial' | 'done'; children: React.ReactNode }) => {
-    // const {
-    //   attributes,
-    //   listeners,
-    //   setNodeRef,
-    //   transform,
-    //   transition,
-    //   isDragging,
-    // } = useSortable({ id });
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id });
 
-    // const style = {
-    //   transform: CSS.Transform.toString(transform),
-    //   transition,
-    //   opacity: isDragging ? 0.5 : 1,
-    // } as React.CSSProperties;
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    } as React.CSSProperties;
 
     const glowClass = state === 'done'
       ? 'shadow-[0_0_32px_hsl(var(--primary)/0.22)] ring-1 ring-primary/30'
@@ -541,24 +517,24 @@ const Index = () => {
       ? 'shadow-[0_0_28px_hsl(var(--accent)/0.20)] ring-1 ring-accent/30'
       : 'ring-1 ring-destructive/20';
 
-    // const dotClass = state === 'done'
-    //   ? 'bg-primary ring-primary/30'
-    //   : state === 'partial'
-    //   ? 'bg-accent ring-accent/30'
-    //   : 'bg-destructive ring-destructive/30';
+    const dotClass = state === 'done'
+      ? 'bg-primary ring-primary/30'
+      : state === 'partial'
+      ? 'bg-accent ring-accent/30'
+      : 'bg-destructive ring-destructive/30';
 
     return (
-      <div className={`relative ${glowClass} rounded-xl`}>
-        {/* TEMP DISABLED: Drag handle */}
-        {/* <button
+      <div ref={setNodeRef} style={style} className={`relative ${glowClass} rounded-xl`}>
+        <button
           {...attributes}
           {...listeners}
-          className="absolute top-2 right-2 h-8 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 transition-opacity z-10 rounded-full bg-muted/50 hover:bg-muted/70 text-muted-foreground"
+          className="absolute top-2 left-2 h-8 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 transition-opacity z-10 rounded-full bg-muted/50 hover:bg-muted/70 text-muted-foreground"
           title="Karte verschieben"
           aria-label="Karte verschieben"
         >
           <GripVertical className="h-4 w-4" />
-        </button> */}
+        </button>
+        <span className={`pointer-events-none absolute top-2 right-2 h-2.5 w-2.5 rounded-full ring-2 ${dotClass} animate-[pulse_3s_ease-in-out_infinite]`} />
         {children}
       </div>
     );
@@ -592,7 +568,7 @@ const Index = () => {
         );
       case 'weight':
         return (
-          <SortableCard key="weight" id="weight" state={todaysWeight && (todaysWeight.weight != null || todaysWeight.body_fat_percentage != null) ? 'done' : 'empty'}>
+          <SortableCard key="weight" id="weight">
             <QuickWeightInput 
               onWeightAdded={handleWeightAdded}
               todaysWeight={todaysWeight}
@@ -601,7 +577,7 @@ const Index = () => {
         );
       case 'workout':
         return (
-          <SortableCard key="workout" id="workout" state={todaysWorkouts.length > 0 ? 'done' : 'empty'}>
+          <SortableCard key="workout" id="workout">
             <QuickWorkoutInput 
               onWorkoutAdded={handleWorkoutAdded}
               todaysWorkout={todaysWorkout}
@@ -611,8 +587,8 @@ const Index = () => {
         );
       case 'measurements':
         return (
-          <SortableCard key="measurements" id="measurements" state={hasRecentMeasurement ? 'done' : 'empty'}>
-            <QuickMeasurementsInput 
+          <SortableCard key="measurements" id="measurements">
+            <QuickMeasurementsCard 
               onMeasurementsAdded={handleMeasurementsAdded}
               todaysMeasurements={todaysMeasurements}
             />
@@ -620,18 +596,13 @@ const Index = () => {
         );
       case 'supplements':
         return (
-          <SortableCard key="supplements" id="supplements" state={
-            supplementsRequiredCount === 0 ? 'empty' : (supplementsTakenCount >= supplementsRequiredCount ? 'done' : (supplementsTakenCount > 0 ? 'partial' : 'empty'))
-          }>
-            <div className="space-y-3">
-              <DashboardSupplementChips />
-              <QuickSupplementInput hideSmartChips onProgressUpdate={(taken, required) => { setSupplementsTakenCount(taken); setSupplementsRequiredCount(required); }} />
-            </div>
+          <SortableCard key="supplements" id="supplements">
+            <QuickSupplementInput />
           </SortableCard>
         );
       case 'fluids':
         return (
-          <SortableCard key="fluids" id="fluids" state={todaysFluids.length > 0 ? 'done' : 'empty'}>
+          <SortableCard key="fluids" id="fluids">
             <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} />
           </SortableCard>
         );
@@ -690,7 +661,7 @@ const Index = () => {
       </div>
       
       <div className="container mx-auto px-4 max-w-4xl mt-3">
-        <DashboardXPBar 
+        <MomentumXPBar 
           xp={pointsToNext ? (totalPoints % pointsToNext) : totalPoints}
           goal={pointsToNext || 100}
           loading={pointsLoading}
@@ -761,15 +732,15 @@ const Index = () => {
         )}
 
 
-        {/* TEMP DISABLED: Sortable Quick Input Cards */}
-        {/* <DndContext 
+        {/* Sortable Quick Input Cards */}
+        <DndContext 
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
           <SortableContext 
             items={cardOrder}
             strategy={verticalListSortingStrategy}
-          > */}
+          >
             <div className="space-y-4">
               {/* Only render enabled tracking cards */}
               {cardOrder.filter(cardType => {
@@ -786,12 +757,33 @@ const Index = () => {
                 return cardType === 'mindset' || !trackingType || isTrackingEnabled(trackingType);
               }).map(cardType => renderCardByType(cardType))}
             </div>
-          {/* </SortableContext>
-        </DndContext> */}
+          </SortableContext>
+        </DndContext>
 
         {/* Smart Coach Insights removed per user request */}
 
-        {/* Mahlzeiten-Liste ausgeblendet gemäß Anforderung */}
+        <div>
+          <div className="mb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <Badge className="opacity-80">{meals.length} Mahlzeiten</Badge>
+            </div>
+            {loading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : (
+              <MealList 
+                meals={meals}
+                onMealUpdate={() => {
+                  fetchMealsForDate(currentDate);
+                }}
+                selectedDate={currentDate.toISOString().split('T')[0]}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Floating Meal Input (hidden, kept for compatibility) */}
@@ -817,7 +809,6 @@ const Index = () => {
                 }
               }}
               onPhotoUpload={mealInputHook.handlePhotoUpload}
-              showAISuggestions={true}
               onVoiceRecord={mealInputHook.handleVoiceRecord}
               isAnalyzing={mealInputHook.isAnalyzing}
               isRecording={mealInputHook.isRecording}
@@ -832,21 +823,7 @@ const Index = () => {
       </div>
 
       {/* Enhanced Meal Input (visible) */}
-      <MealInputLean 
-        inputText={mealInputHook.inputText}
-        setInputText={mealInputHook.setInputText}
-        onSubmitMeal={mealInputHook.handleSubmitMeal}
-        onPhotoUpload={mealInputHook.handlePhotoUpload}
-        onVoiceRecord={mealInputHook.handleVoiceRecord}
-        isAnalyzing={mealInputHook.isAnalyzing}
-        isRecording={mealInputHook.isRecording}
-        isProcessing={mealInputHook.isProcessing}
-        uploadedImages={mealInputHook.uploadedImages}
-        showAISuggestions={true}
-        onRemoveImage={mealInputHook.removeImage}
-        uploadProgress={mealInputHook.uploadProgress}
-        isUploading={mealInputHook.isUploading}
-      />
+      <EnhancedMealInput />
       {onboardingState.mealInputHighlighted && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50">
           <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">
