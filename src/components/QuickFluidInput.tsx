@@ -420,6 +420,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const totalFluidAmount = todaysFluids.reduce((sum, f) => sum + f.amount_ml, 0);
   const isCompleted = hasFluidEntries;
   const [isCollapsed, setIsCollapsed] = useState(hasFluidEntries);
+  const [showFluids, setShowFluids] = useState(false);
 
   // Calculate progress toward daily water goal (2000ml)
   const waterGoal = 2000;
@@ -427,41 +428,184 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
 
   // Smart chip actions
   const smartChips = [
-    { label: "250ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
-    { label: "500ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
-    { label: "Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
+    { label: "💧 250ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
+    { label: "💧 500ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
+    { label: "☕ Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } },
+    { label: "🍵 Tee", action: () => { setSelectedFluid(''); setCustomName('Tee'); setAmount('250'); setShowAddForm(true); } }
   ];
 
+  // Fluid Pills Component
+  const FluidPill: React.FC<{ label: string; value: string; color: string; progress?: number }> = ({ label, value, color, progress }) => (
+    <div className={`bg-${color}-50 dark:bg-${color}-900/20 border border-${color}-200 dark:border-${color}-800 rounded-lg px-3 py-2`}>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      <div className={`text-sm font-semibold text-${color}-600 dark:text-${color}-400`}>{value}</div>
+      {progress !== undefined && (
+        <Progress value={progress} className={`h-1 mt-1 bg-${color}-100 dark:bg-${color}-800`} />
+      )}
+    </div>
+  );
+
+  // FluidRow Component
+  const FluidRow: React.FC<{ 
+    fluid: UserFluid; 
+    onEdit: (fluid: UserFluid) => void; 
+    onDelete: (id: string) => void; 
+    onDuplicate: (fluid: UserFluid) => void; 
+  }> = ({ fluid, onEdit, onDelete, onDuplicate }) => {
+    const isEditing = editingFluidId === fluid.id;
+
+    if (isEditing) {
+      return (
+        <Card className="p-3">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-medium text-sm">{fluid.fluid_name}</p>
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleSaveEdit(fluid.id)}
+                  className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCancelEdit}
+                  className="h-6 w-6 p-0 text-gray-500 hover:text-gray-600"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Menge (ml)</label>
+                <NumericInput
+                  value={editAmount}
+                  onChange={setEditAmount}
+                  className="h-8 text-sm"
+                  allowDecimals={false}
+                  min={1}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Zeit</label>
+                <p className="text-xs pt-2 text-muted-foreground">
+                  {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}
+                </p>
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-xs text-muted-foreground">Notizen</label>
+              <Textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                className="h-16 text-sm resize-none"
+                placeholder="Notizen..."
+              />
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
+    return (
+      <Card className="p-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <p className="font-medium text-sm">{fluid.fluid_name}</p>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>{fluid.amount_ml}ml • {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}</p>
+              {(fluid.fluid_database?.calories_per_100ml || 0) > 0 && (
+                <p className="text-orange-600">
+                  {Math.round((fluid.fluid_database?.calories_per_100ml || 0) * (fluid.amount_ml / 100))} kcal
+                </p>
+              )}
+              {((fluid.fluid_database?.protein_per_100ml || 0) > 0 || 
+                (fluid.fluid_database?.carbs_per_100ml || 0) > 0 || 
+                (fluid.fluid_database?.fats_per_100ml || 0) > 0) && (
+                <div className="flex gap-2 text-xs">
+                  {(fluid.fluid_database?.protein_per_100ml || 0) > 0 && (
+                    <span className="text-blue-600">
+                      P: {Math.round((fluid.fluid_database?.protein_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                    </span>
+                  )}
+                  {(fluid.fluid_database?.carbs_per_100ml || 0) > 0 && (
+                    <span className="text-green-600">
+                      C: {Math.round((fluid.fluid_database?.carbs_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                    </span>
+                  )}
+                  {(fluid.fluid_database?.fats_per_100ml || 0) > 0 && (
+                    <span className="text-yellow-600">
+                      F: {Math.round((fluid.fluid_database?.fats_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
+                    </span>
+                  )}
+                </div>
+              )}
+              {fluid.notes && (
+                <p className="text-muted-foreground">{fluid.notes}</p>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-1 ml-2">
+            {fluid.fluid_category && (
+              <Badge variant="outline" className="text-xs">
+                {categoryLabels[fluid.fluid_category as keyof typeof categoryLabels] || fluid.fluid_category}
+              </Badge>
+            )}
+            {fluid.has_alcohol && (
+              <Badge variant="destructive" className="text-xs">
+                Alkohol
+              </Badge>
+            )}
+            
+            <div className="flex gap-1 ml-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onEdit(fluid)}
+                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
+              >
+                <Edit className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onDuplicate(fluid)}
+                className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onDelete(fluid.id)}
+                className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
   return (
-    <Card className="relative">
+    <Card className="glass-card shadow-lg border border-primary/20">
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <div className="flex items-center gap-3 p-5">
-          <Droplets className="h-5 w-5 text-primary" />
+          <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+            <Droplets className="h-5 w-5 text-white" />
+          </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold">Flüssigkeiten</h3>
-            {isCollapsed && hasFluidEntries && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-muted-foreground">
-                  {totalWater}ml Wasser • {totalFluidAmount}ml gesamt
-                </span>
-                <Progress value={waterProgress} className="h-1 w-16" />
-              </div>
-            )}
-            {isCollapsed && !hasFluidEntries && (
-              <div className="flex gap-1 mt-2">
-                {smartChips.map((chip, index) => (
-                  <Button 
-                    key={index}
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => { chip.action(); setIsCollapsed(false); }}
-                    className="text-xs h-6 px-2"
-                  >
-                    {chip.label}
-                  </Button>
-                ))}
-              </div>
-            )}
+            <div className="text-lg font-bold text-foreground">Flüssigkeiten</div>
+            <div className="text-sm text-muted-foreground font-normal">Hydration heute</div>
           </div>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -470,253 +614,157 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
           </CollapsibleTrigger>
         </div>
 
-        <CollapsibleContent>
-          <CardContent className="pt-0">
-            <div className="space-y-4">
-        {/* Summary Stats */}
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <Card className="p-2">
-            <div className="text-center">
-              <p className="text-lg font-bold text-cyan-600">{totalWater}ml</p>
-              <p className="text-xs text-muted-foreground">Wasser heute</p>
+        {/* Collapsed State - Fluid Pills */}
+        {isCollapsed && (
+          <div className="px-5 pb-5">
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <FluidPill 
+                label="Wasser" 
+                value={`${totalWater}ml`} 
+                color="blue" 
+                progress={waterProgress}
+              />
+              <FluidPill 
+                label="Kalorien" 
+                value={`${Math.round(totalCalories)}`} 
+                color="orange" 
+              />
+              <FluidPill 
+                label={hasAlcoholToday ? "Alkohol" : "Status"} 
+                value={hasAlcoholToday ? "getrunken" : "nüchtern"} 
+                color={hasAlcoholToday ? "red" : "green"} 
+              />
             </div>
-          </Card>
-          <Card className="p-2">
-            <div className="text-center">
-              <p className="text-lg font-bold text-orange-600">{Math.round(totalCalories)}</p>
-              <p className="text-xs text-muted-foreground">Kalorien aus Getränken</p>
-            </div>
-          </Card>
-        </div>
-
-        {/* Macros from Drinks */}
-        {(totalMacros.protein > 0 || totalMacros.carbs > 0 || totalMacros.fats > 0) && (
-          <Card className="p-3 mb-2">
-            <h4 className="text-xs font-medium text-muted-foreground mb-2">Makronährstoffe aus Getränken</h4>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-sm font-semibold text-blue-600">{Math.round(totalMacros.protein * 10) / 10}g</p>
-                <p className="text-xs text-muted-foreground">Protein</p>
+            
+            {/* Smart Chips - only show when no entries */}
+            {!hasFluidEntries && (
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground">Häufig getrunken:</div>
+                <div className="flex flex-wrap gap-1">
+                  {smartChips.map((chip, index) => (
+                    <Button 
+                      key={index}
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => { chip.action(); setIsCollapsed(false); }}
+                      className="text-xs h-6 px-2 hover:bg-primary/10 border-primary/20"
+                    >
+                      {chip.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold text-green-600">{Math.round(totalMacros.carbs * 10) / 10}g</p>
-                <p className="text-xs text-muted-foreground">Kohlenhydrate</p>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-yellow-600">{Math.round(totalMacros.fats * 10) / 10}g</p>
-                <p className="text-xs text-muted-foreground">Fette</p>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Alcohol Abstinence Status */}
-        {alcoholAbstinence?.is_abstinent && (
-          <Card className="p-3 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <div>
-                <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                  Alkoholfrei seit {calculateAbstinenceDays()} Tagen
-                </p>
-                {alcoholAbstinence.abstinence_reason && (
-                  <p className="text-xs text-green-600 dark:text-green-400">
-                    {alcoholAbstinence.abstinence_reason}
-                  </p>
-                )}
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Warning if alcohol consumed today and abstinent */}
-        {hasAlcoholToday && alcoholAbstinence?.is_abstinent && (
-          <Card className="p-3 bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                Alkohol wurde heute getrunken - Abstinenz unterbrochen
-              </p>
-            </div>
-          </Card>
-        )}
-
-        {/* Today's Fluids List */}
-        {todaysFluids.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-foreground">Heute getrunken</h4>
-            <div className="space-y-2">
-              {todaysFluids.map(fluid => {
-                const isEditing = editingFluidId === fluid.id;
-                
-                return (
-                  <Card key={fluid.id} className="p-3">
-                    {isEditing ? (
-                      // Edit Mode
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium text-sm">{fluid.fluid_name}</p>
-                          <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleSaveEdit(fluid.id)}
-                              className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
-                            >
-                              <Check className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={handleCancelEdit}
-                              className="h-6 w-6 p-0 text-gray-500 hover:text-gray-600"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <label className="text-xs text-muted-foreground">Menge (ml)</label>
-                            <NumericInput
-                              value={editAmount}
-                              onChange={setEditAmount}
-                              className="h-8 text-sm"
-                              allowDecimals={false}
-                              min={1}
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted-foreground">Zeit</label>
-                            <p className="text-xs pt-2 text-muted-foreground">
-                              {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <label className="text-xs text-muted-foreground">Notizen</label>
-                          <Textarea
-                            value={editNotes}
-                            onChange={(e) => setEditNotes(e.target.value)}
-                            className="h-16 text-sm resize-none"
-                            placeholder="Notizen..."
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      // View Mode
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{fluid.fluid_name}</p>
-                          <div className="text-xs text-muted-foreground space-y-1">
-                            <p>{fluid.amount_ml}ml • {format(new Date(fluid.consumed_at), 'HH:mm', { locale: de })}</p>
-                            {(fluid.fluid_database?.calories_per_100ml || 0) > 0 && (
-                              <p className="text-orange-600">
-                                {Math.round((fluid.fluid_database?.calories_per_100ml || 0) * (fluid.amount_ml / 100))} kcal
-                              </p>
-                            )}
-                            {/* Show macros if available */}
-                            {((fluid.fluid_database?.protein_per_100ml || 0) > 0 || 
-                              (fluid.fluid_database?.carbs_per_100ml || 0) > 0 || 
-                              (fluid.fluid_database?.fats_per_100ml || 0) > 0) && (
-                              <div className="flex gap-2 text-xs">
-                                {(fluid.fluid_database?.protein_per_100ml || 0) > 0 && (
-                                  <span className="text-blue-600">
-                                    P: {Math.round((fluid.fluid_database?.protein_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
-                                  </span>
-                                )}
-                                {(fluid.fluid_database?.carbs_per_100ml || 0) > 0 && (
-                                  <span className="text-green-600">
-                                    C: {Math.round((fluid.fluid_database?.carbs_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
-                                  </span>
-                                )}
-                                {(fluid.fluid_database?.fats_per_100ml || 0) > 0 && (
-                                  <span className="text-yellow-600">
-                                    F: {Math.round((fluid.fluid_database?.fats_per_100ml || 0) * (fluid.amount_ml / 100) * 10) / 10}g
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                            {fluid.notes && (
-                              <p className="text-muted-foreground">{fluid.notes}</p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-1 ml-2">
-                          {fluid.fluid_category && (
-                            <Badge variant="outline" className="text-xs">
-                              {categoryLabels[fluid.fluid_category as keyof typeof categoryLabels] || fluid.fluid_category}
-                            </Badge>
-                          )}
-                          {fluid.has_alcohol && (
-                            <Badge variant="destructive" className="text-xs">
-                              Alkohol
-                            </Badge>
-                          )}
-                          
-                          <div className="flex gap-1 ml-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleEditFluid(fluid)}
-                              className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700"
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDuplicateFluid(fluid)}
-                              className="h-6 w-6 p-0 text-green-600 hover:text-green-700"
-                            >
-                              <Copy className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDeleteFluid(fluid.id)}
-                              className="h-6 w-6 p-0 text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Add Fluid Button */}
-        {!showAddForm && !showAbstinenceForm ? (
-          <div className="flex gap-2">
-            <Button
-              onClick={() => setShowAddForm(true)}
-              variant="outline"
-              className="flex-1"
-              size="sm"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Getränk hinzufügen
-            </Button>
-            {!alcoholAbstinence?.is_abstinent && (
-              <Button
-                onClick={() => setShowAbstinenceForm(true)}
-                variant="outline"
-                size="sm"
-                className="text-green-600 border-green-600 hover:bg-green-50"
-              >
-                Alkoholfrei
-              </Button>
             )}
           </div>
-        ) : null}
+        )}
+
+        <CollapsibleContent>
+          <CardContent className="pt-0 space-y-6">
+            {/* Summary Progress */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Wasser heute</span>
+                <Badge variant="outline" className="text-xs">
+                  {Math.round(waterProgress)}%
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {totalWater} ml
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Ziel: {waterGoal} ml
+                </div>
+                <Progress 
+                  value={waterProgress} 
+                  className="h-3 bg-blue-100 dark:bg-blue-800/50"
+                />
+              </div>
+            </div>
+
+            {/* Daily Stats */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Kalorien aus Getränken</div>
+                <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                  {Math.round(totalCalories)}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-muted-foreground">Status</div>
+                <div className={`text-lg font-bold flex items-center gap-1 ${hasAlcoholToday ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                  {hasAlcoholToday ? 'Alkohol' : 'Nüchtern'}
+                </div>
+              </div>
+            </div>
+
+            {/* Alcohol Abstinence Status */}
+            {alcoholAbstinence?.is_abstinent && (
+              <div className="text-sm text-green-600 dark:text-green-400 font-medium border-t pt-4">
+                ✅ Alkoholfrei seit {calculateAbstinenceDays()} Tagen
+                {alcoholAbstinence.abstinence_reason && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {alcoholAbstinence.abstinence_reason}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Warning if alcohol consumed today and abstinent */}
+            {hasAlcoholToday && alcoholAbstinence?.is_abstinent && (
+              <div className="text-sm text-yellow-600 dark:text-yellow-400 font-medium border-t pt-4">
+                ⚠️ Alkohol wurde heute getrunken - Abstinenz unterbrochen
+              </div>
+            )}
+
+            {/* Getränke anzeigen/ausblenden */}
+            {todaysFluids.length > 0 && (
+              <div className="space-y-3 border-t pt-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowFluids(!showFluids)}
+                  className="w-full justify-between p-0 h-auto font-normal"
+                >
+                  <span className="text-sm">Getränke {showFluids ? 'ausblenden' : 'anzeigen'}</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", showFluids && "rotate-180")} />
+                </Button>
+
+                <Collapsible open={showFluids} onOpenChange={setShowFluids}>
+                  <CollapsibleContent>
+                    <div className="space-y-2">
+                      {todaysFluids.map((fluid) => (
+                        <FluidRow key={fluid.id} fluid={fluid} onEdit={handleEditFluid} onDelete={handleDeleteFluid} onDuplicate={handleDuplicateFluid} />
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            )}
+
+            {/* Add Fluid Button */}
+            {!showAddForm && !showAbstinenceForm ? (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowAddForm(true)}
+                  variant="outline"
+                  className="flex-1"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Getränk hinzufügen
+                </Button>
+                {!alcoholAbstinence?.is_abstinent && (
+                  <Button
+                    onClick={() => setShowAbstinenceForm(true)}
+                    variant="outline"
+                    size="sm"
+                    className="text-green-600 border-green-600 hover:bg-green-50"
+                  >
+                    Alkoholfrei
+                  </Button>
+                )}
+              </div>
+            ) : null}
 
         {/* Add Fluid Form */}
         {showAddForm && (
@@ -903,7 +951,6 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
             </Button>
           </Card>
         )}
-            </div>
           </CardContent>
         </CollapsibleContent>
       </Collapsible>
