@@ -250,7 +250,7 @@ export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false 
               {!isOpen && userSupplements.length > 0 && (
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm text-muted-foreground">
-                    {totalTodayIntakes}/{totalScheduledIntakes} genommen
+                    {totalTodayIntakes}/{totalScheduledIntakes} • {getCurrentSlot() && getSlotLabel(getCurrentSlot())}
                   </span>
                   <Progress value={completionPercent} className="h-2 w-16" />
                 </div>

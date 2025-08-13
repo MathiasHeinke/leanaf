@@ -350,8 +350,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
               <div className="font-semibold">
-                {parseFloat(todaysWeight.weight).toFixed(1)} kg
-                {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
+                {parseFloat(todaysWeight.weight).toFixed(1)}kg • {todaysWeight.body_fat_percentage ? `${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA` : 'Kein KFA'}
               </div>
               <div className="h-2 w-2 rounded-full bg-primary"></div>
             </div>

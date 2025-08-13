@@ -349,7 +349,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             {isCollapsed && hasSleepToday && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-muted-foreground">
-                  {todaysSleep?.sleep_hours || 0}h • Qualität: {todaysSleep?.sleep_quality || 0}/10
+                  {todaysSleep?.sleep_hours || 0}h • {todaysSleep?.sleep_quality || 0}/10 Qualität
                 </span>
                 <Progress value={sleepQualityPercent} className="h-1 w-16" />
               </div>

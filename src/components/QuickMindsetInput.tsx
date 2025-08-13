@@ -216,7 +216,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
             {isCollapsed && hasEntriesForDate && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-muted-foreground">
-                  {todayEntries.length} Einträge • Stimmung: {avgMoodScore > 0 ? '😊' : avgMoodScore < 0 ? '😔' : '😐'}
+                  {todayEntries.length} Eintrag{todayEntries.length !== 1 ? 'äge' : ''} • {avgMoodScore > 0 ? '😊' : avgMoodScore < 0 ? '😔' : '😐'} Stimmung
                 </span>
                 <Progress value={moodProgress} className="h-1 w-16" />
               </div>

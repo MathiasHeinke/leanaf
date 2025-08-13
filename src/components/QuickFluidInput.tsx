@@ -463,7 +463,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
             {isCollapsed && hasFluidEntries && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-muted-foreground">
-                  {totalWater}ml Wasser • {totalFluidAmount}ml gesamt
+                  {totalWater}ml • {Math.round(waterProgress)}% Ziel
                 </span>
                 <Progress value={waterProgress} className="h-1 w-16" />
               </div>

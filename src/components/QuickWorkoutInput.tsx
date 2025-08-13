@@ -521,7 +521,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             {isCollapsed && hasWorkoutToday && (
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-sm text-muted-foreground">
-                  {todaysWorkouts.length === 1 ? '1 Workout' : `${todaysWorkouts.length} Workouts`} • {weeklyWorkoutTime} Min
+                  {weeklyWorkoutTime}min • {todaysWorkouts.length} Workout{todaysWorkouts.length !== 1 ? 's' : ''}
                 </span>
                 <Progress value={progressPercent} className="h-1 w-16" />
               </div>
