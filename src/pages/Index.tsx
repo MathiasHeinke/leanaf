@@ -817,6 +817,7 @@ const Index = () => {
                 }
               }}
               onPhotoUpload={mealInputHook.handlePhotoUpload}
+              showAISuggestions={true}
               onVoiceRecord={mealInputHook.handleVoiceRecord}
               isAnalyzing={mealInputHook.isAnalyzing}
               isRecording={mealInputHook.isRecording}
@@ -841,6 +842,7 @@ const Index = () => {
         isRecording={mealInputHook.isRecording}
         isProcessing={mealInputHook.isProcessing}
         uploadedImages={mealInputHook.uploadedImages}
+        showAISuggestions={true}
         onRemoveImage={mealInputHook.removeImage}
         uploadProgress={mealInputHook.uploadProgress}
         isUploading={mealInputHook.isUploading}
