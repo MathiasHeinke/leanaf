@@ -230,7 +230,7 @@ export const useSupplementData = () => {
           taken: taken,
           date: today
         }, {
-          onConflict: 'user_id,user_supplement_id,timing,date'
+          onConflict: 'user_supplement_id,date,timing'
         });
 
       if (error) throw error;
@@ -264,7 +264,7 @@ export const useSupplementData = () => {
       const { error } = await supabase
         .from('supplement_intake_log')
         .upsert(upsertData, {
-          onConflict: 'user_id,user_supplement_id,timing,date'
+          onConflict: 'user_supplement_id,date,timing'
         });
 
       if (error) throw error;
