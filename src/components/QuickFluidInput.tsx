@@ -19,6 +19,8 @@ import { format } from 'date-fns';
 import { getCurrentDateString } from "@/utils/dateHelpers";
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { de } from 'date-fns/locale';
+import { useFrequentFluids } from '@/hooks/useFrequentFluids';
+import { ChevronUp } from 'lucide-react';
 
 interface FluidOption {
   id: string;
@@ -83,6 +85,7 @@ interface QuickFluidInputProps {
 
 export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) => {
   const { user } = useAuth();
+  const { frequent: frequentFluids } = useFrequentFluids(user?.id, 45);
   const [fluids, setFluids] = useState<FluidOption[]>([]);
   const [todaysFluids, setTodaysFluids] = useState<UserFluid[]>([]);
   const [alcoholAbstinence, setAlcoholAbstinence] = useState<AlcoholAbstinence | null>(null);
@@ -426,13 +429,39 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const waterGoal = 2000;
   const waterProgress = Math.min((totalWater / waterGoal) * 100, 100);
 
-  // Smart chip actions
-  const smartChips = [
-    { label: "💧 250ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
-    { label: "💧 500ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
-    { label: "☕ Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } },
-    { label: "🍵 Tee", action: () => { setSelectedFluid(''); setCustomName('Tee'); setAmount('250'); setShowAddForm(true); } }
-  ];
+  // Generate smart chips based on frequent fluids
+  const generateSmartChips = () => {
+    const chips = [];
+    
+    // Add frequent drinks
+    frequentFluids.drinks.slice(0, 2).forEach(drink => {
+      chips.push({
+        label: drink,
+        action: () => { setSelectedFluid(''); setCustomName(drink); setAmount('250'); setShowAddForm(true); }
+      });
+    });
+    
+    // Add frequent amounts
+    frequentFluids.amounts.slice(0, 2).forEach(amount => {
+      chips.push({
+        label: `${amount}ml`,
+        action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount(amount.toString()); setShowAddForm(true); }
+      });
+    });
+    
+    // If no frequent data, use defaults
+    if (chips.length === 0) {
+      chips.push(
+        { label: "💧 250ml", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
+        { label: "💧 500ml", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
+        { label: "☕ Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
+      );
+    }
+    
+    return chips.slice(0, 3);
+  };
+
+  const smartChips = generateSmartChips();
 
   // Fluid Pills Component
   const FluidPill: React.FC<{ label: string; value: string; color: string; progress?: number }> = ({ label, value, color, progress }) => (
@@ -597,69 +626,86 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   };
 
   return (
-    <Card className="glass-card shadow-lg border border-primary/20">
-      <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5">
-          <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-            <Droplets className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <div className="text-lg font-bold text-foreground">Flüssigkeiten</div>
-            <div className="text-sm text-muted-foreground font-normal">Hydration heute</div>
+    <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Droplets className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-semibold">Flüssigkeiten</h2>
           </div>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-            </Button>
+            <button
+              type="button"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {!isCollapsed ? (
+                <>
+                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
+                </>
+              )}
+            </button>
           </CollapsibleTrigger>
         </div>
 
-        {/* Collapsed State - Fluid Pills */}
+        {/* Collapsed summary when card is closed */}
         {isCollapsed && (
-          <div className="px-5 pb-5">
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <FluidPill 
-                label="Wasser" 
-                value={`${totalWater}ml`} 
-                color="blue" 
-                progress={waterProgress}
-              />
-              <FluidPill 
-                label="Kalorien" 
-                value={`${Math.round(totalCalories)}`} 
-                color="orange" 
-              />
-              <FluidPill 
-                label={hasAlcoholToday ? "Alkohol" : "Status"} 
-                value={hasAlcoholToday ? "getrunken" : "nüchtern"} 
-                color={hasAlcoholToday ? "red" : "green"} 
+          <div className="mt-3 space-y-1 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="font-semibold">
+                {totalWater}ml / {waterGoal}ml Wasser
+              </div>
+              <Progress
+                className="h-2 w-24 md:w-32"
+                value={waterProgress}
+                aria-label="Wasser-Fortschritt"
               />
             </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-medium text-orange-600">
+                {Math.round(totalCalories)} kcal
+              </span>
+              <span className={`font-medium ${hasAlcoholToday ? 'text-red-600' : 'text-green-600'}`}>
+                {hasAlcoholToday ? 'Alkohol' : 'Nüchtern'}
+              </span>
+            </div>
             
-            {/* Smart Chips - only show when no entries */}
-            {!hasFluidEntries && (
-              <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">Häufig getrunken:</div>
-                <div className="flex flex-wrap gap-1">
-                  {smartChips.map((chip, index) => (
-                    <Button 
-                      key={index}
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => { chip.action(); setIsCollapsed(false); }}
-                      className="text-xs h-6 px-2 hover:bg-primary/10 border-primary/20"
-                    >
-                      {chip.label}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Smart Chips - always show */}
+            <div className="flex flex-wrap gap-1 mt-2">
+              {smartChips.map((chip, index) => (
+                <Button 
+                  key={index}
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => { chip.action(); setIsCollapsed(false); }}
+                  className="text-xs h-6 px-2 hover:bg-primary/10 border-primary/20"
+                >
+                  {chip.label}
+                </Button>
+              ))}
+            </div>
           </div>
         )}
 
         <CollapsibleContent>
-          <CardContent className="pt-0 space-y-6">
+          <div className="pt-4 space-y-6">
+            {/* Smart Chips - always show when expanded */}
+            <div className="flex flex-wrap gap-1">
+              {smartChips.map((chip, index) => (
+                <Button 
+                  key={index}
+                  variant="outline" 
+                  size="sm" 
+                  onClick={chip.action}
+                  className="text-xs h-7 px-3 hover:bg-primary/10 border-primary/20"
+                >
+                  {chip.label}
+                </Button>
+              ))}
+            </div>
             {/* Summary Progress */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -951,9 +997,9 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
             </Button>
           </Card>
         )}
-          </CardContent>
+          </div>
         </CollapsibleContent>
-      </Collapsible>
-    </Card>
+      </Card>
+    </Collapsible>
   );
 };
