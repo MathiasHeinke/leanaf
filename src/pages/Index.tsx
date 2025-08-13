@@ -86,9 +86,6 @@ const Index = () => {
     return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'supplements', 'fluids', 'mindset'];
   });
 
-  // Frequent meals for smart chips
-  const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
-
   // Check authentication and redirect if needed
   useEffect(() => {
     if (!authLoading && !user) {
@@ -107,6 +104,9 @@ const Index = () => {
       </div>
     );
   }
+
+  // Frequent meals for smart chips (after auth check)
+  const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
 
   // Load user data
   useEffect(() => {
