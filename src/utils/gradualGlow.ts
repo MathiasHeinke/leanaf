@@ -50,11 +50,11 @@ export function getGradualGlowColor(percentage: number): {
   const light = Math.round(lowerStop.light + (upperStop.light - lowerStop.light) * factor);
   
   // Calculate glow intensity based on percentage (higher percentage = stronger glow)
-  const glowIntensity = Math.min(0.2, 0.05 + (pct / 100) * 0.15);
-  const ringIntensity = Math.min(0.3, 0.1 + (pct / 100) * 0.2);
+  const glowIntensity = Math.min(0.25, 0.08 + (pct / 100) * 0.17);
+  const ringIntensity = Math.min(0.4, 0.15 + (pct / 100) * 0.25);
   
   return {
-    shadowColor: `0 0 14px hsl(${hue} ${sat}% ${light}% / ${glowIntensity}), inset 0 0 1px hsl(${hue} ${sat}% ${light}% / ${ringIntensity})`,
+    shadowColor: `0 0 8px hsl(${hue} ${sat}% ${light}% / ${glowIntensity}), inset 0 0 1px hsl(${hue} ${sat}% ${light}% / ${ringIntensity})`,
     ringColor: `hsl(${hue} ${sat}% ${light}% / ${ringIntensity})`,
     dotColor: `hsl(${hue} ${sat}% ${light}%)`,
   };
