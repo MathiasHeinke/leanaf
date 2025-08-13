@@ -106,7 +106,6 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
       {/* Header */}
       <div
         className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4"
-        onClick={handleHeaderClick}
       >
         <div className="flex items-center gap-3">
           <div className={cn(
@@ -139,7 +138,7 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-wrap items-center gap-2">
           {/* Quick Actions */}
           {quickActions.map((action, index) => (
             <Button
@@ -199,7 +198,7 @@ export const QuickCardShell: React.FC<QuickCardShellProps> = ({
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
-              onClick={(e) => { e.stopPropagation(); const next = !open; setOpen(next); onOpenChange?.(next); }}
+              onClick={() => { const next = !open; setOpen(next); onOpenChange?.(next); }}
               aria-label={open ? 'Einklappen' : 'Ausklappen'}
             >
               <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
