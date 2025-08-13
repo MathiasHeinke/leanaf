@@ -66,6 +66,7 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
   const [todayIntake, setTodayIntake] = useState<TodayIntake>({});
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
 
   const loadSupplements = async () => {
     if (!user) return;
@@ -187,6 +188,14 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
   const slotSupps = userSupplements.filter(s => (s.timing || []).includes(currentSlot));
   const takenInSlot = slotSupps.filter(s => todayIntake[s.id]?.[currentSlot]).length;
 
+  useEffect(() => {
+    const initial: Record<string, boolean> = {};
+    timingOptions.forEach(({ value }) => {
+      initial[value] = value === currentSlot;
+    });
+    setGroupOpen(initial);
+  }, [currentSlot, userSupplements.length]);
+
   const markAllForCurrentSlot = async () => {
     if (!user || slotSupps.length === 0) return;
     try {
@@ -269,92 +278,124 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
                 const groupSupps = userSupplements.filter(s => (s.timing || []).includes(value));
                 if (groupSupps.length === 0) return null;
                 const takenInGroup = groupSupps.filter(s => todayIntake[s.id]?.[value]).length;
-                const [open, setOpen] = [value === currentSlot, undefined] as unknown as [boolean, any];
-                // Simple default-open current slot without separate state per group to keep minimal
                 return (
                   <div key={value} className="rounded-lg border">
-                    <div className="flex items-center justify-between p-3 bg-muted/40">
+                    <div
+                      className="flex items-center justify-between p-3 bg-muted/40 cursor-pointer"
+                      onClick={() =>
+                        setGroupOpen((prev: Record<string, boolean>) => ({
+                          ...prev,
+                          [value]: !prev?.[value],
+                        }))
+                      }
+                    >
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">{label}</span>
-                        <Badge variant={takenInGroup === groupSupps.length ? 'default' : 'secondary'} className="text-xs">
+                        <Badge
+                          variant={
+                            takenInGroup === groupSupps.length ? "default" : "secondary"
+                          }
+                          className="text-xs"
+                        >
                           {takenInGroup}/{groupSupps.length}
                         </Badge>
                       </div>
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 transition-transform",
+                          groupOpen?.[value] && "rotate-180"
+                        )}
+                      />
                     </div>
-                    <div className="p-3 space-y-2">
-                      {groupSupps.map(s => {
-                        const checked = !!todayIntake[s.id]?.[value];
-                        return (
-                          <div key={`${s.id}-${value}`} className="flex items-center justify-between p-2 bg-muted/20 rounded">
-                            <div className="flex-1">
-                              <div className="text-sm font-medium">{s.supplement_name}</div>
-                              <div className="text-xs text-muted-foreground">{s.dosage} {s.unit}</div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={(c) => toggleIntake(s.id, value, !!c)}
-                                disabled={loading}
-                                className="h-4 w-4"
-                              />
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 text-blue-600"
-                                onClick={async () => {
-                                  const newName = prompt('Name', s.custom_name || s.supplement_name || '');
-                                  const newDosage = prompt('Dosierung', s.dosage || '');
-                                  const newUnit = prompt('Einheit', s.unit || '');
-                                  if (newName !== null || newDosage !== null || newUnit !== null) {
+
+                    {groupOpen?.[value] && (
+                      <div className="p-3 space-y-2">
+                        {groupSupps.map((s) => {
+                          const checked = !!todayIntake[s.id]?.[value];
+                          return (
+                            <div
+                              key={`${s.id}-${value}`}
+                              className="flex items-center justify-between p-2 bg-muted/20 rounded"
+                            >
+                              <div className="flex-1">
+                                <div className="text-sm font-medium">{s.supplement_name}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {s.dosage} {s.unit}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={checked}
+                                  onCheckedChange={(c) => toggleIntake(s.id, value, !!c)}
+                                  disabled={loading}
+                                  className="h-4 w-4"
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 text-blue-600"
+                                  onClick={async () => {
+                                    const newName = prompt(
+                                      "Name",
+                                      s.custom_name || s.supplement_name || ""
+                                    );
+                                    const newDosage = prompt("Dosierung", s.dosage || "");
+                                    const newUnit = prompt("Einheit", s.unit || "");
+                                    if (
+                                      newName !== null ||
+                                      newDosage !== null ||
+                                      newUnit !== null
+                                    ) {
+                                      try {
+                                        const { error } = await supabase
+                                          .from("user_supplements")
+                                          .update({
+                                            custom_name: newName ?? s.custom_name,
+                                            dosage: newDosage ?? s.dosage,
+                                            unit: newUnit ?? s.unit,
+                                          })
+                                          .eq("id", s.id);
+                                        if (error) throw error;
+                                        toast.success("Supplement aktualisiert");
+                                        loadSupplements();
+                                      } catch (e) {
+                                        console.error("Update supplement failed", e);
+                                        toast.error("Aktualisierung fehlgeschlagen");
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0 text-red-600"
+                                  onClick={async () => {
+                                    if (!confirm("Supplement löschen?")) return;
                                     try {
                                       const { error } = await supabase
-                                        .from('user_supplements')
-                                        .update({
-                                          custom_name: newName ?? s.custom_name,
-                                          dosage: newDosage ?? s.dosage,
-                                          unit: newUnit ?? s.unit
-                                        })
-                                        .eq('id', s.id);
+                                        .from("user_supplements")
+                                        .delete()
+                                        .eq("id", s.id);
                                       if (error) throw error;
-                                      toast.success('Supplement aktualisiert');
+                                      toast.success("Gelöscht");
                                       loadSupplements();
+                                      loadTodayIntake();
                                     } catch (e) {
-                                      console.error('Update supplement failed', e);
-                                      toast.error('Aktualisierung fehlgeschlagen');
+                                      console.error("Delete supplement failed", e);
+                                      toast.error("Löschen fehlgeschlagen");
                                     }
-                                  }
-                                }}
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 text-red-600"
-                                onClick={async () => {
-                                  if (!confirm('Supplement löschen?')) return;
-                                  try {
-                                    const { error } = await supabase
-                                      .from('user_supplements')
-                                      .delete()
-                                      .eq('id', s.id);
-                                    if (error) throw error;
-                                    toast.success('Gelöscht');
-                                    loadSupplements();
-                                    loadTodayIntake();
-                                  } catch (e) {
-                                    console.error('Delete supplement failed', e);
-                                    toast.error('Löschen fehlgeschlagen');
-                                  }
-                                }}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                                  }}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
