@@ -622,7 +622,7 @@ const Index = () => {
           }>
             <div className="space-y-3">
               <SupplementSmartChips />
-              <QuickSupplementInput hideSmartChips onProgressUpdate={(taken, required) => { setSupplementsTakenCount(taken); setSupplementsRequiredCount(required); }} />
+              <QuickSupplementInput onProgressUpdate={(taken, required) => { setSupplementsTakenCount(taken); setSupplementsRequiredCount(required); }} />
             </div>
           </SortableCard>
         );
