@@ -43,7 +43,7 @@ import { DashboardXPBar } from "@/components/DashboardXPBar";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
 import { usePlusData } from "@/hooks/usePlusData";
-import DashboardRings from "@/components/DashboardRings";
+import StatHeroCard from "@/components/StatHeroCard";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -681,26 +681,49 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
       </div>
 
-      {/* Dashboard Rings */}
-      <div className="container mx-auto px-4 max-w-4xl mt-4">
-        <DashboardRings
+      {/* Stats Hero Card */}
+      <div className="container mx-auto px-4 max-w-lg mt-4">
+        <StatHeroCard
+          dateLabel={currentDate.toLocaleDateString("de-DE", { 
+            weekday: "long", 
+            day: "numeric", 
+            month: "long" 
+          })}
           left={{ 
-            value: calorieSummary.consumed ? calorieSummary.consumed.toLocaleString("de-DE") : "0", 
-            label: "Kalorien",
-            glow: calorieSummary.consumed && dailyGoals?.calories ? Math.min(1, calorieSummary.consumed / dailyGoals.calories) : 0
+            value: calorieSummary.consumed ? Math.round(calorieSummary.consumed).toLocaleString("de-DE") : "0", 
+            label: "KALORIEN"
           }}
           right={{ 
             value: plusData.stepsToday?.toLocaleString("de-DE") || "0", 
-            label: "Schritte",
-            glow: plusData.stepsToday ? Math.min(1, plusData.stepsToday / 7000) : 0
+            label: "SCHRITTE"
           }}
           center={{ 
-            value: plusData.hydrationMlToday ? `${(plusData.hydrationMlToday / 1000).toFixed(1)}L` : "0L", 
-            label: "Wasser", 
-            progress: plusData.hydrationMlToday ? Math.min(1, plusData.hydrationMlToday / 2000) : 0
+            top: plusData.hydrationMlToday ? `${(plusData.hydrationMlToday / 1000).toFixed(1)}L` : "0L", 
+            bottom: "WASSER"
           }}
-          size={800}
-          ringWidth={16}
+          arcs={[
+            // Kalorien Progress (oben)
+            ...(calorieSummary.consumed && dailyGoals?.calories ? [{
+              fraction: Math.min(0.25, (calorieSummary.consumed / dailyGoals.calories) * 0.25),
+              startDeg: 0,
+              gradient: ["#fb923c", "#f97316"] as [string, string],
+              width: 16
+            }] : []),
+            // Schritte Progress (rechts unten)
+            ...(plusData.stepsToday ? [{
+              fraction: Math.min(0.2, (plusData.stepsToday / 7000) * 0.2),
+              startDeg: 120,
+              gradient: ["#60a5fa", "#3b82f6"] as [string, string],
+              width: 16
+            }] : []),
+            // Hydration Progress (links unten)
+            ...(plusData.hydrationMlToday ? [{
+              fraction: Math.min(0.18, (plusData.hydrationMlToday / 2000) * 0.18),
+              startDeg: 240,
+              gradient: ["#34d399", "#10b981"] as [string, string],
+              width: 16
+            }] : [])
+          ]}
         />
       </div>
       
