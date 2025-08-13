@@ -734,6 +734,8 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
         {/* Smart Coach Insights removed per user request */}
 
+        {/* DEAKTIVIERT: Mahlzeiten-Anzeige auf Benutzerwunsch ausgeblendet */}
+        {/* 
         <div>
           <div className="mb-4">
             <div className="flex items-center gap-3 mb-3">
@@ -756,6 +758,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             )}
           </div>
         </div>
+        */}
       </div>
 
       {/* Floating Meal Input (hidden, kept for compatibility) */}
