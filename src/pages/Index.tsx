@@ -625,11 +625,9 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   return (
     <>
       
-      {/* Sticky Date Navigation under GlobalHeader */}
-      <div className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
-        </div>
+      {/* Sticky Date Navigation */}
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
+        <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
       </div>
       
       {/* DEAKTIVIERT: XP Bar auf Benutzerwunsch ausgeblendet */}
