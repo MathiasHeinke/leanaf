@@ -30,9 +30,10 @@ import { MealInputLean } from "@/components/MealInputLean";
 import { EnhancedMealInput } from "@/components/EnhancedMealInput";
 import { toast } from "sonner";
 
-import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+// TEMP DISABLED: Drag & Drop functionality
+// import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+// import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+// import { CSS } from '@dnd-kit/utilities';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { IndexOnboardingOverlay } from '@/components/IndexOnboardingOverlay';
 import { InteractiveOnboardingSlider } from '@/components/onboarding/InteractiveOnboardingSlider';
@@ -502,36 +503,38 @@ const Index = () => {
     setTimeout(() => checkBadges(), 1000);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+  // TEMP DISABLED: Drag & Drop functionality
+  // const handleDragEnd = (event: DragEndEvent) => {
+  //   const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      setCardOrder((items) => {
-        const oldIndex = items.indexOf(active.id as string);
-        const newIndex = items.indexOf(over.id as string);
+  //   if (over && active.id !== over.id) {
+  //     setCardOrder((items) => {
+  //       const oldIndex = items.indexOf(active.id as string);
+  //       const newIndex = items.indexOf(over.id as string);
         
-        const newOrder = arrayMove(items, oldIndex, newIndex);
-        localStorage.setItem('quickInputCardOrder', JSON.stringify(newOrder));
-        return newOrder;
-      });
-    }
-  };
+  //       const newOrder = arrayMove(items, oldIndex, newIndex);
+  //       localStorage.setItem('quickInputCardOrder', JSON.stringify(newOrder));
+  //       return newOrder;
+  //     });
+  //   }
+  // };
 
+  // TEMP DISABLED: Drag & Drop functionality - Simple card wrapper
   const SortableCard = ({ id, state = 'empty', children }: { id: string; state?: 'empty' | 'partial' | 'done'; children: React.ReactNode }) => {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id });
+    // const {
+    //   attributes,
+    //   listeners,
+    //   setNodeRef,
+    //   transform,
+    //   transition,
+    //   isDragging,
+    // } = useSortable({ id });
 
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-    } as React.CSSProperties;
+    // const style = {
+    //   transform: CSS.Transform.toString(transform),
+    //   transition,
+    //   opacity: isDragging ? 0.5 : 1,
+    // } as React.CSSProperties;
 
     const glowClass = state === 'done'
       ? 'shadow-[0_0_32px_hsl(var(--primary)/0.22)] ring-1 ring-primary/30'
@@ -539,15 +542,16 @@ const Index = () => {
       ? 'shadow-[0_0_28px_hsl(var(--accent)/0.20)] ring-1 ring-accent/30'
       : 'ring-1 ring-destructive/20';
 
-    const dotClass = state === 'done'
-      ? 'bg-primary ring-primary/30'
-      : state === 'partial'
-      ? 'bg-accent ring-accent/30'
-      : 'bg-destructive ring-destructive/30';
+    // const dotClass = state === 'done'
+    //   ? 'bg-primary ring-primary/30'
+    //   : state === 'partial'
+    //   ? 'bg-accent ring-accent/30'
+    //   : 'bg-destructive ring-destructive/30';
 
     return (
-      <div ref={setNodeRef} style={style} className={`relative ${glowClass} rounded-xl`}>
-        <button
+      <div className={`relative ${glowClass} rounded-xl`}>
+        {/* TEMP DISABLED: Drag handle */}
+        {/* <button
           {...attributes}
           {...listeners}
           className="absolute top-2 right-2 h-8 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 transition-opacity z-10 rounded-full bg-muted/50 hover:bg-muted/70 text-muted-foreground"
@@ -555,7 +559,7 @@ const Index = () => {
           aria-label="Karte verschieben"
         >
           <GripVertical className="h-4 w-4" />
-        </button>
+        </button> */}
         {children}
       </div>
     );
@@ -758,15 +762,15 @@ const Index = () => {
         )}
 
 
-        {/* Sortable Quick Input Cards */}
-        <DndContext 
+        {/* TEMP DISABLED: Sortable Quick Input Cards */}
+        {/* <DndContext 
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
           <SortableContext 
             items={cardOrder}
             strategy={verticalListSortingStrategy}
-          >
+          > */}
             <div className="space-y-4">
               {/* Only render enabled tracking cards */}
               {cardOrder.filter(cardType => {
@@ -783,8 +787,8 @@ const Index = () => {
                 return cardType === 'mindset' || !trackingType || isTrackingEnabled(trackingType);
               }).map(cardType => renderCardByType(cardType))}
             </div>
-          </SortableContext>
-        </DndContext>
+          {/* </SortableContext>
+        </DndContext> */}
 
         {/* Smart Coach Insights removed per user request */}
 
