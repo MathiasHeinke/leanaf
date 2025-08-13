@@ -490,6 +490,8 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
             </Button>
           </CollapsibleTrigger>
         </div>
+        
+        <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="space-y-4">
         {/* Summary Stats */}

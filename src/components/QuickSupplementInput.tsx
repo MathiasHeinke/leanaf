@@ -282,6 +282,8 @@ export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false 
             </button>
           </CollapsibleTrigger>
         </div>
+        
+        <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="space-y-3">
               {timingOptions.map(({ value, label }) => {

@@ -548,6 +548,8 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             </Button>
           </CollapsibleTrigger>
         </div>
+        
+        <CollapsibleContent>
           <CardContent className="pt-0">
             {hasWorkoutToday && !isEditing ? (
               <div className="space-y-4">
