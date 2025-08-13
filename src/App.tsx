@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { TranslationProvider } from "@/hooks/useTranslation";
 import { SubscriptionProvider } from "@/hooks/useSubscription";
 import { EnhancedSecurityManager } from "@/components/EnhancedSecurityManager";
+import { AuthErrorBoundary } from "@/components/common/AuthErrorBoundary";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Layout } from "@/components/Layout";
 import { AdminOnboardingAccess } from "@/components/AdminOnboardingAccess";
@@ -51,8 +52,9 @@ const App = () => (
       disableTransitionOnChange={false}
     >
       <TranslationProvider>
-        <AuthProvider>
-          <MealInputProvider>
+        <AuthErrorBoundary>
+          <AuthProvider>
+            <MealInputProvider>
             <SubscriptionProvider>
               <EnhancedSecurityManager>
                 <Sonner />
@@ -99,8 +101,9 @@ const App = () => (
               </BrowserRouter>
             </EnhancedSecurityManager>
           </SubscriptionProvider>
-        </MealInputProvider>
-        </AuthProvider>
+          </MealInputProvider>
+          </AuthProvider>
+        </AuthErrorBoundary>
       </TranslationProvider>
     </ThemeProvider>
   </QueryClientProvider>
