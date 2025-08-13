@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp } from "lucide-react";
+import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp, CheckCircle } from "lucide-react";
 import { useMindsetJournal } from "@/hooks/useMindsetJournal";
 import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
 import { VoiceVisualizer } from "@/components/mindset-journal/VoiceVisualizer";
@@ -209,7 +209,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
     <Card className="relative">
       <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5" onClick={() => isCollapsed && setIsCollapsed(false)}>
+        <div className="flex items-center gap-3 p-5">
           <Brain className="h-5 w-5 text-primary" />
           <div className="flex-1">
             <h3 className="text-base font-semibold">Mindset Journal</h3>
@@ -228,7 +228,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
                     key={index}
                     variant="outline" 
                     size="sm" 
-                    onClick={() => { chip.action(); setIsCollapsed(false); }}
+                    onClick={(e) => { e.stopPropagation(); chip.action(); setIsCollapsed(false); }}
                     className="text-xs h-6 px-2"
                   >
                     {chip.label}
@@ -237,21 +237,26 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
               </div>
             )}
           </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 w-8 p-0 mr-1"
-            onClick={() => startRecording()}
-            disabled={isRecording || isVoiceLoading}
-            title="Schnellaufnahme"
-          >
-            <Mic className="h-4 w-4" />
-          </Button>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+          <div className="flex items-center gap-2">
+            {hasEntriesForDate && (
+              <CheckCircle className="h-5 w-5 text-emerald-500" />
+            )}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0"
+              onClick={(e) => { e.stopPropagation(); startRecording(); }}
+              disabled={isRecording || isVoiceLoading}
+              title="Schnellaufnahme"
+            >
+              <Mic className="h-4 w-4" />
             </Button>
-          </CollapsibleTrigger>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
         </div>
 
         <CollapsibleContent>

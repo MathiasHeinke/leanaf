@@ -340,7 +340,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
     <Card className="relative">
       <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5" onClick={() => setIsCollapsed(prev => !prev)}>
+        <div className="flex items-center gap-3 p-5">
           <Moon className="h-5 w-5 text-primary" />
           <div className="flex-1">
             <h3 className="text-base font-semibold">
@@ -361,7 +361,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
                     key={index}
                     variant="outline" 
                     size="sm" 
-                    onClick={() => { chip.action(); setIsCollapsed(false); }}
+                    onClick={(e) => { e.stopPropagation(); chip.action(); setIsCollapsed(false); }}
                     className="text-xs h-6 px-2"
                   >
                     {chip.label}
@@ -370,11 +370,19 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
               </div>
             )}
           </div>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()} className="h-8 w-8 p-0">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-            </Button>
-          </CollapsibleTrigger>
+          <div className="flex items-center gap-2">
+            {isCompleted && (
+              <CheckCircle className="h-5 w-5 text-emerald-500" />
+            )}
+            {isCompleted && (
+              <PointsBadge points={4} icon="😴" variant="secondary" />
+            )}
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
         </div>
         <CollapsibleContent>
           <CardContent className="pt-0">

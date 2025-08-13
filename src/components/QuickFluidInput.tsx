@@ -456,7 +456,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     <Card className="relative">
       <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5" onClick={() => isCollapsed && setIsCollapsed(false)}>
+        <div className="flex items-center gap-3 p-5">
           <Droplets className="h-5 w-5 text-primary" />
           <div className="flex-1">
             <h3 className="text-base font-semibold">Flüssigkeiten</h3>
@@ -475,7 +475,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
                     key={index}
                     variant="outline" 
                     size="sm" 
-                    onClick={chip.action}
+                    onClick={(e) => { e.stopPropagation(); chip.action(); }}
                     className="text-xs h-6 px-2"
                   >
                     {chip.label}
@@ -484,11 +484,16 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
               </div>
             )}
           </div>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-            </Button>
-          </CollapsibleTrigger>
+          <div className="flex items-center gap-2">
+            {isCompleted && (
+              <CheckCircle className="h-5 w-5 text-emerald-500" />
+            )}
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
         </div>
         
         <CollapsibleContent>
