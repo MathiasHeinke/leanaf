@@ -43,6 +43,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkIfNewUserAndRedirect = async (user: User) => {
     try {
+      console.log('Checking user profile for redirect...', user.id);
+      console.log('Preview mode:', isPreviewMode);
+      
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('weight, height, age, gender')
@@ -54,6 +57,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
+      console.log('Profile data:', profile);
+
       // Check if profile is incomplete (new user)
       const isIncomplete = !profile || 
         !profile.weight || 
@@ -61,30 +66,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         !profile.age || 
         !profile.gender;
 
+      console.log('Profile incomplete:', isIncomplete);
+
       if (isIncomplete) {
         // New user - start premium trial and redirect to profile
         await startPremiumTrialForNewUser(user.id);
-        if (!isPreviewMode) {
-          setTimeout(() => {
-            window.location.href = '/profile';
-          }, 100);
-        }
+        console.log('Redirecting new user to profile...');
+        window.location.href = '/profile';
       } else {
         // Existing user - redirect to home
-        if (!isPreviewMode) {
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 100);
-        }
+        console.log('Redirecting existing user to home...');
+        window.location.href = '/';
       }
     } catch (error) {
       console.error('Error checking user status:', error);
       // Fallback to home
-      if (!isPreviewMode) {
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 100);
-      }
+      console.log('Fallback redirect to home...');
+      window.location.href = '/';
     }
   };
 
@@ -141,6 +139,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id);
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -168,7 +167,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // Check for existing session only once
+    // Check for existing session and handle redirect
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (error) {
         console.error('Session fetch error:', error.message);
@@ -177,6 +176,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // If user is logged in and on auth page, redirect them
+      if (session?.user && window.location.pathname === '/auth') {
+        console.log('User already logged in, checking redirect...');
+        setTimeout(() => {
+          checkIfNewUserAndRedirect(session.user);
+        }, 100);
+      }
     }).catch(() => {
       cleanupAuthState();
       setSession(null);
