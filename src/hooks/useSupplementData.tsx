@@ -38,14 +38,70 @@ export interface TimeGroupedSupplements {
 }
 
 export const TIMING_OPTIONS = [
-  { value: 'morning', label: 'Morgens', icon: '☀️' },
-  { value: 'noon', label: 'Mittags', icon: '🌅' },
-  { value: 'evening', label: 'Abends', icon: '🌙' },
-  { value: 'pre_workout', label: 'Vor dem Training', icon: '💪' },
-  { value: 'post_workout', label: 'Nach dem Training', icon: '🏃' },
-  { value: 'before_bed', label: 'Vor dem Schlafengehen', icon: '🛏️' },
-  { value: 'with_meals', label: 'Zu den Mahlzeiten', icon: '🍽️' }
+  { value: 'morning', label: 'Morgens', icon: '☀️', tip: 'Auf leeren Magen für bessere Aufnahme' },
+  { value: 'noon', label: 'Mittags', icon: '🌅', tip: 'Zwischen den Mahlzeiten' },
+  { value: 'evening', label: 'Abends', icon: '🌙', tip: 'Mit dem Abendessen' },
+  { value: 'pre_workout', label: 'Vor dem Training', icon: '💪', tip: '30-60 Min vor dem Training' },
+  { value: 'post_workout', label: 'Nach dem Training', icon: '🏃', tip: 'Innerhalb 30 Min nach dem Training' },
+  { value: 'before_bed', label: 'Vor dem Schlafengehen', icon: '🛏️', tip: '30-60 Min vor dem Schlafen' },
+  { value: 'with_meals', label: 'Zu den Mahlzeiten', icon: '🍽️', tip: 'Mit oder direkt nach den Mahlzeiten' }
 ];
+
+// Legacy timing mapping for backwards compatibility
+export const LEGACY_TIMING_MAP: Record<string, string> = {
+  'empty_stomach': 'morning',
+  'between_meals': 'noon', 
+  'with_food': 'with_meals',
+  'before_sleep': 'before_bed',
+  'workout': 'pre_workout',
+  'after_workout': 'post_workout'
+};
+
+// Helper function to normalize and validate timing arrays
+const normalizeTimingArray = (timing: string[] | string | null | undefined): string[] => {
+  if (!timing) return ['morning'];
+  
+  // Handle string input (convert to array)
+  if (typeof timing === 'string') {
+    timing = [timing];
+  }
+  
+  // Flatten nested arrays and clean data
+  const flattened = timing.flat(Infinity) as string[];
+  
+  // Clean and map legacy timings
+  const cleaned = flattened
+    .map(t => {
+      if (!t || typeof t !== 'string') return null;
+      
+      // Clean string (remove brackets, quotes, whitespace)
+      let cleanTiming = t.replace(/[\[\]"]/g, '').trim();
+      
+      // Map legacy timing to standard timing
+      if (LEGACY_TIMING_MAP[cleanTiming]) {
+        cleanTiming = LEGACY_TIMING_MAP[cleanTiming];
+      }
+      
+      // Validate against known timing options
+      const isValid = TIMING_OPTIONS.some(option => option.value === cleanTiming);
+      return isValid ? cleanTiming : null;
+    })
+    .filter((t): t is string => t !== null);
+  
+  // Remove duplicates and ensure we have at least one timing
+  const unique = [...new Set(cleaned)];
+  return unique.length > 0 ? unique : ['morning'];
+};
+
+// Helper function to get timing option with fallback
+export const getTimingOption = (timing: string) => {
+  return TIMING_OPTIONS.find(option => option.value === timing) || {
+    value: timing,
+    label: timing.charAt(0).toUpperCase() + timing.slice(1),
+    icon: '⏰',
+    tip: 'Einnahme nach Bedarf'
+  };
+};
 
 export const useSupplementData = () => {
   const { user } = useAuth();
@@ -84,9 +140,10 @@ export const useSupplementData = () => {
 
       if (supplementsError) throw supplementsError;
 
-      // Format supplements data
+      // Format supplements data with normalized timing
       const formattedSupplements: UserSupplement[] = (supplements || []).map(s => ({
         ...s,
+        timing: normalizeTimingArray(s.timing),
         supplement_name: s.custom_name || s.name || s.supplement_database?.name || 'Supplement',
         supplement_category: s.supplement_database?.category || 'Sonstige'
       }));
@@ -115,9 +172,12 @@ export const useSupplementData = () => {
     loadSupplementData();
   }, [user]);
 
-  // Group supplements by timing
+  // Group supplements by timing with robust error handling
   const groupedSupplements: TimeGroupedSupplements = userSupplements.reduce((acc, supplement) => {
-    supplement.timing.forEach(timing => {
+    // Ensure timing is always an array and normalized
+    const normalizedTiming = normalizeTimingArray(supplement.timing);
+    
+    normalizedTiming.forEach(timing => {
       if (!acc[timing]) {
         acc[timing] = {
           supplements: [],
@@ -127,7 +187,10 @@ export const useSupplementData = () => {
         };
       }
       
-      acc[timing].supplements.push(supplement);
+      acc[timing].supplements.push({
+        ...supplement,
+        timing: normalizedTiming // Use normalized timing
+      });
       acc[timing].total += 1;
       
       // Find intake for this supplement and timing

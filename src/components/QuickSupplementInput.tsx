@@ -7,20 +7,21 @@ import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
 import { Pill, ChevronDown, ChevronUp, Check, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useSupplementData, TIMING_OPTIONS } from '@/hooks/useSupplementData';
+import { useSupplementData, TIMING_OPTIONS, getTimingOption } from '@/hooks/useSupplementData';
 
 function formatNumber(n: number) {
   return Math.max(0, Math.round(n));
 }
 
 function TimingChip({ timing, taken, total, onClick }: { timing: string; taken: number; total: number; onClick?: () => void }) {
-  const timingInfo = TIMING_OPTIONS.find(t => t.value === timing);
+  const timingInfo = getTimingOption(timing);
   const isComplete = taken === total && total > 0;
   
   return (
     <button
       type="button"
       onClick={onClick}
+      title={timingInfo.tip}
       className={cn(
         "inline-flex items-center rounded-full border px-3 py-1 text-xs transition-colors",
         isComplete 
@@ -28,8 +29,8 @@ function TimingChip({ timing, taken, total, onClick }: { timing: string; taken: 
           : "bg-secondary/50 hover:bg-secondary border-border"
       )}
     >
-      <span className="mr-1.5">{timingInfo?.icon || '📋'}</span>
-      <span className="truncate max-w-[8rem]">{timingInfo?.label || timing}</span>
+      <span className="mr-1.5">{timingInfo.icon}</span>
+      <span className="truncate max-w-[8rem]">{timingInfo.label}</span>
       {total > 0 && (
         <span className="ml-1.5 font-medium">
           {taken}/{total}
@@ -50,7 +51,7 @@ function SupplementRow({
   intake?: any; 
   onToggle: (supplementId: string, timing: string, taken: boolean) => void;
 }) {
-  const timingInfo = TIMING_OPTIONS.find(t => t.value === timing);
+  const timingInfo = getTimingOption(timing);
   const isTaken = intake?.taken || false;
   
   return (
@@ -91,7 +92,7 @@ function TimingSection({
   onToggleGroup: (timing: string, taken: boolean) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const timingInfo = TIMING_OPTIONS.find(t => t.value === timing);
+  const timingInfo = getTimingOption(timing);
   const isComplete = group.taken === group.total && group.total > 0;
   const hasSupplements = group.supplements.length > 0;
   
@@ -105,8 +106,11 @@ function TimingSection({
         onClick={() => setOpen(!open)}
       >
         <div className="flex items-center gap-2">
-          <span className="text-base">{timingInfo?.icon || '📋'}</span>
-          <div className="text-sm font-medium">{timingInfo?.label || timing}</div>
+          <span className="text-base">{timingInfo.icon}</span>
+          <div>
+            <div className="text-sm font-medium">{timingInfo.label}</div>
+            <div className="text-xs text-muted-foreground">{timingInfo.tip}</div>
+          </div>
           <Badge variant={isComplete ? "default" : "secondary"} className="text-xs">
             {group.taken}/{group.total}
           </Badge>
