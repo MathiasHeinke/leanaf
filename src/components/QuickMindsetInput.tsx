@@ -183,7 +183,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   const hasEntriesForDate = recentEntries.some(entry => 
     new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
-  const [isCollapsed, setIsCollapsed] = useState(hasEntriesForDate);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   useEffect(() => {
     if (transcribedText && isCollapsed) {

@@ -237,6 +237,8 @@ export const QuickTrainingCard: React.FC = () => {
           label: 'Workout starten',
           onClick: () => navigate('/training')
         }}
+        collapsible={true}
+        defaultOpen={false}
       >
         {hasWorkoutToday && (
           <div className="space-y-2">

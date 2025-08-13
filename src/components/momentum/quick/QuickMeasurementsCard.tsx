@@ -44,13 +44,11 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
             variant: 'default'
           }
         ]}
-        detailsAction={{
-          label: 'Details',
-          onClick: () => setDetailsOpen(true)
-        }}
         dataState={hasMeasurements ? 'done' : 'empty'}
         progressPercent={hasMeasurements ? 100 : 0}
-        showStateDecorations={false}
+        showStateDecorations={true}
+        collapsible={true}
+        defaultOpen={false}
       >
         {hasMeasurements ? (
           <div className="space-y-3">

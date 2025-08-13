@@ -109,6 +109,8 @@ export const QuickSleepCard: React.FC = () => {
           label: 'Details',
           onClick: () => setDetailsOpen(true)
         }}
+        collapsible={true}
+        defaultOpen={false}
       >
         {hasSleepData && (
           <div className="space-y-2">
