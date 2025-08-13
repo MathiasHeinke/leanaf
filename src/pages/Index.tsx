@@ -27,7 +27,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { MealInputLean } from "@/components/MealInputLean";
-import { EnhancedMealInput } from "@/components/EnhancedMealInput";
 import { toast } from "sonner";
 
 // TEMP DISABLED: Drag & Drop functionality
@@ -42,10 +41,10 @@ import { DateNavigation } from "@/components/DateNavigation";
 import { CaloriesCard } from "@/components/calories/CaloriesCard";
 import { MealEditDialog } from "@/components/MealEditDialog";
 import { useFrequentMeals } from "@/hooks/useFrequentMeals";
-import { MomentumXPBar } from "@/components/momentum/MomentumXPBar";
+import { DashboardXPBar } from "@/components/DashboardXPBar";
+import { DashboardSupplementChips } from "@/components/DashboardSupplementChips";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
-import { SupplementSmartChips } from "@/components/momentum/SupplementSmartChips";
 
 const Index = () => {
   const { t } = useTranslation();
@@ -80,7 +79,7 @@ const Index = () => {
   const [supplementsTakenCount, setSupplementsTakenCount] = useState<number>(0);
   const [supplementsRequiredCount, setSupplementsRequiredCount] = useState<number>(0);
 
-  // XP state for Momentum bar on Index
+  // XP state for Dashboard bar on Index
   const [pointsLoading, setPointsLoading] = useState(true);
   const [totalPoints, setTotalPoints] = useState(0);
   const [pointsToNext, setPointsToNext] = useState(100);
@@ -625,7 +624,7 @@ const Index = () => {
             supplementsRequiredCount === 0 ? 'empty' : (supplementsTakenCount >= supplementsRequiredCount ? 'done' : (supplementsTakenCount > 0 ? 'partial' : 'empty'))
           }>
             <div className="space-y-3">
-              <SupplementSmartChips />
+              <DashboardSupplementChips />
               <QuickSupplementInput hideSmartChips onProgressUpdate={(taken, required) => { setSupplementsTakenCount(taken); setSupplementsRequiredCount(required); }} />
             </div>
           </SortableCard>
@@ -691,7 +690,7 @@ const Index = () => {
       </div>
       
       <div className="container mx-auto px-4 max-w-4xl mt-3">
-        <MomentumXPBar 
+        <DashboardXPBar 
           xp={pointsToNext ? (totalPoints % pointsToNext) : totalPoints}
           goal={pointsToNext || 100}
           loading={pointsLoading}
@@ -832,7 +831,20 @@ const Index = () => {
       </div>
 
       {/* Enhanced Meal Input (visible) */}
-      <EnhancedMealInput />
+      <MealInputLean 
+        inputText={mealInputHook.inputText}
+        setInputText={mealInputHook.setInputText}
+        onSubmitMeal={mealInputHook.handleSubmitMeal}
+        onPhotoUpload={mealInputHook.handlePhotoUpload}
+        onVoiceRecord={mealInputHook.handleVoiceRecord}
+        isAnalyzing={mealInputHook.isAnalyzing}
+        isRecording={mealInputHook.isRecording}
+        isProcessing={mealInputHook.isProcessing}
+        uploadedImages={mealInputHook.uploadedImages}
+        onRemoveImage={mealInputHook.removeImage}
+        uploadProgress={mealInputHook.uploadProgress}
+        isUploading={mealInputHook.isUploading}
+      />
       {onboardingState.mealInputHighlighted && (
         <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50">
           <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-sm font-medium shadow-lg">

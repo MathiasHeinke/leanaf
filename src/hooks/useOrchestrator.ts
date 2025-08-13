@@ -36,7 +36,7 @@ export type LastProposal =
   | { kind: 'training'; data: any };
 
 export type CoachEventContext = {
-  source?: 'chat' | 'momentum' | 'quick-card' | 'gehirn';
+  source?: 'chat' | 'quick-card' | 'gehirn';
   coachMode?: string;
   coachId?: string;
   followup?: boolean;
