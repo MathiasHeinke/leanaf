@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Minus, Save, Dumbbell, ArrowLeft, ArrowRight, X, Info } from 'lucide-react';
+import { Plus, Minus, Save, Dumbbell, ArrowLeft, ArrowRight, X, Info, ChevronDown, ChevronUp, Timer } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -45,6 +47,7 @@ type Step = 'exercise' | 'session' | 'sets' | 'review';
 export const TrainingQuickAdd: React.FC<TrainingQuickAddProps> = ({ onClose, onSessionSaved }) => {
   const { user } = useAuth();
   const { stopTimer, hasActiveTimer, currentSessionId } = useWorkoutTimer();
+  const [open, setOpen] = useState(true);
   const [currentStep, setCurrentStep] = useState<Step>('exercise');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [recentExercises, setRecentExercises] = useState<Exercise[]>([]);
@@ -279,6 +282,32 @@ export const TrainingQuickAdd: React.FC<TrainingQuickAddProps> = ({ onClose, onS
 
   const selectedExerciseData = exercises.find(ex => ex.id === selectedExercise);
   const selectedWorkoutType = workoutTypes.find(type => type.value === workoutType);
+
+  function SmartChip({ exercise, onClick }: { exercise: Exercise; onClick: () => void }) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
+      >
+        <Dumbbell className="h-3.5 w-3.5 mr-1.5" />
+        <span className="truncate max-w-[8rem]">{exercise.name}</span>
+      </button>
+    );
+  }
+
+  function MacroPill({ label, value, unit = "" }: { label: string; value: string | number; unit?: string }) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-md border bg-card px-3 py-2">
+        <div className="text-xs text-muted-foreground/80">{label}</div>
+        <div className="text-sm font-semibold">{value}{unit}</div>
+      </div>
+    );
+  }
+
+  const totalVolume = sets.reduce((sum, set) => {
+    return sum + ((set.weight_kg || 0) * (set.reps || 0));
+  }, 0);
 
   const renderStepIndicator = () => {
     const steps = [
@@ -551,55 +580,122 @@ export const TrainingQuickAdd: React.FC<TrainingQuickAddProps> = ({ onClose, onS
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Dumbbell className="h-5 w-5 text-primary" />
-            Training hinzufügen
-          </DialogTitle>
-        </DialogHeader>
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <Card className="p-4 border-0 shadow-none">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Dumbbell className="h-5 w-5 text-primary" />
+                <h2 className="text-base font-semibold">Trainingseinheit erstellen</h2>
+                {hasActiveTimer && (
+                  <Badge variant="default" className="text-xs">
+                    <Timer className="h-3 w-3 mr-1" />
+                    Timer läuft
+                  </Badge>
+                )}
+              </div>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+                >
+                  {open ? (
+                    <>
+                      Einklappen <ChevronUp className="ml-1 h-4 w-4" />
+                    </>
+                  ) : (
+                    <>
+                      Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              </CollapsibleTrigger>
+            </div>
 
-        <div className="space-y-6">
-          {renderStepIndicator()}
-
-          <div className="min-h-[300px]">
-            {currentStep === 'exercise' && renderExerciseStep()}
-            {currentStep === 'session' && renderSessionStep()}
-            {currentStep === 'sets' && renderSetsStep()}
-            {currentStep === 'review' && renderReviewStep()}
-          </div>
-
-          <div className="flex justify-between pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={currentStep === 'exercise' ? onClose : prevStep}
-              disabled={isSaving}
-            >
-              {currentStep === 'exercise' ? (
-                <>
-                  <X className="h-4 w-4 mr-2" />
-                  Abbrechen
-                </>
-              ) : (
-                <>
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Zurück
-                </>
-              )}
-            </Button>
-
-            {currentStep === 'review' ? (
-              <Button onClick={saveSession} disabled={isSaving}>
-                <Save className="h-4 w-4 mr-2" />
-                {isSaving ? 'Speichere...' : 'Training speichern'}
-              </Button>
-            ) : (
-              <Button onClick={nextStep} disabled={isLoading}>
-                Weiter
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
+            {/* Collapsed summary when card is closed */}
+            {!open && (
+              <div className="mt-3 space-y-1 text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="font-semibold">
+                    {selectedExerciseData ? selectedExerciseData.name : 'Keine Übung gewählt'}
+                  </div>
+                  {selectedExercise && sets.length > 0 && (
+                    <div className="text-muted-foreground">
+                      {sets.length} Sätze · {Math.round(totalVolume)}kg Volumen
+                    </div>
+                  )}
+                </div>
+                <Progress value={((['exercise', 'session', 'sets', 'review'].indexOf(currentStep) + 1) / 4) * 100} className="h-2" />
+              </div>
             )}
-          </div>
-        </div>
+
+            {/* Smart Chips for recent exercises - visible in both collapsed and expanded states */}
+            {recentExercises.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {recentExercises.map((exercise) => (
+                  <SmartChip 
+                    key={exercise.id} 
+                    exercise={exercise} 
+                    onClick={() => setSelectedExercise(exercise.id)} 
+                  />
+                ))}
+              </div>
+            )}
+
+            <CollapsibleContent>
+              <div className="mt-3 space-y-6">
+                {renderStepIndicator()}
+
+                {/* Header stats */}
+                {selectedExercise && sets.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2">
+                    <MacroPill label="Sätze" value={sets.length} />
+                    <MacroPill label="Volumen" value={Math.round(totalVolume)} unit="kg" />
+                    <MacroPill label="Ø RPE" value={sets.length > 0 ? Math.round(sets.reduce((sum, s) => sum + (s.rpe || 0), 0) / sets.length * 10) / 10 : 0} />
+                  </div>
+                )}
+
+                <div className="min-h-[300px]">
+                  {currentStep === 'exercise' && renderExerciseStep()}
+                  {currentStep === 'session' && renderSessionStep()}
+                  {currentStep === 'sets' && renderSetsStep()}
+                  {currentStep === 'review' && renderReviewStep()}
+                </div>
+
+                <div className="flex justify-between pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={currentStep === 'exercise' ? onClose : prevStep}
+                    disabled={isSaving}
+                  >
+                    {currentStep === 'exercise' ? (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Abbrechen
+                      </>
+                    ) : (
+                      <>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Zurück
+                      </>
+                    )}
+                  </Button>
+
+                  {currentStep === 'review' ? (
+                    <Button onClick={saveSession} disabled={isSaving}>
+                      <Save className="h-4 w-4 mr-2" />
+                      {isSaving ? 'Speichere...' : 'Training speichern'}
+                    </Button>
+                  ) : (
+                    <Button onClick={nextStep} disabled={isLoading}>
+                      Weiter
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
       </DialogContent>
     </Dialog>
   );

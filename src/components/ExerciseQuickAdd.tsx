@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Minus, Save, Dumbbell } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Minus, Save, Dumbbell, ChevronDown, ChevronUp, Timer } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -40,7 +44,10 @@ interface ExerciseQuickAddProps {
 export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSaved }) => {
   const { user } = useAuth();
   const { stopTimer, hasActiveTimer } = useWorkoutTimer();
+  const [open, setOpen] = useState(true);
+  const [showSets, setShowSets] = useState(false);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [recentExercises, setRecentExercises] = useState<Exercise[]>([]);
   const [selectedExercise, setSelectedExercise] = useState<string>('');
   const [workoutType, setWorkoutType] = useState<string>('strength');
   const [sessionName, setSessionName] = useState('');
@@ -52,6 +59,7 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
 
   useEffect(() => {
     loadExercises();
+    loadRecentExercises();
   }, []);
 
   const loadExercises = async () => {
@@ -69,6 +77,41 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
       toast.error('Fehler beim Laden der Übungen');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadRecentExercises = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('exercise_sets')
+        .select(`
+          exercises (
+            id,
+            name,
+            category,
+            muscle_groups,
+            is_compound,
+            created_by
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      
+      const uniqueExercises = new Map();
+      data?.forEach(set => {
+        if (set.exercises && !uniqueExercises.has(set.exercises.id)) {
+          uniqueExercises.set(set.exercises.id, set.exercises);
+        }
+      });
+      
+      setRecentExercises(Array.from(uniqueExercises.values()).slice(0, 4));
+    } catch (error) {
+      console.error('Error loading recent exercises:', error);
     }
   };
 
@@ -202,188 +245,298 @@ export const ExerciseQuickAdd: React.FC<ExerciseQuickAddProps> = ({ onSessionSav
   const systemExercises = exercises.filter(ex => !ex.created_by);
   const customExercises = exercises.filter(ex => ex.created_by);
 
+  function SmartChip({ exercise, onClick }: { exercise: Exercise; onClick: () => void }) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
+      >
+        <Dumbbell className="h-3.5 w-3.5 mr-1.5" />
+        <span className="truncate max-w-[8rem]">{exercise.name}</span>
+      </button>
+    );
+  }
+
+  function MacroPill({ label, value, unit = "" }: { label: string; value: string | number; unit?: string }) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-md border bg-card px-3 py-2">
+        <div className="text-xs text-muted-foreground/80">{label}</div>
+        <div className="text-sm font-semibold">{value}{unit}</div>
+      </div>
+    );
+  }
+
+  const totalVolume = sets.reduce((sum, set) => {
+    return sum + ((set.weight_kg || 0) * (set.reps || 0));
+  }, 0);
+
   return (
-    <Card className="border-gradient-primary">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Dumbbell className="h-5 w-5 text-primary" />
-          Übung hinzufügen
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-col gap-4 md:grid md:grid-cols-2 lg:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="workoutType">Trainingstyp</Label>
-            <Select value={workoutType} onValueChange={setWorkoutType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Typ wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {workoutTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Dumbbell className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-semibold">Übung hinzufügen</h2>
+            {hasActiveTimer && (
+              <Badge variant="default" className="text-xs">
+                <Timer className="h-3 w-3 mr-1" />
+                Timer läuft
+              </Badge>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="sessionName">Trainingsname (optional)</Label>
-            <Input
-              id="sessionName"
-              value={sessionName}
-              onChange={(e) => setSessionName(e.target.value)}
-              placeholder="z.B. Push Day"
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2 lg:col-span-1">
-            <Label htmlFor="exercise">Übung</Label>
-            <Select value={selectedExercise} onValueChange={setSelectedExercise}>
-              <SelectTrigger>
-                <SelectValue placeholder="Übung wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {systemExercises.length > 0 && (
-                  <>
-                    {systemExercises.map((exercise) => (
-                      <SelectItem key={exercise.id} value={exercise.id}>
-                        {exercise.name} ({exercise.category})
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-                {customExercises.length > 0 && (
-                  <>
-                    {systemExercises.length > 0 && <Separator className="my-1" />}
-                    {customExercises.map((exercise) => (
-                      <SelectItem key={exercise.id} value={exercise.id}>
-                        <span className="text-primary">★</span> {exercise.name} ({exercise.category})
-                      </SelectItem>
-                    ))}
-                  </>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {open ? (
+                <>
+                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
+                </>
+              )}
+            </button>
+          </CollapsibleTrigger>
         </div>
 
-        <div className="flex justify-between items-center">
-          {selectedExerciseData && (
-            <div className="p-3 bg-secondary/20 rounded-lg flex-1 mr-4">
-              <p className="text-sm text-muted-foreground">
-                <strong>Muskelgruppen:</strong> {selectedExerciseData.muscle_groups.join(', ')}
-              </p>
-              {selectedExerciseData.is_compound && (
-                <p className="text-sm text-primary font-medium">✓ Grundübung</p>
-              )}
-              {selectedExerciseData.created_by && (
-                <p className="text-sm text-primary font-medium">★ Eigene Übung</p>
-              )}
-            </div>
-          )}
-          <CustomExerciseManager onExerciseAdded={loadExercises} />
-        </div>
-
-        {selectedExercise && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">Sätze</h4>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addSet}
-                className="h-8"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {sets.map((set, index) => (
-              <div key={index} className="grid grid-cols-6 gap-2 items-center">
-                <div className="text-sm font-medium text-center">
-                  {index + 1}.
-                </div>
-                <div>
-                  <NumericInput
-                    placeholder="kg"
-                    value={set.weight_kg || ''}
-                    onChange={(value) => updateSet(index, 'weight_kg', parseFloat(value) || null)}
-                    allowDecimals={true}
-                    min={0}
-                    className="text-center"
-                  />
-                </div>
-                <div>
-                  <NumericInput
-                    placeholder="Wdh"
-                    value={set.reps || ''}
-                    onChange={(value) => updateSet(index, 'reps', parseInt(value) || null)}
-                    allowDecimals={false}
-                    min={0}
-                    className="text-center"
-                  />
-                </div>
-                <div>
-                  <Select
-                    value={set.rpe?.toString() || ''}
-                    onValueChange={(value) => updateSet(index, 'rpe', parseInt(value) || null)}
-                  >
-                    <SelectTrigger className="h-8">
-                      <SelectValue placeholder="RPE" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 10 }, (_, i) => (
-                        <SelectItem key={i + 1} value={(i + 1).toString()}>
-                          {i + 1}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Input
-                    placeholder="Notiz"
-                    value={set.notes}
-                    onChange={(e) => updateSet(index, 'notes', e.target.value)}
-                    className="text-sm"
-                  />
-                </div>
-                <div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeSet(index)}
-                    disabled={sets.length === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                </div>
+        {/* Collapsed summary when card is closed */}
+        {!open && (
+          <div className="mt-3 space-y-1 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="font-semibold">
+                {selectedExerciseData ? selectedExerciseData.name : 'Keine Übung gewählt'}
               </div>
-            ))}
-
-            <div className="grid grid-cols-6 gap-2 text-xs text-muted-foreground">
-              <div></div>
-              <div className="text-center">Gewicht</div>
-              <div className="text-center">Wdh.</div>
-              <div className="text-center">RPE</div>
-              <div className="text-center">Notiz</div>
-              <div></div>
+              {selectedExercise && sets.length > 0 && (
+                <div className="text-muted-foreground">
+                  {sets.length} Sätze · {Math.round(totalVolume)}kg Volumen
+                </div>
+              )}
             </div>
+            {selectedExercise && (
+              <div className="text-muted-foreground text-xs">
+                {workoutTypes.find(t => t.value === workoutType)?.label}
+                {sessionName && ` · ${sessionName}`}
+              </div>
+            )}
           </div>
         )}
 
-        <Button
-          onClick={saveSession}
-          disabled={!selectedExercise || isSaving || isLoading}
-          className="w-full"
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isSaving ? 'Speichere...' : 'Training speichern'}
-        </Button>
-      </CardContent>
-    </Card>
+        {/* Smart Chips for recent exercises - visible in both collapsed and expanded states */}
+        {recentExercises.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {recentExercises.map((exercise) => (
+              <SmartChip 
+                key={exercise.id} 
+                exercise={exercise} 
+                onClick={() => setSelectedExercise(exercise.id)} 
+              />
+            ))}
+          </div>
+        )}
+
+        <CollapsibleContent>
+          <div className="mt-3 space-y-4">
+            {/* Header stats */}
+            {selectedExercise && sets.length > 0 && (
+              <div className="grid grid-cols-3 gap-2">
+                <MacroPill label="Sätze" value={sets.length} />
+                <MacroPill label="Volumen" value={Math.round(totalVolume)} unit="kg" />
+                <MacroPill label="Ø RPE" value={sets.length > 0 ? Math.round(sets.reduce((sum, s) => sum + (s.rpe || 0), 0) / sets.length * 10) / 10 : 0} />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-4 md:grid md:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="workoutType">Trainingstyp</Label>
+                <Select value={workoutType} onValueChange={setWorkoutType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Typ wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {workoutTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="sessionName">Trainingsname (optional)</Label>
+                <Input
+                  id="sessionName"
+                  value={sessionName}
+                  onChange={(e) => setSessionName(e.target.value)}
+                  placeholder="z.B. Push Day"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                <Label htmlFor="exercise">Übung</Label>
+                <Select value={selectedExercise} onValueChange={setSelectedExercise}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Übung wählen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {systemExercises.length > 0 && (
+                      <>
+                        {systemExercises.map((exercise) => (
+                          <SelectItem key={exercise.id} value={exercise.id}>
+                            {exercise.name} ({exercise.category})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                    {customExercises.length > 0 && (
+                      <>
+                        {systemExercises.length > 0 && <Separator className="my-1" />}
+                        {customExercises.map((exercise) => (
+                          <SelectItem key={exercise.id} value={exercise.id}>
+                            <span className="text-primary">★</span> {exercise.name} ({exercise.category})
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center">
+              {selectedExerciseData && (
+                <div className="p-3 bg-secondary/20 rounded-lg flex-1 mr-4">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Muskelgruppen:</strong> {selectedExerciseData.muscle_groups.join(', ')}
+                  </p>
+                  {selectedExerciseData.is_compound && (
+                    <p className="text-sm text-primary font-medium">✓ Grundübung</p>
+                  )}
+                  {selectedExerciseData.created_by && (
+                    <p className="text-sm text-primary font-medium">★ Eigene Übung</p>
+                  )}
+                </div>
+              )}
+              <CustomExerciseManager onExerciseAdded={loadExercises} />
+            </div>
+
+            {/* Sets section with toggle */}
+            {selectedExercise && (
+              <div>
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between rounded-md border bg-card px-3 py-2 hover:bg-muted/50"
+                  onClick={() => setShowSets((v) => !v)}
+                >
+                  <div className="text-sm font-medium">Sätze eingeben ({sets.length})</div>
+                  {showSets ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                {showSets && (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Sätze</h4>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addSet}
+                        className="h-8"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {sets.map((set, index) => (
+                      <div key={index} className="grid grid-cols-6 gap-2 items-center">
+                        <div className="text-sm font-medium text-center">
+                          {index + 1}.
+                        </div>
+                        <div>
+                          <NumericInput
+                            placeholder="kg"
+                            value={set.weight_kg || ''}
+                            onChange={(value) => updateSet(index, 'weight_kg', parseFloat(value) || null)}
+                            allowDecimals={true}
+                            min={0}
+                            className="text-center"
+                          />
+                        </div>
+                        <div>
+                          <NumericInput
+                            placeholder="Wdh"
+                            value={set.reps || ''}
+                            onChange={(value) => updateSet(index, 'reps', parseInt(value) || null)}
+                            allowDecimals={false}
+                            min={0}
+                            className="text-center"
+                          />
+                        </div>
+                        <div>
+                          <Select
+                            value={set.rpe?.toString() || ''}
+                            onValueChange={(value) => updateSet(index, 'rpe', parseInt(value) || null)}
+                          >
+                            <SelectTrigger className="h-8">
+                              <SelectValue placeholder="RPE" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 10 }, (_, i) => (
+                                <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                  {i + 1}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Input
+                            placeholder="Notiz"
+                            value={set.notes}
+                            onChange={(e) => updateSet(index, 'notes', e.target.value)}
+                            className="text-sm"
+                          />
+                        </div>
+                        <div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeSet(index)}
+                            disabled={sets.length === 1}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="grid grid-cols-6 gap-2 text-xs text-muted-foreground">
+                      <div></div>
+                      <div className="text-center">Gewicht</div>
+                      <div className="text-center">Wdh.</div>
+                      <div className="text-center">RPE</div>
+                      <div className="text-center">Notiz</div>
+                      <div></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <Button
+              onClick={saveSession}
+              disabled={!selectedExercise || isSaving || isLoading}
+              className="w-full"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSaving ? 'Speichere...' : 'Training speichern'}
+            </Button>
+          </div>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };
