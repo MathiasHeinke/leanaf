@@ -42,6 +42,8 @@ import { useFrequentMeals } from "@/hooks/useFrequentMeals";
 import { DashboardXPBar } from "@/components/DashboardXPBar";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
+import { usePlusData } from "@/hooks/usePlusData";
+import DashboardRings from "@/components/DashboardRings";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -82,6 +84,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const { checkBadges } = useBadgeChecker();
   const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
   const { isTrackingEnabled } = useTrackingPreferences();
+  const plusData = usePlusData();
   
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
@@ -676,6 +679,29 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       {/* Sticky Date Navigation */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
         <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
+      </div>
+
+      {/* Dashboard Rings */}
+      <div className="container mx-auto px-4 max-w-4xl mt-4">
+        <DashboardRings
+          left={{ 
+            value: calorieSummary.consumed ? calorieSummary.consumed.toLocaleString("de-DE") : "0", 
+            label: "Kalorien",
+            glow: calorieSummary.consumed && dailyGoals?.calories ? Math.min(1, calorieSummary.consumed / dailyGoals.calories) : 0
+          }}
+          right={{ 
+            value: plusData.stepsToday?.toLocaleString("de-DE") || "0", 
+            label: "Schritte",
+            glow: plusData.stepsToday ? Math.min(1, plusData.stepsToday / 7000) : 0
+          }}
+          center={{ 
+            value: plusData.hydrationMlToday ? `${(plusData.hydrationMlToday / 1000).toFixed(1)}L` : "0L", 
+            label: "Wasser", 
+            progress: plusData.hydrationMlToday ? Math.min(1, plusData.hydrationMlToday / 2000) : 0
+          }}
+          size={800}
+          ringWidth={16}
+        />
       </div>
       
       {/* DEAKTIVIERT: XP Bar auf Benutzerwunsch ausgeblendet */}
