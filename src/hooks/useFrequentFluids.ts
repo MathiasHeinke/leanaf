@@ -4,10 +4,18 @@ import { supabase } from '@/integrations/supabase/client';
 export type FrequentFluids = {
   drinks: string[];
   amounts: number[];
+  databaseEntries: Array<{
+    id: string;
+    name: string;
+    default_amount: number;
+    category: string;
+    icon_name: string;
+    count: number;
+  }>;
 };
 
 export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequent: FrequentFluids; loading: boolean } {
-  const [frequent, setFrequent] = useState<FrequentFluids>({ drinks: [], amounts: [] });
+  const [frequent, setFrequent] = useState<FrequentFluids>({ drinks: [], amounts: [], databaseEntries: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,7 +36,14 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
           .select(`
             custom_name,
             amount_ml,
-            fluid_database (name)
+            fluid_id,
+            fluid_database (
+              id,
+              name,
+              default_amount,
+              category,
+              icon_name
+            )
           `)
           .eq('user_id', userId)
           .gte('date', cutoffDate.toISOString().split('T')[0])
@@ -36,13 +51,14 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
 
         if (error) {
           console.error('Error fetching frequent fluids:', error);
-          setFrequent({ drinks: [], amounts: [] });
+          setFrequent({ drinks: [], amounts: [], databaseEntries: [] });
           return;
         }
 
         // Count drink names
         const drinkCounts: { [key: string]: number } = {};
         const amountCounts: { [key: number]: number } = {};
+        const databaseEntryCounts: { [key: string]: { entry: any; count: number } } = {};
 
         userFluids?.forEach(fluid => {
           const drinkName = fluid.fluid_database?.name || fluid.custom_name || 'Unbekannt';
@@ -50,6 +66,18 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
           
           const amount = fluid.amount_ml;
           amountCounts[amount] = (amountCounts[amount] || 0) + 1;
+
+          // Track database entries specifically
+          if (fluid.fluid_database && fluid.fluid_id) {
+            const entryId = fluid.fluid_database.id;
+            if (!databaseEntryCounts[entryId]) {
+              databaseEntryCounts[entryId] = {
+                entry: fluid.fluid_database,
+                count: 0
+              };
+            }
+            databaseEntryCounts[entryId].count++;
+          }
         });
 
         // Get top 3 drinks
@@ -64,13 +92,27 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
           .slice(0, 3)
           .map(([amount]) => parseInt(amount));
 
+        // Get top 3 database entries
+        const topDatabaseEntries = Object.values(databaseEntryCounts)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3)
+          .map(({ entry, count }) => ({
+            id: entry.id,
+            name: entry.name,
+            default_amount: entry.default_amount,
+            category: entry.category,
+            icon_name: entry.icon_name,
+            count
+          }));
+
         setFrequent({
           drinks: topDrinks,
-          amounts: topAmounts
+          amounts: topAmounts,
+          databaseEntries: topDatabaseEntries
         });
       } catch (error) {
         console.error('Error in fetchFrequentFluids:', error);
-        setFrequent({ drinks: [], amounts: [] });
+        setFrequent({ drinks: [], amounts: [], databaseEntries: [] });
       } finally {
         setLoading(false);
       }

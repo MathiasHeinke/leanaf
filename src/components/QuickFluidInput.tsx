@@ -455,33 +455,73 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const waterGoal = 2000;
   const waterProgress = Math.min((totalWater / waterGoal) * 100, 100);
 
-  // Generate smart chips based on frequent fluids
+  // Generate smart chips based on frequent database entries
   const generateSmartChips = () => {
     const chips = [];
     
-    // Add frequent drinks
-    frequentFluids.drinks.slice(0, 2).forEach(drink => {
+    // Add frequent database entries first (these are the actual drinks from database)
+    frequentFluids.databaseEntries.slice(0, 3).forEach(entry => {
+      const icon = entry.icon_name || '🥤';
       chips.push({
-        label: drink,
-        action: () => { setSelectedFluid(''); setCustomName(drink); setAmount('250'); setShowAddForm(true); }
+        label: `${icon} ${entry.name}`,
+        action: () => { 
+          setSelectedFluid(entry.id); 
+          setCustomName(''); 
+          setAmount(entry.default_amount.toString()); 
+          setShowAddForm(true); 
+        }
       });
     });
     
-    // Add frequent amounts
-    frequentFluids.amounts.slice(0, 2).forEach(amount => {
-      chips.push({
-        label: `${amount}ml`,
-        action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount(amount.toString()); setShowAddForm(true); }
+    // If we have less than 3 database entries, add frequent amounts
+    if (chips.length < 3) {
+      frequentFluids.amounts.slice(0, 3 - chips.length).forEach(amount => {
+        // Find a popular water drink from database for the amount
+        const waterDrink = fluids.find(f => f.category === 'water');
+        chips.push({
+          label: `💧 ${amount}ml`,
+          action: () => { 
+            if (waterDrink) {
+              setSelectedFluid(waterDrink.id); 
+              setAmount(amount.toString()); 
+            } else {
+              setSelectedFluid(''); 
+              setCustomName('Wasser'); 
+              setAmount(amount.toString()); 
+            }
+            setShowAddForm(true); 
+          }
+        });
       });
-    });
+    }
     
-    // If no frequent data, use defaults
+    // If still no data, use popular database defaults
     if (chips.length === 0) {
-      chips.push(
-        { label: "💧 250ml", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
-        { label: "💧 500ml", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
-        { label: "☕ Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
-      );
+      const popularDrinks = fluids
+        .filter(f => f.category === 'water' || f.name.toLowerCase().includes('kaffee'))
+        .slice(0, 3);
+        
+      if (popularDrinks.length > 0) {
+        popularDrinks.forEach(drink => {
+          const icon = drink.icon_name || '🥤';
+          chips.push({
+            label: `${icon} ${drink.name}`,
+            action: () => { 
+              setSelectedFluid(drink.id); 
+              setCustomName(''); 
+              setAmount(drink.default_amount.toString()); 
+              setShowAddForm(true); 
+            }
+          });
+        });
+      } else {
+        // Final fallback if no database entries
+        chips.push(
+          { label: "💧 250ml", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
+          { label: "💧 500ml", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
+          { label: "☕ Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } }
+        );
+      }
     }
     
     return chips.slice(0, 3);
