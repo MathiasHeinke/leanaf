@@ -632,6 +632,8 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         </div>
       </div>
       
+      {/* DEAKTIVIERT: XP Bar auf Benutzerwunsch ausgeblendet */}
+      {/*
       <div className="container mx-auto px-4 max-w-4xl mt-3">
         <DashboardXPBar 
           xp={pointsToNext ? (totalPoints % pointsToNext) : totalPoints}
@@ -642,6 +644,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           }}
         />
       </div>
+      */}
 
       <div className="space-y-5">
 
