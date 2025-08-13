@@ -64,7 +64,7 @@ export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false 
   const { user } = useAuth();
   const [userSupplements, setUserSupplements] = useState<UserSupplement[]>([]);
   const [todayIntake, setTodayIntake] = useState<TodayIntake>({});
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [groupOpen, setGroupOpen] = useState<Record<string, boolean>>({});
 
@@ -239,7 +239,7 @@ export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false 
 
   return (
     <Card className="p-4">
-      <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Pill className="h-5 w-5 text-primary" />
@@ -247,7 +247,7 @@ export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false 
               <h3 className="text-base font-semibold">
                 Supplemente{totalTodayIntakes > 0 ? ` (${totalTodayIntakes} genommen)` : ''}
               </h3>
-              {isCollapsed && userSupplements.length > 0 && (
+              {!isOpen && userSupplements.length > 0 && (
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm text-muted-foreground">
                     {totalTodayIntakes}/{totalScheduledIntakes} genommen
@@ -255,7 +255,7 @@ export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false 
                   <Progress value={completionPercent} className="h-2 w-16" />
                 </div>
               )}
-              {isCollapsed && !hideSmartChips && smartChips.length > 0 && (
+              {!isOpen && !hideSmartChips && smartChips.length > 0 && (
                 <div className="flex gap-1 mt-2">
                   {smartChips.map((chip, index) => (
                     <Button 
@@ -274,7 +274,7 @@ export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false 
           </div>
           <CollapsibleTrigger asChild>
             <button type="button" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-              {!isCollapsed ? (
+              {isOpen ? (
                 <>Einklappen <ChevronUp className="ml-1 h-4 w-4" /></>
               ) : (
                 <>Ausklappen <ChevronDown className="ml-1 h-4 w-4" /></>
