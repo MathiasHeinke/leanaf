@@ -708,17 +708,15 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             width: 16,
           }}
           outerLeft={{
-            startDeg: 210,
-            sweepDeg: calorieSummary.consumed && dailyGoals?.calories 
-              ? Math.min(120, (calorieSummary.consumed / dailyGoals.calories) * 120)
+            progress: calorieSummary.consumed && dailyGoals?.calories 
+              ? Math.min(1.2, calorieSummary.consumed / dailyGoals.calories)
               : 0,
             gradient: ["#fb923c", "#f97316"],
             width: 16,
           }}
           outerRight={{
-            startDeg: 20,
-            sweepDeg: plusData.stepsToday 
-              ? Math.min(80, (plusData.stepsToday / 7000) * 80)
+            progress: plusData.stepsToday 
+              ? Math.min(1, plusData.stepsToday / 7000)
               : 0,
             gradient: ["#60a5fa", "#3b82f6"],
             width: 16,

@@ -3,10 +3,8 @@ import React from "react";
 type Metric = { value: string | number; label: string };
 
 type RingArc = {
-  /** Sichtbarer Anteil in Grad (z. B. 60 = ~1/6) */
-  sweepDeg: number;
-  /** Startwinkel in Grad (0° = oben, im Uhrzeigersinn) */
-  startDeg: number;
+  /** Fortschritt von 0-1 (bestimmt wie viel des Halbkreises gefüllt ist) */
+  progress: number;
   /** Farben des Verlaufs */
   gradient: [string, string];
   /** Strichstärke */
@@ -37,40 +35,64 @@ type Props = {
 
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
-/** Sektor-Maske: lässt nur einen Winkelbereich sichtbar */
-function SectorMask({
+/** Progress-Ring: rendert Halbkreis mit dynamischer Füllung */
+function ProgressHalfRing({
   id,
   radius,
-  startDeg,
-  sweepDeg,
-  strokeWidth,
+  progress,
+  gradient,
+  width,
+  isLeft,
+  withGlow,
 }: {
   id: string;
   radius: number;
-  startDeg: number;
-  sweepDeg: number;
-  strokeWidth: number;
+  progress: number;
+  gradient: [string, string];
+  width: number;
+  isLeft: boolean;
+  withGlow?: boolean;
 }) {
-  const c = 2 * Math.PI * radius;
-  const dash = (c * sweepDeg) / 360;
-  const gap = c - dash;
+  const p = clamp01(progress);
+  const circumference = Math.PI * radius; // Halbkreis = halber Umfang
+  const dashLength = circumference * p;
+  const gapLength = circumference - dashLength;
+  
+  // Für linken Ring: von unten-links nach oben-links (gegen Uhrzeigersinn)
+  // Für rechten Ring: von unten-rechts nach oben-rechts (im Uhrzeigersinn)
+  const startAngle = isLeft ? 225 : 315; // Startpunkt: unten-links bzw. unten-rechts
+  const pathDirection = isLeft ? -90 : 90; // Richtung der Füllung
+  
   return (
-    <mask id={id}>
-      {/* Schwarz = unsichtbar; Weiß = sichtbar */}
-      <rect x={-radius * 2} y={-radius * 2} width={radius * 4} height={radius * 4} fill="black" />
-      <g transform={`rotate(${startDeg - 90})`}>
-        <circle
-          r={radius}
-          cx={0}
-          cy={0}
+    <g>
+      {/* Glow-Effekt */}
+      {withGlow && (
+        <path
+          d={`M ${radius * Math.cos((startAngle - 90) * Math.PI / 180)} ${radius * Math.sin((startAngle - 90) * Math.PI / 180)} 
+             A ${radius} ${radius} 0 0 ${isLeft ? 0 : 1} 
+             ${radius * Math.cos((startAngle + pathDirection - 90) * Math.PI / 180)} ${radius * Math.sin((startAngle + pathDirection - 90) * Math.PI / 180)}`}
           fill="none"
-          stroke="white"
-          strokeWidth={strokeWidth * 2} /* breiter, damit Caps sauber maskiert werden */
-          strokeDasharray={`${dash} ${gap}`}
+          stroke={`url(#${id}-gradient)`}
+          strokeWidth={width * 1.25}
           strokeLinecap="round"
+          strokeDasharray={`${dashLength} ${gapLength}`}
+          filter="url(#blur-soft)"
         />
-      </g>
-    </mask>
+      )}
+      
+      {/* Hauptstrich */}
+      <path
+        d={`M ${radius * Math.cos((startAngle - 90) * Math.PI / 180)} ${radius * Math.sin((startAngle - 90) * Math.PI / 180)} 
+           A ${radius} ${radius} 0 0 ${isLeft ? 0 : 1} 
+           ${radius * Math.cos((startAngle + pathDirection - 90) * Math.PI / 180)} ${radius * Math.sin((startAngle + pathDirection - 90) * Math.PI / 180)}`}
+        fill="none"
+        stroke={`url(#${id}-gradient)`}
+        strokeWidth={width}
+        strokeLinecap="round"
+        strokeDasharray={`${dashLength} ${gapLength}`}
+        className="transition-all duration-300 ease-out"
+      />
+    </g>
   );
 }
 
@@ -126,11 +148,11 @@ export default function ConcentricStatCard({
                 <stop offset="0%" stopColor={(centerRing?.color ?? ["hsl(var(--primary))","hsl(var(--primary))"])[0]} />
                 <stop offset="100%" stopColor={(centerRing?.color ?? ["hsl(var(--primary))","hsl(var(--primary))"])[1]} />
               </linearGradient>
-              <linearGradient id="grad-left" x1="0%" y1="0%" x2="100%" y2="0%">
+              <linearGradient id="left-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor={outerLeft.gradient[0]} />
                 <stop offset="100%" stopColor={outerLeft.gradient[1]} />
               </linearGradient>
-              <linearGradient id="grad-right" x1="0%" y1="0%" x2="100%" y2="0%">
+              <linearGradient id="right-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor={outerRight.gradient[0]} />
                 <stop offset="100%" stopColor={outerRight.gradient[1]} />
               </linearGradient>
@@ -140,23 +162,6 @@ export default function ConcentricStatCard({
                 <feGaussianBlur stdDeviation="6" />
               </filter>
 
-              {/* Masks (zeigen nur Sektor-Bereiche der äußeren Ringe) */}
-              {/* Links */}
-              <SectorMask
-                id="mask-left"
-                radius={R_OUTER}
-                startDeg={outerLeft.startDeg}
-                sweepDeg={outerLeft.sweepDeg}
-                strokeWidth={outerLeft.width ?? centerWidth}
-              />
-              {/* Rechts */}
-              <SectorMask
-                id="mask-right"
-                radius={R_OUTER}
-                startDeg={outerRight.startDeg}
-                sweepDeg={outerRight.sweepDeg}
-                strokeWidth={outerRight.width ?? centerWidth}
-              />
             </defs>
 
             {/* --- CENTER FULL RING --- */}
@@ -190,54 +195,28 @@ export default function ConcentricStatCard({
               })()
             )}
 
-            {/* --- OUTER UNFINISHED RINGS (nur Segmente sichtbar) --- */}
-            {/* Linkes Segment */}
-            <g mask="url(#mask-left)">
-              {/* Glow */}
-              <circle
-                r={R_OUTER}
-                cx={0}
-                cy={0}
-                fill="none"
-                stroke="url(#grad-left)"
-                strokeWidth={(outerLeft.width ?? centerWidth) * 1.25}
-                strokeLinecap="round"
-                filter="url(#blur-soft)"
-              />
-              {/* Stroke */}
-              <circle
-                r={R_OUTER}
-                cx={0}
-                cy={0}
-                fill="none"
-                stroke="url(#grad-left)"
-                strokeWidth={outerLeft.width ?? centerWidth}
-                strokeLinecap="round"
-              />
-            </g>
+            {/* --- OUTER PROGRESS HALF-RINGS --- */}
+            {/* Linker Halbkreis: füllt sich von unten-links nach oben-links */}
+            <ProgressHalfRing
+              id="left"
+              radius={R_OUTER}
+              progress={outerLeft.progress}
+              gradient={outerLeft.gradient}
+              width={outerLeft.width ?? centerWidth}
+              isLeft={true}
+              withGlow={true}
+            />
 
-            {/* Rechtes Segment */}
-            <g mask="url(#mask-right)">
-              <circle
-                r={R_OUTER}
-                cx={0}
-                cy={0}
-                fill="none"
-                stroke="url(#grad-right)"
-                strokeWidth={(outerRight.width ?? centerWidth) * 1.25}
-                strokeLinecap="round"
-                filter="url(#blur-soft)"
-              />
-              <circle
-                r={R_OUTER}
-                cx={0}
-                cy={0}
-                fill="none"
-                stroke="url(#grad-right)"
-                strokeWidth={outerRight.width ?? centerWidth}
-                strokeLinecap="round"
-              />
-            </g>
+            {/* Rechter Halbkreis: füllt sich von unten-rechts nach oben-rechts */}
+            <ProgressHalfRing
+              id="right"
+              radius={R_OUTER}
+              progress={outerRight.progress}
+              gradient={outerRight.gradient}
+              width={outerRight.width ?? centerWidth}
+              isLeft={false}
+              withGlow={true}
+            />
           </g>
         </svg>
 
