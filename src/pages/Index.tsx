@@ -15,7 +15,7 @@ import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
 import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { QuickMindsetInput } from "@/components/QuickMindsetInput";
-import { QuickMeasurementsCard } from "@/components/momentum/quick/QuickMeasurementsCard";
+import { QuickMeasurementsInput } from "@/components/QuickMeasurementsInput";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
@@ -256,17 +256,12 @@ const Index = () => {
         setTodaysWeight(weightData);
       }
 
-      // Load this week's measurements (within last 7 days)
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
+      // Load today's measurements
       const { data: measurementsData, error: measurementsError } = await supabase
         .from('body_measurements')
         .select('*')
         .eq('user_id', user.id)
-        .gte('date', sevenDaysAgo.toISOString().split('T')[0])
-        .order('date', { ascending: false })
-        .limit(1)
+        .eq('date', dateString)
         .maybeSingle();
 
       if (measurementsError) {
@@ -568,7 +563,7 @@ const Index = () => {
         );
       case 'weight':
         return (
-          <SortableCard key="weight" id="weight">
+          <SortableCard key="weight" id="weight" state={todaysWeight && (todaysWeight.weight != null || todaysWeight.body_fat_percentage != null) ? 'done' : 'empty'}>
             <QuickWeightInput 
               onWeightAdded={handleWeightAdded}
               todaysWeight={todaysWeight}
@@ -577,7 +572,7 @@ const Index = () => {
         );
       case 'workout':
         return (
-          <SortableCard key="workout" id="workout">
+          <SortableCard key="workout" id="workout" state={todaysWorkouts.length > 0 ? 'done' : 'empty'}>
             <QuickWorkoutInput 
               onWorkoutAdded={handleWorkoutAdded}
               todaysWorkout={todaysWorkout}
@@ -587,8 +582,8 @@ const Index = () => {
         );
       case 'measurements':
         return (
-          <SortableCard key="measurements" id="measurements">
-            <QuickMeasurementsCard 
+          <SortableCard key="measurements" id="measurements" state={todaysMeasurements ? 'done' : 'empty'}>
+            <QuickMeasurementsInput 
               onMeasurementsAdded={handleMeasurementsAdded}
               todaysMeasurements={todaysMeasurements}
             />
@@ -602,7 +597,7 @@ const Index = () => {
         );
       case 'fluids':
         return (
-          <SortableCard key="fluids" id="fluids">
+          <SortableCard key="fluids" id="fluids" state={todaysFluids.length > 0 ? 'done' : 'empty'}>
             <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} />
           </SortableCard>
         );

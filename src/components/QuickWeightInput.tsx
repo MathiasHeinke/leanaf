@@ -17,6 +17,7 @@ import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
@@ -323,9 +324,9 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
   ];
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
+  <Collapsible open={open} onOpenChange={setOpen}>
       <Card className="p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" onClick={() => !open && setOpen(true)}>
           <div className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-primary" />
             <h2 className="text-base font-semibold">Gewicht</h2>
@@ -333,17 +334,9 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center h-8 w-8 justify-center rounded-md text-muted-foreground hover:text-foreground"
             >
-              {open ? (
-                <>
-                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-                </>
-              )}
+              <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
             </button>
           </CollapsibleTrigger>
         </div>

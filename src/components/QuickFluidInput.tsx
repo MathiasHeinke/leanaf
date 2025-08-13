@@ -419,7 +419,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const hasFluidEntries = todaysFluids.length > 0;
   const totalFluidAmount = todaysFluids.reduce((sum, f) => sum + f.amount_ml, 0);
   const isCompleted = hasFluidEntries;
-  const [isCollapsed, setIsCollapsed] = useState(hasFluidEntries);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Calculate progress toward daily water goal (2000ml)
   const waterGoal = 2000;
@@ -435,7 +435,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   return (
     <Card className="relative">
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5">
+        <div className="flex items-center gap-3 p-5" onClick={() => isCollapsed && setIsCollapsed(false)}>
           <Droplets className="h-5 w-5 text-primary" />
           <div className="flex-1">
             <h3 className="text-base font-semibold">Flüssigkeiten</h3>

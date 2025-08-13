@@ -191,7 +191,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
   };
 
   const isCompleted = !!hasWorkoutToday;
-  const [isCollapsed, setIsCollapsed] = useState(!isEditing && hasWorkoutToday);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Calculate total workout time for the week
   const weeklyWorkoutTime = todaysWorkouts.reduce((total, w) => total + (w.duration_minutes || 0), 0);
@@ -511,7 +511,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
   return (
     <Card className="relative">
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5">
+        <div className="flex items-center gap-3 p-5" onClick={() => isCollapsed && setIsCollapsed(false)}>
           <Dumbbell className="h-5 w-5 text-primary" />
           <div className="flex-1">
             <h3 className="text-base font-semibold">

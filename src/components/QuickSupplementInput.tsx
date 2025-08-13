@@ -65,36 +65,123 @@ export const QuickSupplementInput = () => {
   const [userSupplements, setUserSupplements] = useState<UserSupplement[]>([]);
   const [todayIntake, setTodayIntake] = useState<TodayIntake>({});
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const { awardPoints, getPointsForActivity, updateStreak } = usePointsSystem();
+  const [loading, setLoading] = useState(false);
 
-  // Get completion status for today
-  const countTakenToday = () => {
-    return Object.values(todayIntake).reduce((sum, timings) => {
-      return sum + Object.values(timings || {}).filter(Boolean).length;
-    }, 0);
+  const loadSupplements = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_supplements')
+        .select(`
+          id,
+          custom_name,
+          timing,
+          dosage,
+          unit,
+          supplement_id,
+          supplement_database!left(name)
+        `)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(5);
+
+      if (error) throw error;
+
+      const supplementsWithNames = (data || []).map((s: any) => ({
+        ...s,
+        supplement_name: s.supplement_database?.name || s.custom_name || 'Supplement'
+      }));
+      setUserSupplements(supplementsWithNames);
+    } catch (e) {
+      console.error('Error loading supplements', e);
+    }
   };
 
+  const loadTodayIntake = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('supplement_intake_log')
+        .select('user_supplement_id, timing, taken')
+        .eq('user_id', user.id)
+        .eq('date', getCurrentDateString());
+      if (error) throw error;
+
+      const intakeMap: TodayIntake = {};
+      (data || []).forEach((r: any) => {
+        if (!intakeMap[r.user_supplement_id]) intakeMap[r.user_supplement_id] = {};
+        intakeMap[r.user_supplement_id][r.timing] = r.taken === true;
+      });
+      setTodayIntake(intakeMap);
+    } catch (e) {
+      console.error('Error loading intake', e);
+    }
+  };
+
+  useEffect(() => {
+    loadSupplements();
+    loadTodayIntake();
+  }, [user]);
+
+  const toggleIntake = async (supplementId: string, timing: string, taken: boolean) => {
+    if (!user) return;
+    setLoading(true);
+    setTodayIntake(prev => ({
+      ...prev,
+      [supplementId]: { ...(prev[supplementId] || {}), [timing]: taken }
+    }));
+    try {
+      const today = getCurrentDateString();
+      if (taken) {
+        const { error } = await supabase
+          .from('supplement_intake_log')
+          .upsert({ user_id: user.id, user_supplement_id: supplementId, date: today, timing, taken: true });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('supplement_intake_log')
+          .update({ taken: false })
+          .eq('user_id', user.id)
+          .eq('user_supplement_id', supplementId)
+          .eq('date', today)
+          .eq('timing', timing);
+        if (error) throw error;
+      }
+      toast.success(taken ? 'Einnahme markiert' : 'Einnahme entfernt');
+    } catch (e) {
+      console.error('Error updating intake', e);
+      toast.error('Fehler beim Aktualisieren');
+      setTodayIntake(prev => ({
+        ...prev,
+        [supplementId]: { ...(prev[supplementId] || {}), [timing]: !taken }
+      }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const countTakenToday = () => {
+    return Object.values(todayIntake).reduce((sum, timings) => sum + Object.values(timings || {}).filter(Boolean).length, 0);
+  };
   const totalTodayIntakes = countTakenToday();
-  const totalScheduledIntakes = userSupplements.reduce((sum, supplement) => sum + supplement.timing.length, 0);
-  const isCompleted = totalTodayIntakes > 0;
+  const totalScheduledIntakes = userSupplements.reduce((sum, s) => sum + (s.timing?.length || 0), 0);
   const completionPercent = totalScheduledIntakes > 0 ? (totalTodayIntakes / totalScheduledIntakes) * 100 : 0;
 
-  // Smart chip actions - get user's 3 most common supplements
-  const smartChips = userSupplements.slice(0, 3).map(supplement => ({
-    label: supplement.supplement_name || 'Supplement',
+  const smartChips = userSupplements.slice(0, 3).map((s) => ({
+    label: s.supplement_name || 'Supplement',
     action: () => {
-      // Mark first timing as taken for this supplement
-      const firstTiming = supplement.timing[0];
-      if (firstTiming) {
-        // handleIntakeChange(supplement.id, firstTiming, true);
-      }
+      const firstTiming = s.timing?.[0];
+      if (!firstTiming) return;
+      const already = !!(todayIntake[s.id]?.[firstTiming]);
+      toggleIntake(s.id, firstTiming, !already);
+      setIsCollapsed(false);
     }
   }));
 
   return (
     <Card className="relative">
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5">
+        <div className="flex items-center gap-3 p-5" onClick={() => isCollapsed && setIsCollapsed(false)}>
           <Pill className="h-5 w-5 text-primary" />
           <div className="flex-1">
             <h3 className="text-base font-semibold">
@@ -145,10 +232,41 @@ export const QuickSupplementInput = () => {
 
         <CollapsibleContent>
           <CardContent className="pt-0">
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Supplemente-Tracking verfügbar. Erweiterte Funktionen werden bald hinzugefügt.
-              </div>
+            <div className="space-y-3">
+              {userSupplements.slice(0, 5).map((s) => {
+                const intake = todayIntake[s.id] || {};
+                const takenTimings = Object.values(intake).filter(Boolean).length;
+                const totalTimings = s.timing?.length || 0;
+                return (
+                  <div key={s.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{s.supplement_name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {s.dosage} {s.unit}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={takenTimings === totalTimings ? 'default' : 'secondary'} className="text-xs">
+                        {takenTimings}/{totalTimings}
+                      </Badge>
+                      {(s.timing || []).slice(0, 2).map((timing) => (
+                        <Checkbox
+                          key={timing}
+                          checked={!!intake[timing]}
+                          onCheckedChange={(checked) => toggleIntake(s.id, timing, checked as boolean)}
+                          disabled={loading}
+                          className="h-4 w-4"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              {userSupplements.length === 0 && (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                  Keine Supplemente konfiguriert
+                </div>
+              )}
             </div>
           </CardContent>
         </CollapsibleContent>
