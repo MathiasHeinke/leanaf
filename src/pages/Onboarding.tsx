@@ -5,6 +5,7 @@ import { BenefitsSlide } from '@/components/onboarding/BenefitsSlide';
 import { PremiumSlide } from '@/components/onboarding/PremiumSlide';
 import { useAuth } from '@/hooks/useAuth';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 
 export default function OnboardingPage() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -12,7 +13,8 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
-  const { completeInteractiveOnboarding, isAdmin } = useOnboardingState();
+  const { completeInteractiveOnboarding } = useOnboardingState();
+  const { isAdmin } = useSecureAdminAccess();
   
   const isAdminAccess = searchParams.get('admin') === 'true' && isAdmin;
 

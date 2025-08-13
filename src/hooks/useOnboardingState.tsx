@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './useAuth';
-import { useSecureAdminAccess } from './useSecureAdminAccess';
 
 interface OnboardingState {
   showProfileOnboarding: boolean;
@@ -16,7 +15,6 @@ interface OnboardingState {
 export const useOnboardingState = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { isAdmin } = useSecureAdminAccess();
   const [onboardingState, setOnboardingState] = useState<OnboardingState>({
     showProfileOnboarding: false,
     showIndexOnboarding: false,
@@ -32,18 +30,12 @@ export const useOnboardingState = () => {
     const storageKey = `onboarding_${user.id}`;
     const stored = localStorage.getItem(storageKey);
     
-    // Check if admin has globally disabled onboarding or personally disabled it
+    // Check if admin has disabled onboarding
     const isOnboardingDisabledByAdmin = () => {
       const adminSetting = localStorage.getItem('admin_onboarding_globally_disabled');
       const personalSetting = localStorage.getItem(`admin_personal_onboarding_${user.id}`);
       return (adminSetting ? JSON.parse(adminSetting) : false) || (personalSetting === 'false');
     };
-
-    // Auto-disable onboarding globally for this admin user
-    if (isAdmin && !localStorage.getItem('admin_onboarding_globally_disabled')) {
-      localStorage.setItem('admin_onboarding_globally_disabled', 'true');
-      console.log('Admin: Onboarding globally disabled');
-    }
     
     if (stored) {
       try {
@@ -149,13 +141,9 @@ export const useOnboardingState = () => {
   };
 
   const forceShowOnboarding = () => {
-    if (!isAdmin) {
-      console.log('Access denied: Admin privileges required');
-      return;
-    }
-    
-    console.log('Admin forcing onboarding display');
-    navigate('/onboarding?admin=true');
+    // This is now available for any user - admin functionality removed to prevent infinite loops
+    console.log('Forcing onboarding display');
+    navigate('/onboarding');
   };
 
   return {
@@ -170,6 +158,5 @@ export const useOnboardingState = () => {
     shouldShowProfileIndicators,
     hideProfileIndicators,
     forceShowOnboarding,
-    isAdmin,
   };
 };

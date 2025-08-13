@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
+import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 
 export const AdminOnboardingAccess = () => {
-  const { forceShowOnboarding, isAdmin } = useOnboardingState();
+  const { forceShowOnboarding } = useOnboardingState();
+  const { isAdmin } = useSecureAdminAccess();
 
   // Keyboard shortcut: Ctrl+Shift+O
   useEffect(() => {
