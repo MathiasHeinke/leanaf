@@ -337,94 +337,129 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   ];
 
   return (
-    <Card className="relative">
-      <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5">
-          <Moon className="h-5 w-5 text-primary" />
-          <div className="flex-1">
-            <h3 className="text-base font-semibold">
-              {hasSleepToday && !isEditing ? "Schlaf erfasst! 😴" : "Schlaf & Regeneration"}
-            </h3>
-            {isCollapsed && hasSleepToday && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-muted-foreground">
-                  {todaysSleep?.sleep_hours || 0}h • Qualität: {todaysSleep?.sleep_quality || 0}/10
-                </span>
-                <Progress value={sleepQualityPercent} className="h-1 w-16" />
-              </div>
-            )}
-            {isCollapsed && !hasSleepToday && (
-              <div className="flex gap-1 mt-2">
-                {smartChips.map((chip, index) => (
-                  <Button 
-                    key={index}
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => { chip.action(); setIsCollapsed(false); }}
-                    className="text-xs h-6 px-2"
-                  >
-                    {chip.label}
-                  </Button>
-                ))}
-              </div>
-            )}
+    <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Moon className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-semibold">Schlaf & Regeneration</h2>
           </div>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-            </Button>
+            <button
+              type="button"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {!isCollapsed ? (
+                <>
+                  Einklappen <ChevronDown className="ml-1 h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4 rotate-180" />
+                </>
+              )}
+            </button>
           </CollapsibleTrigger>
         </div>
 
-        <CollapsibleContent>
-          <CardContent className="pt-0">
-      {hasSleepToday && !isEditing ? (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-5 w-5 text-indigo-600" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-foreground">Schlaf eingetragen! 😴</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <InfoButton
-                title="Schlaf Tracking"
-                description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
-                scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
-                tips={[
-                  "7-9 Stunden Schlaf für optimale Regeneration",
-                  "Feste Schlafzeiten unterstützen den Biorhythmus",
-                  "Bildschirme 1h vor dem Schlafen vermeiden"
-                ]}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-                className="text-indigo-600 border-indigo-300 hover:bg-indigo-50"
+        {/* Collapsed summary when card is closed */}
+        {isCollapsed && (
+          <div className="mt-3 space-y-1 text-sm">
+            {hasSleepToday ? (
+              <div className="flex items-center gap-3">
+                <div className="font-semibold">
+                  {todaysSleep?.sleep_hours || 0}h Schlaf • Qualität: {todaysSleep?.sleep_quality || 0}/10
+                </div>
+                <Progress
+                  className="h-2 w-24 md:w-32"
+                  value={sleepQualityPercent}
+                  aria-label="Schlaf-Qualität"
+                />
+              </div>
+            ) : (
+              <div className="font-semibold text-muted-foreground">
+                Noch kein Schlaf eingetragen
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Smart Chips for quick actions - visible in both collapsed and expanded states */}
+        {!hasSleepToday && smartChips.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {smartChips.map((chip, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => { chip.action(); setIsCollapsed(false); }}
+                className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
               >
-                <Edit className="h-4 w-4" />
-              </Button>
-            </div>
+                <Moon className="h-3.5 w-3.5 mr-1.5" />
+                <span className="truncate max-w-[10rem]">{chip.label}</span>
+              </button>
+            ))}
           </div>
-          
-          {/* Points badges directly under title */}
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <PointsBadge 
-              points={4} 
-              icon="😴"
-              animated={showPointsAnimation}
-              variant="secondary"
-            />
-          </div>
-          
-          <p className="text-sm text-muted-foreground">
-            {todaysSleep.bedtime && todaysSleep.wake_time 
-              ? `${todaysSleep.bedtime} - ${todaysSleep.wake_time}` 
-              : `${todaysSleep.sleep_hours || 0} Stunden`
-            } • 
-            Qualität: {todaysSleep.sleep_quality || 0}/10
-            {todaysSleep.sleep_interruptions > 0 && ` • ${todaysSleep.sleep_interruptions}x unterbrochen`}
-          </p>
+        )}
+
+        <CollapsibleContent>
+          <div className="mt-3">
+          {hasSleepToday && !isEditing ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-primary" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground">Schlaf eingetragen! 😴</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <InfoButton
+                    title="Schlaf Tracking"
+                    description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
+                    scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
+                    tips={[
+                      "7-9 Stunden Schlaf für optimale Regeneration",
+                      "Feste Schlafzeiten unterstützen den Biorhythmus",
+                      "Bildschirme 1h vor dem Schlafen vermeiden"
+                    ]}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="text-primary border-primary/20 hover:bg-primary/10"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Points badges directly under title */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <PointsBadge 
+                  points={4} 
+                  icon="😴"
+                  animated={showPointsAnimation}
+                  variant="secondary"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <div className="text-xs text-muted-foreground">Schlafdauer</div>
+                  <div className="text-lg font-semibold">{todaysSleep?.sleep_hours || 0}h</div>
+                </div>
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <div className="text-xs text-muted-foreground">Qualität</div>
+                  <div className="text-lg font-semibold">{todaysSleep?.sleep_quality || 0}/10</div>
+                </div>
+              </div>
+              
+              <p className="text-sm text-muted-foreground">
+                {todaysSleep.bedtime && todaysSleep.wake_time 
+                  ? `${todaysSleep.bedtime} - ${todaysSleep.wake_time}` 
+                  : `${todaysSleep.sleep_hours || 0} Stunden`
+                }
+                {todaysSleep.sleep_interruptions > 0 && ` • ${todaysSleep.sleep_interruptions}x unterbrochen`}
+              </p>
           
           {(todaysSleep.screen_time_evening || todaysSleep.morning_libido || todaysSleep.motivation_level) && (
             <div className="text-xs text-muted-foreground space-y-1">
@@ -1011,10 +1046,10 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             </form>
           </div>
         </PremiumGate>
-      )}
-          </CardContent>
+          )}
+          </div>
         </CollapsibleContent>
-      </Collapsible>
-    </Card>
+      </Card>
+    </Collapsible>
   );
 };
