@@ -340,7 +340,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
     <Card className="relative">
       <span className="pointer-events-none absolute top-2 left-2 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-destructive/30 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5" onClick={() => isCollapsed && setIsCollapsed(false)}>
+        <div className="flex items-center gap-3 p-5" onClick={() => setIsCollapsed(prev => !prev)}>
           <Moon className="h-5 w-5 text-primary" />
           <div className="flex-1">
             <h3 className="text-base font-semibold">
@@ -371,7 +371,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             )}
           </div>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()} className="h-8 w-8 p-0">
               <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
             </Button>
           </CollapsibleTrigger>

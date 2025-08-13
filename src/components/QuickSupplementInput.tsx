@@ -60,7 +60,7 @@ const timingOptions = [
   { value: 'with_meals', label: 'Zu den Mahlzeiten' }
 ];
 
-export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: (taken: number, required: number) => void }) => {
+export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false }: { onProgressUpdate?: (taken: number, required: number) => void, hideSmartChips?: boolean }) => {
   const { user } = useAuth();
   const [userSupplements, setUserSupplements] = useState<UserSupplement[]>([]);
   const [todayIntake, setTodayIntake] = useState<TodayIntake>({});
@@ -255,7 +255,7 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
                 <Progress value={completionPercent} className="h-1 w-16" />
               </div>
             )}
-            {isCollapsed && smartChips.length > 0 && (
+            {isCollapsed && !hideSmartChips && smartChips.length > 0 && (
               <div className="flex gap-1 mt-2">
                 {smartChips.map((chip, index) => (
                   <Button 
