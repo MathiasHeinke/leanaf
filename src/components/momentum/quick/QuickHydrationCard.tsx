@@ -166,7 +166,11 @@ export const QuickHydrationCard: React.FC = () => {
           onClick: () => setDetailsOpen(true)
         }}
       >
-        <div className="space-y-2">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Fortschritt:</span>
+            <span className="font-medium">{todayIntake} / {DAILY_GOAL} ml</span>
+          </div>
           <Progress value={progressPercent} className="h-2" />
           <div className="text-xs text-muted-foreground text-center">
             {progressPercent >= 100 ? 'Tagesziel erreicht! 🎉' : `${Math.round(progressPercent)}% des Tagesziels`}

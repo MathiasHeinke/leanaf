@@ -54,6 +54,10 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
       >
         {hasMeasurements ? (
           <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Zusammenfassung:</span>
+              <span className="font-medium">{getSummaryText()}</span>
+            </div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
               {todaysMeasurements?.neck && (
                 <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
@@ -76,14 +80,6 @@ export const QuickMeasurementsCard: React.FC<QuickMeasurementsCardProps> = ({
               {todaysMeasurements?.thigh && (
                 <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
               )}
-            </div>
-            <div className="bg-card rounded-lg p-3 border-l-4 border-primary">
-              <p className="text-xs text-muted-foreground mb-1">
-                <strong>Progress-Tipp:</strong> Nächste Messung in 7 Tagen 📅
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Körperumfänge zeigen oft bessere Fortschritte als nur das Gewicht.
-              </p>
             </div>
           </div>
         ) : (

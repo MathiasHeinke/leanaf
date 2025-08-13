@@ -111,7 +111,11 @@ export const QuickSleepCard: React.FC = () => {
         }}
       >
         {hasSleepData && (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Schlafdauer:</span>
+              <span className="font-medium">{todaysSleep?.sleep_hours}h / {sleepTarget}h</span>
+            </div>
             {(() => {
               const bedtimeStr = formatSleepTime(todaysSleep?.bedtime);
               const wakeStr = formatSleepTime(todaysSleep?.wake_time);

@@ -106,15 +106,17 @@ export const QuickWeightCard: React.FC = () => {
       <QuickCardShell
         title="Gewicht"
         icon={<Scale className="h-4 w-4" />}
+        dataState={hasWeightToday ? 'done' : 'empty'}
+        progressPercent={hasWeightToday ? 100 : 0}
         status={hasWeightToday ? `${todaysWeight?.weight} kg` : 'Noch nicht erfasst'}
         statusIcon={hasWeightToday ? <TrendingUp className="h-3 w-3" /> : undefined}
-          quickActions={hasWeightToday ? [] : [
-            {
-              label: 'Gewicht eintragen',
-              onClick: () => setDetailsOpen(true),
-              variant: 'default'
-            }
-          ]}
+        quickActions={hasWeightToday ? [] : [
+          {
+            label: 'Gewicht eintragen',
+            onClick: () => setDetailsOpen(true),
+            variant: 'default'
+          }
+        ]}
         detailsAction={{
           label: 'Details',
           onClick: () => setDetailsOpen(true)
@@ -165,9 +167,18 @@ export const QuickWeightCard: React.FC = () => {
           </div>
         )}
 
-        {hasWeightToday && todaysWeight?.body_fat_percentage && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Körperfett: {todaysWeight.body_fat_percentage}%</span>
+        {hasWeightToday && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Heutiges Gewicht:</span>
+              <span className="font-medium">{todaysWeight?.weight} kg</span>
+            </div>
+            {todaysWeight?.body_fat_percentage && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Körperfett:</span>
+                <span className="font-medium">{todaysWeight.body_fat_percentage}%</span>
+              </div>
+            )}
           </div>
         )}
       </QuickCardShell>
