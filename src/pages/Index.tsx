@@ -42,10 +42,48 @@ import { DashboardXPBar } from "@/components/DashboardXPBar";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
 
+// Main wrapper component to handle authentication state
 const Index = () => {
-  const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Check authentication and redirect if needed
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/auth');
+      return;
+    }
+  }, [user, authLoading, navigate]);
+
+  // If still loading auth or no user, show loading state
+  if (authLoading || !user) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-48 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  // Render the authenticated dashboard
+  return <AuthenticatedDashboard user={user} />;
+};
+
+// Authenticated dashboard component with all hooks
+const AuthenticatedDashboard = ({ user }: { user: any }) => {
+  const { t } = useTranslation();
+  
+  // All auth-dependent hooks - AFTER authentication is confirmed
+  const { isPremium, trial } = useSubscription();
+  const { hasFeatureAccess } = useFeatureAccess();
+  const mealInputHook = useGlobalMealInput();
+  const { checkBadges } = useBadgeChecker();
+  const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
+  const { isTrackingEnabled } = useTrackingPreferences();
+  
+  // Frequent meals for smart chips
+  const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
   
   // State management
   const [meals, setMeals] = useState<any[]>([]);
@@ -75,36 +113,6 @@ const Index = () => {
     const savedOrder = localStorage.getItem('quickInputCardOrder');
     return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'supplements', 'fluids', 'mindset'];
   });
-
-  // Check authentication and redirect if needed
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-      return;
-    }
-  }, [user, authLoading, navigate]);
-
-  // If still loading auth or no user, show loading state
-  if (authLoading || !user) {
-    return (
-      <div className="space-y-6 animate-pulse">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  // All auth-dependent hooks (after auth check)
-  const { isPremium, trial } = useSubscription();
-  const { hasFeatureAccess } = useFeatureAccess();
-  const mealInputHook = useGlobalMealInput();
-  const { checkBadges } = useBadgeChecker();
-  const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
-  const { isTrackingEnabled } = useTrackingPreferences();
-  
-  // Frequent meals for smart chips (after auth check)
-  const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
 
   // Load user data
   useEffect(() => {
