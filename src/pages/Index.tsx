@@ -570,7 +570,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           ...style,
           boxShadow: glowColors.shadowColor,
         }} 
-        className={`relative rounded-xl ring-1`}
+        className={`relative rounded-xl`}
         data-progress={Math.round(progressPercentage)}
       >
         {/* Progress indicator dot */}
@@ -701,7 +701,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
               caloriesTarget: dailyGoals?.calories || 2000,
             })).shadowColor
           }}
-          className="rounded-xl ring-1"
+          className="rounded-xl"
         >
           <CaloriesCard
             date={currentDate}
