@@ -1,158 +1,310 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Input } from './ui/input';
-import { Badge } from './ui/badge';
-import { Textarea } from './ui/textarea';
-import { Card, CardContent } from './ui/card';
+import { Card } from './ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Progress } from './ui/progress';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
-import { Pill, Plus, Check, X, Clock, Edit, Trash2, Save, Sun, Utensils, Dumbbell, Moon, ChevronDown, ChevronUp } from 'lucide-react';
+import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
-import { getCurrentDateString } from "@/utils/dateHelpers";
-import { usePointsSystem } from '@/hooks/usePointsSystem';
-import { triggerDataRefresh } from '@/hooks/useDataRefresh';
+import { Pill, ChevronDown, ChevronUp, Check, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSupplementData, TIMING_OPTIONS } from '@/hooks/useSupplementData';
 
-interface SupplementOption {
-  id: string;
-  name: string;
-  category: string;
-  default_dosage: string;
-  default_unit: string;
-  common_timing: string[];
-  description: string;
+function formatNumber(n: number) {
+  return Math.max(0, Math.round(n));
 }
 
-interface UserSupplement {
-  id: string;
-  supplement_id: string | null;
-  custom_name: string | null;
-  dosage: string;
-  unit: string;
-  timing: string[];
-  goal: string | null;
-  rating: number | null;
-  notes: string | null;
-  frequency_days: number | null;
-  is_active?: boolean;
-  supplement_name?: string;
-  supplement_category?: string;
+function TimingChip({ timing, taken, total, onClick }: { timing: string; taken: number; total: number; onClick?: () => void }) {
+  const timingInfo = TIMING_OPTIONS.find(t => t.value === timing);
+  const isComplete = taken === total && total > 0;
+  
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center rounded-full border px-3 py-1 text-xs transition-colors",
+        isComplete 
+          ? "bg-primary/10 border-primary/20 text-primary" 
+          : "bg-secondary/50 hover:bg-secondary border-border"
+      )}
+    >
+      <span className="mr-1.5">{timingInfo?.icon || '📋'}</span>
+      <span className="truncate max-w-[8rem]">{timingInfo?.label || timing}</span>
+      {total > 0 && (
+        <span className="ml-1.5 font-medium">
+          {taken}/{total}
+        </span>
+      )}
+    </button>
+  );
 }
 
-interface TodayIntake {
-  [key: string]: {
-    [timing: string]: boolean;
-  };
+function SupplementRow({ 
+  supplement, 
+  timing, 
+  intake, 
+  onToggle 
+}: { 
+  supplement: any; 
+  timing: string; 
+  intake?: any; 
+  onToggle: (supplementId: string, timing: string, taken: boolean) => void;
+}) {
+  const timingInfo = TIMING_OPTIONS.find(t => t.value === timing);
+  const isTaken = intake?.taken || false;
+  
+  return (
+    <div className="flex items-center justify-between rounded-md border bg-card px-3 py-2">
+      <div className="flex items-center gap-3 min-w-0">
+        <Checkbox
+          checked={isTaken}
+          onCheckedChange={(checked) => onToggle(supplement.id, timing, !!checked)}
+        />
+        <div className="min-w-0">
+          <div className="text-sm font-medium truncate">
+            {supplement.supplement_name || supplement.custom_name || 'Supplement'}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {supplement.dosage} {supplement.unit}
+          </div>
+        </div>
+      </div>
+      {isTaken && (
+        <Badge variant="secondary" className="text-xs">
+          <Check className="h-3 w-3 mr-1" />
+          Genommen
+        </Badge>
+      )}
+    </div>
+  );
 }
 
-const timingOptions = [
-  { value: 'morning', label: 'Morgens' },
-  { value: 'noon', label: 'Mittags' },
-  { value: 'evening', label: 'Abends' },
-  { value: 'pre_workout', label: 'Vor dem Training' },
-  { value: 'post_workout', label: 'Nach dem Training' },
-  { value: 'before_bed', label: 'Vor dem Schlafengehen' },
-  { value: 'with_meals', label: 'Zu den Mahlzeiten' }
-];
+function TimingSection({ 
+  timing, 
+  group, 
+  onToggleSupplement, 
+  onToggleGroup 
+}: { 
+  timing: string; 
+  group: any; 
+  onToggleSupplement: (supplementId: string, timing: string, taken: boolean) => void;
+  onToggleGroup: (timing: string, taken: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const timingInfo = TIMING_OPTIONS.find(t => t.value === timing);
+  const isComplete = group.taken === group.total && group.total > 0;
+  const hasSupplements = group.supplements.length > 0;
+  
+  if (!hasSupplements) return null;
+  
+  return (
+    <div className="border rounded-md">
+      <button
+        type="button"
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50"
+        onClick={() => setOpen(!open)}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-base">{timingInfo?.icon || '📋'}</span>
+          <div className="text-sm font-medium">{timingInfo?.label || timing}</div>
+          <Badge variant={isComplete ? "default" : "secondary"} className="text-xs">
+            {group.taken}/{group.total}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleGroup(timing, !isComplete);
+            }}
+            className="h-8 px-2 text-xs"
+          >
+            {isComplete ? 'Alle entfernen' : 'Alle abhaken'}
+          </Button>
+          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </div>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          {group.supplements.map((supplement: any) => {
+            const intake = group.intakes.find((i: any) => i.user_supplement_id === supplement.id);
+            return (
+              <SupplementRow
+                key={supplement.id}
+                supplement={supplement}
+                timing={timing}
+                intake={intake}
+                onToggle={onToggleSupplement}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export const QuickSupplementInput = () => {
-  const { user } = useAuth();
-  const [userSupplements, setUserSupplements] = useState<UserSupplement[]>([]);
-  const [todayIntake, setTodayIntake] = useState<TodayIntake>({});
+  const {
+    groupedSupplements,
+    totalScheduled,
+    totalTaken,
+    completionPercent,
+    loading,
+    error,
+    markSupplementTaken,
+    markTimingGroupTaken
+  } = useSupplementData();
+  
   const [isCollapsed, setIsCollapsed] = useState(true);
-  const { awardPoints, getPointsForActivity, updateStreak } = usePointsSystem();
 
-  // Get completion status for today
-  const countTakenToday = () => {
-    return Object.values(todayIntake).reduce((sum, timings) => {
-      return sum + Object.values(timings || {}).filter(Boolean).length;
-    }, 0);
-  };
+  // Get smart chips for timing groups (show top 3 with supplements)
+  const smartChips = Object.entries(groupedSupplements)
+    .filter(([_, group]) => group.total > 0)
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, 3)
+    .map(([timing, group]) => ({
+      timing,
+      taken: group.taken,
+      total: group.total,
+      action: () => markTimingGroupTaken(timing, group.taken < group.total)
+    }));
 
-  const totalTodayIntakes = countTakenToday();
-  const totalScheduledIntakes = userSupplements.reduce((sum, supplement) => sum + supplement.timing.length, 0);
-  const isCompleted = totalTodayIntakes > 0;
-  const completionPercent = totalScheduledIntakes > 0 ? (totalTodayIntakes / totalScheduledIntakes) * 100 : 0;
+  if (loading) {
+    return (
+      <Card className="p-4">
+        <div className="flex items-center gap-2">
+          <Pill className="h-5 w-5 text-primary" />
+          <h2 className="text-base font-semibold">Supplemente</h2>
+        </div>
+        <div className="mt-3 text-sm text-muted-foreground">Lade Supplemente...</div>
+      </Card>
+    );
+  }
 
-  // Smart chip actions - get user's 3 most common supplements
-  const smartChips = userSupplements.slice(0, 3).map(supplement => ({
-    label: supplement.supplement_name || 'Supplement',
-    action: () => {
-      // Mark first timing as taken for this supplement
-      const firstTiming = supplement.timing[0];
-      if (firstTiming) {
-        // handleIntakeChange(supplement.id, firstTiming, true);
-      }
-    }
-  }));
+  if (error) {
+    return (
+      <Card className="p-4">
+        <div className="flex items-center gap-2">
+          <Pill className="h-5 w-5 text-primary" />
+          <h2 className="text-base font-semibold">Supplemente</h2>
+        </div>
+        <div className="mt-3 text-sm text-destructive">Fehler: {error}</div>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="relative">
-      <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        <div className="flex items-center gap-3 p-5">
-          <Pill className="h-5 w-5 text-primary" />
-          <div className="flex-1">
-            <h3 className="text-base font-semibold">
-              Supplemente{totalTodayIntakes > 0 ? ` (${totalTodayIntakes} genommen)` : ''}
-            </h3>
-            {isCollapsed && userSupplements.length > 0 && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-sm text-muted-foreground">
-                  {totalTodayIntakes}/{totalScheduledIntakes} genommen
-                </span>
-                <Progress value={completionPercent} className="h-1 w-16" />
-              </div>
-            )}
-            {isCollapsed && userSupplements.length === 0 && (
-              <div className="flex gap-1 mt-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setIsCollapsed(false)}
-                  className="text-xs h-6 px-2"
-                >
-                  Supplement hinzufügen
-                </Button>
-              </div>
-            )}
-            {isCollapsed && smartChips.length > 0 && (
-              <div className="flex gap-1 mt-2">
-                {smartChips.map((chip, index) => (
-                  <Button 
-                    key={index}
-                    variant="outline" 
-                    size="sm" 
-                    onClick={chip.action}
-                    className="text-xs h-6 px-2"
-                  >
-                    {chip.label}
-                  </Button>
-                ))}
-              </div>
-            )}
+    <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Pill className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-semibold">Supplemente</h2>
           </div>
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
-            </Button>
+            <button
+              type="button"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {!isCollapsed ? (
+                <>
+                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
+                </>
+              ) : (
+                <>
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
+                </>
+              )}
+            </button>
           </CollapsibleTrigger>
         </div>
 
+        {/* Collapsed summary when card is closed */}
+        {isCollapsed && (
+          <div className="mt-3 space-y-1 text-sm">
+            {totalScheduled > 0 ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="font-semibold">
+                    {formatNumber(totalTaken)} / {formatNumber(totalScheduled)} genommen
+                  </div>
+                  <Progress
+                    className="h-2 w-24 md:w-32"
+                    value={completionPercent}
+                    aria-label="Supplement-Fortschritt"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+                  <span>
+                    {Object.keys(groupedSupplements).length} Tageszeiten · {totalScheduled} Supplemente
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="text-muted-foreground">Keine Supplemente konfiguriert</div>
+            )}
+          </div>
+        )}
+
+        {/* Smart Chips for timing groups - visible in both collapsed and expanded states */}
+        {smartChips.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {smartChips.map((chip) => (
+              <TimingChip
+                key={chip.timing}
+                timing={chip.timing}
+                taken={chip.taken}
+                total={chip.total}
+                onClick={chip.action}
+              />
+            ))}
+          </div>
+        )}
+
         <CollapsibleContent>
-          <CardContent className="pt-0">
-            <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Supplemente-Tracking verfügbar. Erweiterte Funktionen werden bald hinzugefügt.
-              </div>
+          {/* Header numbers */}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="text-xs text-muted-foreground">Genommen / Geplant</div>
+              <div className="text-lg font-semibold">{formatNumber(totalTaken)} / {formatNumber(totalScheduled)}</div>
             </div>
-          </CardContent>
+            <div className="rounded-md border bg-muted/30 p-3">
+              <div className="text-xs text-muted-foreground">Fortschritt</div>
+              <div className="text-lg font-semibold">{formatNumber(completionPercent)}%</div>
+            </div>
+          </div>
+
+          {/* Supplements by timing */}
+          <div className="mt-4">
+            {Object.keys(groupedSupplements).length === 0 ? (
+              <div className="text-sm text-muted-foreground">
+                Keine aktiven Supplemente gefunden. Verwende die Chat-Funktion, um Supplemente hinzuzufügen.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {Object.entries(groupedSupplements)
+                  .sort(([a], [b]) => {
+                    const orderA = TIMING_OPTIONS.findIndex(t => t.value === a);
+                    const orderB = TIMING_OPTIONS.findIndex(t => t.value === b);
+                    return orderA - orderB;
+                  })
+                  .map(([timing, group]) => (
+                    <TimingSection
+                      key={timing}
+                      timing={timing}
+                      group={group}
+                      onToggleSupplement={markSupplementTaken}
+                      onToggleGroup={markTimingGroupTaken}
+                    />
+                  ))}
+              </div>
+            )}
+          </div>
         </CollapsibleContent>
-      </Collapsible>
-    </Card>
+      </Card>
+    </Collapsible>
   );
 };
