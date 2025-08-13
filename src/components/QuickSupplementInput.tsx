@@ -60,7 +60,7 @@ const timingOptions = [
   { value: 'with_meals', label: 'Zu den Mahlzeiten' }
 ];
 
-export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: (taken: number, required: number) => void }) => {
+export const QuickSupplementInput = ({ onProgressUpdate, hideSmartChips = false }: { onProgressUpdate?: (taken: number, required: number) => void, hideSmartChips?: boolean }) => {
   const { user } = useAuth();
   const [userSupplements, setUserSupplements] = useState<UserSupplement[]>([]);
   const [todayIntake, setTodayIntake] = useState<TodayIntake>({});
@@ -174,6 +174,32 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
   const totalScheduledIntakes = userSupplements.reduce((sum, s) => sum + (s.timing?.length || 0), 0);
   const completionPercent = totalScheduledIntakes > 0 ? (totalTodayIntakes / totalScheduledIntakes) * 100 : 0;
 
+  const getCurrentSlot = (): string => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 11) return 'morning';
+    if (h >= 11 && h < 15) return 'noon';
+    if (h >= 17 && h < 21) return 'evening';
+    if (h >= 21 || h < 5) return 'before_bed';
+    return 'with_meals';
+  };
+  const getSlotLabel = (v: string) => timingOptions.find(t => t.value === v)?.label || v;
+
+  const currentSlot = getCurrentSlot();
+  const slotSupps = userSupplements.filter(s => (s.timing || []).includes(currentSlot));
+  const takenInSlot = slotSupps.filter(s => todayIntake[s.id]?.[currentSlot]).length;
+
+  useEffect(() => {
+    setGroupOpen((prev: Record<string, boolean>) => {
+      const next = { ...prev };
+      timingOptions.forEach(({ value }) => {
+        if (!(value in next)) {
+          next[value] = value === currentSlot;
+        }
+      });
+      return next;
+    });
+  }, [currentSlot]);
+
   const markAllForSlot = async (slot: string) => {
     if (!user) return;
     const group = userSupplements.filter((s) => (s.timing || []).includes(slot));
@@ -195,7 +221,7 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
         });
         return updated;
       });
-      toast.success('Alle Supplemente markiert');
+      toast.success(`${getSlotLabel(slot)} erledigt`);
     } catch (e) {
       console.error("Error markAllForSlot", e);
       toast.error("Fehler beim Markieren");
@@ -203,6 +229,12 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
       setLoading(false);
     }
   };
+
+  const markAllForCurrentSlot = async () => markAllForSlot(currentSlot);
+  const smartChips = slotSupps.length > 0 ? [{
+    label: `${getSlotLabel(currentSlot)} ${takenInSlot}/${slotSupps.length}`,
+    action: () => markAllForCurrentSlot()
+  }] : [];
 
 
   return (
@@ -221,6 +253,21 @@ export const QuickSupplementInput = ({ onProgressUpdate }: { onProgressUpdate?: 
                     {totalTodayIntakes}/{totalScheduledIntakes} genommen
                   </span>
                   <Progress value={completionPercent} className="h-2 w-16" />
+                </div>
+              )}
+              {!isOpen && !hideSmartChips && smartChips.length > 0 && (
+                <div className="flex gap-1 mt-2">
+                  {smartChips.map((chip, index) => (
+                    <Button 
+                      key={index}
+                      variant="outline" 
+                      size="sm" 
+                      onClick={chip.action}
+                      className="text-xs h-6 px-2"
+                    >
+                      {chip.label}
+                    </Button>
+                  ))}
                 </div>
               )}
             </div>
