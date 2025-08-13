@@ -353,10 +353,44 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
               <div className="font-semibold">
-                {parseFloat(todaysWeight.weight).toFixed(1)} kg
-                {todaysWeight.body_fat_percentage && ` • ${parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}% KFA`}
+                {parseFloat(todaysWeight.weight).toFixed(1)} kg erfasst
               </div>
-              <div className="h-2 w-2 rounded-full bg-primary"></div>
+              <Progress
+                className="h-2 w-24 md:w-32"
+                value={100}
+                aria-label="Gewicht erfasst"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {todaysWeight.body_fat_percentage && (
+                <>
+                  <span className="font-medium text-fats">
+                    KFA {parseFloat(todaysWeight.body_fat_percentage).toFixed(1)}%
+                  </span>
+                  <span className="text-muted-foreground">·</span>
+                </>
+              )}
+              {todaysWeight.muscle_percentage && (
+                <span className="font-medium text-protein">
+                  Muskeln {parseFloat(todaysWeight.muscle_percentage).toFixed(1)}%
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Collapsed summary for non-completed state */}
+        {!open && !isCompleted && (
+          <div className="mt-3 space-y-1 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="font-semibold text-muted-foreground">
+                Gewicht noch nicht erfasst
+              </div>
+              <Progress
+                className="h-2 w-24 md:w-32"
+                value={0}
+                aria-label="Gewicht noch nicht erfasst"
+              />
             </div>
           </div>
         )}
