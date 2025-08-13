@@ -43,7 +43,7 @@ import { DashboardXPBar } from "@/components/DashboardXPBar";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
 import { usePlusData } from "@/hooks/usePlusData";
-import StatHeroCard from "@/components/StatHeroCard";
+import ConcentricStatCard from "@/components/ConcentricStatCard";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -683,7 +683,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
       {/* Stats Hero Card */}
       <div className="container mx-auto px-4 max-w-lg mt-4">
-        <StatHeroCard
+        <ConcentricStatCard
           dateLabel={currentDate.toLocaleDateString("de-DE", { 
             weekday: "long", 
             day: "numeric", 
@@ -699,31 +699,31 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           }}
           center={{ 
             top: plusData.hydrationMlToday ? `${(plusData.hydrationMlToday / 1000).toFixed(1)}L` : "0L", 
-            bottom: "WASSER"
+            bottom: "WASSER",
+            progress: plusData.hydrationMlToday ? Math.min(1, plusData.hydrationMlToday / 2000) : 0
           }}
-          arcs={[
-            // Kalorien Progress (oben)
-            ...(calorieSummary.consumed && dailyGoals?.calories ? [{
-              fraction: Math.min(0.25, (calorieSummary.consumed / dailyGoals.calories) * 0.25),
-              startDeg: 0,
-              gradient: ["#fb923c", "#f97316"] as [string, string],
-              width: 16
-            }] : []),
-            // Schritte Progress (rechts unten)
-            ...(plusData.stepsToday ? [{
-              fraction: Math.min(0.2, (plusData.stepsToday / 7000) * 0.2),
-              startDeg: 120,
-              gradient: ["#60a5fa", "#3b82f6"] as [string, string],
-              width: 16
-            }] : []),
-            // Hydration Progress (links unten)
-            ...(plusData.hydrationMlToday ? [{
-              fraction: Math.min(0.18, (plusData.hydrationMlToday / 2000) * 0.18),
-              startDeg: 240,
-              gradient: ["#34d399", "#10b981"] as [string, string],
-              width: 16
-            }] : [])
-          ]}
+          centerRing={{
+            trackColor: "hsl(var(--muted))",
+            color: ["#34d399", "#10b981"],
+            width: 16,
+          }}
+          outerLeft={{
+            startDeg: 210,
+            sweepDeg: calorieSummary.consumed && dailyGoals?.calories 
+              ? Math.min(120, (calorieSummary.consumed / dailyGoals.calories) * 120)
+              : 0,
+            gradient: ["#fb923c", "#f97316"],
+            width: 16,
+          }}
+          outerRight={{
+            startDeg: 20,
+            sweepDeg: plusData.stepsToday 
+              ? Math.min(80, (plusData.stepsToday / 7000) * 80)
+              : 0,
+            gradient: ["#60a5fa", "#3b82f6"],
+            width: 16,
+          }}
+          size={720}
         />
       </div>
       
