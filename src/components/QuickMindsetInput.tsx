@@ -211,10 +211,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
     <Card className="p-4">
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
         <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2"
-          >
+          <div className="flex items-center justify-between cursor-pointer">
             <div className="flex items-center gap-2">
               <Brain className="h-5 w-5 text-primary" />
               <h2 className="text-base font-semibold">Mindset Journal</h2>
@@ -244,7 +241,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
                 )}
               </button>
             </div>
-          </button>
+          </div>
         </CollapsibleTrigger>
 
         {/* Collapsed summary when card is closed - CaloriesCard style */}
