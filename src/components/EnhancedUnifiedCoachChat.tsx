@@ -1067,7 +1067,10 @@ chatInput={
       >
         {/* Collapsible Coach Header */}
         <CollapsibleCoachHeader
-          coach={coach}
+          coach={{
+            ...coach,
+            id: coach?.id
+          }}
           onCollapseChange={setBannerCollapsed}
           onDailyReset={() => {
             setMessages([]);

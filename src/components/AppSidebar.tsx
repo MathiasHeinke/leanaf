@@ -23,7 +23,8 @@ import {
   Info,
   Mail,
   History as HistoryIcon,
-  Brain
+  Brain,
+  Zap
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -50,9 +51,7 @@ import { Badge } from "@/components/ui/badge";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Coaching", url: "/coach", icon: MessageCircle },
   { title: "Workout", url: "/training", icon: Dumbbell },
-  
   { title: "Transformation", url: "/transformation", icon: TrendingUp },
   { title: "History", url: "/history", icon: HistoryIcon },
   { title: "Analyse", url: "/analyse", icon: BarChart3 },
@@ -86,6 +85,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [hasMarketingRole, setHasMarketingRole] = useState<boolean>(false);
+  const [userGender, setUserGender] = useState<string | null>(null);
   
   const collapsed = state === "collapsed";
 
@@ -113,6 +113,35 @@ export function AppSidebar() {
     };
 
     checkMarketingRole();
+  }, [user]);
+
+  useEffect(() => {
+    const fetchUserGender = async () => {
+      if (!user) {
+        setUserGender(null);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('gender')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching user gender:', error);
+          setUserGender(null);
+        } else {
+          setUserGender(data?.gender || null);
+        }
+      } catch (error) {
+        console.error('Error fetching user gender:', error);
+        setUserGender(null);
+      }
+    };
+
+    fetchUserGender();
   }, [user]);
 
   // Helper functions for level calculations
@@ -227,6 +256,40 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="gap-6">
+        {/* Gender-specific Coach Navigation */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {user && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton 
+                    asChild 
+                    className={getNavClass(userGender === 'male' ? '/coach/ares' : '/coach/freya')}
+                    size={collapsed ? "sm" : "default"}
+                  >
+                    <button
+                      onClick={() => handleNavigation(userGender === 'male' ? '/coach/ares' : '/coach/freya', isNavDisabled(userGender === 'male' ? '/coach/ares' : '/coach/freya'))}
+                      className="flex items-center w-full relative"
+                      disabled={isNavDisabled(userGender === 'male' ? '/coach/ares' : '/coach/freya')}
+                    >
+                      {userGender === 'male' ? (
+                        <Zap className={`h-4 w-4 ${collapsed ? "" : "mr-3"} text-amber-500`} />
+                      ) : (
+                        <Crown className={`h-4 w-4 ${collapsed ? "" : "mr-3"} text-purple-500`} />
+                      )}
+                      {!collapsed && (
+                        <span className="font-medium">
+                          {userGender === 'male' ? 'ARES' : 'FREYA'}
+                        </span>
+                      )}
+                    </button>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>

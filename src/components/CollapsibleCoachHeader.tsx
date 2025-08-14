@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ArrowLeft, Clock, Trash2 } from 'lucide-react';
+import { ChevronDown, ArrowLeft, Clock, Trash2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNavigate } from 'react-router-dom';
@@ -13,6 +13,7 @@ interface CollapsibleCoachHeaderProps {
     name: string;
     imageUrl?: string;
     specialization?: string;
+    id?: string;
   };
   onHistoryClick?: () => void;
   onDeleteChat?: () => void;
@@ -33,6 +34,7 @@ export const CollapsibleCoachHeader = ({
   const [isDeletingToday, setIsDeletingToday] = useState(false);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showCoachInfo, setShowCoachInfo] = useState(false);
   const navigate = useNavigate();
 
   // Get actual chat history from Supabase
@@ -113,6 +115,64 @@ export const CollapsibleCoachHeader = ({
     onCollapseChange?.(newCollapsed);
   };
 
+  const getCoachInfo = () => {
+    const coachId = coach.id?.toLowerCase() || coach.name.toLowerCase();
+    
+    if (coachId === 'ares') {
+      return {
+        title: 'ARES - Ultimate Performance Coach',
+        description: 'Der ultimative Performance-Coach mit Zugriff auf alle Trainingsdaten, Ernährungsanalysen und fortschrittliche Tools.',
+        expertise: [
+          'Cross-Domain Training & Nutrition Mastery',
+          'Advanced Performance Analytics',
+          'Hormone & Recovery Optimization',
+          'Strength & Hypertrophy Periodization',
+          'Mental Toughness & Mindset'
+        ],
+        tools: [
+          'Complete User Database Access',
+          'Advanced Workout Planning',
+          'Nutrition Tracking & Analysis',
+          'Progress Photo Analysis',
+          'Performance Metrics Tracking',
+          'Recovery & Sleep Analysis'
+        ],
+        specialties: [
+          'Maximaler Muskelaufbau',
+          'Kraftsteigerung',
+          'Hormonoptimierung',
+          'Wettkampfvorbereitung'
+        ]
+      };
+    } else {
+      return {
+        title: 'FREYA - Holistic Wellness Coach',
+        description: 'Deine ganzheitliche Wellness-Expertin mit Fokus auf weibliche Gesundheit und nachhaltigen Lifestyle.',
+        expertise: [
+          'Female Health & Cycle Optimization',
+          'Holistic Nutrition & Wellness',
+          'Sustainable Lifestyle Design',
+          'Mind-Body Connection',
+          'Hormonal Balance'
+        ],
+        tools: [
+          'Complete User Database Access',
+          'Cycle-Based Training Plans',
+          'Nutrition & Meal Planning',
+          'Progress Tracking',
+          'Wellness Analytics',
+          'Lifestyle Assessments'
+        ],
+        specialties: [
+          'Zyklusbasiertes Training',
+          'Hormonelle Balance',
+          'Nachhaltiger Lifestyle',
+          'Ganzheitliches Wohlbefinden'
+        ]
+      };
+    }
+  };
+
   return (
     <>
       {/* Coach Banner mit Glass-Effekt */}
@@ -156,6 +216,70 @@ export const CollapsibleCoachHeader = ({
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Coach Info Button */}
+          <Popover open={showCoachInfo} onOpenChange={setShowCoachInfo}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-2 h-10 w-10 hover-scale"
+                aria-label="Coach-Informationen"
+              >
+                <Info className="w-5 h-5" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-4" align="end">
+              <div className="space-y-4">
+                {(() => {
+                  const info = getCoachInfo();
+                  return (
+                    <>
+                      <div>
+                        <h3 className="font-semibold text-lg mb-2">{info.title}</h3>
+                        <p className="text-sm text-muted-foreground">{info.description}</p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Expertise</h4>
+                        <ul className="text-xs space-y-1">
+                          {info.expertise.map((item, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              <div className="w-1 h-1 bg-primary rounded-full" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Verfügbare Tools</h4>
+                        <ul className="text-xs space-y-1">
+                          {info.tools.map((tool, index) => (
+                            <li key={index} className="flex items-center gap-2">
+                              <div className="w-1 h-1 bg-accent rounded-full" />
+                              {tool}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">Spezialgebiete</h4>
+                        <div className="flex flex-wrap gap-1">
+                          {info.specialties.map((specialty, index) => (
+                            <span key={index} className="text-xs bg-accent/50 px-2 py-1 rounded">
+                              {specialty}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </PopoverContent>
+          </Popover>
+
           {/* Chat History Dropdown */}
           <Popover open={showHistory} onOpenChange={async (open) => {
             setShowHistory(open);
