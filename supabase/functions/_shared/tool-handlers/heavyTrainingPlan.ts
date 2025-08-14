@@ -60,6 +60,7 @@ async function analyzeUserStrengthHistory(supabase: any, userId: string): Promis
       insights.push("🔥 Solide Basis - Zeit für TOTALE DOMINANZ!");
     } else {
       insights.push("🎯 Grundlagen zuerst, dann ABSOLUTE EXCELLENCE!");
+    }
 
     if (maxWeights.bankdrücken > 100) {
       insights.push(`Bankdrücken bei ${maxWeights.bankdrücken}kg - das ist schon ordentlich!`);
@@ -78,7 +79,7 @@ async function analyzeUserStrengthHistory(supabase: any, userId: string): Promis
   }
 }
 
-export default async function handleHeavyTrainingPlan(conv: any[], userId: string, args: any) {
+async function handleHeavyTrainingPlan(conv: any[], userId: string, args: any) {
   try {
     const { goal, training_days, experience_level, max_weights, focus_areas } = args;
 
@@ -169,7 +170,7 @@ ${heavyTrainingTemplate.weekly_structure.map((day: any) =>
     console.error('Error in heavyTrainingPlan:', error);
     return {
       role: 'assistant', 
-      content: "Fehler beim Erstellen des Heavy Training Plans. Markus würde sagen: 'Nochmal versuchen, diesmal mit mehr Fokus!' 😤"
+      content: "Fehler beim Erstellen des Heavy Training Plans. ARES würde sagen: 'Nochmal versuchen, diesmal mit mehr Fokus!' 😤"
     };
   }
 }
@@ -203,7 +204,7 @@ function generateHeavyTrainingPlan(params: any) {
     return '';
   };
 
-  // Markus Rühl's preferred split patterns
+  // ARES preferred split patterns
   const splitTemplates = {
     4: {
       split_type: "Heavy 4er-Split",
@@ -376,3 +377,5 @@ function generateHeavyTrainingPlan(params: any) {
     }
   };
 }
+
+export default handleHeavyTrainingPlan;

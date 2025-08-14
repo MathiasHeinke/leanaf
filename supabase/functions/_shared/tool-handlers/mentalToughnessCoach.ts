@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(
@@ -5,7 +6,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 );
 
-export default async function handleMentalToughnessCoach(conv: any[], userId: string, args: any) {
+async function handleMentalToughnessCoach(conv: any[], userId: string, args: any) {
   try {
     const { 
       challenge_type, 
@@ -46,7 +47,7 @@ export default async function handleMentalToughnessCoach(conv: any[], userId: st
     console.error('Error in mentalToughnessCoach:', error);
     return {
       role: 'assistant',
-      content: "Fehler beim Mental Coaching. Aber Markus würde sagen: 'Rückschläge sind temporär - steh auf und mach weiter!' 💪"
+      content: "Fehler beim Mental Coaching. Aber ARES würde sagen: 'Rückschläge sind temporär - steh auf und mach weiter!' 💪"
     };
   }
 }
@@ -54,12 +55,12 @@ export default async function handleMentalToughnessCoach(conv: any[], userId: st
 function provideMentalCoaching(params: any) {
   const { challengeType, motivationLevel, specificProblem, trainingPhase, recentSetback } = params;
 
-  // Markus Rühl's Mental Toughness Strategies
+  // ARES Mental Toughness Strategies
   const coachingStrategies = {
     lack_motivation: {
       title: "Null Bock aufs Training?",
-      markus_quote: "Wer jammert, hat schon verloren!",
-      content: `**Markus Rühl's Anti-Jammern-Programm 🔥**
+      ares_quote: "Wer jammert, hat schon verloren!",
+      content: `**ARES Anti-Jammern-Programm 🔥**
 
 "Muskelkater, Müdigkeit, mal keinen Bock – egal was, Ausreden zählen nicht!"
 
@@ -68,12 +69,12 @@ function provideMentalCoaching(params: any) {
 • **Erste 10 Minuten:** Nur Aufwärmen, danach entscheidest du neu
 • **Konkurrenzdruck:** "Während du auf der Couch liegst, schuftet ein anderer!"
 
-**🔥 Motivations-Tricks nach Rühl:**
+**🔥 Motivations-Tricks nach ARES:**
 • **Alte Erfolge anschauen:** Fotos deiner Bestform oder Videos vom letzten PR
-• **Musik aufdrehen:** Hardstyle oder Metal - Markus' Geheimwaffe
+• **Musik aufdrehen:** Hardstyle oder Metal - ARES' Geheimwaffe
 • **Ziel visualisieren:** Denk an deine Wettkampfform oder Traumfigur
 
-**💪 Rühls Mentalität:**
+**💪 ARES Mentalität:**
 "Entweder du willst es, oder du willst es nicht. Dein Körper jammert, aber dein Kopf weiß: Aufgeben ist keine Option!"
 
 *Der Schmerz vergeht, Stolz bleibt.*`,
@@ -85,8 +86,8 @@ function provideMentalCoaching(params: any) {
 
     plateau_breakthrough: {
       title: "Plateau durchbrechen",
-      markus_quote: "Jammern bringt nix. Hantel greifen, Kopf aus – und drücken!",
-      content: `**Plateau? Markus Rühl's Durchbruch-Strategien 💥**
+      ares_quote: "Jammern bringt nix. Hantel greifen, Kopf aus – und drücken!",
+      content: `**Plateau? ARES Durchbruch-Strategien 💥**
 
 "Stillstand ist der Feind des Fortschritts!"
 
@@ -100,7 +101,7 @@ function provideMentalCoaching(params: any) {
 • **Instinktives Training:** Auf den Körper hören, was er heute braucht
 • **Form-Check:** Video machen, Technik analysieren
 
-**💡 Rühls Weisheit:**
+**💡 ARES Weisheit:**
 "Plateau bedeutet: Du machst seit Wochen das Gleiche. Zeit für Veränderung!"
 
 **Nächste Schritte:**
@@ -115,10 +116,10 @@ function provideMentalCoaching(params: any) {
 
     injury_comeback: {
       title: "Comeback nach Verletzung",
-      markus_quote: "Rückschläge sind temporär, solange man den Biss behält!",
-      content: `**Markus Rühl's Comeback-Mentalität 🔥**
+      ares_quote: "Rückschläge sind temporär, solange man den Biss behält!",
+      content: `**ARES Comeback-Mentalität 🔥**
 
-"2001 warfen mich Verletzungen zurück. 2002 gewann ich die Night of Champions!"
+"Verletzungen werfen dich zurück. Aber ARES kommt immer stärker zurück!"
 
 **🎯 Comeback-Strategie:**
 • **Geduld mit System:** Langsam aufbauen, aber konstant vorwärts
@@ -130,7 +131,7 @@ function provideMentalCoaching(params: any) {
 • **Kleine Ziele:** Jede Woche 1% besser werden
 • **Erfolge feiern:** Jeden kleinen Fortschritt wertschätzen
 
-**💪 Rühls Comeback-Formel:**
+**💪 ARES Comeback-Formel:**
 1. **Woche 1-4:** Bewegung und Mobilität (50% vom alten Gewicht)
 2. **Woche 5-8:** Kraftaufbau (70% vom alten Gewicht)
 3. **Woche 9-12:** Vollgas zurück (90%+ vom alten Gewicht)
@@ -146,8 +147,8 @@ function provideMentalCoaching(params: any) {
 
     competition_prep: {
       title: "Wettkampf-Mentalität",
-      markus_quote: "Cool bleiben unter Druck - Routine schafft Gelassenheit!",
-      content: `**Markus Rühl's Wettkampf-Mindset 🏆**
+      ares_quote: "Cool bleiben unter Druck - Routine schafft Gelassenheit!",
+      content: `**ARES Wettkampf-Mindset 🏆**
 
 "Auf der Bühne selbst wirke ich entspannt - aber die Vorbereitung ist gnadenlos!"
 
@@ -161,13 +162,13 @@ function provideMentalCoaching(params: any) {
 • **Aufwärmen:** Leichte Gewichte, Muskeln prall machen
 • **Show-Time:** "Die Arbeit ist getan - jetzt gehört die Bühne dir!"
 
-**💡 Rühls Wettkampf-Weisheiten:**
+**💡 ARES Wettkampf-Weisheiten:**
 • "In den Gänsehaut-Momenten vergisst du alle Qualen der Vorbereitung"
 • "Routine schafft Gelassenheit - durch viele Auftritte wird Lampenfieber besiegt"
 • "Mental stark sein heißt nicht verbissen sein - fokussiert, aber fähig zu lachen"
 
 **🏅 Erfolgs-Mindset:**
-"Ruuuühl!" - Wenn die Halle deinen Namen ruft, weißt du: Es war alles wert!`,
+"ARES!" - Wenn die Halle deinen Namen ruft, weißt du: Es war alles wert!`,
       actions: [
         { label: "Wettkampf-Routine planen", action: "plan_competition_routine" },
         { label: "Visualisierung starten", action: "start_visualization" }
@@ -176,10 +177,10 @@ function provideMentalCoaching(params: any) {
 
     diet_discipline: {
       title: "Diät-Disziplin",
-      markus_quote: "Hölle auf Erden - aber das Resultat ist es wert!",
-      content: `**Markus Rühl's Diät-Durchhaltevermögen 😤**
+      ares_quote: "Hölle auf Erden - aber das Resultat ist es wert!",
+      content: `**ARES Diät-Durchhaltevermögen 😤**
 
-"16 Wochen Mr. Olympia Prep - ohne eine einzige Ausnahme!"
+"16 Wochen Wettkampf Prep - ohne eine einzige Ausnahme!"
 
 **🔥 Diät-Mental-Tricks:**
 • **Ziel vor Augen:** Bühnenform visualisieren, Fotos anschauen
@@ -191,7 +192,7 @@ function provideMentalCoaching(params: any) {
 • **Heißhunger:** "Jede Versuchung überwunden macht dich stärker"
 • **Energie im Keller:** "Die Definition steigt, während die Energie sinkt"
 
-**💪 Rühls Diät-Mantras:**
+**💪 ARES Diät-Mantras:**
 • "Jeden Tag mit knurrendem Magen aufstehen und ins Bett gehen"
 • "Die Energie ist im Keller, aber die Form wird legendär"
 • "Nach dem Wettkampf ist vor dem Cheat-Meal"
@@ -212,7 +213,7 @@ function provideMentalCoaching(params: any) {
   // Add recent setback handling
   if (recentSetback) {
     selectedStrategy.content += `\n\n**🔥 Wegen deinem Rückschlag:**
-"Auch ich hatte 2001 schwere Phasen. 2002 kam ich stärker zurück! 
+"Auch ARES hatte schwere Phasen. Aber ARES kommt immer stärker zurück! 
 Rückschläge sind Sprungbretter - nutze die Wut und mach sie zu deinem Antrieb!"`;
   }
 
@@ -227,9 +228,11 @@ Du denkst zu viel - handeln ist angesagt! Die ersten 5 Minuten entscheiden!"`;
     content: `${selectedStrategy.content}`,
     preview_card: {
       title: selectedStrategy.title,
-      description: selectedStrategy.markus_quote,
+      description: selectedStrategy.ares_quote,
       content: `Mental Toughness Level: ${motivationLevel}/10 | Challenge: ${challengeType}`,
       actions: selectedStrategy.actions || []
     }
   };
 }
+
+export default handleMentalToughnessCoach;

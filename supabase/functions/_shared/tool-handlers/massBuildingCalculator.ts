@@ -5,7 +5,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 );
 
-export default async function handleMassBuildingCalculator(conv: any[], userId: string, args: any) {
+async function handleMassBuildingCalculator(conv: any[], userId: string, args: any) {
   try {
     const { 
       current_weight, 
@@ -59,7 +59,7 @@ export default async function handleMassBuildingCalculator(conv: any[], userId: 
 **🥑 Fette:** ${massCalculations.fats_grams}g (${massCalculations.fats_calories} kcal)
 *Nussmus, Avocado, Eigelb - natürliche Quellen*
 
-## **Markus' Masse-Strategien:**
+## **ARES Masse-Strategien:**
 
 **📅 Mahlzeiten-Timing:**
 • **5-6 Mahlzeiten** über den Tag verteilt
@@ -67,7 +67,7 @@ export default async function handleMassBuildingCalculator(conv: any[], userId: 
 • **Post-Workout:** ${Math.round(massCalculations.daily_calories * 0.25)} kcal (3 Messlöffel Whey + Kohlenhydrate)
 • **Vor dem Schlafen:** ${Math.round(massCalculations.daily_calories * 0.15)} kcal (Magerquark + Nüsse)
 
-**🛒 Rühls Einkaufsliste:**
+**🛒 ARES Einkaufsliste:**
 • Magerquark, Haferflocken, Reis, Hühnchen, Rindfleisch, Fisch
 • Eier (viele!), Vollmilch, Bananen, Kartoffeln
 • *"Keine ausgefallenen Superfoods - bodenständige Massenkost!"*
@@ -78,7 +78,7 @@ export default async function handleMassBuildingCalculator(conv: any[], userId: 
 **Ziel:** +${goal_weight_gain_per_week || 0.5}kg/Woche = ${massCalculations.target_weight}kg in 12 Wochen`,
 
       preview_card: {
-        title: "Mass Building Plan - Markus Rühl",
+        title: "Mass Building Plan - ARES",
         description: `${massCalculations.daily_calories} kcal • ${massCalculations.protein_grams}g Protein • ${massCalculations.carbs_grams}g Carbs`,
         content: `Ziel: +${goal_weight_gain_per_week || 0.5}kg/Woche | 5-6 Mahlzeiten täglich`,
         actions: [
@@ -100,7 +100,7 @@ export default async function handleMassBuildingCalculator(conv: any[], userId: 
     console.error('Error in massBuildingCalculator:', error);
     return {
       role: 'assistant',
-      content: "Fehler beim Berechnen der Masse-Makros. Markus würde sagen: 'Erstmal ordentlich essen, dann nochmal rechnen!' 🍽️"
+      content: "Fehler beim Berechnen der Masse-Makros. ARES würde sagen: 'Erstmal ordentlich essen, dann nochmal rechnen!' 🍽️"
     };
   }
 }
@@ -116,41 +116,41 @@ function calculateMassBuildingNeeds(params: any) {
     currentBodyFat
   } = params;
 
-  // Markus Rühl's approach: Higher calories for mass building
+  // ARES approach: Higher calories for mass building
   // Base BMR calculation (Mifflin-St Jeor)
   const bmr = (10 * currentWeight) + (6.25 * height) - (5 * age) + 5;
 
-  // Activity multipliers (Markus style - higher for heavy training)
+  // Activity multipliers (ARES style - higher for heavy training)
   const activityMultipliers = {
     'sedentary': 1.2,
     'lightly_active': 1.375,
     'moderately_active': 1.55,
-    'very_active': 1.725,      // Markus standard
+    'very_active': 1.725,      // ARES standard
     'extremely_active': 1.9    // Contest prep training
   };
 
-  // Training intensity bonus (Markus Heavy Training)
+  // Training intensity bonus (ARES Heavy Training)
   const intensityMultipliers = {
     'light': 1.0,
     'moderate': 1.1,
-    'heavy': 1.2,      // Markus signature
+    'heavy': 1.2,      // ARES signature
     'extreme': 1.3
   };
 
   const maintenanceCalories = bmr * (activityMultipliers[activityLevel] || 1.725);
   const trainingBonus = maintenanceCalories * (intensityMultipliers[trainingIntensity] - 1);
   
-  // Markus approach: Surplus for mass (500-800 kcal above maintenance)
+  // ARES approach: Surplus for mass (500-800 kcal above maintenance)
   const surplus = goalWeightGain * 1100; // ~1100 kcal per kg weight gain per week
   const dailyCalories = Math.round(maintenanceCalories + trainingBonus + surplus);
 
-  // Markus Rühl macro distribution for mass building
+  // ARES macro distribution for mass building
   // Higher protein and carbs for growth
-  const proteinPerKg = trainingIntensity === 'heavy' ? 3.0 : 2.5; // Markus goes high
+  const proteinPerKg = trainingIntensity === 'heavy' ? 3.0 : 2.5; // ARES goes high
   const proteinGrams = Math.round(currentWeight * proteinPerKg);
   const proteinCalories = proteinGrams * 4;
 
-  // Carbs: 6-8g per kg for heavy training (Markus standard)
+  // Carbs: 6-8g per kg for heavy training (ARES standard)
   const carbsPerKg = 6.5;
   const carbsGrams = Math.round(currentWeight * carbsPerKg);
   const carbsCalories = carbsGrams * 4;
@@ -184,7 +184,7 @@ function calculateMassBuildingNeeds(params: any) {
     target_weight: targetWeight,
     weeks_to_target: weeksToTarget,
     
-    // Markus specific recommendations
+    // ARES specific recommendations
     meal_frequency: 5,
     post_workout_carbs: Math.round(carbsGrams * 0.4), // 40% post-workout
     pre_sleep_protein: Math.round(proteinGrams * 0.2), // 20% casein before bed
@@ -218,3 +218,5 @@ function calculateMassBuildingNeeds(params: any) {
     }
   };
 }
+
+export default handleMassBuildingCalculator;
