@@ -235,7 +235,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
   }
 
   // Defer options: clarify / choice_suggest / confirm_* → schedule after delay
-  if (res.kind === 'clarify' || (res as any).kind === 'choice_suggest' || res.kind === 'confirm_save_meal' || (res as any).kind === 'confirm_save_supplement') {
+  if (res.kind === 'clarify' || (res as any).kind === 'choice_suggest' || res.kind === 'confirm_save_meal' || (res as any).kind === 'confirm_save_supplement' || (res as any).kind === 'confirm_parse_training' || (res as any).kind === 'confirm_save_training') {
     // Show the conversational prompt as a bubble immediately
     const promptText = (res as any).prompt || 'Wie sollen wir fortfahren?';
     const assistantMessage: EnhancedChatMessage = {
@@ -302,16 +302,27 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
 // Show choices now
 function showChoices(reply: OrchestratorReply) {
   const anyReply: any = reply as any;
-  const opts = anyReply.options ?? (anyReply.kind?.toString().startsWith('confirm_save')
-    ? ['Speichern', 'Dosis/Timing anpassen', 'Später']
-    : ['Kurze Analyse', 'Speichern', 'Später']
-  );
+  const opts = anyReply.options ?? (() => {
+    if (anyReply.kind === 'confirm_parse_training') {
+      return ['Ja, strukturieren', 'Nein, anders'];
+    } else if (anyReply.kind === 'confirm_save_training') {
+      return ['Ja, speichern', 'Nein, nur anzeigen'];
+    } else if (anyReply.kind?.toString().startsWith('confirm_save')) {
+      return ['Speichern', 'Dosis/Timing anpassen', 'Später'];
+    } else {
+      return ['Kurze Analyse', 'Speichern', 'Später'];
+    }
+  })();
 
   // Hold pending proposals but do NOT open modals yet
   if (reply.kind === 'confirm_save_meal') {
     setPendingMeal({ prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
   } else if (anyReply.kind === 'confirm_save_supplement') {
     setPendingSupplement({ prompt: anyReply.prompt, proposal: anyReply.proposal, traceId: anyReply.traceId });
+  } else if (anyReply.kind === 'confirm_parse_training') {
+    setLastProposal({ kind: 'training_parse', data: { tool_plan: anyReply.tool_plan } });
+  } else if (anyReply.kind === 'confirm_save_training') {
+    setLastProposal({ kind: 'training_save', data: { parsed_data: anyReply.parsed_data } });
   }
 
   setChoiceChips(opts);
@@ -348,6 +359,8 @@ const onChipClick = useCallback(async (label: string) => {
   // Map Label → Follow-up Text
   let text = '';
   if (label.startsWith('Kurze Analyse')) text = 'mehr info';
+  else if (label === 'Ja, strukturieren' || label === 'Ja, speichern') text = 'ja';
+  else if (label === 'Nein, anders' || label === 'Nein, nur anzeigen') text = 'nein';
   else if (label.startsWith('Speichern')) text = 'speichern';
   else if (label.toLowerCase().includes('dosis') || label.toLowerCase().includes('timing')) text = 'dosis timing anpassen';
   if (!text) return;
@@ -356,6 +369,7 @@ const onChipClick = useCallback(async (label: string) => {
   const ctx: any = { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), followup: true, coachId: coach?.id || 'lucy' };
   if (pendingSupplement) ctx.last_proposal = { kind: 'supplement', data: pendingSupplement.proposal };
   if (pendingMeal) ctx.last_proposal = { kind: 'meal', data: pendingMeal.proposal };
+  if (lastProposal) ctx.last_proposal = lastProposal;
 
   try {
     const reply = await sendEvent(user.id, { type:'TEXT', text, clientEventId, context: ctx } as any);

@@ -26,6 +26,8 @@ type CoachEvent =
 
 type IntentName =
   | "training"
+  | "training.log_format"
+  | "training.plan_build" 
   | "meal"
   | "weight"
   | "diary"
@@ -37,6 +39,14 @@ interface Intent {
   name: IntentName;
   score: number;
   toolCandidate?: string | null;
+  slots?: Record<string, any>;
+  should_use_tool?: boolean;
+  tool_plan?: {
+    name: string;
+    input: Record<string, any>;
+    expected_output: string[];
+  };
+  need_user_confirm?: boolean;
 }
 
 type OrchestratorReply =
@@ -45,7 +55,9 @@ type OrchestratorReply =
   | { kind: "choice_suggest"; prompt: string; options: string[]; traceId?: string }
   | { kind: "clarify"; prompt: string; options: string[]; traceId?: string }
   | { kind: "confirm_save_meal"; prompt: string; proposal: any; traceId?: string }
-  | { kind: "confirm_save_supplement"; prompt: string; proposal: any; traceId?: string };
+  | { kind: "confirm_save_supplement"; prompt: string; proposal: any; traceId?: string }
+  | { kind: "confirm_parse_training"; prompt: string; tool_plan: any; traceId?: string }
+  | { kind: "confirm_save_training"; prompt: string; parsed_data: any; traceId?: string };
 
 // Thresholds
 const THRESHOLDS = { tool: 0.7, clarify: 0.4 };
@@ -125,11 +137,49 @@ function detectIntentWithConfidence(event: CoachEvent): Intent {
   // Text based heuristic
   const txt = event.type === "TEXT" ? (event.text || "") : "";
   const lower = txt.toLowerCase();
-  if (/(bankdr|satz|rpe|wdh|reps|training|workout)/.test(lower)) return { name: "training", score: 0.85, toolCandidate: "training-orchestrator" };
+  
+  // Enhanced training detection with sub-intents
+  if (/(bankdr|satz|rpe|wdh|reps|training|workout|pulldown|latziehen|seated row|rudern|kg|x\s*\d+|\d+\s*x)/.test(lower)) {
+    // Check if this is a training log (completed session) vs plan (future session)
+    const hasCompletedSignals = /(heute|gemacht|absolviert|fertig|geschafft|war|hatte)/.test(lower);
+    const hasSetPattern = /\d+\s*(?:x|×|\*)\s*\d+(?:\.\d+)?\s*kg/.test(lower);
+    const hasMultipleExercises = (lower.match(/(pulldown|latziehen|seated row|rudern|bankdr|kniebeugen|squats|kreuzheben)/g) || []).length > 1;
+    
+    if ((hasCompletedSignals || hasSetPattern) && hasMultipleExercises) {
+      // This looks like a training log that should be parsed
+      return {
+        name: "training.log_format",
+        score: 0.92,
+        toolCandidate: "training-log-parser",
+        slots: {
+          raw_text: txt,
+          language: "de",
+          superset_hint: /(superset|supersatz|kombination|zusammen)/.test(lower)
+        },
+        should_use_tool: true,
+        tool_plan: {
+          name: "training_log_parser",
+          input: { raw_text: txt, locale: "de-DE", defaults: { units: "kg", tempo_hint: true } },
+          expected_output: ["formatted_markdown", "normalized_json"]
+        },
+        need_user_confirm: true
+      };
+    } else if (/(plan|planen|nächstes|kommend|soll|will|möchte)/.test(lower)) {
+      return {
+        name: "training.plan_build",
+        score: 0.85,
+        toolCandidate: "training-orchestrator"
+      };
+    } else {
+      return { name: "training", score: 0.85, toolCandidate: "training-orchestrator" };
+    }
+  }
+  
   if (/(kalorien|kcal|skyr|banane|essen|mahlzeit|meal)/.test(lower)) return { name: "meal", score: 0.82, toolCandidate: "analyze-meal" };
   if (/(gewicht|kg|wiegen)/.test(lower)) return { name: "weight", score: 0.76, toolCandidate: "weight" };
   if (/(tagebuch|journal|stimmung|gratitude)/.test(lower)) return { name: "diary", score: 0.72, toolCandidate: "diary" };
   if (/(supplement|creatin|omega|vitamin|kapsel|dose)/.test(lower)) return { name: "supplement", score: 0.74, toolCandidate: "supplement" };
+  
   // Image heuristic via context
   if (event.type === "IMAGE") {
     const t = event.context?.image_type;
@@ -567,6 +617,96 @@ serve(async (req) => {
         }
       }
 
+      // Handle training follow-ups - for training log parsing confirmations
+      if (lp?.kind === 'training_parse' && (followUpAction === 'save' || text.includes('ja') || text.includes('ok'))) {
+        // User confirmed training log parsing - execute the tool
+        const toolPlan = lp.data?.tool_plan;
+        if (toolPlan?.name === 'training_log_parser') {
+          await logTraceEvent(supabase, { traceId, userId, stage: 'tool_exec', handler: 'training-log-parser', status: 'RUNNING' });
+          const { data, error } = await supabase.functions.invoke('training-log-parser', {
+            body: { 
+              ...toolPlan.input,
+              request_id: crypto.randomUUID()
+            },
+            headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode },
+          });
+          await logTraceEvent(supabase, { traceId, userId, stage: 'tool_result', handler: 'training-log-parser', status: error ? 'ERROR' : 'OK' });
+          
+          if (error) {
+            const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone('Parsing-Fehler. Versuche es nochmal oder schreib mir die Details.'), traceId };
+            await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+            return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          
+          // Show parsed markdown + ask to save
+          const formattedText = data?.formatted_markdown || 'Training geparst.';
+          const savePrompt = '\n\nSoll ich die Session in deinem Trainingslog speichern?';
+          const reply: OrchestratorReply = { 
+            kind: 'confirm_save_training', 
+            prompt: formattedText + savePrompt, 
+            parsed_data: data,
+            traceId 
+          };
+          await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+          return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      if (lp?.kind === 'training_save' && (followUpAction === 'save' || text.includes('ja') || text.includes('ok'))) {
+        // User confirmed saving parsed training data
+        const parsedData = lp.data?.parsed_data;
+        if (parsedData?.normalized_json) {
+          await logTraceEvent(supabase, { traceId, userId, stage: 'tool_exec', handler: 'training-save', status: 'RUNNING' });
+          
+          try {
+            // Save to training_sessions table
+            const session = parsedData.normalized_json;
+            const { data: sessionResult, error: sessionError } = await supabase
+              .from('training_sessions')
+              .insert({
+                user_id: userId,
+                session_date: session.session_date,
+                split_type: session.split_type,
+                notes: session.notes,
+                client_event_id: event.clientEventId
+              })
+              .select('id')
+              .single();
+
+            if (sessionError) throw sessionError;
+
+            // Save individual exercises and sets
+            for (const exercise of session.exercises) {
+              for (const set of exercise.sets) {
+                await supabase.from('exercise_sets').insert({
+                  user_id: userId,
+                  session_id: sessionResult.id,
+                  exercise_id: null, // Would need exercise lookup
+                  set_number: exercise.sets.indexOf(set) + 1,
+                  weight_kg: set.weight,
+                  reps: set.reps,
+                  rpe: set.rpe,
+                  notes: set.notes || exercise.notes,
+                  date: session.session_date,
+                  client_event_id: event.clientEventId
+                });
+              }
+            }
+
+            await logTraceEvent(supabase, { traceId, userId, stage: 'tool_result', handler: 'training-save', status: 'OK' });
+            const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone('✅ Training gespeichert! Starke Session.'), traceId };
+            await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+            return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          } catch (saveError) {
+            console.error('[TRAINING-SAVE] Error:', saveError);
+            await logTraceEvent(supabase, { traceId, userId, stage: 'tool_result', handler: 'training-save', status: 'ERROR' });
+            const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone('Speicher-Fehler. Training war trotzdem gut!'), traceId };
+            await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+            return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+        }
+      }
+
       // Continue conversation with open intake (no explicit tool request)
       if (followUpAction === 'continue') {
         const [profile, recentSummaries] = await Promise.all([
@@ -856,7 +996,45 @@ serve(async (req) => {
     // High confidence → tool routing
     // reuse clientEventId from earlier idempotency block
 
-    // training
+    // training.log_format → training log parser with user confirmation
+    if (intent.name === "training.log_format") {
+      const slotCoverage = intent.slots?.raw_text ? 0.8 : 0.3;
+      
+      if (intent.score >= 0.8 && slotCoverage >= 0.6 && intent.need_user_confirm) {
+        // Ask for user confirmation before parsing
+        const reply: OrchestratorReply = {
+          kind: "confirm_parse_training",
+          prompt: "Ich kann deinen Trainingslog jetzt strukturieren (Tabellen + Progression). Soll ich?",
+          tool_plan: intent.tool_plan!,
+          traceId
+        };
+        await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+        return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } else {
+        // Need more information - stay in dialog
+        const finalReply = asCoachMessage("Nenn mir kurz Übung + Sätze + Gewichte (oder Foto vom Zettel).", traceId);
+        await markFinal(supabaseState, userId, clientEventId, finalReply, traceId);
+        return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // training.plan_build → regular training orchestrator for planning
+    if (intent.name === "training.plan_build") {
+      const t0 = Date.now();
+      await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_exec', handler: 'training-orchestrator', status: 'RUNNING', payload: { clientEventId } });
+      const { data, error } = await supabase.functions.invoke("training-orchestrator", {
+        body: { userId, clientEventId, event },
+        headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
+      });
+      if (error) throw error;
+      await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_result', handler: 'training-orchestrator', status: 'OK', latencyMs: Date.now() - t0 });
+      const finalText = (data as any)?.text ?? "Training geplant.";
+      const finalReply: OrchestratorReply = { kind: 'message', text: applyCoachTone(finalText), traceId };
+      await markFinal(supabaseState, userId, clientEventId, finalReply, traceId);
+      return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // training (generic) → regular training orchestrator  
     if (intent.name === "training") {
       const t0 = Date.now();
       await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_exec', handler: 'training-orchestrator', status: 'RUNNING', payload: { clientEventId } });
