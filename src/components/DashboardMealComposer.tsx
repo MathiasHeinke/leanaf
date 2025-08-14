@@ -73,8 +73,8 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
   setActiveTab("photo");
   openQuickMealSheet("photo");
 
-  // Route to multi-image-intake if enabled and more than one image
-  if (multiImageEnabled && user?.id && urls.length > 1) {
+  // Route to multi-image-intake if enabled and at least one image
+  if (multiImageEnabled && user?.id && urls.length >= 1) {
     const groupTraceId = crypto.randomUUID();
     const headers: Record<string, string> = {
       'x-trace-id': groupTraceId,
