@@ -266,6 +266,85 @@ serve(async (req) => {
     const persona = await loadCoachPersona(supabase, coachId);
     const memoryHint = await loadRollingSummary(supabase, userId, coachId);
     
+    // ARES-specific voice generation or standard tone application
+    const generateAresResponse = async (userText: string, userProfile: any, analytics: any) => {
+      try {
+        // Build protocol state from user data
+        const protocolState = {
+          training: analytics?.training ? [{
+            date: new Date().toISOString().split('T')[0],
+            session: 'general',
+            lifts: [],
+            rpe_avg: 7,
+            notes: ''
+          }] : [],
+          nutrition: analytics?.nutrition ? [{
+            date: new Date().toISOString().split('T')[0],
+            kcal: analytics.nutrition.avg_calories || 2000,
+            protein_g: analytics.nutrition.avg_protein || 100,
+            carbs_g: analytics.nutrition.avg_carbs || 250,
+            fat_g: analytics.nutrition.avg_fats || 70,
+            meals: 3,
+            notes: ''
+          }] : [],
+          dev: [{
+            date: new Date().toISOString().split('T')[0],
+            sleep_hours: analytics?.sleep?.avg_score ? (analytics.sleep.avg_score * 10 / 100) : 7,
+            mood: 6,
+            stress_keywords: [],
+            misses: 0,
+            alcohol_units: 0,
+            wins: analytics?.training?.workout_days || 0
+          }]
+        };
+
+        // ARES config based on user performance
+        const performanceScore = (analytics?.training?.workout_days || 0) / 7;
+        const aresConfig = {
+          language: 'de' as const,
+          humorHardnessBias: performanceScore > 0.5 ? 0.2 : -0.3,
+          allowDrill: true,
+          sentenceLength: {
+            scale: 0.3, // Short sentences for ARES
+            minWords: 3,
+            maxWords: 8,
+            jitter: 0.2
+          },
+          archetypeBlend: {
+            commander: performanceScore > 0.7 ? 0.4 : 0.2,
+            smith: 0.3,
+            father: performanceScore < 0.3 ? 0.2 : 0.1,
+            sage: 0.1,
+            comrade: 0.2,
+            hearth: 0.1,
+            drill: performanceScore > 0.8 ? 0.1 : 0.05
+          }
+        };
+
+        // Context tags from user text and situation
+        const contextTags: string[] = [];
+        const lowerText = userText.toLowerCase();
+        if (/(training|workout|kraft)/.test(lowerText)) contextTags.push('push-day');
+        if (/(abend|spät|müde)/.test(lowerText)) contextTags.push('evening');
+        if (/(schlecht|miss|fail)/.test(lowerText)) contextTags.push('missed');
+
+        // Call ARES voice generator
+        const { data: aresResult, error } = await supabase.functions.invoke('ares-voice-generator', {
+          body: { cfg: aresConfig, state: protocolState, contextTags }
+        });
+
+        if (error || !aresResult?.text) {
+          console.error('ARES generator error:', error);
+          return 'Wer jammert, hat schon verloren.'; // Fallback signature
+        }
+
+        return aresResult.text;
+      } catch (error) {
+        console.error('ARES response generation failed:', error);
+        return 'Schwer ist korrekt. Weiter.'; // Fallback signature
+      }
+    };
+
     // Coach-specific tone functions
     const applyCoachTone = (txt: string) => {
       if (coachId === 'ares') {
@@ -342,13 +421,35 @@ serve(async (req) => {
     // Follow-up hint from FE (important to avoid reflect loop)
     const isFollowUp = Boolean(event?.context?.followup) || Boolean(event?.context?.last_proposal);
 
-    // 1) OPEN-INTAKE: First response → LLM-first, conversational Lucy
+    // 1) OPEN-INTAKE: First response → ARES voice generator or LLM-first
     if (!isFollowUp && event?.type === 'TEXT') {
-      const [profile, recentSummaries] = await Promise.all([
+      const [profile, recentSummaries, analytics] = await Promise.all([
         loadUserProfile(supabase, userId),
-        loadRecentDailySummaries(supabase, userId, 3)
+        loadRecentDailySummaries(supabase, userId, 3),
+        coachId === 'ares' ? supabase.rpc('get_coach_analytics_7d', { p_user_id: userId }).then(r => r.data || {}) : Promise.resolve({})
       ]);
       
+      // ARES: Use voice generator instead of LLM
+      if (coachId === 'ares') {
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'ares_voice_gen', handler: 'coach-orchestrator-enhanced', status: 'RUNNING' });
+        
+        const aresText = await generateAresResponse(event.text ?? '', profile, analytics);
+        
+        const reply = { 
+          kind: 'message' as const, 
+          text: aresText, 
+          traceId 
+        };
+        
+        await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'ares_voice_gen', handler: 'coach-orchestrator-enhanced', status: 'OK' });
+        
+        return new Response(JSON.stringify(reply), { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+      
+      // Other coaches: Use LLM
       const out = await llmOpenIntake({ 
         userText: event.text ?? '', 
         coachId, 
@@ -1012,7 +1113,37 @@ serve(async (req) => {
       return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Default fallback safety
+    // Default fallback safety - ARES gets voice generator for non-tool responses
+    if (coachId === 'ares' && event.type === 'TEXT') {
+      await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'ares_fallback', handler: 'coach-orchestrator-enhanced', status: 'RUNNING' });
+      
+      try {
+        const [profile, analytics] = await Promise.all([
+          loadUserProfile(supabase, userId),
+          supabase.rpc('get_coach_analytics_7d', { p_user_id: userId }).then(r => r.data || {})
+        ]);
+        
+        const aresText = await generateAresResponse(event.text ?? '', profile, analytics);
+        
+        const reply: OrchestratorReply = { 
+          kind: 'message', 
+          text: aresText, 
+          traceId 
+        };
+        
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'ares_fallback', handler: 'coach-orchestrator-enhanced', status: 'OK' });
+        
+        // Mark as final in client_events
+        await markFinal(supabaseState, userId, clientEventId, reply, traceId);
+        return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (error) {
+        console.error('ARES fallback failed:', error);
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'ares_fallback', handler: 'coach-orchestrator-enhanced', status: 'ERROR', errorMessage: String(error) });
+        // Fall through to standard fallback
+      }
+    }
+    
+    // Standard fallback for other coaches
     const out = await fallbackFlow(userId, traceId, event, intent, {
       buildManualAnswer: async () => "Ich antworte dir direkt – sag mir Training/Ernährung/Gewicht/Diary. Feature ist notiert.",
       logUnmetTool: (args) => logUnmetTool(supabase, args),
