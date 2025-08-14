@@ -116,7 +116,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   // Card order state
   const [cardOrder, setCardOrder] = useState<string[]>(() => {
     const savedOrder = localStorage.getItem('quickInputCardOrder');
-    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'workout', 'supplements', 'fluids', 'mindset'];
+    return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'measurements', 'workout', 'supplements', 'fluids', 'mindset'];
   });
 
   // Load user data
