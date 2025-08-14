@@ -6469,6 +6469,28 @@ export type Database = {
         }
         Returns: Json
       }
+      search_ares_ultimate_knowledge: {
+        Args: {
+          match_count?: number
+          query_embedding: string
+          query_text: string
+          semantic_weight?: number
+          text_weight?: number
+          user_context?: Json
+        }
+        Returns: {
+          coach_id: string
+          combined_score: number
+          content_chunk: string
+          cross_domain_boost: number
+          expertise_area: string
+          knowledge_id: string
+          semantic_score: number
+          text_score: number
+          title: string
+          ultimate_relevance: number
+        }[]
+      }
       search_foods_by_text: {
         Args: { match_count?: number; search_query: string }
         Returns: {
