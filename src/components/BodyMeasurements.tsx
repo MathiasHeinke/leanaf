@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
-import { Ruler, Plus, Edit, CheckCircle } from "lucide-react";
+import { Ruler, Plus, Edit, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -12,10 +12,12 @@ import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
-
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
-import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 import { CoachFeedbackCard } from "./CoachFeedbackCard";
+import { Card } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Progress } from "@/components/ui/progress";
+import { SmartChip } from './ui/smart-chip';
 
 interface BodyMeasurementsProps {
   onMeasurementsAdded?: () => void;
@@ -36,6 +38,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [createNewEntry, setCreateNewEntry] = useState(false);
+  const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { awardPoints, getPointsForActivity } = usePointsSystem();
@@ -189,280 +192,359 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
 
   const isCompleted = !!hasMeasurementsThisWeek;
 
+  // Smart Chips for quick measurement actions
+  const measurementChips = [
+    { label: "Bearbeiten", action: () => setIsEditing(true) },
+    { label: "Neuer Eintrag", action: () => {
+      setMeasurements({
+        neck: "",
+        chest: "",
+        waist: "",
+        belly: "",
+        hips: "",
+        arms: "",
+        thigh: "",
+        notes: ""
+      });
+      setCreateNewEntry(true);
+      setIsEditing(true);
+    }}
+  ];
+
   return (
-    <CollapsibleQuickInput
-      title={hasMeasurementsThisWeek && !isEditing ? "Maße erfasst! 📏" : "Körpermaße"}
-      icon={<Ruler className="h-4 w-4 text-white" />}
-      isCompleted={isCompleted}
-      defaultOpen={false}
-      theme="cyan"
-    >
-      {hasMeasurementsThisWeek && !isEditing ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-medium text-foreground">Maße erfasst! 📏</h3>
-            </div>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <Card className="p-4">
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center justify-between cursor-pointer">
             <div className="flex items-center gap-2">
-              <InfoButton
-                title="Körpermaße - Messanleitung"
-                description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
-                scientificBasis="Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht, da sie Muskelaufbau und Fettabbau separat erfassen."
-                tips={[
-                  "🦢 **Halsumfang:** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
-                  "💪 **Oberarmumfang:** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
-                  "🫀 **Brustumfang:** Miss waagerecht um die breiteste Stelle der Brust.",
-                  "🎯 **Taillenumfang:** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
-                  "🔄 **Bauchumfang:** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
-                  "🍑 **Hüftumfang:** Miss waagerecht am weitesten Punkt des Hinterns.",
-                  "🦵 **Oberschenkelumfang:** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
-                  "",
-                  "⏰ **Wichtige Tipps:**",
-                  "• Miss zur gleichen Tageszeit (am besten morgens)",
-                  "• Maßband parallel zum Boden halten",
-                  "• Nicht zu fest anziehen, aber auch nicht zu locker",
-                  "• Bei normaler Atmung messen, Bauch nicht anspannen",
-                  "• Wöchentliche Messungen für beste Trends"
-                ]}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsEditing(true)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setMeasurements({
-                    neck: "",
-                    chest: "",
-                    waist: "",
-                    belly: "",
-                    hips: "",
-                    arms: "",
-                    thigh: "",
-                    notes: ""
-                  });
-                  setCreateNewEntry(true);
-                  setIsEditing(true);
-                }}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
+              <Ruler className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-semibold">Körpermaße</h2>
             </div>
+            <button
+              type="button"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {open ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
           </div>
-          
-          <PointsBadge 
-            points={5} 
-            icon="📏"
-            animated={false}
-            variant="secondary"
-          />
-          
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {todaysMeasurements?.neck && (
-              <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
-            )}
-            {todaysMeasurements?.chest && (
-              <div><strong>Brust:</strong> {todaysMeasurements.chest}cm</div>
-            )}
-            {todaysMeasurements?.waist && (
-              <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
-            )}
-            {todaysMeasurements?.belly && (
-              <div><strong>Bauch:</strong> {todaysMeasurements.belly}cm</div>
-            )}
-            {todaysMeasurements?.hips && (
-              <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
-            )}
-            {todaysMeasurements?.arms && (
-              <div><strong>Arme:</strong> {todaysMeasurements.arms}cm</div>
-            )}
-            {todaysMeasurements?.thigh && (
-              <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
-            )}
-          </div>
-          
-          <CoachFeedbackCard 
-            coachName="Lucy"
-            coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
-            measurementData={todaysMeasurements}
-            userId={user?.id}
-            type="measurement"
-          />
-          
-          <div className="bg-card rounded-lg p-3">
-            <p className="text-xs text-muted-foreground mb-2">
-              <strong>Tipp:</strong> Miss zur gleichen Zeit für beste Vergleichbarkeit!
-            </p>
-            <p className="text-xs text-muted-foreground">
-              • Morgens vor dem Essen für konsistente Werte
-              • Maßband parallel zum Boden halten
-              • Immer an derselben Körperstelle messen
-              • Wöchentlich messen für langfristige Trends
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              <strong>Nächste Messung:</strong> Nächste Woche 📏
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-foreground">
-                {hasMeasurementsThisWeek && !createNewEntry ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
-              </h3>
-              <InfoButton
-                title="Körpermaße - Messanleitung"
-                description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
-                scientificBasis="Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht, da sie Muskelaufbau und Fettabbau separat erfassen."
-                tips={[
-                  "🦢 **Halsumfang:** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
-                  "💪 **Oberarmumfang:** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
-                  "🫀 **Brustumfang:** Miss waagerecht um die breiteste Stelle der Brust.",
-                  "🎯 **Taillenumfang:** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
-                  "🔄 **Bauchumfang:** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
-                  "🍑 **Hüftumfang:** Miss waagerecht am weitesten Punkt des Hinterns.",
-                  "🦵 **Oberschenkelumfang:** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
-                  "",
-                  "⏰ **Wichtige Tipps:**",
-                  "• Miss zur gleichen Tageszeit (am besten morgens)",
-                  "• Maßband parallel zum Boden halten",
-                  "• Nicht zu fest anziehen, aber auch nicht zu locker",
-                  "• Bei normaler Atmung messen, Bauch nicht anspannen",
-                  "• Wöchentliche Messungen für beste Trends"
-                ]}
+        </CollapsibleTrigger>
+
+        {/* Collapsed summary when card is closed */}
+        {!open && isCompleted && (
+          <div className="mt-3 space-y-1 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="font-medium">
+                Maße erfasst 📏
+              </div>
+              <Progress
+                className="h-2 w-24 md:w-32"
+                value={100}
+                aria-label="Maße erfasst"
               />
             </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Hals (cm)</label>
-                  <NumericInput
-                    placeholder="32.0"
-                    value={measurements.neck}
-                    onChange={(value) => handleInputChange('neck', value)}
-                    allowDecimals={true}
-                    min={0}
-                    max={100}
-                  />
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {todaysMeasurements?.waist && (
+                <>
+                  <span className="font-medium text-primary">
+                    Taille {todaysMeasurements.waist}cm
+                  </span>
+                  <span className="text-muted-foreground">·</span>
+                </>
+              )}
+              {todaysMeasurements?.chest && (
+                <span className="font-medium text-secondary">
+                  Brust {todaysMeasurements.chest}cm
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Collapsed summary for non-completed state */}
+        {!open && !isCompleted && (
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center gap-3">
+              <Progress
+                className="h-2 w-24 md:w-32 animate-pulse border border-dashed border-muted-foreground/30"
+                value={0}
+                aria-label="Bereit für Eingabe"
+              />
+              <SmartChip variant="primary" size="sm" onClick={() => setOpen(true)}>
+                Jetzt erfassen
+              </SmartChip>
+            </div>
+          </div>
+        )}
+
+        {/* Smart Chips for quick actions - visible in both collapsed and expanded states */}
+        {hasMeasurementsThisWeek && measurementChips.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-3">
+            {measurementChips.map((chip, index) => (
+              <SmartChip key={index} variant="secondary" size="default" onClick={chip.action}>
+                {chip.label}
+              </SmartChip>
+            ))}
+          </div>
+        )}
+
+        <CollapsibleContent>
+          {hasMeasurementsThisWeek && !isEditing ? (
+            <div className="mt-3 space-y-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-primary" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-foreground">Maße erfasst! 📏</h3>
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Brust (cm)</label>
-                  <NumericInput
-                    placeholder="95.0"
-                    value={measurements.chest}
-                    onChange={(value) => handleInputChange('chest', value)}
-                    allowDecimals={true}
-                    min={0}
-                    max={200}
+                <div className="flex items-center gap-2">
+                  <InfoButton
+                    title="Körpermaße - Messanleitung"
+                    description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
+                    scientificBasis="Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht, da sie Muskelaufbau und Fettabbau separat erfassen."
+                    tips={[
+                      "🦢 **Halsumfang:** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
+                      "💪 **Oberarmumfang:** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
+                      "🫀 **Brustumfang:** Miss waagerecht um die breiteste Stelle der Brust.",
+                      "🎯 **Taillenumfang:** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
+                      "🔄 **Bauchumfang:** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
+                      "🍑 **Hüftumfang:** Miss waagerecht am weitesten Punkt des Hinterns.",
+                      "🦵 **Oberschenkelumfang:** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
+                      "",
+                      "⏰ **Wichtige Tipps:**",
+                      "• Miss zur gleichen Tageszeit (am besten morgens)",
+                      "• Maßband parallel zum Boden halten",
+                      "• Nicht zu fest anziehen, aber auch nicht zu locker",
+                      "• Bei normaler Atmung messen, Bauch nicht anspannen",
+                      "• Wöchentliche Messungen für beste Trends"
+                    ]}
                   />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Taille (cm)</label>
-                  <NumericInput
-                    placeholder="85.0"
-                    value={measurements.waist}
-                    onChange={(value) => handleInputChange('waist', value)}
-                    allowDecimals={true}
-                    min={0}
-                    max={200}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Bauch (cm)</label>
-                  <NumericInput
-                    placeholder="90.0"
-                    value={measurements.belly}
-                    onChange={(value) => handleInputChange('belly', value)}
-                    allowDecimals={true}
-                    min={0}
-                    max={200}
-                  />
-                </div>
-              
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Hüfte (cm)</label>
-                  <NumericInput
-                    placeholder="95.0"
-                    value={measurements.hips}
-                    onChange={(value) => handleInputChange('hips', value)}
-                    allowDecimals={true}
-                    min={0}
-                    max={200}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Arme (cm)</label>
-                  <NumericInput
-                    placeholder="35.0"
-                    value={measurements.arms}
-                    onChange={(value) => handleInputChange('arms', value)}
-                    allowDecimals={true}
-                    min={0}
-                    max={200}
-                  />
-                </div>
-                
-                <div className="col-span-2 space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Oberschenkel (cm)</label>
-                  <NumericInput
-                    placeholder="55.0"
-                    value={measurements.thigh}
-                    onChange={(value) => handleInputChange('thigh', value)}
-                    allowDecimals={true}
-                    min={0}
-                    max={200}
-                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="text-primary border-primary/30 hover:bg-primary/10"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">
-                  Notizen <span className="text-xs opacity-60">(optional)</span>
-                </label>
-                <Input
-                  value={measurements.notes}
-                  onChange={(e) => handleInputChange('notes', e.target.value)}
-                  placeholder="z.B. besondere Umstände, Tageszeit..."
-                  className="text-sm"
+              
+              {/* Points badges directly under title */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <PointsBadge 
+                  points={5} 
+                  icon="📏"
+                  animated={false}
+                  variant="secondary"
                 />
               </div>
-
-              <div className="flex items-center gap-3 pt-2">
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  {isSubmitting ? "Speichere..." : hasMeasurementsThisWeek && !createNewEntry ? "Aktualisieren" : "Eintragen"}
-                </Button>
-                
-                {(isEditing || createNewEntry) && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setIsEditing(false);
-                      setCreateNewEntry(false);
-                    }}
-                    className="px-4"
-                  >
-                    Abbrechen
-                  </Button>
+              
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                {todaysMeasurements?.neck && (
+                  <div><strong>Hals:</strong> {todaysMeasurements.neck}cm</div>
+                )}
+                {todaysMeasurements?.chest && (
+                  <div><strong>Brust:</strong> {todaysMeasurements.chest}cm</div>
+                )}
+                {todaysMeasurements?.waist && (
+                  <div><strong>Taille:</strong> {todaysMeasurements.waist}cm</div>
+                )}
+                {todaysMeasurements?.belly && (
+                  <div><strong>Bauch:</strong> {todaysMeasurements.belly}cm</div>
+                )}
+                {todaysMeasurements?.hips && (
+                  <div><strong>Hüfte:</strong> {todaysMeasurements.hips}cm</div>
+                )}
+                {todaysMeasurements?.arms && (
+                  <div><strong>Arme:</strong> {todaysMeasurements.arms}cm</div>
+                )}
+                {todaysMeasurements?.thigh && (
+                  <div><strong>Oberschenkel:</strong> {todaysMeasurements.thigh}cm</div>
                 )}
               </div>
-            </form>
-          </div>
-      )}
-    </CollapsibleQuickInput>
+              
+              <CoachFeedbackCard 
+                coachName="Lucy"
+                coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
+                measurementData={todaysMeasurements}
+                userId={user?.id}
+                type="measurement"
+              />
+              
+              <div className="bg-card rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-2">
+                  <strong>Tipp:</strong> Miss zur gleichen Zeit für beste Vergleichbarkeit!
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  • Morgens vor dem Essen für konsistente Werte
+                  • Maßband parallel zum Boden halten
+                  • Immer an derselben Körperstelle messen
+                  • Wöchentlich messen für langfristige Trends
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  <strong>Nächste Messung:</strong> Nächste Woche 📏
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-foreground">
+                  {hasMeasurementsThisWeek && !createNewEntry ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
+                </h3>
+                <InfoButton
+                  title="Körpermaße - Messanleitung"
+                  description="Schritt-für-Schritt-Anleitung für korrekte Körpermaße-Messungen. Jede Messung sollte waagerecht und bei normaler Atmung durchgeführt werden."
+                  scientificBasis="Körperumfänge sind oft bessere Indikatoren für Körperzusammensetzung als nur das Körpergewicht, da sie Muskelaufbau und Fettabbau separat erfassen."
+                  tips={[
+                    "🦢 **Halsumfang:** Miss direkt unterhalb des Adamsapfels, etwa auf Höhe des siebten Halswirbels.",
+                    "💪 **Oberarmumfang:** Miss in der Mitte des Oberarmes, zwischen Schulterknochen und Ellenbogen.",
+                    "🫀 **Brustumfang:** Miss waagerecht um die breiteste Stelle der Brust.",
+                    "🎯 **Taillenumfang:** Miss an der schlanksten Stelle, meist 2-5cm über dem Bauchnabel. Bauch nicht einziehen!",
+                    "🔄 **Bauchumfang:** Miss waagerecht genau auf Höhe des Bauchnabels nach normaler Ausatmung.",
+                    "🍑 **Hüftumfang:** Miss waagerecht am weitesten Punkt des Hinterns.",
+                    "🦵 **Oberschenkelumfang:** Miss auf halber Strecke zwischen Kniescheiben-Mittelpunkt und Leistenkanal.",
+                    "",
+                    "⏰ **Wichtige Tipps:**",
+                    "• Miss zur gleichen Tageszeit (am besten morgens)",
+                    "• Maßband parallel zum Boden halten",
+                    "• Nicht zu fest anziehen, aber auch nicht zu locker",
+                    "• Bei normaler Atmung messen, Bauch nicht anspannen",
+                    "• Wöchentliche Messungen für beste Trends"
+                  ]}
+                />
+              </div>
+              
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Hals (cm)</label>
+                    <NumericInput
+                      placeholder="32.0"
+                      value={measurements.neck}
+                      onChange={(value) => handleInputChange('neck', value)}
+                      allowDecimals={true}
+                      min={0}
+                      max={100}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Brust (cm)</label>
+                    <NumericInput
+                      placeholder="95.0"
+                      value={measurements.chest}
+                      onChange={(value) => handleInputChange('chest', value)}
+                      allowDecimals={true}
+                      min={0}
+                      max={200}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Taille (cm)</label>
+                    <NumericInput
+                      placeholder="85.0"
+                      value={measurements.waist}
+                      onChange={(value) => handleInputChange('waist', value)}
+                      allowDecimals={true}
+                      min={0}
+                      max={200}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Bauch (cm)</label>
+                    <NumericInput
+                      placeholder="90.0"
+                      value={measurements.belly}
+                      onChange={(value) => handleInputChange('belly', value)}
+                      allowDecimals={true}
+                      min={0}
+                      max={200}
+                    />
+                  </div>
+                
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Hüfte (cm)</label>
+                    <NumericInput
+                      placeholder="95.0"
+                      value={measurements.hips}
+                      onChange={(value) => handleInputChange('hips', value)}
+                      allowDecimals={true}
+                      min={0}
+                      max={200}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Arme (cm)</label>
+                    <NumericInput
+                      placeholder="35.0"
+                      value={measurements.arms}
+                      onChange={(value) => handleInputChange('arms', value)}
+                      allowDecimals={true}
+                      min={0}
+                      max={200}
+                    />
+                  </div>
+                  
+                  <div className="col-span-2 space-y-2">
+                    <label className="text-sm font-medium text-muted-foreground">Oberschenkel (cm)</label>
+                    <NumericInput
+                      placeholder="55.0"
+                      value={measurements.thigh}
+                      onChange={(value) => handleInputChange('thigh', value)}
+                      allowDecimals={true}
+                      min={0}
+                      max={200}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">
+                    Notizen <span className="text-xs opacity-60">(optional)</span>
+                  </label>
+                  <Input
+                    value={measurements.notes}
+                    onChange={(e) => handleInputChange('notes', e.target.value)}
+                    placeholder="z.B. besondere Umstände, Tageszeit..."
+                    className="text-sm"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1"
+                  >
+                    {isSubmitting ? "Speichere..." : hasMeasurementsThisWeek && !createNewEntry ? "Aktualisieren" : "Eintragen"}
+                  </Button>
+                  
+                  {(isEditing || createNewEntry) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setCreateNewEntry(false);
+                      }}
+                      className="px-4"
+                    >
+                      Abbrechen
+                    </Button>
+                  )}
+                </div>
+              </form>
+            </div>
+          )}
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };
