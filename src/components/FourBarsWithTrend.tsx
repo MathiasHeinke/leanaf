@@ -25,8 +25,10 @@ type Props = {
 function HaloMeter({ label, value, progress, gradient, track = "rgba(0,0,0,0.08)", icon }: Halo) {
   const R = 32, SW = 6, C = 2 * Math.PI * R, dash = C * Math.max(0, Math.min(1, progress));
   const id = `grad-${label.replace(/\s+/g, "")}`;
+  const percentage = Math.round(progress * 100);
+  
   return (
-    <div className="rounded-2xl p-3 bg-white/70 dark:bg-white/5 flex items-center gap-3">
+    <div className="rounded-2xl p-3 bg-white/70 dark:bg-white/5 flex flex-col items-center gap-2">
       <svg width={76} height={76} className="shrink-0">
         <defs>
           <linearGradient id={id} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -54,10 +56,7 @@ function HaloMeter({ label, value, progress, gradient, track = "rgba(0,0,0,0.08)
           )}
         </g>
       </svg>
-      <div className="flex flex-col">
-        <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{value}</div>
-        <div className="text-xs tracking-[0.2em] text-zinc-500 dark:text-zinc-400 uppercase">{label}</div>
-      </div>
+      <div className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">{percentage}%</div>
     </div>
   );
 }
@@ -70,6 +69,7 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo }: Props)
         <div className="md:col-span-7 flex items-end justify-between gap-4">
           {bars.map((b) => {
             const ratio = Math.max(0, Math.min(1, b.value / Math.max(1, b.target)));
+            const percentage = Math.round(ratio * 100);
             // Goal marker position (at 100% line)
             const goalPosition = 100; // Always at top of bar container
             
@@ -110,13 +110,17 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo }: Props)
                 <div className="mt-2 text-xs font-semibold tracking-wide text-zinc-600 dark:text-zinc-300">
                   {b.key === "C" ? "KCAL" : b.key}
                 </div>
+                {/* Percentage */}
+                <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {percentage}%
+                </div>
               </div>
             );
           })}
         </div>
 
         {/* RIGHT: Wasser & Schritte Halos */}
-        <div className="md:col-span-5 flex flex-col gap-4">
+        <div className="md:col-span-5 grid grid-cols-2 gap-3">
           <HaloMeter {...waterHalo} />
           <HaloMeter {...stepsHalo} />
         </div>
