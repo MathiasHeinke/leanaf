@@ -396,18 +396,22 @@ export const QuickWorkoutInput = ({
     <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
       <Card className="p-4">
         <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2"
-          >
+          <div className="flex items-center justify-between cursor-pointer">
             <div className="flex items-center gap-2">
               <Dumbbell className="h-5 w-5 text-primary" />
               <h2 className="text-base font-semibold">Workout & Training</h2>
             </div>
-            <div className="text-muted-foreground hover:text-foreground">
-              {!isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </div>
-          </button>
+            <button
+              type="button"
+              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+            >
+              {!isCollapsed ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </CollapsibleTrigger>
 
         {/* Collapsed summary when card is closed */}
