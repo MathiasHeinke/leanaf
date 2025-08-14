@@ -1104,39 +1104,41 @@ chatInput={
         />
 
         {/* Messages */}
-        {isLoading ? (
-          <div className="space-y-4 py-4">
-            <TypingIndicator name={coach?.name || 'Coach'} />
-            <div ref={messagesEndRef} />
-          </div>
-        ) : (
-          <div className="space-y-4 py-4">
-            {messages.map(renderMessage)}
-            {renderTypingIndicator()}
-            {/* ChoiceBar deprecated for conversation-first; using delayed choiceChips instead */}
-            
-            {/* Training Plan Draft Card */}
-            {pendingPlanData && (
-              <div className="my-4">
-                <PlanInlineEditor
-                  initialPlan={pendingPlanData}
-                  onSave={handleSavePlan}
-                  onRequestMoreDays={handleCreateNextDay}
+        <ScrollArea className="flex-1 h-full">
+          {isLoading ? (
+            <div className="space-y-4 py-4">
+              <TypingIndicator name={coach?.name || 'Coach'} />
+              <div ref={messagesEndRef} />
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              {messages.map(renderMessage)}
+              {renderTypingIndicator()}
+              {/* ChoiceBar deprecated for conversation-first; using delayed choiceChips instead */}
+              
+              {/* Training Plan Draft Card */}
+              {pendingPlanData && (
+                <div className="my-4">
+                  <PlanInlineEditor
+                    initialPlan={pendingPlanData}
+                    onSave={handleSavePlan}
+                    onRequestMoreDays={handleCreateNextDay}
+                  />
+                </div>
+              )}
+              
+              {/* Quick Action Button */}
+              {showQuickAction && (
+                <TrainingPlanQuickAction
+                  onCreatePlan={handleCreateTrainingPlan}
+                  isLoading={isCreatingPlan}
                 />
-              </div>
-            )}
-            
-            {/* Quick Action Button */}
-            {showQuickAction && (
-              <TrainingPlanQuickAction
-                onCreatePlan={handleCreateTrainingPlan}
-                isLoading={isCreatingPlan}
-              />
-            )}
-            
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </ScrollArea>
         <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
         <ConfirmMealModal
           open={confirmMeal.open}
