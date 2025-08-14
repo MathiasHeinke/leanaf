@@ -710,7 +710,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           outerLeft={{
             startDeg: 210,
             sweepDeg: calorieSummary.consumed && dailyGoals?.calories 
-              ? Math.min(120, (calorieSummary.consumed / dailyGoals.calories) * 100)
+              ? Math.min(120, (calorieSummary.consumed / dailyGoals.calories) * 120)
               : 0,
             gradient: ["#fb923c", "#f97316"],
             width: 16,
@@ -718,7 +718,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             trackOpacity: 1,
           }}
           outerRight={{
-            startDeg: 30,
+            startDeg: 330,
             sweepDeg: plusData.stepsToday 
               ? Math.min(100, (plusData.stepsToday / 7000) * 100)
               : 0,
