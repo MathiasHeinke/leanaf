@@ -3,16 +3,25 @@ import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/schemas/user-profile';
 
-interface UserProfileData {
+interface ProfilesData {
+  id: string;
   user_id: string;
-  profile: UserProfile;
   updated_at: string;
   created_at: string;
-  id: string;
+  // Core profile fields from profiles table
+  display_name?: string;
+  weight?: number;
+  height?: number;
+  age?: number;
+  gender?: string;
+  goal?: string;
+  activity_level?: string;
+  target_weight?: number;
+  target_date?: string;
 }
 
 export const useUserProfile = () => {
-  const [profileData, setProfileData] = useState<UserProfileData | null>(null);
+  const [profileData, setProfileData] = useState<ProfilesData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFirstAppStart, setIsFirstAppStart] = useState(false);
@@ -30,7 +39,7 @@ export const useUserProfile = () => {
       setError(null);
       
       const { data, error } = await supabase
-        .from('user_profiles')
+        .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -43,7 +52,7 @@ export const useUserProfile = () => {
         console.log('🚀 First app start detected - no profile exists');
       }
       
-      setProfileData(data as UserProfileData);
+      setProfileData(data as ProfilesData);
     } catch (err) {
       console.error('Error fetching user profile:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch profile');
@@ -57,22 +66,41 @@ export const useUserProfile = () => {
     fetchProfile();
   }, [user]);
 
-  const missingRequired = (profile?: UserProfile | null): boolean => {
-    if (!profile) return true;
+  const convertToUserProfile = (profilesData?: ProfilesData): UserProfile | null => {
+    if (!profilesData) return null;
     
-    // Core required fields for training plan generation
-    const hasExperience = profile.experienceYears !== undefined && profile.experienceYears !== null;
-    const hasTime = profile.availableMinutes !== undefined && profile.availableMinutes !== null;
-    const hasSessions = profile.weeklySessions !== undefined && profile.weeklySessions !== null;
-    const hasGoal = profile.goal !== undefined && profile.goal !== null;
+    // Convert goal to valid enum value
+    const validGoals = ['hypertrophy', 'strength', 'endurance', 'general'] as const;
+    const goal = validGoals.includes(profilesData.goal as any) 
+      ? (profilesData.goal as 'hypertrophy' | 'strength' | 'endurance' | 'general')
+      : undefined;
     
-    const missing = !hasExperience || !hasTime || !hasSessions || !hasGoal;
+    return {
+      userId: profilesData.user_id,
+      goal,
+      experienceYears: undefined, // Not in profiles table, will need to be set via modal
+      availableMinutes: undefined, // Not in profiles table, will need to be set via modal  
+      weeklySessions: undefined, // Not in profiles table, will need to be set via modal
+      injuries: undefined,
+      preferences: undefined
+    };
+  };
+
+  const missingRequired = (profilesData?: ProfilesData): boolean => {
+    if (!profilesData) return true;
+    
+    // Core required fields from profiles table
+    const hasBasicInfo = profilesData.weight && profilesData.height && profilesData.age && profilesData.gender;
+    const hasGoal = profilesData.goal && profilesData.goal !== 'maintain';
+    
+    const missing = !hasBasicInfo || !hasGoal;
     
     if (missing) {
       console.log('❌ Missing required profile fields:', {
-        experienceYears: hasExperience ? '✅' : '❌',
-        availableMinutes: hasTime ? '✅' : '❌', 
-        weeklySessions: hasSessions ? '✅' : '❌',
+        weight: profilesData.weight ? '✅' : '❌',
+        height: profilesData.height ? '✅' : '❌',
+        age: profilesData.age ? '✅' : '❌',
+        gender: profilesData.gender ? '✅' : '❌',
         goal: hasGoal ? '✅' : '❌'
       });
     }
@@ -112,7 +140,7 @@ export const useUserProfile = () => {
     }
     
     // Missing required fields
-    if (missingRequired(profileData.profile)) {
+    if (missingRequired(profileData)) {
       console.log('🎯 ShowCheckUp: Missing required fields');
       return true;
     }
@@ -132,12 +160,12 @@ export const useUserProfile = () => {
   };
 
   return {
-    profile: profileData?.profile,
+    profile: convertToUserProfile(profileData),
     profileData,
     isLoading,
     error,
     isFirstAppStart,
-    missingRequired: missingRequired(profileData?.profile),
+    missingRequired: missingRequired(profileData),
     isStale: isStale(profileData?.updated_at),
     shouldShowCheckUp: shouldShowCheckUp(),
     refreshProfile,
