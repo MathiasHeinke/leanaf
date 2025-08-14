@@ -414,161 +414,120 @@ export const QuickWorkoutInput = ({
           </div>
         </CollapsibleTrigger>
 
-        {/* Collapsed summary when card is closed */}
+        {/* Collapsed View - Clean summary */}
         {isCollapsed && (
-          <div className="mt-3 space-y-1 text-sm">
-            <div className="flex items-center gap-3">
+          <div className="mt-4 space-y-4">
+            <div className="text-sm">
               <div className="font-medium">
-                {completedWorkouts.length} / {completedWorkouts.length + restDays.length} Workouts • {totalDuration} Min
+                {completedWorkouts.length} von {completedWorkouts.length + restDays.length} Workouts • {totalDuration} Min heute
               </div>
-              <Progress
-                className="h-2 w-24 md:w-32"
-                value={(completedWorkouts.length / Math.max(1, completedWorkouts.length + restDays.length)) * 100}
-                aria-label="Workout-Fortschritt"
-              />
+              <div className="text-muted-foreground mt-1">
+                Intensität: {Math.round(completedWorkouts.reduce((sum, w) => sum + (w.intensity || 0), 0) / Math.max(1, completedWorkouts.length))}/10 • Wochenziel: {Math.round(progressPercent)}%
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-medium text-primary">
-                Intensität: {Math.round(completedWorkouts.reduce((sum, w) => sum + (w.intensity || 0), 0) / Math.max(1, completedWorkouts.length))}/10
-              </span>
-              <span className="text-muted-foreground">·</span>
-              <span className="font-medium text-secondary-foreground">
-                Wochenziel: {Math.round(progressPercent)}%
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Smart Chips for quick workouts - visible in both collapsed and expanded states */}
-        {(!hasWorkoutToday || isCollapsed) && (
-          <div className="mt-3 flex flex-wrap gap-3">
-            {smartChips.slice(0, 3).map((chip, index) => (
-              <SmartChip
-                key={index}
-                variant="secondary"
-                size="default"
-                icon={<span className="text-sm">{chip.emoji}</span>}
-                onClick={() => { 
-                  chip.action(); 
-                  setIsCollapsed(false); 
-                }}
-              >
-                {chip.label.replace(/^.+?\s/, '')}
-              </SmartChip>
-            ))}
+            
+            {/* Quick Action Smart Chips - only in collapsed state */}
+            {!hasWorkoutToday && (
+              <div className="flex flex-wrap gap-2">
+                {smartChips.slice(0, 4).map((chip, index) => (
+                  <SmartChip
+                    key={index}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => { 
+                      chip.action(); 
+                      setIsCollapsed(false); 
+                    }}
+                  >
+                    {chip.emoji} {chip.label.replace(/^.+?\s/, '')}
+                  </SmartChip>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         <CollapsibleContent>
-        {/* Header numbers - similar to CaloriesCard */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <div className="rounded-md border bg-muted/30 p-3">
-            <div className="text-xs text-muted-foreground">Abgeschlossen</div>
-            <div className="text-lg font-semibold">{completedWorkouts.length} / {completedWorkouts.length + restDays.length} Workouts</div>
-          </div>
-          <div className="rounded-md border bg-muted/30 p-3">
-            <div className="text-xs text-muted-foreground">Dauer heute</div>
-            <div className="text-lg font-semibold">{totalDuration} Min</div>
-          </div>
-        </div>
+          <div className="mt-4 space-y-4">
+            {/* Stats Grid - clean 2 column layout like CaloriesCard */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="text-xs text-muted-foreground">Abgeschlossen</div>
+                <div className="text-lg font-semibold">{completedWorkouts.length} / {completedWorkouts.length + restDays.length}</div>
+                <div className="text-xs text-muted-foreground">Workouts</div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="text-xs text-muted-foreground">Dauer heute</div>
+                <div className="text-lg font-semibold">{totalDuration}</div>
+                <div className="text-xs text-muted-foreground">Minuten</div>
+              </div>
+            </div>
 
-        {/* Workout Pills with colors - similar to MacroPills */}
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <WorkoutPill label="Intensität" value={Math.round(completedWorkouts.reduce((sum, w) => sum + (w.intensity || 0), 0) / Math.max(1, completedWorkouts.length))} max={10} unit="/10" pillType="intensity" />
-          <WorkoutPill label="Wochenziel" value={totalDuration} max={weeklyTarget} unit="min" pillType="duration" />
-          <WorkoutPill label="Workouts" value={completedWorkouts.length} max={completedWorkouts.length + restDays.length} unit="" pillType="count" />
-        </div>
+            {/* Progress bars - only in expanded view */}
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Workouts</span>
+                  <span className="font-medium">{Math.round((completedWorkouts.length / Math.max(1, completedWorkouts.length + restDays.length)) * 100)}%</span>
+                </div>
+                <Progress 
+                  value={(completedWorkouts.length / Math.max(1, completedWorkouts.length + restDays.length)) * 100} 
+                  className="h-2" 
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Wochenziel ({weeklyTarget} Min)</span>
+                  <span className="font-medium">{Math.round(progressPercent)}%</span>
+                </div>
+                <Progress value={progressPercent} className="h-2" />
+              </div>
+            </div>
 
             {hasWorkoutToday && !isEditing ? (
               <div className="space-y-4">
-                {/* Summary header with progress */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold text-foreground">
-                        Heutiges Training
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {completedWorkouts.length} von {completedWorkouts.length + restDays.length} Workouts • {totalDuration} Minuten
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <InfoButton
-                        title="Workout & Regeneration"
-                        description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
-                        scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche plus ausreichende Regeneration reduzieren das Krankheitsrisiko um bis zu 40%."
-                        tips={[
-                          "Krafttraining 2-3x pro Woche für optimalen Muskelaufbau",
-                          "Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung",
-                          "Mindestens 1-2 Ruhetage pro Woche für Regeneration",
-                          "Progressive Steigerung für kontinuierliche Fortschritte"
-                        ]}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleAddNewWorkout}
-                        className="text-primary border-primary/30 hover:bg-primary/10"
-                        title="Weiteres Workout hinzufügen"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Progress bars */}
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Workouts</span>
-                        <span className="font-medium">{Math.round((completedWorkouts.length / Math.max(1, completedWorkouts.length + restDays.length)) * 100)}%</span>
-                      </div>
-                      <Progress 
-                        value={(completedWorkouts.length / Math.max(1, completedWorkouts.length + restDays.length)) * 100} 
-                        className="h-2" 
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Wochenziel ({weeklyTarget} Min)</span>
-                        <span className="font-medium">{Math.round(progressPercent)}%</span>
-                      </div>
-                      <Progress value={progressPercent} className="h-2" />
-                    </div>
+                {/* Action buttons */}
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-foreground">Heutiges Training</h4>
+                  <div className="flex items-center gap-2">
+                    <InfoButton
+                      title="Workout & Regeneration"
+                      description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
+                      scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche plus ausreichende Regeneration reduzieren das Krankheitsrisiko um bis zu 40%."
+                      tips={[
+                        "Krafttraining 2-3x pro Woche für optimalen Muskelaufbau",
+                        "Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung",
+                        "Mindestens 1-2 Ruhetage pro Woche für Regeneration",
+                        "Progressive Steigerung für kontinuierliche Fortschritte"
+                      ]}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddNewWorkout}
+                      className="text-primary border-primary/30 hover:bg-primary/10"
+                      title="Weiteres Workout hinzufügen"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
 
-                {/* Smart Chips - using CaloriesCard style */}
-                {!isEditing && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {smartChips.map((chip, index) => (
-                      <SmartChip 
-                        key={index}
-                        variant="secondary"
-                        size="default"
-                        onClick={() => chip.action()}
-                      >
-                        {chip.label}
-                      </SmartChip>
-                    ))}
-                  </div>
-                )}
-
-                {/* Workouts list toggle - similar to CaloriesCard meals toggle */}
-                <div className="mt-4">
+                {/* Workouts list toggle */}
+                <div>
                   <button
                     type="button"
-                    className="w-full flex items-center justify-between rounded-md border bg-card px-3 py-2 hover:bg-muted/50"
+                    className="w-full flex items-center justify-between rounded-lg border bg-card px-3 py-2 hover:bg-muted/50"
                     onClick={() => setShowWorkouts(!showWorkouts)}
                   >
-                    <div className="text-sm font-medium">Workouts anzeigen</div>
+                    <div className="text-sm font-medium">Workouts anzeigen ({todaysWorkouts.length})</div>
                     {showWorkouts ? <ChevronDown className="h-4 w-4 rotate-180" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
 
                   {showWorkouts && (
                     <div className="mt-3 space-y-2">
                       {todaysWorkouts.length === 0 ? (
-                        <div className="text-sm text-muted-foreground">Keine Workouts erfasst.</div>
+                        <div className="text-sm text-muted-foreground text-center py-4">Keine Workouts erfasst.</div>
                       ) : (
                         todaysWorkouts.map((workout) => (
                           <WorkoutRow
@@ -581,32 +540,28 @@ export const QuickWorkoutInput = ({
                         ))
                       )}
                     </div>
-                   )}
-                 </div>
-               </div>
-             ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-muted rounded-xl">
-                      <Dumbbell className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">
-                        {hasWorkoutToday ? 'Workout bearbeiten' : 'Workout eintragen'}
-                      </h3>
-                    </div>
-                    <InfoButton
-                      title="Workout & Regeneration"
-                      description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
-                      scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche plus ausreichende Regeneration reduzieren das Krankheitsrisiko um bis zu 40%."
-                      tips={[
-                        "Krafttraining 2-3x pro Woche für optimalen Muskelaufbau",
-                        "Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung",
-                        "Mindestens 1-2 Ruhetage pro Woche für Regeneration",
-                        "Progressive Steigerung für kontinuierliche Fortschritte"
-                      ]}
-                    />
-                  </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Form header */}
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">
+                    {hasWorkoutToday ? 'Workout bearbeiten' : 'Workout eintragen'}
+                  </h4>
+                  <InfoButton
+                    title="Workout & Regeneration"
+                    description="Regelmäßiges Training ist der Schlüssel für nachhaltigen Muskelaufbau und Fettverbrennung. Aber auch Pausen sind essentiell für optimale Ergebnisse!"
+                    scientificBasis="Studien zeigen: 150 Min moderate oder 75 Min intensive Aktivität pro Woche plus ausreichende Regeneration reduzieren das Krankheitsrisiko um bis zu 40%."
+                    tips={[
+                      "Krafttraining 2-3x pro Woche für optimalen Muskelaufbau",
+                      "Cardio 4-5x pro Woche für Ausdauer und Fettverbrennung",
+                      "Mindestens 1-2 Ruhetage pro Woche für Regeneration",
+                      "Progressive Steigerung für kontinuierliche Fortschritte"
+                    ]}
+                  />
+                </div>
                   
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -761,9 +716,10 @@ export const QuickWorkoutInput = ({
                         </Button>
                       )}
                     </div>
-                  </form>
-                </div>
-              )}
+                </form>
+              </div>
+            )}
+          </div>
         </CollapsibleContent>
       </Card>
     </Collapsible>
