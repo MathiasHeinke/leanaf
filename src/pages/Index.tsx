@@ -708,18 +708,24 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             width: 16,
           }}
           outerLeft={{
-            progress: calorieSummary.consumed && dailyGoals?.calories 
-              ? Math.min(1.2, calorieSummary.consumed / dailyGoals.calories)
+            startDeg: 210,
+            sweepDeg: calorieSummary.consumed && dailyGoals?.calories 
+              ? Math.min(120, (calorieSummary.consumed / dailyGoals.calories) * 100)
               : 0,
             gradient: ["#fb923c", "#f97316"],
             width: 16,
+            trackColor: "rgba(255,255,255,0.06)",
+            trackOpacity: 1,
           }}
           outerRight={{
-            progress: plusData.stepsToday 
-              ? Math.min(1, plusData.stepsToday / 7000)
+            startDeg: 30,
+            sweepDeg: plusData.stepsToday 
+              ? Math.min(100, (plusData.stepsToday / 7000) * 100)
               : 0,
             gradient: ["#60a5fa", "#3b82f6"],
             width: 16,
+            trackColor: "rgba(255,255,255,0.06)",
+            trackOpacity: 1,
           }}
           size={720}
         />
