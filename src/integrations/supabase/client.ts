@@ -18,7 +18,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     headers: {
-      'X-Client-Info': 'food-scribe-daily-log'
+      'X-Client-Info': 'food-scribe-daily-log',
+      'apikey': SUPABASE_PUBLISHABLE_KEY
     },
     fetch: (url, options = {}) => {
       const controller = new AbortController();
@@ -28,10 +29,27 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       const timezone = getUserTimezone();
       const currentDate = getCurrentDateInTimezone(timezone);
       
+      // Get session token if available
+      const sessionData = localStorage.getItem(`sb-${SUPABASE_URL.split('//')[1]?.split('.')[0]}-auth-token`);
+      let authToken = '';
+      
+      if (sessionData) {
+        try {
+          const session = JSON.parse(sessionData);
+          if (session.access_token) {
+            authToken = `Bearer ${session.access_token}`;
+          }
+        } catch (e) {
+          // Session parsing failed, continue without token
+        }
+      }
+      
       const enhancedOptions = {
         ...options,
         signal: controller.signal,
         headers: {
+          'apikey': SUPABASE_PUBLISHABLE_KEY,
+          ...(authToken && { 'authorization': authToken }),
           ...(options as RequestInit).headers,
           'X-User-Timezone': timezone,
           'X-Current-Date': currentDate
