@@ -45,7 +45,7 @@ import { GripVertical } from "lucide-react";
 import { usePlusData } from "@/hooks/usePlusData";
 import ConcentricStatCard from "@/components/ConcentricStatCard";
 import { DashboardKeyMetrics } from "@/components/DashboardKeyMetrics";
-import DashboardCaloriesPhases from "@/components/DashboardCaloriesPhases";
+import { DashboardNutritionOverview } from "@/components/DashboardNutritionOverview";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -709,11 +709,11 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           todaysWorkout={todaysWorkout}
         />
 
-        {/* Daily Calories Phases */}
-        <DashboardCaloriesPhases 
+        {/* Nutrition Overview */}
+        <DashboardNutritionOverview 
+          currentDate={currentDate}
           meals={meals}
           dailyGoals={dailyGoals}
-          currentDate={currentDate}
         />
 
         <div
