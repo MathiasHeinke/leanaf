@@ -48,6 +48,7 @@ import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
 import { EnhancedChatInput } from '@/components/EnhancedChatInput';
 import { TrainingPlanQuickAction } from '@/components/TrainingPlanQuickAction';
+import FireBackdrop, { FireBackdropHandle } from '@/components/FireBackdrop';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 import { WorkoutPlanDraftCard } from '@/components/WorkoutPlanDraftCard';
 
@@ -388,6 +389,10 @@ const initializationRef = useRef(false);
 const messagesEndRef = useRef<HTMLDivElement>(null);
 const lastSendTimeRef = useRef<number | null>(null);
 const awaitingFirstPaintRef = useRef<boolean>(false);
+
+// FireBackdrop for ARES
+const fireBackdropRef = useRef<FireBackdropHandle>(null);
+const isAres = coach?.id === 'ares';
 
   // Legacy enhanced chat removed – orchestrator-only path
 
@@ -1030,7 +1035,17 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
     // ============= FULLSCREEN LAYOUT =============
   if (useFullscreenLayout) {
     return (
-      <ChatLayout 
+      <>
+        {/* ARES Fire Backdrop */}
+        {isAres && (
+          <FireBackdrop 
+            ref={fireBackdropRef}
+            chatMode={true}
+            devFastCycle={false}
+          />
+        )}
+        
+        <ChatLayout
 chatInput={
           <div>
           {pendingChips.length > 0 && (
@@ -1186,6 +1201,7 @@ chatInput={
           onClose={() => setConfirmSupplement(prev => ({ ...prev, open: false }))}
         />
       </ChatLayout>
+      </>
     );
   }
 
