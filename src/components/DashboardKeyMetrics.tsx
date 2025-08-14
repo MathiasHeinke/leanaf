@@ -95,7 +95,10 @@ export const DashboardKeyMetrics: React.FC<Props> = ({
   const stepsGoal = dailyGoals?.steps_goal || 10000;
   const stepsProgress = Math.min(todaysSteps / stepsGoal, 1);
 
-  // Format numbers for display
+  // Get calorie goal
+  const calorieGoal = dailyGoals?.calories || 2000;
+
+  // Enhanced formatting functions
   const formatCalories = (calories: number) => {
     if (calories >= 1000) {
       return `${(calories / 1000).toFixed(1)}k`;
@@ -104,7 +107,7 @@ export const DashboardKeyMetrics: React.FC<Props> = ({
   };
 
   const formatFluid = (ml: number) => {
-    return `${(ml / 1000).toFixed(1)}L`;
+    return (ml / 1000).toFixed(1);
   };
 
   const formatSteps = (steps: number) => {
@@ -114,26 +117,35 @@ export const DashboardKeyMetrics: React.FC<Props> = ({
     return steps.toString();
   };
 
+  const formatGoalFluid = (ml: number) => {
+    return (ml / 1000).toFixed(1);
+  };
+
   return (
     <KeyMetricsBoard
       sparkTitle="Kalorien heute"
       sparkValue={formatCalories(calorieSummary.consumed)}
       sparkUnit="kcal"
       sparkData={weeklyCalories}
+      sparkGoal={calorieGoal}
       halos={[
         {
           icon: <Droplet size={18} />,
           value: formatFluid(totalFluidMl),
           label: "Wasser",
           progress: fluidProgress,
-          gradient: ["hsl(221, 83%, 53%)", "hsl(187, 85%, 53%)"] // blue to cyan
+          gradient: ["hsl(221, 83%, 53%)", "hsl(187, 85%, 53%)"], // blue to cyan
+          goalValue: formatGoalFluid(fluidGoalMl),
+          unit: "L"
         },
         {
           icon: <Footprints size={18} />,
           value: formatSteps(todaysSteps),
           label: "Schritte",
           progress: stepsProgress,
-          gradient: ["hsl(25, 95%, 53%)", "hsl(0, 84%, 60%)"] // orange to red
+          gradient: ["hsl(25, 95%, 53%)", "hsl(0, 84%, 60%)"], // orange to red
+          goalValue: formatSteps(stepsGoal),
+          unit: ""
         }
       ]}
     />
