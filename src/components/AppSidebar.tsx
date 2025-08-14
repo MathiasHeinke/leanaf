@@ -24,7 +24,10 @@ import {
   Mail,
   History as HistoryIcon,
   Brain,
-  Zap
+  Zap,
+  Sun,
+  Moon,
+  Clock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -43,6 +46,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
+import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { BugReportDialog } from "./BugReportDialog";
 import { FeatureRequestDialog } from "./FeatureRequestDialog";
 import { LevelBadge } from "./LevelBadge";
@@ -82,6 +86,7 @@ export function AppSidebar() {
   const { t } = useTranslation();
   const { userPoints } = usePointsSystem();
   const { isProfileComplete } = useProfileCompletion();
+  const { toggleTheme, getThemeStatus, getThemeIcon } = useAutoDarkMode();
   const navigate = useNavigate();
   const location = useLocation();
   const [hasMarketingRole, setHasMarketingRole] = useState<boolean>(false);
@@ -209,6 +214,35 @@ export function AppSidebar() {
         setTimeout(() => setOpenMobile(false), 100);
       }
     }
+  };
+
+  // Theme functions
+  const themeStatus = getThemeStatus();
+  const themeIconType = getThemeIcon();
+
+  const renderThemeIcon = () => {
+    switch (themeIconType) {
+      case 'clock':
+        return <Clock className="h-4 w-4" />;
+      case 'sun':
+      case 'sun-override':
+        return <Sun className="h-4 w-4" />;
+      case 'moon':
+      case 'moon-override':
+        return <Moon className="h-4 w-4" />;
+      default:
+        return themeStatus.current === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />;
+    }
+  };
+
+  const getThemeTooltip = () => {
+    if (themeStatus.override) {
+      return `Dark Mode Override (${themeStatus.nextChange} remaining)`;
+    }
+    if (themeStatus.isAuto) {
+      return `Auto Mode: ${themeStatus.current} until ${themeStatus.nextChange}`;
+    }
+    return themeStatus.current === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
   };
 
   return (
@@ -413,6 +447,19 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
               
+              {/* Dark Mode Toggle */}
+              <SidebarMenuItem>
+                <SidebarMenuButton 
+                  onClick={toggleTheme}
+                  className="hover:bg-accent/50"
+                  size={collapsed ? "sm" : "default"}
+                  title={getThemeTooltip()}
+                >
+                  {renderThemeIcon()}
+                  {!collapsed && <span className="ml-3">Dark Mode</span>}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
               {/* Logout */}
               <SidebarMenuItem>
                 <SidebarMenuButton 

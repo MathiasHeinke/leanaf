@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
-import { Menu, Sun, Moon, Clock } from "lucide-react";
+import { Menu, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTranslation } from "@/hooks/useTranslation";
-import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { useCredits } from "@/hooks/useCredits";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ChatHistorySidebar } from "./ChatHistorySidebar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { COACH_REGISTRY } from "@/lib/coachRegistry";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
@@ -22,10 +21,11 @@ export const GlobalHeader = ({
   const [clickCount, setClickCount] = useState(0);
   
   const { status: creditsStatus } = useCredits();
-  const { t } = useTranslation();
-  const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Get ARES coach data
+  const aresCoach = COACH_REGISTRY.ares;
 
 
   // Route to title mapping with breadcrumb support
@@ -88,37 +88,16 @@ export const GlobalHeader = ({
     }
   };
 
-  const themeStatus = getThemeStatus();
-  const themeIconType = getThemeIcon();
-
-  // Get theme icon component based on status
-  const renderThemeIcon = () => {
-    switch (themeIconType) {
-      case 'clock':
-        return <Clock className="h-4 w-4" />;
-      case 'sun':
-      case 'sun-override':
-        return <Sun className="h-4 w-4" />;
-      case 'moon':
-      case 'moon-override':
-        return <Moon className="h-4 w-4" />;
-      default:
-        return themeStatus.current === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />;
+  // Check if we're in coach chat to show dashboard button
+  const isInCoachChat = location.pathname.startsWith('/coach/');
+  
+  // Handle navigation to ARES or Dashboard
+  const handleRightButtonClick = () => {
+    if (isInCoachChat) {
+      navigate('/');
+    } else {
+      navigate('/coach/ares');
     }
-  };
-
-  // Get theme tooltip with detailed status
-  const getThemeTooltip = () => {
-    if (themeStatus.override) {
-      return `${t('settings.darkModeOverride')} (${themeStatus.nextChange} remaining)`;
-    }
-    if (themeStatus.isAuto) {
-      const timeInfo = isWithinDarkModeHours ? 
-        `Auto: Dark until ${themeStatus.nextChange}` : 
-        `Auto: Light until ${themeStatus.nextChange}`;
-      return timeInfo;
-    }
-  return themeStatus.current === 'dark' ? t('settings.darkModeLight') : t('settings.darkModeDark');
   };
 
 
@@ -139,15 +118,27 @@ export const GlobalHeader = ({
             </h1>
           </div>
           
-          {/* Right: Dark Mode Toggle */}
+          {/* Right: ARES Avatar or Dashboard Button */}
           <Button
             variant="ghost"
             size="sm"
-            onClick={toggleTheme}
-            className="p-2 hover:bg-accent/60 rounded-lg transition-colors"
-            title={getThemeTooltip()}
+            onClick={handleRightButtonClick}
+            className="p-1 hover:bg-accent/60 rounded-lg transition-colors"
+            title={isInCoachChat ? 'Zum Dashboard' : 'Zu ARES Chat'}
           >
-            {renderThemeIcon()}
+            {isInCoachChat ? (
+              <Home className="h-5 w-5" />
+            ) : (
+              <Avatar className="h-8 w-8">
+                <AvatarImage 
+                  src={aresCoach.imageUrl} 
+                  alt="ARES" 
+                />
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                  AR
+                </AvatarFallback>
+              </Avatar>
+            )}
           </Button>
         </div>
       </div>

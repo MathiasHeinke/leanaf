@@ -19,6 +19,11 @@ export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const [showSubscriptionDebug, setShowSubscriptionDebug] = useState(false);
   
+  // Check if navigating to dashboard from coach chat
+  const isDashboard = location.pathname === '/';
+  const isFromCoachChat = document.referrer.includes('/coach/');
+  const shouldSlideIn = isDashboard && isFromCoachChat;
+  
   // Detect if running in Lovable Preview mode
   const isPreviewMode = window.location.hostname.includes('lovable.app');
   
@@ -63,7 +68,7 @@ export const Layout = ({ children }: LayoutProps) => {
         <GlobalHeader 
           onRefresh={() => setShowSubscriptionDebug(true)}
         />
-        <main className="container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1">
+        <main className={`container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1 ${shouldSlideIn ? 'animate-slide-in-right' : ''}`}>
           {children}
         </main>
         <Footer />
