@@ -68,15 +68,29 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo }: Props)
         {/* LEFT: 4 Bars */}
         <div className="md:col-span-7 flex items-end justify-between gap-4">
           {bars.map((b) => {
-            const ratio = Math.max(0, Math.min(1, b.value / Math.max(1, b.target)));
-            const percentage = Math.round(ratio * 100);
-            // Goal marker position (at 100% line)
-            const goalPosition = 100; // Always at top of bar container
+            const actualRatio = b.value / Math.max(1, b.target);
+            const ratio = Math.max(0, Math.min(1, actualRatio)); // Clamped for visual fill
+            const percentage = Math.round(actualRatio * 100);
+            const isOverTarget = actualRatio > 1;
             
-            // Defaults
-            const grad =
-              b.key === "C"
-                ? ["#3a3d42", "#1d1f24"] // anthrazit changend
+            // Target line position at 80% height (4/5)
+            const targetLinePosition = 80;
+            
+            // Check if fill overlaps with target text (at 80% position)
+            const fillHeight = ratio * 100;
+            const textOverlapped = fillHeight >= targetLinePosition;
+            
+            // Format target value
+            const formatTarget = (key: string, target: number) => {
+              if (key === "C") return `${Math.round(target)}`;
+              return `${Math.round(target)}g`;
+            };
+            
+            // Gradient colors - red when over target
+            const grad = isOverTarget
+              ? ["#ef4444", "#dc2626"] // Red gradient when over target
+              : b.key === "C"
+                ? ["#3a3d42", "#1d1f24"] // anthrazit default
                 : b.gradient ??
                   (b.key === "P"
                     ? ["#22c55e", "#16a34a"]
@@ -87,31 +101,55 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo }: Props)
             return (
               <div key={b.key} className="flex flex-col items-center w-full">
                 <div className="relative w-12 sm:w-14 h-40 sm:h-48 rounded-2xl overflow-hidden bg-zinc-200/70 dark:bg-white/10 border border-black/5 dark:border-white/5">
-                  {/* Goal marker - feine Linie */}
+                  {/* Target line at 80% (4/5) height */}
                   <div 
-                    className="absolute left-0 right-0 h-[2px] bg-zinc-400/80 dark:bg-zinc-300/60 rounded-full"
-                    style={{ top: `${100 - goalPosition}%` }}
+                    className="absolute left-0 right-0 h-[1px] bg-zinc-400/50 dark:bg-zinc-500/50"
+                    style={{ top: `${100 - targetLinePosition}%` }}
                   />
                   
-                  {/* Fill */}
+                  {/* Target value text */}
+                  <div 
+                    className={`absolute left-1/2 transform -translate-x-1/2 text-[10px] font-medium transition-colors duration-300 ${
+                      textOverlapped 
+                        ? 'text-white' 
+                        : 'text-zinc-500 dark:text-zinc-400'
+                    }`}
+                    style={{ top: `${100 - targetLinePosition + 2}%` }}
+                  >
+                    {formatTarget(b.key, b.target)}
+                  </div>
+                  
+                  {/* Fill - can exceed 100% */}
                   <div
                     className="absolute bottom-0 left-0 right-0 transition-[height] duration-600 ease-out"
                     style={{
-                      height: `${ratio * 100}%`,
+                      height: `${Math.min(actualRatio * 100, 100)}%`, // Fill can go to 100% max visually
                       background: `linear-gradient(180deg, ${grad[0]}, ${grad[1]})`,
-                      boxShadow:
-                        b.key === "C"
+                      boxShadow: isOverTarget
+                        ? "0 8px 18px rgba(239,68,68,0.3)"
+                        : b.key === "C"
                           ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 8px 18px rgba(0,0,0,0.25)"
                           : `0 10px 20px ${grad[0]}33`,
                     }}
                   />
+                  
+                  {/* Overflow indicator when over 100% */}
+                  {isOverTarget && (
+                    <div 
+                      className="absolute top-0 left-0 right-0 h-1 bg-red-500 animate-pulse"
+                    />
+                  )}
                 </div>
                 {/* Label (1 Buchstabe) */}
                 <div className="mt-2 text-xs font-semibold tracking-wide text-zinc-600 dark:text-zinc-300">
                   {b.key === "C" ? "KCAL" : b.key}
                 </div>
                 {/* Percentage */}
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                <div className={`text-xs transition-colors duration-300 ${
+                  isOverTarget 
+                    ? 'text-red-500 dark:text-red-400 font-semibold' 
+                    : 'text-zinc-500 dark:text-zinc-400'
+                }`}>
                   {percentage}%
                 </div>
               </div>
