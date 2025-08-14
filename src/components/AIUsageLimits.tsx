@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Brain, Zap, Crown, Lock } from 'lucide-react';
 import { useAIUsageLimits } from '@/hooks/useAIUsageLimits';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useCredits } from '@/hooks/useCredits';
 import { useNavigate } from 'react-router-dom';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 
@@ -16,19 +16,19 @@ interface AIUsageLimitsProps {
 
 export const AIUsageLimits: React.FC<AIUsageLimitsProps> = ({ featureType, className }) => {
   const { getCurrentUsage } = useAIUsageLimits();
-  const { isPremium } = useSubscription();
+  const { status: creditsStatus, loading: creditsLoading } = useCredits();
   const { isAdmin: isSuperAdmin, loading: adminLoading } = useSecureAdminAccess();
   const navigate = useNavigate();
   const [usage, setUsage] = useState<{ daily_count: number; monthly_count: number } | null>(null);
 
   useEffect(() => {
-    if (!isPremium && (adminLoading || !isSuperAdmin)) {
+    if (!creditsLoading && (adminLoading || !isSuperAdmin)) {
       getCurrentUsage(featureType).then(setUsage);
     }
-  }, [featureType, isPremium, isSuperAdmin, adminLoading, getCurrentUsage]);
+  }, [featureType, creditsLoading, isSuperAdmin, adminLoading, getCurrentUsage]);
 
-  // Super Admins and Premium users get unlimited AI access
-  if (isPremium || (!adminLoading && isSuperAdmin)) {
+  // Super Admins get unlimited AI access
+  if (!adminLoading && isSuperAdmin) {
     return (
       <Card className={`border-primary/20 bg-primary/5 ${className}`}>
         <CardContent className="pt-4">

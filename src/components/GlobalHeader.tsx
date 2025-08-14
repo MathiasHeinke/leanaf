@@ -3,7 +3,7 @@ import { Menu, Sun, Moon, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useCredits } from "@/hooks/useCredits";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -21,7 +21,7 @@ export const GlobalHeader = ({
   const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   
-  const { subscriptionTier } = useSubscription();
+  const { status: creditsStatus } = useCredits();
   const { t } = useTranslation();
   const { toggleTheme, getThemeStatus, getThemeIcon, isWithinDarkModeHours } = useAutoDarkMode();
   const location = useLocation();
@@ -156,7 +156,7 @@ export const GlobalHeader = ({
       <div className="h-[61px]" />
 
       {/* Debug Panel for Super Admins */}
-      {(subscriptionTier?.toLowerCase() === 'enterprise' || subscriptionTier?.toLowerCase() === 'super admin') && (
+      {(creditsStatus.tester || false) && (
         <PointsDebugPanel 
           isOpen={isDebugPanelOpen} 
           onClose={() => setIsDebugPanelOpen(false)} 

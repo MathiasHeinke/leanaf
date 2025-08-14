@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "@/hooks/useTranslation";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useCredits } from "@/hooks/useCredits";
 
 import { 
   Brain, 
@@ -38,7 +38,7 @@ import {
 
 export default function Science() {
   const { t } = useTranslation();
-  const { isPremium } = useSubscription();
+  const { status: creditsStatus } = useCredits();
 
   const scientificPrinciples = [
     {

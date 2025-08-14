@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CoachCard } from './CoachCard';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useCredits } from '@/hooks/useCredits';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { Button } from '@/components/ui/button';
 import { Crown, Plus } from 'lucide-react';
@@ -54,12 +54,12 @@ const coachProfiles = Object.values(COACH_REGISTRY).map(coach => ({
 interface CoachSelectionProps {}
 
 export const CoachSelection: React.FC<CoachSelectionProps> = () => {
-  const { isPremium } = useSubscription();
+  const { status: creditsStatus } = useCredits();
   const { isAdmin: isSuperAdmin, loading: adminLoading } = useSecureAdminAccess();
   const navigate = useNavigate();
   
-  // Super Admins get all premium features
-  const hasFullAccess = isPremium || (!adminLoading && isSuperAdmin);
+  // Super Admins get all features
+  const hasFullAccess = !adminLoading && isSuperAdmin;
 
   const handleUpgrade = () => {
     navigate('/credits');
@@ -68,7 +68,7 @@ export const CoachSelection: React.FC<CoachSelectionProps> = () => {
   return (
     <div className="space-y-4">
 
-      {/* Premium Upgrade Banner for Free Users */}
+      {/* Credit-based system: no upgrade banner needed */}
       {!hasFullAccess && (
         <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/20 dark:to-orange-950/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg p-4 mb-6">
           <div className="flex items-center justify-between">

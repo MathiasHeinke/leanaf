@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useSubscription } from './useSubscription';
+import { useCredits } from './useCredits';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 
 interface AIUsageStatus {
@@ -19,7 +19,7 @@ interface AIUsageStatus {
 
 export const useAIUsageLimits = () => {
   const { user } = useAuth();
-  const { isPremium } = useSubscription();
+  const { status: creditsStatus } = useCredits();
   const [loading, setLoading] = useState(false);
 
   const checkUsageLimit = async (
@@ -27,8 +27,8 @@ export const useAIUsageLimits = () => {
   ): Promise<AIUsageStatus | null> => {
     if (!user) return null;
     
-    // Pro users have unlimited access
-    if (isPremium) {
+    // Credit-based system: users can use features if they have credits
+    if (creditsStatus.credits_remaining > 0) {
       return {
         can_use: true,
         daily_count: 0,
@@ -64,7 +64,7 @@ export const useAIUsageLimits = () => {
   };
 
   const getCurrentUsage = async (featureType: string) => {
-    if (!user || isPremium) return null;
+    if (!user || creditsStatus.credits_remaining <= 0) return null;
 
     try {
       const { data, error } = await supabase

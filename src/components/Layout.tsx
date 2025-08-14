@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { EnhancedSubscriptionDebugPanel } from "@/components/EnhancedSubscriptionDebugPanel";
+
 
 
 
@@ -68,12 +68,6 @@ export const Layout = ({ children }: LayoutProps) => {
         </main>
         <Footer />
       </div>
-      
-      {/* Debug Panels */}
-      <EnhancedSubscriptionDebugPanel 
-        isOpen={showSubscriptionDebug} 
-        onClose={() => setShowSubscriptionDebug(false)} 
-      />
     </div>
   );
 };

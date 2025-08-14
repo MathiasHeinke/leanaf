@@ -5,8 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTrackingPreferences } from "@/hooks/useTrackingPreferences";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
-import { useSubscription } from "@/hooks/useSubscription";
-import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useCredits } from "@/hooks/useCredits";
 import { MealList } from "@/components/MealList";
 
 import { QuickWeightInput } from "@/components/QuickWeightInput";
@@ -80,8 +79,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const { t } = useTranslation();
   
   // All auth-dependent hooks - AFTER authentication is confirmed
-  const { isPremium, trial } = useSubscription();
-  const { hasFeatureAccess } = useFeatureAccess();
+  const { status: creditsStatus } = useCredits();
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
   const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();

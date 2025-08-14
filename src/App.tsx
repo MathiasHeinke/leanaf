@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/hooks/useAuth";
 import { TranslationProvider } from "@/hooks/useTranslation";
-import { SubscriptionProvider } from "@/hooks/useSubscription";
+
 import { EnhancedSecurityManager } from "@/components/EnhancedSecurityManager";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { Layout } from "@/components/Layout";
@@ -53,7 +53,6 @@ const App = () => (
         <TranslationProvider>
           <AuthProvider>
             <MealInputProvider>
-              <SubscriptionProvider>
                 <EnhancedSecurityManager>
                   <Sonner />
                   <BrowserRouter>
@@ -96,8 +95,7 @@ const App = () => (
                   </SidebarProvider>
                 </BrowserRouter>
               </EnhancedSecurityManager>
-            </SubscriptionProvider>
-          </MealInputProvider>
+            </MealInputProvider>
           </AuthProvider>
         </TranslationProvider>
       </ThemeProvider>

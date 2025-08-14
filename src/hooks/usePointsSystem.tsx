@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
-import { useFeatureAccess } from './useFeatureAccess';
+
 import { toast } from 'sonner';
 
 interface UserPoints {
@@ -32,7 +32,7 @@ interface UserStreak {
 
 export const usePointsSystem = () => {
   const { user } = useAuth();
-  const { getTrialMultiplier } = useFeatureAccess();
+  const trialMultiplier = 1.0; // No special multipliers in credit system
   const [userPoints, setUserPoints] = useState<UserPoints | null>(null);
   const [departmentProgress, setDepartmentProgress] = useState<DepartmentProgress[]>([]);
   const [streaks, setStreaks] = useState<UserStreak[]>([]);
@@ -126,8 +126,8 @@ export const usePointsSystem = () => {
       return;
     }
 
-    const trialMultiplier = getTrialMultiplier();
-    console.log(`🎯 Awarding points - Type: ${activityType}, Points: ${basePoints}, Multiplier: ${multiplier}, Trial: ${trialMultiplier}`);
+    const currentTrialMultiplier = trialMultiplier;
+    console.log(`🎯 Awarding points - Type: ${activityType}, Points: ${basePoints}, Multiplier: ${multiplier}, Trial: ${currentTrialMultiplier}`);
 
     try {
       const { data, error } = await supabase.rpc('update_user_points_and_level', {

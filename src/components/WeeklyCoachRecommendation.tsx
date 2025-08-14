@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X, Crown, Sparkles } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useCredits } from '@/hooks/useCredits';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 
@@ -31,7 +31,7 @@ const COACH_DATA = {
 
 export const WeeklyCoachRecommendation = () => {
   const { user } = useAuth();
-  const { isPremium } = useSubscription();
+  const { status: creditsStatus } = useCredits();
   const navigate = useNavigate();
   const [recommendation, setRecommendation] = useState<CoachRecommendation | null>(null);
   const [showRecommendation, setShowRecommendation] = useState(false);
@@ -41,13 +41,13 @@ export const WeeklyCoachRecommendation = () => {
   const [generatingMessage, setGeneratingMessage] = useState(false);
 
   useEffect(() => {
-    if (!user || isPremium) {
+    if (!user || creditsStatus.credits_remaining > 1000) {
       setIsLoading(false);
       return;
     }
 
     checkForRecommendation();
-  }, [user, isPremium]);
+  }, [user, creditsStatus]);
 
   const generateCoachMessage = async (coachPersonality: string, userName?: string) => {
     setGeneratingMessage(true);
@@ -160,7 +160,7 @@ export const WeeklyCoachRecommendation = () => {
     setShowRecommendation(false);
   };
 
-  if (isLoading || !showRecommendation || isPremium || !user) {
+  if (isLoading || !showRecommendation || creditsStatus.credits_remaining > 1000 || !user) {
     return null;
   }
 
