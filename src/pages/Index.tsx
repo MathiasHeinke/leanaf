@@ -37,13 +37,10 @@ import { cn } from '@/lib/utils';
 import { DateNavigation } from "@/components/DateNavigation";
 import { CaloriesCard } from "@/components/calories/CaloriesCard";
 import { MealEditDialog } from "@/components/MealEditDialog";
-import { getGradualGlowColor, calculateCardProgress } from "@/utils/gradualGlow";
 import { useFrequentMeals } from "@/hooks/useFrequentMeals";
 import { DashboardXPBar } from "@/components/DashboardXPBar";
 import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
-import { usePlusData } from "@/hooks/usePlusData";
-import ConcentricStatCard from "@/components/ConcentricStatCard";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -84,7 +81,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const { checkBadges } = useBadgeChecker();
   const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
   const { isTrackingEnabled } = useTrackingPreferences();
-  const plusData = usePlusData();
   
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
@@ -106,7 +102,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
   const [todaysFluids, setTodaysFluids] = useState<any[]>([]);
-  const [todaysMindset, setTodaysMindset] = useState<any[]>([]);
 
   // XP state for Momentum bar on Index
   const [pointsLoading, setPointsLoading] = useState(true);
@@ -322,21 +317,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         }));
         setTodaysFluids(processedFluids);
       }
-
-      // Load today's mindset/journal entries
-      const { data: mindsetData, error: mindsetError } = await supabase
-        .from('journal_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('date', dateString)
-        .order('created_at', { ascending: false });
-
-      if (mindsetError) {
-        console.error('Error loading mindset:', mindsetError);
-        setTodaysMindset([]);
-      } else {
-        setTodaysMindset(mindsetData || []);
-      }
     } catch (error) {
       console.error('Error loading today\'s data:', error);
     }
@@ -521,7 +501,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     }
   };
 
-  const SortableCard = ({ id, children }: { id: string; children: React.ReactNode }) => {
+  const SortableCard = ({ id, state = 'empty', children }: { id: string; state?: 'empty' | 'partial' | 'done'; children: React.ReactNode }) => {
     const {
       attributes,
       listeners,
@@ -537,53 +517,30 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       opacity: isDragging ? 0.5 : 1,
     } as React.CSSProperties;
 
-    // Calculate progress percentage for this card type
-    const progressPercentage = calculateCardProgress(id, {
-      // Sleep data
-      sleepHours: todaysSleep?.sleep_hours || undefined,
-      bedtime: todaysSleep?.bedtime || undefined,
-      targetSleepHours: 8,
-      
-      // Weight data
-      hasWeightToday: !!todaysWeight,
-      
-      // Workout data
-      completedWorkouts: todaysWorkouts?.length || 0,
-      plannedWorkouts: 1, // Assuming 1 planned workout per day for now
-      
-      // Fluids data
-      fluidsMl: todaysFluids.reduce((sum, fluid) => sum + fluid.amount_ml, 0),
-      targetFluidsMl: dailyGoals?.fluids || 2000,
-      
-      // Mindset data
-      journalEntries: todaysMindset?.length || 0,
-      
-      // Supplements data (placeholder - would need actual supplement data)
-      takenSupplements: 0,
-      plannedSupplements: 0,
-    });
+    const glowClass = state === 'done'
+      ? 'shadow-[0_0_32px_hsl(var(--primary)/0.22)] ring-1 ring-primary/30'
+      : state === 'partial'
+      ? 'shadow-[0_0_28px_hsl(var(--accent)/0.20)] ring-1 ring-accent/30'
+      : 'ring-1 ring-destructive/20';
 
-    // Get gradual glow colors based on progress
-    const glowColors = getGradualGlowColor(progressPercentage);
+    const dotClass = state === 'done'
+      ? 'bg-primary ring-primary/30'
+      : state === 'partial'
+      ? 'bg-accent ring-accent/30'
+      : 'bg-destructive ring-destructive/30';
 
     return (
-      <div 
-        ref={setNodeRef} 
-        style={{ 
-          ...style,
-          boxShadow: glowColors.shadowColor,
-        }} 
-        className={`relative rounded-xl`}
-        data-progress={Math.round(progressPercentage)}
-      >
-        {/* Progress indicator dot */}
-        <span 
-          className={`pointer-events-none absolute top-2 right-2 h-2.5 w-2.5 rounded-full ring-2 animate-[pulse_3s_ease-in-out_infinite]`}
-          style={{
-            backgroundColor: glowColors.dotColor,
-            borderColor: glowColors.ringColor,
-          }}
-        />
+      <div ref={setNodeRef} style={style} className={`relative ${glowClass} rounded-xl`}>
+        <button
+          {...attributes}
+          {...listeners}
+          className="absolute top-2 left-2 h-8 w-8 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-70 hover:opacity-100 transition-opacity z-10 rounded-full bg-muted/50 hover:bg-muted/70 text-muted-foreground"
+          title="Karte verschieben"
+          aria-label="Karte verschieben"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <span className={`pointer-events-none absolute top-2 right-2 h-2.5 w-2.5 rounded-full ring-2 ${dotClass} animate-[pulse_3s_ease-in-out_infinite]`} />
         {children}
       </div>
     );
@@ -608,7 +565,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     switch (cardType) {
       case 'sleep':
         return (
-          <SortableCard key="sleep" id="sleep">
+          <SortableCard key="sleep" id="sleep" state={todaysSleep && (todaysSleep.sleep_hours != null || todaysSleep.bedtime != null) ? 'done' : 'empty'}>
             <QuickSleepInput 
               onSleepAdded={handleSleepAdded}
               todaysSleep={todaysSleep}
@@ -640,7 +597,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       case 'supplements':
         return (
           <SortableCard key="supplements" id="supplements">
-            <QuickSupplementInput onSupplementUpdate={() => loadTodaysData(currentDate)} />
+            <QuickSupplementInput />
           </SortableCard>
         );
       case 'fluids':
@@ -676,14 +633,13 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   return (
     <>
       
-      {/* Sticky Date Navigation */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
-        <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
+      {/* Sticky Date Navigation under GlobalHeader */}
+      <div className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
+        </div>
       </div>
-
       
-      {/* DEAKTIVIERT: XP Bar auf Benutzerwunsch ausgeblendet */}
-      {/*
       <div className="container mx-auto px-4 max-w-4xl mt-3">
         <DashboardXPBar 
           xp={pointsToNext ? (totalPoints % pointsToNext) : totalPoints}
@@ -694,41 +650,30 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           }}
         />
       </div>
-      */}
 
       <div className="space-y-5">
 
-        <div
-          style={{
-            boxShadow: getGradualGlowColor(calculateCardProgress('calories', {
-              caloriesUsed: calorieSummary.consumed,
-              caloriesTarget: dailyGoals?.calories || 2000,
-            })).shadowColor
+        <CaloriesCard
+          date={currentDate}
+          totals={{
+            caloriesUsed: calorieSummary.consumed,
+            caloriesTarget: dailyGoals?.calories || 2000,
+            protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0) +
+                     todaysFluids.reduce((sum, fluid) => sum + ((fluid.protein_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0) +
+                   todaysFluids.reduce((sum, fluid) => sum + ((fluid.carbs_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            fat: meals.reduce((sum, meal) => sum + (meal.fats || meal.fat || 0), 0) +
+                 todaysFluids.reduce((sum, fluid) => sum + ((fluid.fats_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+            targetProtein: dailyGoals?.protein || 150,
+            targetCarbs: dailyGoals?.carbs || 250,
+            targetFat: dailyGoals?.fats || 65,
           }}
-          className="rounded-xl"
-        >
-          <CaloriesCard
-            date={currentDate}
-            totals={{
-              caloriesUsed: calorieSummary.consumed,
-              caloriesTarget: dailyGoals?.calories || 2000,
-              protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0) +
-                       todaysFluids.reduce((sum, fluid) => sum + ((fluid.protein_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
-              carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0) +
-                     todaysFluids.reduce((sum, fluid) => sum + ((fluid.carbs_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
-              fat: meals.reduce((sum, meal) => sum + (meal.fats || meal.fat || 0), 0) +
-                   todaysFluids.reduce((sum, fluid) => sum + ((fluid.fats_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
-              targetProtein: dailyGoals?.protein || 150,
-              targetCarbs: dailyGoals?.carbs || 250,
-              targetFat: dailyGoals?.fats || 65,
-            }}
-            meals={meals}
-            frequent={frequentMeals}
-            onAddQuickMeal={handleAddQuickMeal}
-            onEditMeal={handleEditMeal}
-            onDeleteMeal={handleDeleteMeal}
-          />
-        </div>
+          meals={meals}
+          frequent={frequentMeals}
+          onAddQuickMeal={handleAddQuickMeal}
+          onEditMeal={handleEditMeal}
+          onDeleteMeal={handleDeleteMeal}
+        />
 
         {editingMeal && (
           <MealEditDialog
@@ -797,8 +742,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
         {/* Smart Coach Insights removed per user request */}
 
-        {/* DEAKTIVIERT: Mahlzeiten-Anzeige auf Benutzerwunsch ausgeblendet */}
-        {/* 
         <div>
           <div className="mb-4">
             <div className="flex items-center gap-3 mb-3">
@@ -821,10 +764,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             )}
           </div>
         </div>
-        */}
-        
-        {/* Unterer Abstand für DashboardMealComposer */}
-        <div className="pb-28"></div>
       </div>
 
       {/* Floating Meal Input (hidden, kept for compatibility) */}

@@ -432,8 +432,8 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     console.log(`📤 [ANALYZE-MEAL] Using direct OpenAI analysis (complex: ${isComplexInput})...`);
     const openAIStartTime = Date.now();
     
-    // Use GPT-4.1 for better text analysis quality
-    const aiModel = 'gpt-4.1-2025-04-14';
+    // Use GPT-4.1 for all users for better quality
+    const aiModel = 'gpt-4o';
     console.log(`🤖 [ANALYZE-MEAL] Using AI model: ${aiModel} for ${userTier} user`);
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

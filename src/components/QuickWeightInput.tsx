@@ -397,7 +397,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
 
         {/* Smart Chips for quick actions - visible in both collapsed and expanded states */}
         {hasWeightToday && weightChips.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-3">
+          <div className="mt-3 flex flex-wrap gap-2">
             {weightChips.map((chip, index) => (
               <SmartChip key={index} text={chip.label} onClick={chip.action} />
             ))}

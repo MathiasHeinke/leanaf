@@ -19,8 +19,6 @@ import { format } from 'date-fns';
 import { getCurrentDateString } from "@/utils/dateHelpers";
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { de } from 'date-fns/locale';
-import { useFrequentFluids } from '@/hooks/useFrequentFluids';
-import { ChevronUp } from 'lucide-react';
 
 interface FluidOption {
   id: string;
@@ -85,7 +83,6 @@ interface QuickFluidInputProps {
 
 export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) => {
   const { user } = useAuth();
-  const { frequent: frequentFluids } = useFrequentFluids(user?.id, 45);
   const [fluids, setFluids] = useState<FluidOption[]>([]);
   const [todaysFluids, setTodaysFluids] = useState<UserFluid[]>([]);
   const [alcoholAbstinence, setAlcoholAbstinence] = useState<AlcoholAbstinence | null>(null);
@@ -184,48 +181,6 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     setAlcoholAbstinence(data);
   };
 
-  const addFluidDirectly = async (fluidId: string | null, customFluidName: string | null, amountMl: number) => {
-    if (!user) {
-      toast.error('Benutzer nicht angemeldet');
-      return;
-    }
-
-    try {
-      const fluidData = {
-        user_id: user.id,
-        fluid_id: fluidId,
-        custom_name: customFluidName,
-        amount_ml: amountMl,
-        notes: null
-      };
-
-      const { error } = await supabase
-        .from('user_fluids')
-        .insert([fluidData]);
-
-      if (error) throw error;
-
-      // Get fluid name for toast
-      const fluidName = fluidId 
-        ? fluids.find(f => f.id === fluidId)?.name || 'Getränk'
-        : customFluidName || 'Getränk';
-      
-      toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
-      
-      // Reload data
-      await loadTodaysFluids();
-      
-      // Trigger parent update to refresh main page
-      onFluidUpdate?.();
-      
-      // Global refresh for header/mission
-      triggerDataRefresh();
-    } catch (error) {
-      console.error('Error adding fluid directly:', error);
-      toast.error('Fehler beim Hinzufügen des Getränks');
-    }
-  };
-
   const handleAddFluid = async () => {
     const amountValue = parseFloat(amount);
     if (!user || (!selectedFluid && !customName) || !amount || isNaN(amountValue)) {
@@ -260,7 +215,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       setShowAddForm(false);
       
       // Reload data
-      await loadTodaysFluids();
+      loadTodaysFluids();
       
       // Trigger parent update to refresh main page
       onFluidUpdate?.();
@@ -340,7 +295,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       if (error) throw error;
 
       toast.success('Getränk gelöscht');
-      await loadTodaysFluids();
+      loadTodaysFluids();
       onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
@@ -379,7 +334,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       setEditingFluidId(null);
       setEditAmount('');
       setEditNotes('');
-      await loadTodaysFluids();
+      loadTodaysFluids();
       onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
@@ -413,7 +368,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       if (error) throw error;
 
       toast.success('Getränk dupliziert');
-      await loadTodaysFluids();
+      loadTodaysFluids();
       onFluidUpdate?.();
     } catch (error) {
       console.error('Error duplicating fluid:', error);
@@ -431,35 +386,9 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
     return diffDays;
   };
 
-  // Helper function to detect if a drink is water-based
-  const isWaterDrink = (fluid: UserFluid): boolean => {
-    // If it's from database with water category
-    if (fluid.fluid_category === 'water') {
-      return true;
-    }
-    
-    // If it's a custom entry, check name for water-related keywords
-    if (fluid.custom_name) {
-      const name = fluid.custom_name.toLowerCase();
-      const waterKeywords = [
-        'wasser',
-        'mineralwasser', 
-        'leitungswasser',
-        'sprudelwasser',
-        'stilleswasser',
-        'stilles wasser',
-        'wasserstill'
-      ];
-      
-      return waterKeywords.some(keyword => name.includes(keyword));
-    }
-    
-    return false;
-  };
-
   const getTotalWaterIntake = () => {
     return todaysFluids
-      .filter(f => isWaterDrink(f))
+      .filter(f => f.fluid_category === 'water')
       .reduce((sum, f) => sum + f.amount_ml, 0);
   };
 
@@ -490,70 +419,20 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const hasFluidEntries = todaysFluids.length > 0;
   const totalFluidAmount = todaysFluids.reduce((sum, f) => sum + f.amount_ml, 0);
   const isCompleted = hasFluidEntries;
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(hasFluidEntries);
   const [showFluids, setShowFluids] = useState(false);
 
   // Calculate progress toward daily water goal (2000ml)
   const waterGoal = 2000;
   const waterProgress = Math.min((totalWater / waterGoal) * 100, 100);
 
-  // Generate smart chips based on frequent database entries
-  const generateSmartChips = () => {
-    const chips = [];
-    
-    // Add frequent database entries first (these are the actual drinks from database)
-    frequentFluids.databaseEntries.slice(0, 3).forEach(entry => {
-      chips.push({
-        label: `+ ${entry.default_amount}ml ${entry.name}`,
-        action: () => addFluidDirectly(entry.id, null, entry.default_amount)
-      });
-    });
-    
-    // If we have less than 3 database entries, add frequent amounts
-    if (chips.length < 3) {
-      frequentFluids.amounts.slice(0, 3 - chips.length).forEach(amount => {
-        // Find a popular water drink from database for the amount
-        const waterDrink = fluids.find(f => f.category === 'water');
-        chips.push({
-          label: `+ ${amount}ml Wasser`,
-          action: () => {
-            if (waterDrink) {
-              addFluidDirectly(waterDrink.id, null, amount);
-            } else {
-              addFluidDirectly(null, 'Wasser', amount);
-            }
-          }
-        });
-      });
-    }
-    
-    // If still no data, use popular database defaults
-    if (chips.length === 0) {
-      const popularDrinks = fluids
-        .filter(f => f.category === 'water' || f.name.toLowerCase().includes('kaffee'))
-        .slice(0, 3);
-        
-      if (popularDrinks.length > 0) {
-        popularDrinks.forEach(drink => {
-          chips.push({
-            label: `+ ${drink.default_amount}ml ${drink.name}`,
-            action: () => addFluidDirectly(drink.id, null, drink.default_amount)
-          });
-        });
-      } else {
-        // Final fallback if no database entries
-        chips.push(
-          { label: "+ 250ml Wasser", action: () => addFluidDirectly(null, 'Wasser', 250) },
-          { label: "+ 500ml Wasser", action: () => addFluidDirectly(null, 'Wasser', 500) },
-          { label: "+ 200ml Kaffee", action: () => addFluidDirectly(null, 'Kaffee', 200) }
-        );
-      }
-    }
-    
-    return chips.slice(0, 3);
-  };
-
-  const smartChips = generateSmartChips();
+  // Smart chip actions
+  const smartChips = [
+    { label: "💧 250ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('250'); setShowAddForm(true); } },
+    { label: "💧 500ml Wasser", action: () => { setSelectedFluid(''); setCustomName('Wasser'); setAmount('500'); setShowAddForm(true); } },
+    { label: "☕ Kaffee", action: () => { setSelectedFluid(''); setCustomName('Kaffee'); setAmount('200'); setShowAddForm(true); } },
+    { label: "🍵 Tee", action: () => { setSelectedFluid(''); setCustomName('Tee'); setAmount('250'); setShowAddForm(true); } }
+  ];
 
   // Fluid Pills Component
   const FluidPill: React.FC<{ label: string; value: string; color: string; progress?: number }> = ({ label, value, color, progress }) => (
@@ -718,87 +597,70 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   };
 
   return (
-    <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-      <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Droplets className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold">Flüssigkeiten</h2>
+    <Card className="glass-card shadow-lg border border-primary/20">
+      <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+        <div className="flex items-center gap-3 p-5">
+          <div className="h-10 w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+            <Droplets className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <div className="text-lg font-bold text-foreground">Flüssigkeiten</div>
+            <div className="text-sm text-muted-foreground font-normal">Hydration heute</div>
           </div>
           <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-            >
-              {!isCollapsed ? (
-                <>
-                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </button>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
+            </Button>
           </CollapsibleTrigger>
         </div>
 
-        {/* Collapsed summary when card is closed */}
+        {/* Collapsed State - Fluid Pills */}
         {isCollapsed && (
-          <div className="mt-3 space-y-1 text-sm">
-            <div className="flex items-center gap-3">
-              <div className="font-semibold">
-                {totalWater}ml / {waterGoal}ml Wasser
-              </div>
-              <Progress
-                className="h-2 w-24 md:w-32"
-                value={waterProgress}
-                aria-label="Wasser-Fortschritt"
+          <div className="px-5 pb-5">
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <FluidPill 
+                label="Wasser" 
+                value={`${totalWater}ml`} 
+                color="blue" 
+                progress={waterProgress}
+              />
+              <FluidPill 
+                label="Kalorien" 
+                value={`${Math.round(totalCalories)}`} 
+                color="orange" 
+              />
+              <FluidPill 
+                label={hasAlcoholToday ? "Alkohol" : "Status"} 
+                value={hasAlcoholToday ? "getrunken" : "nüchtern"} 
+                color={hasAlcoholToday ? "red" : "green"} 
               />
             </div>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="font-medium text-orange-600">
-                {Math.round(totalCalories)} kcal
-              </span>
-              <span className={`font-medium ${hasAlcoholToday ? 'text-red-600' : 'text-green-600'}`}>
-                {hasAlcoholToday ? 'Alkohol' : 'Nüchtern'}
-              </span>
-            </div>
             
-            {/* Smart Chips - always show */}
-            <div className="flex flex-wrap gap-1 mt-2">
-              {smartChips.map((chip, index) => (
-                <Button 
-                  key={index}
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => { chip.action(); setIsCollapsed(false); }}
-                  className="text-xs h-6 px-2 hover:bg-primary/10 border-primary/20"
-                >
-                  {chip.label}
-                </Button>
-              ))}
-            </div>
+            {/* Smart Chips - only show when no entries */}
+            {!hasFluidEntries && (
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground">Häufig getrunken:</div>
+                <div className="flex flex-wrap gap-1">
+                  {smartChips.map((chip, index) => (
+                    <Button 
+                      key={index}
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => { chip.action(); setIsCollapsed(false); }}
+                      className="text-xs h-6 px-2 hover:bg-primary/10 border-primary/20"
+                    >
+                      {chip.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         <CollapsibleContent>
-          <div className="pt-4 space-y-6">
-            {/* Smart Chips - always show when expanded */}
-            <div className="flex flex-wrap gap-1">
-              {smartChips.map((chip, index) => (
-                <Button 
-                  key={index}
-                  variant="outline" 
-                  size="sm" 
-                  onClick={chip.action}
-                  className="text-xs h-7 px-3 hover:bg-primary/10 border-primary/20"
-                >
-                  {chip.label}
-                </Button>
-              ))}
-            </div>
-            {/* Water breakdown */}
+          <CardContent className="pt-0 space-y-6">
+            {/* Summary Progress */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Wasser heute</span>
@@ -807,32 +669,9 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
                 </Badge>
               </div>
               <div className="space-y-2">
-                {/* Show individual water drinks */}
-                {todaysFluids.filter(f => isWaterDrink(f)).length > 0 ? (
-                  <div className="space-y-1">
-                    {todaysFluids
-                      .filter(f => isWaterDrink(f))
-                      .map((fluid, index) => (
-                        <div key={index} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            {fluid.fluid_name || fluid.custom_name}
-                          </span>
-                          <span className="font-medium text-blue-600 dark:text-blue-400">
-                            {fluid.amount_ml} ml
-                          </span>
-                        </div>
-                      ))
-                    }
-                    <div className="border-t pt-1 flex justify-between font-semibold">
-                      <span>Gesamt:</span>
-                      <span className="text-blue-600 dark:text-blue-400">{totalWater} ml</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {totalWater} ml
-                  </div>
-                )}
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {totalWater} ml
+                </div>
                 <div className="text-sm text-muted-foreground">
                   Ziel: {waterGoal} ml
                 </div>
@@ -1112,9 +951,9 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
             </Button>
           </Card>
         )}
-          </div>
+          </CardContent>
         </CollapsibleContent>
-      </Card>
-    </Collapsible>
+      </Collapsible>
+    </Card>
   );
 };

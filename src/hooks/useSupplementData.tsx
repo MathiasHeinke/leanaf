@@ -43,14 +43,15 @@ export const TIMING_OPTIONS = [
   { value: 'evening', label: 'Abends', icon: '🌙', tip: 'Mit dem Abendessen' },
   { value: 'pre_workout', label: 'Vor dem Training', icon: '💪', tip: '30-60 Min vor dem Training' },
   { value: 'post_workout', label: 'Nach dem Training', icon: '🏃', tip: 'Innerhalb 30 Min nach dem Training' },
-  { value: 'before_bed', label: 'Vor dem Schlafengehen', icon: '🛏️', tip: '30-60 Min vor dem Schlafen' }
+  { value: 'before_bed', label: 'Vor dem Schlafengehen', icon: '🛏️', tip: '30-60 Min vor dem Schlafen' },
+  { value: 'with_meals', label: 'Zu den Mahlzeiten', icon: '🍽️', tip: 'Mit oder direkt nach den Mahlzeiten' }
 ];
 
 // Legacy timing mapping for backwards compatibility
 export const LEGACY_TIMING_MAP: Record<string, string> = {
   'empty_stomach': 'morning',
   'between_meals': 'noon', 
-  'with_food': 'evening',
+  'with_food': 'with_meals',
   'before_sleep': 'before_bed',
   'workout': 'pre_workout',
   'after_workout': 'post_workout'

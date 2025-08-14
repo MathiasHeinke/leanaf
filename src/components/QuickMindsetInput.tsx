@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown } from "lucide-react";
 import { useMindsetJournal } from "@/hooks/useMindsetJournal";
 import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
 import { VoiceVisualizer } from "@/components/mindset-journal/VoiceVisualizer";
@@ -183,14 +183,13 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   const hasEntriesForDate = recentEntries.some(entry => 
     new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(hasEntriesForDate);
 
   useEffect(() => {
     if (transcribedText && isCollapsed) {
       setIsCollapsed(false);
     }
   }, [transcribedText, isCollapsed]);
-  
   const todayEntries = recentEntries.filter(entry => 
     new Date(entry.date).toISOString().split('T')[0] === currentDateStr
   );
@@ -207,338 +206,283 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   ];
 
   return (
-    <Card className="p-4">
+    <Card className="relative">
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        {/* Header - CaloriesCard style */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold">Mindset Journal</h2>
+        <div className="flex items-center gap-3 p-5">
+          <Brain className="h-5 w-5 text-primary" />
+          <div className="flex-1">
+            <h3 className="text-base font-semibold">Mindset Journal</h3>
+            {isCollapsed && hasEntriesForDate && (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-muted-foreground">
+                  {todayEntries.length} Einträge • Stimmung: {avgMoodScore > 0 ? '😊' : avgMoodScore < 0 ? '😔' : '😐'}
+                </span>
+                <Progress value={moodProgress} className="h-1 w-16" />
+              </div>
+            )}
+            {isCollapsed && !hasEntriesForDate && (
+              <div className="flex gap-1 mt-2">
+                {smartChips.map((chip, index) => (
+                  <Button 
+                    key={index}
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => { chip.action(); setIsCollapsed(false); }}
+                    className="text-xs h-6 px-2"
+                  >
+                    {chip.label}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              onClick={() => startRecording()}
-              disabled={isRecording || isVoiceLoading}
-              title="Schnellaufnahme"
-            >
-              <Mic className="h-4 w-4" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 w-8 p-0 mr-1"
+            onClick={() => startRecording()}
+            disabled={isRecording || isVoiceLoading}
+            title="Schnellaufnahme"
+          >
+            <Mic className="h-4 w-4" />
+          </Button>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
             </Button>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-              >
-                {!isCollapsed ? (
-                  <>
-                    Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-                  </>
-                ) : (
-                  <>
-                    Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-                  </>
-                )}
-              </button>
-            </CollapsibleTrigger>
-          </div>
+          </CollapsibleTrigger>
         </div>
 
-        {/* Collapsed summary when card is closed - CaloriesCard style */}
-        {isCollapsed && hasEntriesForDate && (
-          <div className="mt-3 space-y-1 text-sm">
-            <div className="flex items-center gap-3">
-              <div className="font-semibold">
-                {todayEntries.length} Einträge
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            <div className="space-y-4">
+        {/* Smart Prompt */}
+        {currentPrompt && (
+          <div className="p-3 rounded-lg bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 border border-violet-200/50 dark:border-violet-800/30">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
+                  {currentPrompt.expertise}
+                </Badge>
+                <Badge variant="outline" className="text-xs">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {getCurrentTimeOfDay()}
+                </Badge>
               </div>
-              <Progress value={moodProgress} className="h-2 w-24 md:w-32" />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={useMindsetPrompts ? refreshPrompt : togglePromptMode}
+                className="h-6 px-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                title={useMindsetPrompts ? "Neue Mindset-Frage" : "Mindset-Fragen aktivieren"}
+              >
+                <Sparkles className="h-3 w-3" />
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">
-                Stimmung: {avgMoodScore > 0 ? '😊 Positiv' : avgMoodScore < 0 ? '😔 Negativ' : '😐 Neutral'}
-              </span>
-              <Badge variant="outline" className={getMoodBadgeColor(avgMoodScore)}>
-                {avgMoodScore.toFixed(1)}
-              </Badge>
+            <p className="text-sm font-medium text-violet-900 dark:text-violet-100 mb-1">
+              {currentPrompt.question}
+            </p>
+            {currentPrompt.followUp && (
+              <p className="text-xs text-violet-600 dark:text-violet-400">
+                💡 {currentPrompt.followUp}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Input Methods */}
+        <div className="space-y-3">
+          {/* Voice Input & Analysis Mode */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isRecording ? "destructive" : "secondary"}
+              size="sm"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isProcessing || isVoiceLoading}
+              className="flex-1 relative"
+            >
+              {isRecording ? (
+                <>
+                  <MicOff className="h-4 w-4 mr-2" />
+                  Stoppen
+                </>
+              ) : (
+                <>
+                  <Mic className="h-4 w-4 mr-2" />
+                  Voice Input
+                  {hasPersistedAudio && (
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full animate-pulse" />
+                  )}
+                </>
+              )}
+            </Button>
+
+            {/* Analysis Mode Toggle */}
+            <div className="flex border rounded-md">
+              <Button
+                variant={analysisMode === 'simple' ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setAnalysisMode('simple')}
+                className="rounded-r-none border-0 text-xs px-2"
+              >
+                Basic
+              </Button>
+              <Button
+                variant={analysisMode === 'kai' ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setAnalysisMode('kai')}
+                className="rounded-l-none border-0 text-xs px-2"
+              >
+                <Brain className="h-3 w-3 mr-1" />
+                Kai
+              </Button>
+            </div>
+          </div>
+
+          {/* Voice Visualizer */}
+          {(isRecording || audioLevel > 0) && (
+            <VoiceVisualizer audioLevel={audioLevel} isRecording={isRecording} />
+          )}
+
+          {/* Text Input */}
+          <Textarea
+            placeholder={isProcessing ? "Transkribiere..." : "Oder schreibe deine Gedanken hier..."}
+            value={transcribedText || manualText}
+            onChange={(e) => setManualText(e.target.value)}
+            className="min-h-[60px] resize-none"
+            disabled={isRecording || isProcessing}
+          />
+
+          {/* Processing Status & Audio Cache Info */}
+          {(isProcessing || isVoiceLoading || hasPersistedAudio) && (
+            <div className="space-y-2">
+              {(isProcessing || isVoiceLoading) && (
+                <div className="flex items-center gap-2 text-xs text-violet-600 dark:text-violet-400">
+                  <div className="animate-spin h-3 w-3 border border-violet-300 border-t-violet-600 rounded-full"></div>
+                  <span>{isProcessing ? "Transkribiere Aufnahme..." : "Verarbeite..."}</span>
+                </div>
+              )}
+              
+              {hasPersistedAudio && !isProcessing && !isVoiceLoading && (
+                <div className="flex items-center justify-between p-2 bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30 rounded-md">
+                  <div className="flex items-center gap-2 text-xs text-violet-700 dark:text-violet-300">
+                    <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                    <span>Audio permanent gespeichert</span>
+                    <Badge variant="outline" className="text-xs border-success/30 text-success">
+                      Persistent
+                    </Badge>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={retryTranscription}
+                      className="h-6 px-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                      title="Retry from LocalStorage"
+                    >
+                      Lokal
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={retryFromServer}
+                      className="h-6 px-2 text-xs text-accent hover:text-accent/80"
+                      title="Retry from Server"
+                    >
+                      Server
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearPersistedAudio}
+                      className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
+                      title="Clear all audio"
+                    >
+                      Löschen
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Photo Upload */}
+          <PhotoUpload
+            onPhotoSelect={handlePhotoSelect}
+            onPhotoRemove={handlePhotoRemove}
+            photoPreview={photoPreview}
+            isUploading={isUploadingPhoto}
+          />
+
+          {/* Submit Button */}
+          <Button
+            onClick={handleAnalyzeAndSave}
+            disabled={!(transcribedText || manualText.trim() || selectedPhoto) || isLoading || isProcessing || isUploadingPhoto}
+            size="sm"
+            className="w-full"
+          >
+            <Send className="h-4 w-4 mr-2" />
+            {isUploadingPhoto ? 'Speichere...' : analysisMode === 'kai' ? 'Kai Analyse & Speichern' : 'Speichern'}
+          </Button>
+        </div>
+
+        {/* Entries Preview for Current Date */}
+        {hasEntriesForDate && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-medium text-muted-foreground">
+                {currentDateStr === new Date().toISOString().split('T')[0] ? 'Heutige Einträge' : 'Einträge'}
+              </h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDetailWidget(true)}
+                className="text-xs h-auto py-1 px-2 text-violet-600 hover:text-violet-700 dark:text-violet-400"
+              >
+                Alle anzeigen
+              </Button>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {recentEntries
+                .filter(entry => new Date(entry.date).toISOString().split('T')[0] === currentDateStr)
+                .slice(0, 3)
+                .map((entry, index) => (
+                <div
+                  key={entry.id || index}
+                  onClick={() => setShowDetailWidget(true)}
+                  className="flex items-center gap-1 p-2 rounded-md bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30 cursor-pointer hover:bg-violet-100/50 dark:hover:bg-violet-900/40 transition-colors"
+                >
+                  <Badge
+                    variant="outline"
+                    className={cn("text-xs px-1", getMoodBadgeColor(entry.mood_score))}
+                  >
+                    {entry.mood_score > 0 ? '😊' : entry.mood_score < 0 ? '😔' : '😐'}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(entry.date).toLocaleTimeString('de-DE', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </span>
+                  {entry.gratitude_items.length > 0 && (
+                    <Heart className="h-3 w-3 text-violet-500" />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* Smart Chips & Journal Indicator */}
-        <div className="mt-3 flex flex-wrap gap-3">
-          {smartChips.map((chip, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => { 
-                chip.action(); 
-                if (isCollapsed) setIsCollapsed(false);
-              }}
-              className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
-            >
-              <Brain className="h-3.5 w-3.5 mr-1.5" />
-              <span className="truncate max-w-[10rem]">{chip.label}</span>
-            </button>
-          ))}
-          {hasEntriesForDate && (
-            <button
-              type="button"
-              onClick={() => setShowDetailWidget(true)}
-              className="inline-flex items-center rounded-full border bg-violet-100 hover:bg-violet-200 dark:bg-violet-900/50 dark:hover:bg-violet-900/70 px-3 py-1 text-xs transition-colors text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-700"
-            >
-              <FileText className="h-3.5 w-3.5 mr-1.5" />
-              <span>Einträge anzeigen</span>
-            </button>
-          )}
-        </div>
-
-        <CollapsibleContent>
-          <div className="space-y-4">
-            {/* Header numbers - CaloriesCard style grid */}
-            {hasEntriesForDate && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div className="rounded-md border bg-muted/30 p-3">
-                  <div className="text-xs text-muted-foreground">Einträge heute</div>
-                  <div className="text-lg font-semibold">{todayEntries.length} Gedanken</div>
-                </div>
-                <div className="rounded-md border bg-muted/30 p-3">
-                  <div className="text-xs text-muted-foreground">Durchschnittliche Stimmung</div>
-                  <div className="text-lg font-semibold flex items-center gap-2">
-                    {avgMoodScore > 0 ? '😊' : avgMoodScore < 0 ? '😔' : '😐'}
-                    <span>{avgMoodScore.toFixed(1)}/10</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Smart Prompt */}
-            {currentPrompt && (
-              <div className="p-3 rounded-lg bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-950/30 dark:to-violet-900/20 border border-violet-200/50 dark:border-violet-800/30">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
-                      {currentPrompt.expertise}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      <Clock className="h-3 w-3 mr-1" />
-                      {getCurrentTimeOfDay()}
-                    </Badge>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={useMindsetPrompts ? refreshPrompt : togglePromptMode}
-                    className="h-6 px-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
-                    title={useMindsetPrompts ? "Neue Mindset-Frage" : "Mindset-Fragen aktivieren"}
-                  >
-                    <Sparkles className="h-3 w-3" />
-                  </Button>
-                </div>
-                <p className="text-sm font-medium text-violet-900 dark:text-violet-100 mb-1">
-                  {currentPrompt.question}
-                </p>
-                {currentPrompt.followUp && (
-                  <p className="text-xs text-violet-600 dark:text-violet-400">
-                    💡 {currentPrompt.followUp}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Input Methods */}
-            <div className="space-y-3">
-              {/* Voice Input & Analysis Mode */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={isRecording ? "destructive" : "secondary"}
-                  size="sm"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  disabled={isProcessing || isVoiceLoading}
-                  className="flex-1 relative"
-                >
-                  {isRecording ? (
-                    <>
-                      <MicOff className="h-4 w-4 mr-2" />
-                      Stoppen
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="h-4 w-4 mr-2" />
-                      Voice Input
-                      {hasPersistedAudio && (
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full animate-pulse" />
-                      )}
-                    </>
-                  )}
-                </Button>
-
-                {/* Analysis Mode Toggle */}
-                <div className="flex border rounded-md">
-                  <Button
-                    variant={analysisMode === 'simple' ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setAnalysisMode('simple')}
-                    className="rounded-r-none border-0 text-xs px-2"
-                  >
-                    Basic
-                  </Button>
-                  <Button
-                    variant={analysisMode === 'kai' ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setAnalysisMode('kai')}
-                    className="rounded-l-none border-0 text-xs px-2"
-                  >
-                    <Brain className="h-3 w-3 mr-1" />
-                    Kai
-                  </Button>
-                </div>
-              </div>
-
-              {/* Voice Visualizer */}
-              {(isRecording || audioLevel > 0) && (
-                <VoiceVisualizer audioLevel={audioLevel} isRecording={isRecording} />
-              )}
-
-              {/* Text Input */}
-              <Textarea
-                placeholder={isProcessing ? "Transkribiere..." : "Oder schreibe deine Gedanken hier..."}
-                value={transcribedText || manualText}
-                onChange={(e) => setManualText(e.target.value)}
-                className="min-h-[60px] resize-none"
-                disabled={isRecording || isProcessing}
-              />
-
-              {/* Processing Status & Audio Cache Info */}
-              {(isProcessing || isVoiceLoading || hasPersistedAudio) && (
-                <div className="space-y-2">
-                  {(isProcessing || isVoiceLoading) && (
-                    <div className="flex items-center gap-2 text-xs text-violet-600 dark:text-violet-400">
-                      <div className="animate-spin h-3 w-3 border border-violet-300 border-t-violet-600 rounded-full"></div>
-                      <span>{isProcessing ? "Transkribiere Aufnahme..." : "Verarbeite..."}</span>
-                    </div>
-                  )}
-                  
-                  {hasPersistedAudio && !isProcessing && !isVoiceLoading && (
-                    <div className="flex items-center justify-between p-2 bg-violet-50/50 dark:bg-violet-950/30 border border-violet-200/50 dark:border-violet-800/30 rounded-md">
-                      <div className="flex items-center gap-2 text-xs text-violet-700 dark:text-violet-300">
-                        <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-                        <span>Audio für Journal gespeichert</span>
-                        <Badge variant="outline" className="text-xs border-success/30 text-success">
-                          Permanent
-                        </Badge>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={retryTranscription}
-                          className="h-6 px-2 text-xs text-violet-600 hover:text-violet-700 dark:text-violet-400"
-                          title="Retry from LocalStorage"
-                        >
-                          Lokal
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={retryFromServer}
-                          className="h-6 px-2 text-xs text-accent hover:text-accent/80"
-                          title="Retry from Server"
-                        >
-                          Server
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={clearPersistedAudio}
-                          className="h-6 px-2 text-xs text-muted-foreground hover:text-destructive"
-                          title="Clear all audio"
-                        >
-                          Löschen
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Photo Upload */}
-              <PhotoUpload
-                onPhotoSelect={handlePhotoSelect}
-                onPhotoRemove={handlePhotoRemove}
-                photoPreview={photoPreview}
-                isUploading={isUploadingPhoto}
-              />
-
-              {/* Submit Button */}
-              <Button
-                onClick={handleAnalyzeAndSave}
-                disabled={!(transcribedText || manualText.trim() || selectedPhoto) || isLoading || isProcessing || isUploadingPhoto}
-                size="sm"
-                className="w-full"
-              >
-                <Send className="h-4 w-4 mr-2" />
-                {isUploadingPhoto ? 'Speichere...' : analysisMode === 'kai' ? 'Kai Analyse & Speichern' : 'Speichern'}
-              </Button>
+        {/* Detail Widget */}
+        <MindsetJournalDetailWidget
+          open={showDetailWidget}
+          onOpenChange={setShowDetailWidget}
+          selectedDate={currentDateStr}
+        />
             </div>
-
-            {/* Entries list toggle - CaloriesCard style */}
-            {hasEntriesForDate && (
-              <div className="mt-4">
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between rounded-md border bg-card px-3 py-2 hover:bg-muted/50"
-                  onClick={() => setShowDetailWidget(!showDetailWidget)}
-                >
-                  <div className="text-sm font-medium">Einträge anzeigen</div>
-                  {showDetailWidget ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                {showDetailWidget && (
-                  <div className="mt-3 space-y-2">
-                    {todayEntries.length === 0 ? (
-                      <div className="text-sm text-muted-foreground">Keine Einträge für heute.</div>
-                    ) : (
-                      todayEntries.slice(0, 3).map((entry, index) => (
-                        <div key={index} className="border rounded-md p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <Badge variant="outline" className={getMoodBadgeColor(entry.mood_score || 0)}>
-                              {entry.sentiment_tag || 'neutral'}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(entry.date).toLocaleTimeString('de-DE', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                            </span>
-                          </div>
-                          <p className="text-sm">
-                            {entry.raw_text?.substring(0, 100)}{entry.raw_text?.length > 100 ? '...' : ''}
-                          </p>
-                          {entry.gratitude_items && entry.gratitude_items.length > 0 && (
-                            <div className="mt-2">
-                              <div className="text-xs font-medium text-muted-foreground mb-1">Dankbarkeit:</div>
-                              <div className="flex flex-wrap gap-1">
-                                {entry.gratitude_items.slice(0, 2).map((item: string, i: number) => (
-                                  <Badge key={i} variant="outline" className="text-xs">
-                                    <Heart className="h-3 w-3 mr-1" />
-                                    {item}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          </CardContent>
         </CollapsibleContent>
       </Collapsible>
-
-      {/* Detail Widget Modal - Remove for now to fix build error */}
     </Card>
   );
 };
