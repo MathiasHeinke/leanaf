@@ -132,7 +132,7 @@ function TimingSection({
             className="h-8 w-8 p-0"
             title={isComplete ? 'Alle entfernen' : 'Alle abhaken'}
           >
-            {isComplete ? '✅' : '⭕️'}
+            <RadioButtonCheckbox checked={isComplete} />
           </Button>
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
