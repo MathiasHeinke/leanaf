@@ -1103,8 +1103,10 @@ chatInput={
           }}
         />
 
-        {/* Messages */}
-        <ScrollArea className="flex-1 h-full">
+        {/* Messages - transparent scrollable area over fire */}
+        <div 
+          className="flex-1 h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        >
           {isLoading ? (
             <div className="space-y-4 py-4">
               <TypingIndicator name={coach?.name || 'Coach'} />
@@ -1138,7 +1140,7 @@ chatInput={
               <div ref={messagesEndRef} />
             </div>
           )}
-        </ScrollArea>
+        </div>
         <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
         <ConfirmMealModal
           open={confirmMeal.open}
