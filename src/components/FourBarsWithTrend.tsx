@@ -1,5 +1,5 @@
 import React from "react";
-import { Target } from "lucide-react";
+import { Trophy } from "lucide-react";
 
 type Bar = {
   key: "P" | "K" | "F" | "C";       // C = KCAL
@@ -75,7 +75,7 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, suppleme
     <section className="rounded-3xl p-4 sm:p-5 bg-white/60 dark:bg-[#0b0f14] shadow-[0_10px_30px_rgba(0,0,0,.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,.45)] backdrop-blur">
       {/* Title */}
       <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-        <Target className="h-5 w-5" />
+        <Trophy className="h-5 w-5 text-primary" />
         Tägliche Ziele
       </h2>
       
