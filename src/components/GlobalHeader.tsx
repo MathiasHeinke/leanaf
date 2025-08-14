@@ -156,7 +156,7 @@ export const GlobalHeader = ({
       <div className="h-[61px]" />
 
       {/* Debug Panel for Super Admins */}
-      {(creditsStatus.tester || false) && (
+      {(creditsStatus?.tester || false) && (
         <PointsDebugPanel 
           isOpen={isDebugPanelOpen} 
           onClose={() => setIsDebugPanelOpen(false)} 
