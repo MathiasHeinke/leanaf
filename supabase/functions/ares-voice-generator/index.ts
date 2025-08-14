@@ -18,11 +18,21 @@ interface ProtocolState {
 }
 
 interface AresConfig {
-  sentenceLength: { scale: number; minWords: number; maxWords: number };
-  archetypeBlend: Record<string, number>;
-  language: 'de'|'en';
-  humorHardnessBias?: number;
+  language: 'de'|'en';        // Hochdeutsch in DE-Modus
+  humorHardnessBias?: number; // -1 = hart, +1 = humor
   allowDrill?: boolean;
+
+  // **Variable Satzlänge**: linear + Jitter + per-Archetyp-Modifier
+  sentenceLength: {
+    scale: number;            // 0..1 → min..max
+    minWords: number;         // z.B. 4
+    maxWords: number;         // z.B. 14
+    jitter?: number;          // 0..1 → +/- Prozent des Targets (z.B. 0.25 = ±25%)
+    perArchetypeMul?: Partial<Record<Archetype, number>>; // z.B. commander:0.9, father:1.2
+  };
+
+  // **Linear einstellbarer Archetyp-Mix**
+  archetypeBlend: Record<string, number>;
 }
 
 // ARES Voice Lines
@@ -74,8 +84,12 @@ const VOICE_LINES: VoiceLine[] = [
 ];
 
 // Utility functions
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
+
 function mapLinear(x: number, inMin: number, inMax: number, outMin: number, outMax: number) {
-  const clamped = Math.min(Math.max(x, inMin), inMax);
+  const clamped = clamp(x, inMin, inMax);
   return outMin + (outMax - outMin) * ((clamped - inMin) / (inMax - inMin));
 }
 
@@ -91,25 +105,36 @@ function computeRunScore(p: ProtocolState) {
   const last = p.dev.at(-1);
   if (!last) return 0;
   let score = 0;
-
   score += (last.mood ?? 6) - 5;
   score -= (last.misses ?? 0) * 0.5;
   score -= (last.alcohol_units ?? 0) * 0.5;
   if (typeof last.hrv_drop_pct === 'number') score += (last.hrv_drop_pct >= 0 ? 0.5 : -0.5);
   if ((last.sleep_hours ?? 7) >= 7) score += 0.5; else score -= 0.5;
   score += (last.wins ?? 0) * 0.2;
-
-  return Math.max(-3, Math.min(3, score));
+  return clamp(score, -3, 3);
 }
 
 function humorHardness(runScore: number, bias = 0) {
+  // -1 = sehr hart, +1 = humorvoll/warm
   const base = mapLinear(runScore, -3, 3, -0.7, +0.7);
-  return Math.max(-1, Math.min(1, base + bias));
+  return clamp(base + bias, -1, +1);
 }
 
-function wordClamp(text: string, cfg: AresConfig) {
+type ToneKey = 'hard'|'warm'|'humor';
+
+function rand() { return Math.random(); }
+
+function targetWordsFor(cfg: AresConfig, archetype: Archetype) {
+  const base = mapLinear(cfg.sentenceLength.scale, 0, 1, cfg.sentenceLength.minWords, cfg.sentenceLength.maxWords);
+  const mul = cfg.sentenceLength.perArchetypeMul?.[archetype] ?? 1;
+  const jitterPct = clamp(cfg.sentenceLength.jitter ?? 0, 0, 1);
+  const jitter = (rand() * 2 - 1) * (base * jitterPct); // ±jitterPct*base
+  const target = Math.round(clamp(base * mul + jitter, cfg.sentenceLength.minWords, cfg.sentenceLength.maxWords));
+  return target;
+}
+
+function clampWords(text: string, target: number) {
   const words = text.split(/\s+/);
-  const target = Math.round(mapLinear(cfg.sentenceLength.scale, 0, 1, cfg.sentenceLength.minWords, cfg.sentenceLength.maxWords));
   if (words.length <= target) return text;
   return words.slice(0, target).join(' ').replace(/[.,;:!?]*$/, '.');
 }
@@ -117,37 +142,38 @@ function wordClamp(text: string, cfg: AresConfig) {
 function generateLine(cfg: AresConfig, state: ProtocolState, contextTags: string[] = []) {
   const runScore = computeRunScore(state);
   const hh = humorHardness(runScore, cfg.humorHardnessBias ?? 0);
-  const tonePref: 'hard'|'warm'|'humor' = hh > 0.2 ? 'humor' : (hh < -0.2 ? 'hard' : 'warm');
+  const tonePref: ToneKey = hh > 0.2 ? 'humor' : (hh < -0.2 ? 'hard' : 'warm');
 
   const blend = normalizeBlend(cfg.archetypeBlend);
   if (cfg.allowDrill === false && blend['drill'] > 0) blend['drill'] = 0;
 
-  const weighted: { line: VoiceLine; w: number }[] = [];
+  // Gewichtete Auswahl
+  const weighted: { text: string; archetype: Archetype; tone: ToneKey; w: number }[] = [];
   for (const line of VOICE_LINES) {
     const wA = (blend[line.archetype] ?? 0);
-    const wT = (tonePref === line.tone ? 1.0 : 0.5);
+    const wT = (tonePref === (line.tone ?? 'warm') ? 1.0 : 0.5);
     const wC = contextTags.length ? (line.tags?.some(t => contextTags.includes(t)) ? 1.1 : 1.0) : 1.0;
     const w = wA * wT * wC;
-    if (w > 0) weighted.push({ line, w });
+    if (w > 0) weighted.push({ text: line.text, archetype: line.archetype, tone: (line.tone ?? 'warm'), w });
   }
 
-  const pool = weighted.length ? weighted : ARES_SIGNATURES.map(l => ({ line: l, w: 1 }));
-  const sum = pool.reduce((s,x)=> s + x.w, 0);
-  let r = Math.random()*sum;
-  let chosen = pool[0].line;
-  for (const x of pool) { r -= x.w; if (r <= 0) { chosen = x.line; break; } }
+  const pool = weighted.length
+    ? weighted
+    : ARES_SIGNATURES.map(l => ({ text: l.text, archetype: l.archetype, tone: (l.tone ?? 'warm'), w: 1 }));
 
-  const text = wordClamp(chosen.text, cfg);
+  const sum = pool.reduce((s, x) => s + x.w, 0);
+  let r = rand() * sum;
+  let chosen = pool[0];
+  for (const x of pool) { r -= x.w; if (r <= 0) { chosen = x; break; } }
+
+  const target = targetWordsFor(cfg, chosen.archetype);
+  const text = clampWords(chosen.text, target);
 
   return {
     text,
     archetypePicked: chosen.archetype,
-    tone: chosen.tone ?? 'warm',
-    meta: {
-      targetWords: Math.round(mapLinear(cfg.sentenceLength.scale, 0, 1, cfg.sentenceLength.minWords, cfg.sentenceLength.maxWords)),
-      runScore,
-      humorHardness: hh,
-    }
+    tone: chosen.tone,
+    meta: { targetWords: target, runScore, humorHardness: hh }
   };
 }
 
