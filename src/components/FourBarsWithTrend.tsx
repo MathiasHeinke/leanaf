@@ -79,7 +79,7 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, suppleme
             const actualRatio = b.value / Math.max(1, b.target);
             const ratio = Math.max(0, Math.min(1, actualRatio)); // Clamped for visual fill
             const percentage = Math.round(actualRatio * 100);
-            const isOverTarget = actualRatio > 0.8; // Red at 80% (target line)
+            const isOverTarget = ratio > 0.8; // Red when visual bar exceeds 80% height
             
             // Debug logging for red bar issue
             console.log(`Bar ${b.key}: value=${b.value}, target=${b.target}, ratio=${actualRatio}, isOverTarget=${isOverTarget}`);
