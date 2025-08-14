@@ -133,6 +133,10 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [messages, setMessages] = useState<EnhancedChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  
+  // FireBackdrop for ARES
+  const fireBackdropRef = useRef<FireBackdropHandle>(null);
+  const isAres = coach?.id === 'ares';
   const [chatInitialized, setChatInitialized] = useState(false);
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
   const [showQuickAction, setShowQuickAction] = useState(false);
@@ -389,10 +393,6 @@ const initializationRef = useRef(false);
 const messagesEndRef = useRef<HTMLDivElement>(null);
 const lastSendTimeRef = useRef<number | null>(null);
 const awaitingFirstPaintRef = useRef<boolean>(false);
-
-// FireBackdrop for ARES
-const fireBackdropRef = useRef<FireBackdropHandle>(null);
-const isAres = coach?.id === 'ares';
 
   // Legacy enhanced chat removed – orchestrator-only path
 
