@@ -17,7 +17,7 @@ export async function loadUserProfile(supabase: any, userId: string) {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('age, gender, height, weight, target_weight, goal, activity_level, macro_strategy')
+      .select('age, gender, height, weight, target_weight, goal, activity_level, macro_strategy, display_name, email')
       .eq('user_id', userId)
       .maybeSingle();
     if (error) return {};

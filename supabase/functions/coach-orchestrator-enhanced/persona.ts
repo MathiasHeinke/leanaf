@@ -42,11 +42,11 @@ export async function loadCoachPersona(_supabase: any, coachId?: string): Promis
   let preferDb = true;
   try {
     // Deno.env is only available in Edge Function runtime
-    // Example: PERSONA_FROM_DB_ENABLED="lucy,kai"
-    // If not set, default to lucy-only rollout
+    // Example: PERSONA_FROM_DB_ENABLED="lucy,kai,ares"
+    // If not set, default to lucy and ares
     // @ts-ignore
     const raw = typeof Deno !== 'undefined' ? (Deno.env.get('PERSONA_FROM_DB_ENABLED') || '') : '';
-    const list = raw ? raw.split(',').map(s => s.trim().toLowerCase()) : ['lucy'];
+    const list = raw ? raw.split(',').map(s => s.trim().toLowerCase()) : ['lucy', 'ares'];
     preferDb = list.includes(id.toLowerCase());
   } catch { /* ignore */ }
 

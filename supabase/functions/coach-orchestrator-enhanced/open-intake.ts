@@ -39,6 +39,7 @@ export async function llmOpenIntake({
   const p = supabase ? await loadCoachPersona(supabase, coachId) : personaPreset(coachId);
   
   const facts: string[] = [];
+  if (profile?.display_name) facts.push(`Name: ${profile.display_name}`);
   if (profile?.goal) facts.push(`Ziel: ${profile.goal}`);
   if (profile?.weight) facts.push(`Gewicht: ${profile.weight} kg`);
   if (profile?.activity_level) facts.push(`Aktivität: ${profile.activity_level}`);
