@@ -67,7 +67,7 @@ async function executeCompletionPlan() {
     console.log('\n🧪 Step 4: Testing All 5 Coaches...');
     const testResults = {};
     
-    const coaches = ['lucy', 'sascha', 'markus', 'kai', 'vita'];
+    const coaches = ['lucy', 'sascha', 'ares', 'kai', 'vita'];
     
     for (const coachId of coaches) {
       console.log(`\n🔍 Testing ${coachId}...`);

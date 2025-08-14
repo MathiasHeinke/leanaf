@@ -494,23 +494,23 @@ export const TrainingDashboard: React.FC = () => {
         </Card>
 
         <Card className="border-orange-500/20 hover:border-orange-500/40 transition-all cursor-pointer group hover:shadow-lg min-h-[200px]"
-              onClick={() => navigate('/coach/markus')}>
+              onClick={() => navigate('/coach/ares')}>
           <CardContent className="p-6">
             <div className="flex flex-col items-center text-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-orange-600/20 to-red-600/20 rounded-full flex items-center justify-center group-hover:scale-105 transition-transform">
                 <img 
                   src="/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png" 
-                  alt="Coach Markus Rühl"
+                  alt="ARES - The Ultimate Coach"
                   className="w-14 h-14 rounded-full object-cover"
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex flex-col items-center gap-1">
-                  <h3 className="font-bold text-lg">Markus Rühl</h3>
-                  <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-600">The German Beast</Badge>
+                  <h3 className="font-bold text-lg">ARES - Ultimate Coach</h3>
+                  <Badge variant="secondary" className="text-xs bg-orange-500/10 text-orange-600">Ultimate Dominator</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Hardcore Bodybuilding-Legende. Heavy+Volume Training für maximale Muskelmasse!
+                  Ultimate Coaching Intelligence mit Zugriff auf ALLE Domains für totale Optimierung!
                 </p>
                 <div className="flex flex-wrap gap-1 justify-center">
                   <Badge variant="outline" className="text-xs">🔥 Beast Mode</Badge>

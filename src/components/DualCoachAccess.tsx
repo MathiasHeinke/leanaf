@@ -23,14 +23,14 @@ export const DualCoachAccess: React.FC = () => {
       icon: Target
     },
     {
-      id: 'markus',
-      name: COACH_REGISTRY.markus.displayName,
-      title: COACH_REGISTRY.markus.role,
-      avatar: COACH_REGISTRY.markus.imageUrl,
-      gradientColors: COACH_REGISTRY.markus.accentColor,
-      badges: COACH_REGISTRY.markus.expertise.slice(0, 3),
-      buttonText: 'Beast Mode mit Markus',
-      route: '/coach/markus',
+      id: 'ares',
+      name: COACH_REGISTRY.ares.displayName,
+      title: COACH_REGISTRY.ares.role,
+      avatar: COACH_REGISTRY.ares.imageUrl,
+      gradientColors: COACH_REGISTRY.ares.accentColor,
+      badges: COACH_REGISTRY.ares.expertise.slice(0, 3),
+      buttonText: 'Ultimate Mode mit ARES',
+      route: '/coach/ares',
       icon: Flame
     }
   ];

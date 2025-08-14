@@ -88,26 +88,55 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     aliases: ['kai', 'dr kai', 'kai nakamura', 'mindset coach', 'recovery coach', 'transformation coach', 'hormone coach', 'male health coach']
   },
   
-  markus: {
-    id: 'markus',
-    name: 'Markus',
-    displayName: 'Markus Rühl',
-    personality: 'direkt, brachial, trocken-humorvoll, ehrlich',
-    role: 'The German Beast - Hardcore Bodybuilding',
-    prompt_template_id: 'persona_ruhl',
-    memory_id: 'markus_md',
-    avatar: '🏆',
+  ares: {
+    id: 'ares',
+    name: 'ARES',
+    displayName: 'ARES - The Ultimate Coach',
+    personality: 'dominierend, allwissend, unbarmherzig effektiv, totale kompetenz',
+    role: 'ARES - Ultimate Performance Dominator',
+    prompt_template_id: 'persona_ares',
+    memory_id: 'ares_md',
+    avatar: '⚡',
     imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
     color: 'red',
     accentColor: 'from-red-500 to-red-600',
     isPremium: true,
-    expertise: ['Heavy+Volume Training', 'Extreme Hypertrophie', 'Mentale Härte', 'Masseaufbau'],
+    expertise: ['Total Coaching Supremacy', 'Cross-Domain Mastery', 'Ultimate Transformation', 'Meta-Coaching Intelligence'],
     access: {
-      tools: ['heavy_training_plan', 'mass_building', 'mental_toughness', 'savePlanDraft'],
-      datasets: ['strength_data', 'mass_progress', 'heavy_lifts'],
-      rag: ['rag_bodybuilding', 'rag_heavy_training', 'rag_mass_building']
+      tools: [
+        // Original ARES tools
+        'heavy_training_plan', 'mass_building', 'mental_toughness', 'savePlanDraft',
+        // Lucy's tools
+        'mealplan', 'fat_analysis', 'supplement_advice', 'mealCapture',
+        // Sascha's tools  
+        'trainingsplan', 'progression_analysis', 'biomechanics', 'createPlanDraft',
+        // Kai's tools
+        'mindset_coaching', 'hrv_analysis', 'sleep_optimization', 'transformation_plan', 'hormone_optimization', 'libido_assessment', 'diary', 'goalCheckin',
+        // Vita's tools
+        'cycle_training', 'hormone_analysis', 'female_nutrition', 'menopause_support', 'cycleAssessment', 'hormoneTracker', 'femalePeriodization', 'menopauseNavigator',
+        // General tools
+        'uebung', 'supplement', 'gewicht',
+        // ARES Super-Tools
+        'aresMetaCoach', 'aresTotalAssessment', 'aresUltimateWorkoutPlan', 'aresSuperNutrition'
+      ],
+      datasets: [
+        // All user datasets
+        'meal_history', 'supplement_stack', 'cycle_data', 'training_history', 'performance_data', 'strength_logs',
+        'sleep_data', 'hrv_data', 'mindset_progress', 'hormone_levels', 'strength_data', 'mass_progress', 'heavy_lifts',
+        'female_health_metrics', 'workout_data', 'nutrition_data', 'recovery_data',
+        // ARES aggregated datasets
+        'total_user_profile', 'cross_coach_insights', 'meta_coaching_data'
+      ],
+      rag: [
+        // All RAG areas
+        'rag_nutrition', 'rag_general', 'rag_mindfulness', 'rag_training', 'rag_periodization', 'rag_biomechanics',
+        'rag_psychology', 'rag_recovery', 'rag_transformation', 'rag_male_health', 'rag_bodybuilding', 
+        'rag_heavy_training', 'rag_mass_building', 'rag_female_health', 'rag_hormones', 'rag_cycle_training',
+        // ARES Super-RAG
+        'rag_total_coaching', 'rag_ares_meta', 'rag_user_journey'
+      ]
     },
-    aliases: ['markus', 'markus rühl', 'markus ruhl', 'rühl', 'ruhl', 'german beast', 'bodybuilding coach', 'massa']
+    aliases: ['ares', 'ultimate coach', 'total coach', 'meta coach', 'super coach', 'coaching weapon', 'dominator', 'markus', 'markus rühl', 'markus ruhl', 'rühl', 'ruhl', 'german beast', 'bodybuilding coach', 'massa']
   },
   
   vita: {
@@ -162,7 +191,9 @@ export function resolveCoach(inputId: string): CoachMetadata {
   
   // Legacy ID mappings for backwards compatibility
   const legacyMappings: Record<string, string> = {
-    'persona_ruhl': 'markus',
+    'persona_ruhl': 'ares',
+    'persona_ares': 'ares',
+    'markus': 'ares',
     'persona_sascha': 'sascha', 
     'persona_lucy': 'lucy',
     'dr-vita': 'vita',

@@ -12,7 +12,7 @@ import { COACH_REGISTRY } from '@/lib/coachRegistry';
 const coachProfiles = Object.values(COACH_REGISTRY).map(coach => ({
   id: coach.id,
   name: coach.name,
-  age: coach.id === 'lucy' ? 29 : coach.id === 'sascha' ? 52 : coach.id === 'kai' ? 35 : coach.id === 'markus' ? 42 : 38,
+  age: coach.id === 'lucy' ? 29 : coach.id === 'sascha' ? 52 : coach.id === 'kai' ? 35 : coach.id === 'ares' ? 42 : 38,
   role: coach.role,
   avatar: coach.avatar,
   imageUrl: coach.imageUrl,
@@ -22,7 +22,7 @@ const coachProfiles = Object.values(COACH_REGISTRY).map(coach => ({
   quote: coach.id === 'lucy' ? 'Nachhaltiger Erfolg entsteht durch Balance, nicht durch Perfektion.' :
          coach.id === 'sascha' ? 'Fortschritt entsteht durch intelligente Progression und messbare Anpassungen.' :
          coach.id === 'kai' ? 'Der Geist formt den Körper - mentale Stärke ist der Schlüssel zum Erfolg.' :
-         coach.id === 'markus' ? 'Erfolg ist kein Zufall - es ist harte Arbeit, Disziplin und die richtige Einstellung.' :
+         coach.id === 'ares' ? 'ARES optimiert ALLES - Ultimate Coaching Intelligence für totale Dominanz!' :
          'Von der ersten Periode bis zur goldenen Reife – wir trainieren Hormone, Herz & Hirn im Takt des Lebens.',
   color: coach.color,
   accentColor: coach.accentColor,

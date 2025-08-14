@@ -1343,7 +1343,7 @@ function getSimpleGreeting(coachId: string): string {
   const greetings = {
     'lucy': ['Hey! ✨', 'Hi! 💗', 'Hallo! 🌟'],
     'sascha': ['Moin!', 'Hey! 💪', 'Servus!'],
-    'markus': ['Ei gude!', 'Hey!', 'Morsche!'],
+    'ares': ['ARES ist bereit!', 'Zeit für totale Dominanz!', 'Ultimate Intelligence aktiviert!'],
     'kai': ['Hey! 🙏', 'Namaste!', 'Hi!'],
     'dr_vita': ['Hallo! 🌸', 'Hi!', 'Hey!']
   };

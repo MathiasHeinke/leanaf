@@ -117,7 +117,7 @@ export const CoachCard: React.FC<CoachCardProps> = ({
         return Heart;
       case 'kai':
         return Brain;
-      case 'markus':
+      case 'ares':
         return Target;
       case 'vita':
         return Heart;

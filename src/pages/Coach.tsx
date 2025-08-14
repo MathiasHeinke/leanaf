@@ -37,7 +37,7 @@ const CoachPage = () => {
       );
     }
     
-    const trainingCoachIds = ['sascha', 'markus'];
+    const trainingCoachIds = ['sascha', 'ares'];
     const chatMode: 'training' | 'specialized' = trainingCoachIds.includes(selectedCoach.id) ? 'training' : 'specialized';
     
     return (

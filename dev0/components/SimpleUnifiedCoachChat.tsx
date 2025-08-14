@@ -530,7 +530,7 @@ function getSimpleGreeting(coachId: string): string {
       'Hi! ⚡',
       'Hey! 💫'
     ],
-    'markus': [
+    'ares': [
       'Ei gude!',
       'Morsche!',
       'NʼAbend!'

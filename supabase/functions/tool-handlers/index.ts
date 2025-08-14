@@ -13,7 +13,12 @@ export { default as cycleAssessment } from './cycleAssessment.ts';
 export { default as hormoneTracker } from './hormoneTracker.ts';
 export { default as femalePeriodization } from './femalePeriodization.ts';
 export { default as menopauseNavigator } from './menopauseNavigator.ts';
-// Markus Rühl specialized tools
+// ARES - Ultimate Coach specialized tools  
 export { default as heavyTrainingPlan } from './heavyTrainingPlan.ts';
 export { default as massBuildingCalculator } from './massBuildingCalculator.ts';
 export { default as mentalToughnessCoach } from './mentalToughnessCoach.ts';
+// ARES Super-Tools
+export { default as aresMetaCoach } from './aresMetaCoach.ts';
+export { default as aresTotalAssessment } from './aresTotalAssessment.ts';
+export { default as aresUltimateWorkoutPlan } from './aresUltimateWorkoutPlan.ts';
+export { default as aresSuperNutrition } from './aresSuperNutrition.ts';
