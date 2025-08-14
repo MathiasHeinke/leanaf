@@ -4,7 +4,7 @@ import { Card } from './ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
-import { Checkbox } from './ui/checkbox';
+import { RadioButtonCheckbox } from './ui/radio-button-checkbox';
 import { Pill, ChevronDown, ChevronUp, Check, Clock, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSupplementData, TIMING_OPTIONS, getTimingOption } from '@/hooks/useSupplementData';
@@ -58,7 +58,7 @@ function SupplementRow({
   return (
     <div className="flex items-center justify-between rounded-md border bg-card px-3 py-2">
       <div className="flex items-center gap-3 min-w-0">
-        <Checkbox
+        <RadioButtonCheckbox
           checked={isTaken}
           onCheckedChange={(checked) => onToggle(supplement.id, timing, !!checked)}
         />
@@ -187,12 +187,10 @@ export const QuickSupplementInput: React.FC<QuickSupplementInputProps> = ({ onSu
 
   const handleSupplementToggle = async (supplementId: string, timing: string, taken: boolean) => {
     await markSupplementTaken(supplementId, timing, taken);
-    onSupplementUpdate?.();
   };
 
   const handleGroupToggle = async (timing: string, taken: boolean) => {
     await markTimingGroupTaken(timing, taken);
-    onSupplementUpdate?.();
   };
 
   const handleEditTiming = (timing: string, supplements: any[]) => {
