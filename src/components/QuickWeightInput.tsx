@@ -327,28 +327,24 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Scale className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold">Gewicht</h2>
-          </div>
-          <CollapsibleTrigger asChild>
+        <CollapsibleTrigger asChild>
+          <div className="flex items-center justify-between cursor-pointer">
+            <div className="flex items-center gap-2">
+              <Scale className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-semibold">Gewicht</h2>
+            </div>
             <button
               type="button"
               className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
             >
               {open ? (
-                <>
-                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-                </>
+                <ChevronUp className="h-4 w-4" />
               ) : (
-                <>
-                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-                </>
+                <ChevronDown className="h-4 w-4" />
               )}
             </button>
-          </CollapsibleTrigger>
-        </div>
+          </div>
+        </CollapsibleTrigger>
 
         {/* Collapsed summary when card is closed */}
         {!open && isCompleted && (
