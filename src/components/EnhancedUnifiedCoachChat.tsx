@@ -221,6 +221,11 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
     setMessages(prev => [...prev, assistantMessage]);
     persistConversation('assistant', text);
     
+    // ARES Fire effect trigger
+    if (isAres && fireBackdropRef.current) {
+      fireBackdropRef.current.ignite({ to: 0.6, durationMs: 3000 });
+    }
+    
     // Shadow state: save traceId and schedule delayed chips
     if ((res as any).traceId) {
       saveShadowTraceId((res as any).traceId);
@@ -277,6 +282,12 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
     };
     setMessages(prev => [...prev, assistantMessage]);
     persistConversation('assistant', text);
+    
+    // ARES Fire effect trigger
+    if (isAres && fireBackdropRef.current) {
+      fireBackdropRef.current.ignite({ to: 0.8, durationMs: 4000 });
+    }
+    
     setClarify(null);
     // first_paint metric
     if (awaitingFirstPaintRef.current && lastSendTimeRef.current) {
@@ -786,8 +797,8 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
         <div
           className={`max-w-[75%] px-3 py-2 ${
             isUser
-              ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
-              : 'bg-muted rounded-2xl rounded-bl-md'
+              ? 'bg-primary/20 backdrop-blur-sm border border-primary/30 text-foreground rounded-2xl rounded-br-md'
+              : 'bg-muted/20 backdrop-blur-sm border border-border/30 rounded-2xl rounded-bl-md'
           }`}
         >
           <div className="text-sm whitespace-pre-wrap">
@@ -800,7 +811,7 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
                 ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
                 ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
                 li: ({ children }) => <li>{children}</li>,
-                code: ({ children }) => <code className="bg-muted px-1 py-0.5 rounded text-sm">{children}</code>,
+                code: ({ children }) => <code className="bg-muted/30 backdrop-blur-sm px-1 py-0.5 rounded text-sm">{children}</code>,
                 blockquote: ({ children }) => <blockquote className="border-l-4 border-muted pl-4 italic mb-2">{children}</blockquote>,
                 a: ({ href, children }) => (
                   <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary underline">
@@ -821,7 +832,7 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
             <div className="flex items-center justify-start gap-2 text-xs">
               <Avatar className="h-6 w-6 flex-shrink-0">
                 <AvatarImage src={message.coach_avatar || coach?.imageUrl} />
-                <AvatarFallback className="text-xs bg-muted">
+                <AvatarFallback className="text-xs bg-muted/30 backdrop-blur-sm">
                   {message.coach_name?.[0] || coach?.name?.[0] || 'C'}
                 </AvatarFallback>
               </Avatar>
@@ -905,7 +916,7 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
               </span>
               <Avatar className="h-6 w-6 flex-shrink-0">
                 <AvatarImage src={userAvatarUrl || undefined} />
-                <AvatarFallback className="text-xs bg-muted">Du</AvatarFallback>
+                <AvatarFallback className="text-xs bg-muted/30 backdrop-blur-sm">Du</AvatarFallback>
               </Avatar>
             </div>
           )}
