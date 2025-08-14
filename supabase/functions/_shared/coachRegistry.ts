@@ -22,6 +22,27 @@ export interface CoachMetadata {
 }
 
 export const COACH_REGISTRY: Record<string, CoachMetadata> = {
+  freya: {
+    id: 'freya',
+    name: 'FREYA',
+    displayName: 'FREYA - Ultimate Female Intelligence',
+    personality: 'empowerment-fokussiert, wissenschaftlich fundiert, hormon-bewusst, ganzheitlich',
+    role: 'Ultimate Female Performance Intelligence',
+    prompt_template_id: 'freya_ultimate',
+    memory_id: 'freya_md',
+    avatar: '🌸',
+    imageUrl: '/coach-images/freya-main.jpg',
+    color: 'pink',
+    accentColor: 'from-pink-500 to-pink-600',
+    isFree: true,
+    expertise: ['Female Health', 'Hormone Optimization', 'Cycle Training', 'Nutrition', 'Supplements', 'Longevity', 'Mindfulness'],
+    access: {
+      tools: ['mealplan', 'fat_analysis', 'supplement_advice', 'cycleAssessment', 'hormoneTracker', 'femalePeriodization', 'menopauseNavigator'],
+      datasets: ['meal_history', 'supplement_stack', 'cycle_data', 'hormone_levels', 'female_health_metrics'],
+      rag: ['rag_nutrition', 'rag_female_health', 'rag_hormones', 'rag_cycle_training', 'rag_longevity', 'rag_mindfulness', 'rag_lifestyle_medicine']
+    },
+    aliases: ['freya', 'female', 'women', 'frau', 'frauen', 'hormone', 'cycle', 'zyklus', 'menstruation', 'lucy', 'vita', 'dr vita', 'female coach', 'woman coach', 'female health', 'hormone coach', 'ultimate female']
+  },
   lucy: {
     id: 'lucy',
     name: 'Lucy',
@@ -41,7 +62,7 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
       datasets: ['meal_history', 'supplement_stack', 'cycle_data'],
       rag: ['rag_nutrition', 'rag_general', 'rag_mindfulness']
     },
-    aliases: ['lucy', 'dr lucy', 'dr. lucy', 'dr lucy martinez', 'dr. lucy martinez', 'nutrition coach']
+    aliases: ['lucy_backup', 'dr lucy backup', 'nutrition coach backup']
   },
   
   sascha: {
@@ -154,11 +175,11 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     isPremium: true,
     expertise: ['Zyklusorientiertes Training', 'Hormonbalance', 'Frauen-Gesundheit', 'Lebensphasen-Coaching'],
     access: {
-      tools: ['cycle_training', 'hormone_analysis', 'female_nutrition', 'menopause_support'],
+      tools: ['cycleAssessment', 'hormoneTracker', 'femalePeriodization', 'menopauseNavigator'],
       datasets: ['cycle_data', 'hormone_levels', 'female_health_metrics'],
       rag: ['rag_female_health', 'rag_hormones', 'rag_cycle_training']
     },
-    aliases: ['vita', 'dr vita', 'dr. vita', 'vita femina', 'dr vita femina', 'female health coach', 'hormone coach', 'women coach']
+    aliases: ['vita_backup', 'dr vita backup', 'hormone coach backup', 'women coach backup']
   }
 };
 
@@ -195,9 +216,11 @@ export function resolveCoach(inputId: string): CoachMetadata {
     'persona_ares': 'ares',
     'markus': 'ares',
     'persona_sascha': 'sascha', 
-    'persona_lucy': 'lucy',
-    'dr-vita': 'vita',
-    'drvita': 'vita'
+    // FEMALE COACH CONSOLIDATION → FREYA
+    'persona_lucy': 'freya',
+    'persona_vita': 'freya',
+    'dr-vita': 'freya',
+    'drvita': 'freya'
   };
   
   if (legacyMappings[normalized]) {
