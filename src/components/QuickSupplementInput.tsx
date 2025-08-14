@@ -126,9 +126,10 @@ function TimingSection({
               e.stopPropagation();
               onToggleGroup(timing, !isComplete);
             }}
-            className="h-8 px-2 text-xs"
+            className="h-8 w-8 p-0"
+            title={isComplete ? 'Alle entfernen' : 'Alle abhaken'}
           >
-            {isComplete ? 'Alle entfernen' : 'Alle abhaken'}
+            {isComplete ? '✅' : '⭕️'}
           </Button>
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
@@ -166,9 +167,10 @@ function TimingSection({
 
 interface QuickSupplementInputProps {
   onSupplementUpdate?: () => void;
+  currentDate?: Date;
 }
 
-export const QuickSupplementInput: React.FC<QuickSupplementInputProps> = ({ onSupplementUpdate }) => {
+export const QuickSupplementInput: React.FC<QuickSupplementInputProps> = ({ onSupplementUpdate, currentDate }) => {
   const {
     groupedSupplements,
     totalScheduled,
@@ -178,7 +180,7 @@ export const QuickSupplementInput: React.FC<QuickSupplementInputProps> = ({ onSu
     error,
     markSupplementTaken,
     markTimingGroupTaken
-  } = useSupplementData();
+  } = useSupplementData(currentDate);
   
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [editingTiming, setEditingTiming] = useState<{ timing: string; supplements: any[] } | null>(null);

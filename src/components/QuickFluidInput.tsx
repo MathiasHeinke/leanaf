@@ -81,9 +81,10 @@ const categoryLabels = {
 
 interface QuickFluidInputProps {
   onFluidUpdate?: () => void;
+  currentDate?: Date;
 }
 
-export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) => {
+export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputProps = {}) => {
   const { user } = useAuth();
   const { frequent: frequentFluids } = useFrequentFluids(user?.id, 45);
   const [fluids, setFluids] = useState<FluidOption[]>([]);
@@ -111,7 +112,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       loadTodaysFluids();
       loadAlcoholAbstinence();
     }
-  }, [user]);
+  }, [user, currentDate]);
 
   const loadFluids = async () => {
     const { data, error } = await supabase
@@ -131,7 +132,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
   const loadTodaysFluids = async () => {
     if (!user) return;
 
-    const today = getCurrentDateString();
+    const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
     
     const { data, error } = await supabase
       .from('user_fluids')

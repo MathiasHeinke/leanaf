@@ -640,13 +640,13 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       case 'supplements':
         return (
           <SortableCard key="supplements" id="supplements">
-            <QuickSupplementInput onSupplementUpdate={() => loadTodaysData(currentDate)} />
+            <QuickSupplementInput onSupplementUpdate={() => loadTodaysData(currentDate)} currentDate={currentDate} />
           </SortableCard>
         );
       case 'fluids':
         return (
           <SortableCard key="fluids" id="fluids">
-            <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} />
+            <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} currentDate={currentDate} />
           </SortableCard>
         );
       case 'mindset':

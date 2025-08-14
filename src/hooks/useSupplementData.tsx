@@ -102,7 +102,7 @@ export const getTimingOption = (timing: string) => {
   };
 };
 
-export const useSupplementData = () => {
+export const useSupplementData = (currentDate?: Date) => {
   const { user } = useAuth();
   const [userSupplements, setUserSupplements] = useState<UserSupplement[]>([]);
   const [todayIntakes, setTodayIntakes] = useState<SupplementIntake[]>([]);
@@ -148,7 +148,7 @@ export const useSupplementData = () => {
       }));
 
       // Load today's intake log
-      const today = getCurrentDateString();
+      const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
       const { data: intakes, error: intakesError } = await supabase
         .from('supplement_intake_log')
         .select('*')
@@ -169,7 +169,7 @@ export const useSupplementData = () => {
 
   useEffect(() => {
     loadSupplementData();
-  }, [user]);
+  }, [user, currentDate]);
 
   // Group supplements by timing with robust error handling
   const groupedSupplements: TimeGroupedSupplements = userSupplements.reduce((acc, supplement) => {
@@ -218,7 +218,7 @@ export const useSupplementData = () => {
     if (!user) return;
 
     try {
-      const today = getCurrentDateString();
+      const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
       
       const { error } = await supabase
         .from('supplement_intake_log')
@@ -250,7 +250,7 @@ export const useSupplementData = () => {
       const group = groupedSupplements[timing];
       if (!group) return;
 
-      const today = getCurrentDateString();
+      const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
       
       const upsertData = group.supplements.map(supplement => ({
         user_id: user.id,
