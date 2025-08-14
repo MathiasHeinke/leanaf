@@ -679,7 +679,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     <>
       
       {/* Sticky Date Navigation */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b">
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm">
         <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
       </div>
 
