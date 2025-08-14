@@ -58,7 +58,7 @@ export type CoachEvent =
   | { type: 'END'; clientEventId?: string; context?: CoachEventContext };
 
 function normalizeReply(raw: any): OrchestratorReply {
-  if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
+  if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch\'s bitte nochmal. (Netzwerk/Timeout)' };
   const k = typeof raw?.kind === 'string' ? raw.kind.toLowerCase() : '';
   if (k === 'message' || k === 'reflect' || k === 'choice_suggest' || k === 'clarify' || k === 'confirm_save_meal' || k === 'confirm_save_supplement') return raw as OrchestratorReply;
   const text = raw.reply ?? raw.content ?? (typeof raw === 'string' ? raw : 'OK');
@@ -88,6 +88,7 @@ export function useOrchestrator() {
       ev.clientEventId = currentClientEventId.current || beginUserAction();
     }
     
+    const coachId = ev.context?.coachId || 'lucy';
     const headers: Record<string, string> = {
       'x-trace-id': traceId ?? crypto.randomUUID(),
       'x-chat-mode': ev.context?.coachMode ?? '',
@@ -129,7 +130,7 @@ export function useOrchestrator() {
       return data;
     };
 
-    const withTimeout = <T,>(p: Promise<T>, ms = 7000) =>
+    const withTimeout = <T,>(p: Promise<T>, ms = 15000) =>
       Promise.race<T>([
         p,
         new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)) as Promise<T>,
@@ -162,12 +163,12 @@ export function useOrchestrator() {
         return normalizeReply(response.data);
       } catch (e1) {
         if (e1 instanceof Error && e1.message === 'timeout') {
-          console.warn('orchestrator TIMEOUT', { cutoffMs: 30000 });
+          console.warn('orchestrator TIMEOUT', { cutoffMs: 15000 });
           try {
             await supabase.rpc('log_trace_event', {
               p_trace_id: headers['x-trace-id'],
               p_stage: 'client_timeout',
-              p_data: { cutoffMs: 30000 }
+              p_data: { cutoffMs: 15000 }
             });
           } catch (_) { /* non-fatal */ }
         }
@@ -190,7 +191,7 @@ export function useOrchestrator() {
       } else {
         console.info('Legacy fallback disabled via flag; returning friendly error.');
       }
-      return { kind: 'message', text: 'Kurz hake ich – versuch’s bitte nochmal. (Netzwerk/Timeout)' };
+      return { kind: 'message', text: `Hey! Ich bin kurz beschäftigt – versuch\'s bitte nochmal. (${coachId === 'ares' ? 'ARES System wird geladen...' : 'Netzwerk/Timeout'})` };
     }
   }
 

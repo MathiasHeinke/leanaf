@@ -1,5 +1,8 @@
 project_id = "gzczjscctgyxjyodhnhk"
 
+[functions.coach-orchestrator-enhanced]
+verify_jwt = true
+
 [functions.enhanced-coach-non-streaming]
 verify_jwt = true
 
