@@ -340,7 +340,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
         {!open && isCompleted && (
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
-              <div className="font-semibold">
+              <div className="font-medium">
                 {parseFloat(todaysWeight.weight).toFixed(1)} kg erfasst
               </div>
               <Progress
@@ -371,7 +371,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
         {!open && !isCompleted && (
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
-              <div className="font-semibold text-muted-foreground">
+              <div className="font-medium text-muted-foreground">
                 Gewicht noch nicht erfasst
               </div>
               <Progress
