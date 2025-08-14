@@ -111,17 +111,20 @@ function TimingSection({
         className="w-full flex items-center justify-between px-3 py-2 hover:bg-muted/50"
         onClick={() => setOpen(!open)}
       >
-        <div className="flex items-center gap-2">
+        {/* Links: Icon + Text */}
+        <div className="flex items-center gap-3">
           <span className="text-base">{timingInfo.icon}</span>
-          <div>
+          <div className="text-left">
             <div className="text-sm font-medium">{timingInfo.label}</div>
             <div className="text-xs text-muted-foreground">{timingInfo.tip}</div>
           </div>
+        </div>
+        
+        {/* Rechts: Badge + Controls */}
+        <div className="flex items-center gap-3">
           <Badge variant={isComplete ? "default" : "secondary"} className="text-xs">
             {group.taken}/{group.total}
           </Badge>
-        </div>
-        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
