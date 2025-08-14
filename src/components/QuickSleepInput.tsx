@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { Moon, Plus, Edit, CheckCircle, ChevronDown, ChevronUp, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye, Info } from "lucide-react";
+import { SmartChip } from './ui/smart-chip';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -394,15 +395,15 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
         {!hasSleepToday && smartChips.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-3">
             {smartChips.map((chip, index) => (
-              <button
+              <SmartChip
                 key={index}
-                type="button"
+                variant="secondary"
+                size="default"
+                icon={<Moon className="h-3.5 w-3.5" />}
                 onClick={() => { chip.action(); setIsCollapsed(false); }}
-                className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
               >
-                <Moon className="h-3.5 w-3.5 mr-1.5" />
-                <span className="truncate max-w-[10rem]">{chip.label}</span>
-              </button>
+                {chip.label}
+              </SmartChip>
             ))}
           </div>
         )}

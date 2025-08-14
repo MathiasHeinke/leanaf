@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Droplets, Plus, X, Clock, Calendar as CalendarIcon, AlertTriangle, CheckCircle, Edit, Trash2, Copy, Check, ChevronDown } from 'lucide-react';
+import { SmartChip } from './ui/smart-chip';
 import { Textarea } from './ui/textarea';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -785,15 +786,14 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
             {/* Smart Chips - always show */}
             <div className="flex flex-wrap gap-1 mt-2">
               {smartChips.map((chip, index) => (
-                <Button 
+                <SmartChip
                   key={index}
-                  variant="outline" 
-                  size="sm" 
+                  variant="fluid"
+                  size="sm"
                   onClick={() => { chip.action(); setIsCollapsed(false); }}
-                  className="text-xs h-6 px-2 hover:bg-primary/10 border-primary/20"
                 >
                   {chip.label}
-                </Button>
+                </SmartChip>
               ))}
             </div>
           </div>
@@ -804,15 +804,14 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
             {/* Smart Chips - always show when expanded */}
             <div className="flex flex-wrap gap-1">
               {smartChips.map((chip, index) => (
-                <Button 
+                <SmartChip
                   key={index}
-                  variant="outline" 
-                  size="sm" 
+                  variant="fluid"
+                  size="default"
                   onClick={chip.action}
-                  className="text-xs h-7 px-3 hover:bg-primary/10 border-primary/20"
                 >
                   {chip.label}
-                </Button>
+                </SmartChip>
               ))}
             </div>
             {/* Water breakdown */}

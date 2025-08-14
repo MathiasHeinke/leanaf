@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { SmartChip } from "@/components/ui/smart-chip";
 import { useMindsetJournal } from "@/hooks/useMindsetJournal";
 import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
 import { VoiceVisualizer } from "@/components/mindset-journal/VoiceVisualizer";
@@ -262,28 +263,28 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
         {/* Smart Chips & Journal Indicator */}
         <div className="mt-3 flex flex-wrap gap-3">
           {smartChips.map((chip, index) => (
-            <button
+            <SmartChip
               key={index}
-              type="button"
+              variant="mindset"
+              size="default"
+              icon={<Brain className="h-3.5 w-3.5" />}
               onClick={() => { 
                 chip.action(); 
                 if (isCollapsed) setIsCollapsed(false);
               }}
-              className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
             >
-              <Brain className="h-3.5 w-3.5 mr-1.5" />
-              <span className="truncate max-w-[10rem]">{chip.label}</span>
-            </button>
+              {chip.label}
+            </SmartChip>
           ))}
           {hasEntriesForDate && (
-            <button
-              type="button"
+            <SmartChip
+              variant="timing"
+              size="default"
+              icon={<FileText className="h-3.5 w-3.5" />}
               onClick={() => setShowDetailWidget(true)}
-              className="inline-flex items-center rounded-full border bg-violet-100 hover:bg-violet-200 dark:bg-violet-900/50 dark:hover:bg-violet-900/70 px-3 py-1 text-xs transition-colors text-violet-700 dark:text-violet-300 border-violet-300 dark:border-violet-700"
             >
-              <FileText className="h-3.5 w-3.5 mr-1.5" />
-              <span>Einträge anzeigen</span>
-            </button>
+              Einträge anzeigen
+            </SmartChip>
           )}
         </div>
 

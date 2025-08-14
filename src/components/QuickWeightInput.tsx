@@ -4,6 +4,7 @@ import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Scale, Plus, Edit, CheckCircle, Upload, X, TrendingUp, TrendingDown, Camera, ChevronDown, ChevronUp } from "lucide-react";
+import { SmartChip } from './ui/smart-chip';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -45,18 +46,7 @@ const parsePhotoUrls = (photoUrls: any): string[] => {
   return [];
 };
 
-function SmartChip({ text, onClick }: { text: string; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
-    >
-      <Scale className="h-3.5 w-3.5 mr-1.5" />
-      <span className="truncate max-w-[10rem]">{text}</span>
-    </button>
-  );
-}
+// Removed local SmartChip - using unified component
 
 export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: QuickWeightInputProps) => {
   const [weight, setWeight] = useState("");
@@ -397,7 +387,9 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
         {hasWeightToday && weightChips.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-3">
             {weightChips.map((chip, index) => (
-              <SmartChip key={index} text={chip.label} onClick={chip.action} />
+              <SmartChip key={index} variant="secondary" size="default" onClick={chip.action}>
+                {chip.label}
+              </SmartChip>
             ))}
           </div>
         )}

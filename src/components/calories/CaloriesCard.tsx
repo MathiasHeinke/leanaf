@@ -4,6 +4,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Flame, ChevronDown, ChevronUp, Clock, Utensils, Edit2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { SmartChip } from "@/components/ui/smart-chip";
 import { Badge } from "@/components/ui/badge";
 
 type Totals = {
@@ -104,18 +105,7 @@ function MacroPill({ label, left, max, unit = "g", macroType }: { label: string;
   );
 }
 
-function SmartChip({ text, onClick }: { text: string; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
-    >
-      <Utensils className="h-3.5 w-3.5 mr-1.5" />
-      <span className="truncate max-w-[10rem]">{text}</span>
-    </button>
-  );
-}
+// Removed local SmartChip - using unified component
 
 function MealRow({
   meal,
@@ -361,7 +351,15 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
         {chips.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {chips.map((c) => (
-              <SmartChip key={c} text={c} onClick={() => onAddQuickMeal?.(c)} />
+              <SmartChip 
+                key={c} 
+                variant="secondary" 
+                size="default"
+                icon={<Utensils className="h-3.5 w-3.5" />}
+                onClick={() => onAddQuickMeal?.(c)}
+              >
+                {c}
+              </SmartChip>
             ))}
           </div>
         )}

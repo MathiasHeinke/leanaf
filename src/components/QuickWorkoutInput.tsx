@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2, ChevronDown, ChevronUp, Edit2, Utensils } from "lucide-react";
+import { SmartChip } from './ui/smart-chip';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -49,18 +50,7 @@ function WorkoutPill({ label, value, max, unit = "", pillType }: { label: string
   );
 }
 
-function SmartChip({ text, onClick }: { text: string; onClick?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
-    >
-      <Dumbbell className="h-3.5 w-3.5 mr-1.5" />
-      <span className="truncate max-w-[10rem]">{text}</span>
-    </button>
-  );
-}
+// Removed local SmartChip - using unified component
 
 function WorkoutRow({
   workout,
@@ -449,18 +439,18 @@ export const QuickWorkoutInput = ({
         {(!hasWorkoutToday || isCollapsed) && (
           <div className="mt-3 flex flex-wrap gap-3">
             {smartChips.slice(0, 3).map((chip, index) => (
-              <button
+              <SmartChip
                 key={index}
-                type="button"
+                variant="secondary"
+                size="default"
+                icon={<span className="text-sm">{chip.emoji}</span>}
                 onClick={() => { 
                   chip.action(); 
                   setIsCollapsed(false); 
                 }}
-                className="inline-flex items-center rounded-full border bg-secondary/50 hover:bg-secondary px-3 py-1 text-xs transition-colors"
               >
-                <span className="mr-1.5">{chip.emoji}</span>
-                <span className="truncate max-w-[10rem]">{chip.label.replace(/^.+?\s/, '')}</span>
-              </button>
+                {chip.label.replace(/^.+?\s/, '')}
+              </SmartChip>
             ))}
           </div>
         )}
@@ -550,9 +540,12 @@ export const QuickWorkoutInput = ({
                     {smartChips.map((chip, index) => (
                       <SmartChip 
                         key={index}
-                        text={chip.label} 
+                        variant="secondary"
+                        size="default"
                         onClick={() => chip.action()}
-                      />
+                      >
+                        {chip.label}
+                      </SmartChip>
                     ))}
                   </div>
                 )}
