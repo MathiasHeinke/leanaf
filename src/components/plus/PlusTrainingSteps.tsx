@@ -29,59 +29,79 @@ export const PlusTrainingSteps: React.FC<PlusTrainingStepsProps> = ({ data }) =>
         <CardTitle>Training & Schritte</CardTitle>
         <CardDescription>Wöchentliches Training und tägliche Bewegung</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-6">
-        {/* Training Progress */}
-        <div className="rounded-xl glass-card p-4">
-          {loading ? (
-            <Skeleton className="h-20 w-full" />
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Dumbbell className="h-4 w-4 text-primary" />
-                <div className="text-sm text-muted-foreground">Training Woche</div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xl font-semibold">{weeklyWorkouts.completed}/{weeklyWorkouts.target} Sessions</div>
-                  <div className="text-sm text-muted-foreground">Nächster Plan: {nextPlanDay}</div>
+      <CardContent className="space-y-4">
+        {loading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Training Progress */}
+              <div className="bg-card rounded-lg p-3 border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Dumbbell className="h-4 w-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Training Woche</span>
                 </div>
-                <Badge variant={weeklyWorkouts.completed >= weeklyWorkouts.target ? 'default' : 'secondary'}>
-                  {weeklyWorkouts.completed >= weeklyWorkouts.target ? 'Ziel erreicht' : 'In Progress'}
-                </Badge>
+                <div className="space-y-1">
+                  <div className="text-lg font-semibold">{weeklyWorkouts.completed}/{weeklyWorkouts.target}</div>
+                  <div className="text-xs text-muted-foreground">Sessions</div>
+                  <Badge 
+                    variant={weeklyWorkouts.completed >= weeklyWorkouts.target ? 'default' : 'secondary'}
+                    className="text-xs px-2 py-0.5"
+                  >
+                    {weeklyWorkouts.completed >= weeklyWorkouts.target ? 'Ziel erreicht' : 'In Progress'}
+                  </Badge>
+                </div>
               </div>
-              <Button size="sm" className="w-full" onClick={() => openWorkout({ recommendedType: 'kraft' })}>
+
+              {/* Steps Progress */}
+              <div className="bg-card rounded-lg p-3 border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Footprints className="h-4 w-4 text-primary" />
+                  <span className="text-xs text-muted-foreground">Schritte heute</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-lg font-semibold">{(stepsCurrent / 1000).toFixed(1)}k</div>
+                  <div className="text-xs text-muted-foreground">von {(stepsTarget / 1000).toFixed(1)}k</div>
+                  <div className="w-full bg-muted rounded-full h-1.5">
+                    <div 
+                      className="bg-primary h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${stepsPercentage}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3">
+              <Button 
+                size="sm" 
+                className="w-full" 
+                onClick={() => openWorkout({ recommendedType: 'kraft' })}
+              >
                 Training starten
               </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Steps Progress */}
-        <div className="rounded-xl glass-card p-4">
-          {loading ? (
-            <Skeleton className="h-20 w-full" />
-          ) : (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Footprints className="h-4 w-4 text-primary" />
-                <div className="text-sm text-muted-foreground">Schritte heute</div>
-              </div>
-              <div>
-                <div className="text-xl font-semibold">{stepsCurrent.toLocaleString()}/{stepsTarget.toLocaleString()}</div>
-                <div className="w-full bg-muted rounded-full h-2 mt-2">
-                  <div 
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${stepsPercentage}%` }}
-                  />
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">{Math.round(stepsPercentage)}% des Ziels</div>
-              </div>
-              <Button size="sm" variant="outline" className="w-full" onClick={() => openWorkout({ recommendedType: 'walking' })}>
-                10-Min Walk starten
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => openWorkout({ recommendedType: 'walking' })}
+              >
+                10-Min Walk
               </Button>
             </div>
-          )}
-        </div>
+
+            {/* Next Plan Info */}
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="text-sm text-muted-foreground">Nächster Plan</div>
+              <div className="font-medium">{nextPlanDay}</div>
+            </div>
+          </>
+        )}
       </CardContent>
     </PlusCard>
   );
