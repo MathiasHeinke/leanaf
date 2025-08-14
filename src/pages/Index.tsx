@@ -569,16 +569,13 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     return (
       <div 
         ref={setNodeRef} 
-        style={{ 
-          ...style,
-          boxShadow: glowColors.shadowColor,
-        }} 
+        style={style} 
         className={`relative rounded-xl`}
         data-progress={Math.round(progressPercentage)}
       >
         {/* Progress indicator dot */}
         <span 
-          className={`pointer-events-none absolute top-2 right-2 h-2.5 w-2.5 rounded-full ring-2 animate-[pulse_3s_ease-in-out_infinite]`}
+          className={`pointer-events-none absolute top-2 right-2 h-3.5 w-3.5 rounded-full ring-[3px]`}
           style={{
             backgroundColor: glowColors.dotColor,
             borderColor: glowColors.ringColor,
@@ -710,14 +707,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           currentDate={currentDate}
         />
 
-        <div
-          style={{
-            boxShadow: getGradualGlowColor(calculateCardProgress('calories', {
-              caloriesUsed: calorieSummary.consumed,
-              caloriesTarget: dailyGoals?.calories || 2000,
-            })).shadowColor
-          }}
-          className="rounded-xl"
+        <div className="rounded-xl"
         >
           <CaloriesCard
             date={currentDate}
