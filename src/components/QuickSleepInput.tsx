@@ -20,11 +20,12 @@ import { getCurrentDateString } from "@/utils/dateHelpers";
 import { cn } from "@/lib/utils";
 
 interface QuickSleepInputProps {
-  onSleepAdded?: () => void;
+  onSleepAdded?: (sleepData?: any) => void;
   todaysSleep?: any;
+  currentDate?: Date;
 }
 
-export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputProps) => {
+export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new Date() }: QuickSleepInputProps) => {
   // Zeit-Schieberegler: Bedtime (22:00) bis Wake time (10:00)
   const [bedtime, setBedtime] = useState<number[]>([22.5]); // 22:30 in Stunden
   const [wakeTime, setWakeTime] = useState<number[]>([7.5]); // 07:30 in Stunden
@@ -256,7 +257,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
         morning_libido: trackLibido ? morningLibido[0] : null,
         motivation_level: trackMotivation ? motivationLevel[0] : null,
         last_meal_time: trackLastMeal ? formatTime(lastMealTime[0]) : null,
-        date: getCurrentDateString()
+        date: currentDate.toISOString().split('T')[0]
       };
 
       // Sleep data prepared for save

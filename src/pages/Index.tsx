@@ -612,6 +612,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             <QuickSleepInput 
               onSleepAdded={handleSleepAdded}
               todaysSleep={todaysSleep}
+              currentDate={currentDate}
             />
           </SortableCard>
         );
@@ -621,6 +622,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             <QuickWeightInput 
               onWeightAdded={handleWeightAdded}
               todaysWeight={todaysWeight}
+              currentDate={currentDate}
             />
           </SortableCard>
         );
@@ -631,6 +633,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
               onWorkoutAdded={handleWorkoutAdded}
               todaysWorkout={todaysWorkout}
               todaysWorkouts={todaysWorkouts}
+              currentDate={currentDate}
             />
           </SortableCard>
         );
@@ -870,6 +873,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           onMealTypeChange={mealInputHook.setSelectedMealType}
           onSuccess={handleMealSuccess}
           uploadedImages={mealInputHook.uploadedImages}
+          selectedDate={currentDate}
         />
       )}
     </>

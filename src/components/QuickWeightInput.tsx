@@ -155,7 +155,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         return;
       }
 
-      const today = getCurrentDateString();
+      const today = currentDate.toISOString().split('T')[0];
       
       // Upload new photos if any
       let newPhotoUrls: string[] = [];

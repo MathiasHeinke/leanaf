@@ -36,6 +36,7 @@ interface MealConfirmationDialogProps {
   onMealTypeChange: (type: string) => void;
   onSuccess: () => void;
   uploadedImages?: string[];
+  selectedDate?: Date; // Add selectedDate prop
 }
 
 export const MealConfirmationDialog = ({
@@ -45,7 +46,8 @@ export const MealConfirmationDialog = ({
   selectedMealType,
   onMealTypeChange,
   onSuccess,
-  uploadedImages = []
+  uploadedImages = [],
+  selectedDate = new Date() // Default to today if not provided
 }: MealConfirmationDialogProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -60,7 +62,7 @@ export const MealConfirmationDialog = ({
     title: ""
   });
 
-  const [mealDate, setMealDate] = useState<Date>(new Date());
+  const [mealDate, setMealDate] = useState<Date>(selectedDate);
   const [verificationMessage, setVerificationMessage] = useState('');
   const [showVerification, setShowVerification] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -81,7 +83,7 @@ export const MealConfirmationDialog = ({
       };
       
       setEditableValues(newValues);
-      setMealDate(new Date());
+      setMealDate(selectedDate);
     }
   }, [analyzedMealData, isOpen]);
 
@@ -185,7 +187,8 @@ export const MealConfirmationDialog = ({
         calories: Number(editableValues.calories) || 0,
         protein: Number(editableValues.protein) || 0,
         carbs: Number(editableValues.carbs) || 0,
-        fats: Number(editableValues.fats) || 0
+        fats: Number(editableValues.fats) || 0,
+        date: mealDate.toISOString().split('T')[0] // Use selected date
       };
 
       secureLogger.debug('Meal payload prepared');
