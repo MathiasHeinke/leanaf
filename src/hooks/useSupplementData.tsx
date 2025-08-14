@@ -110,7 +110,16 @@ export const useSupplementData = (currentDate?: Date) => {
   const [error, setError] = useState<string | null>(null);
 
   const loadSupplementData = async () => {
-    if (!user) return;
+    console.log('🔄 useSupplementData: Starting data load', {
+      hasUser: !!user,
+      userId: user?.id,
+      currentDate: currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString()
+    });
+    
+    if (!user) {
+      console.log('❌ useSupplementData: No user found, aborting');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -139,6 +148,8 @@ export const useSupplementData = (currentDate?: Date) => {
 
       if (supplementsError) throw supplementsError;
 
+      console.log('📊 useSupplementData: Raw supplements from DB:', supplements?.length, supplements);
+
       // Format supplements data with normalized timing
       const formattedSupplements: UserSupplement[] = (supplements || []).map(s => ({
         ...s,
@@ -146,6 +157,8 @@ export const useSupplementData = (currentDate?: Date) => {
         supplement_name: s.custom_name || s.name || s.supplement_database?.name || 'Supplement',
         supplement_category: s.supplement_database?.category || 'Sonstige'
       }));
+
+      console.log('✅ useSupplementData: Formatted supplements:', formattedSupplements.length, formattedSupplements);
 
       // Load today's intake log
       const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
@@ -156,6 +169,8 @@ export const useSupplementData = (currentDate?: Date) => {
         .eq('date', today);
 
       if (intakesError) throw intakesError;
+
+      console.log('📝 useSupplementData: Today intakes from DB:', intakes?.length, intakes);
 
       setUserSupplements(formattedSupplements);
       setTodayIntakes(intakes || []);
@@ -212,6 +227,13 @@ export const useSupplementData = (currentDate?: Date) => {
   const totalScheduled = Object.values(groupedSupplements).reduce((sum, group) => sum + group.total, 0);
   const totalTaken = Object.values(groupedSupplements).reduce((sum, group) => sum + group.taken, 0);
   const completionPercent = totalScheduled > 0 ? (totalTaken / totalScheduled) * 100 : 0;
+
+  console.log('📈 useSupplementData: Final stats calculated:', {
+    totalScheduled,
+    totalTaken,
+    completionPercent,
+    groupedSupplements
+  });
 
   // Mark supplement as taken
   const markSupplementTaken = async (supplementId: string, timing: string, taken: boolean = true) => {

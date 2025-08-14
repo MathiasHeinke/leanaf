@@ -32,7 +32,7 @@ function HaloMeter({ label, value, detailValue, progress, gradient, track = "rgb
   
   return (
     <div 
-      className="rounded-2xl p-3 bg-white/70 dark:bg-white/5 flex flex-col items-center gap-2 cursor-pointer hover:bg-white/80 dark:hover:bg-white/10 transition-colors duration-200"
+      className="rounded-2xl p-3 bg-white/70 dark:bg-white/5 flex flex-col items-center gap-2 cursor-pointer hover:bg-white/80 dark:hover:bg-white/10 transition-colors duration-200 shadow-lg dark:shadow-zinc-900/40"
       onClick={() => setShowDetail(!showDetail)}
     >
       <svg width={76} height={76} className="shrink-0">
@@ -108,7 +108,7 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, suppleme
 
             return (
               <div key={b.key} className="flex flex-col items-center w-full">
-                <div className="relative w-12 sm:w-14 h-40 sm:h-48 rounded-2xl overflow-hidden bg-gradient-to-b from-white/20 to-white/5 dark:from-white/8 dark:to-white/3 border border-white/20 dark:border-white/10 backdrop-blur-sm">
+                <div className="relative w-12 sm:w-14 h-40 sm:h-48 rounded-2xl overflow-hidden bg-gradient-to-b from-white/20 to-white/5 dark:from-white/8 dark:to-white/3 border border-white/20 dark:border-white/10 backdrop-blur-sm shadow-md dark:shadow-zinc-900/30">
                   {/* Target line at 80% (4/5) height */}
                   <div 
                     className="absolute left-0 right-0 h-[1px] bg-zinc-400/50 dark:bg-zinc-500/50"
