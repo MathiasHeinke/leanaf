@@ -661,40 +661,74 @@ serve(async (req) => {
           try {
             // Save to training_sessions table
             const session = parsedData.normalized_json;
-            const { data: sessionResult, error: sessionError } = await supabase
+            const totalVolume = session.exercises?.reduce((total, ex) => 
+              total + (ex.sets?.reduce((setTotal, set) => setTotal + (set.weight * set.reps), 0) || 0), 0) || 0;
+
+            const { data: sessionResult, error: sessionError } = await supabaseState
               .from('training_sessions')
               .insert({
                 user_id: userId,
-                session_date: session.session_date,
-                split_type: session.split_type,
-                notes: session.notes,
-                client_event_id: event.clientEventId
+                session_date: session.session_date || new Date().toISOString().split('T')[0],
+                split_type: session.split_type || 'mixed',
+                notes: session.notes || '',
+                session_data: session,
+                total_volume_kg: totalVolume
               })
               .select('id')
               .single();
 
             if (sessionError) throw sessionError;
 
-            // Save individual exercises and sets
-            for (const exercise of session.exercises) {
-              for (const set of exercise.sets) {
-                await supabase.from('exercise_sets').insert({
-                  user_id: userId,
+            // Map exercises to exercise IDs and create sets
+            const exerciseSets = [];
+            
+            for (const exercise of session.exercises || []) {
+              // Try to find existing exercise
+              const { data: existingExercise } = await supabaseState
+                .from('exercises')
+                .select('id')
+                .or(`name.ilike.%${exercise.name}%,name_de.ilike.%${exercise.name}%,name_en.ilike.%${exercise.name}%`)
+                .limit(1)
+                .maybeSingle();
+
+              const exerciseId = existingExercise?.id || null;
+
+              // Create exercise sets
+              for (let i = 0; i < exercise.sets.length; i++) {
+                const set = exercise.sets[i];
+                exerciseSets.push({
                   session_id: sessionResult.id,
-                  exercise_id: null, // Would need exercise lookup
-                  set_number: exercise.sets.indexOf(set) + 1,
+                  exercise_id: exerciseId,
+                  user_id: userId,
+                  set_number: i + 1,
                   weight_kg: set.weight,
                   reps: set.reps,
                   rpe: set.rpe,
-                  notes: set.notes || exercise.notes,
-                  date: session.session_date,
+                  notes: exercise.notes || set.notes || null,
+                  date: session.session_date || new Date().toISOString().split('T')[0],
+                  origin: 'training_log_parser',
                   client_event_id: event.clientEventId
                 });
               }
             }
 
+            // Insert all sets
+            if (exerciseSets.length > 0) {
+              const { error: setsError } = await supabaseState
+                .from('exercise_sets')
+                .insert(exerciseSets);
+
+              if (setsError) throw setsError;
+            }
+
             await logTraceEvent(supabase, { traceId, userId, stage: 'tool_result', handler: 'training-save', status: 'OK' });
-            const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone('✅ Training gespeichert! Starke Session.'), traceId };
+            const successText = `✅ Trainingseinheit erfolgreich gespeichert!\n\n` +
+              `📊 **Session Details:**\n` +
+              `• ${session.exercises?.length || 0} Übungen\n` +
+              `• ${exerciseSets.length} Sätze\n` +
+              `• ${Math.round(totalVolume)} kg Gesamtvolumen\n\n` +
+              `Die Daten sind jetzt in deinem Trainingslog verfügbar.`;
+            const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone(successText), traceId };
             await markFinal(supabaseState, userId, clientEventId, reply, traceId);
             return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
           } catch (saveError) {

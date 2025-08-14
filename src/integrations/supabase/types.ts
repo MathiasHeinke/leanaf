@@ -4808,6 +4808,45 @@ export type Database = {
           },
         ]
       }
+      training_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          session_data: Json | null
+          session_date: string
+          split_type: string | null
+          total_duration_minutes: number | null
+          total_volume_kg: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_data?: Json | null
+          session_date?: string
+          split_type?: string | null
+          total_duration_minutes?: number | null
+          total_volume_kg?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          session_data?: Json | null
+          session_date?: string
+          split_type?: string | null
+          total_duration_minutes?: number | null
+          total_volume_kg?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       training_sets: {
         Row: {
           created_at: string
