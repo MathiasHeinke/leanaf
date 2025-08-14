@@ -45,8 +45,6 @@ import { GripVertical } from "lucide-react";
 import { usePlusData } from "@/hooks/usePlusData";
 import ConcentricStatCard from "@/components/ConcentricStatCard";
 import { DashboardKeyMetrics } from "@/components/DashboardKeyMetrics";
-import { DashboardFourBarsWithTrend } from "@/components/DashboardFourBarsWithTrend";
-import { DashboardHaloPair } from "@/components/DashboardHaloPair";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -708,21 +706,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           dailyGoals={dailyGoals}
           todaysFluids={todaysFluids}
           todaysWorkout={todaysWorkout}
-        />
-
-        {/* Four Bars with Trend */}
-        <DashboardFourBarsWithTrend 
-          currentDate={currentDate}
-          meals={meals}
-          dailyGoals={dailyGoals}
-          todaysFluids={todaysFluids}
-        />
-
-        {/* Halo Pair - Water & Steps */}
-        <DashboardHaloPair 
-          todaysFluids={todaysFluids}
-          todaysWorkouts={todaysWorkouts}
-          userProfile={userProfile}
         />
 
         <div
