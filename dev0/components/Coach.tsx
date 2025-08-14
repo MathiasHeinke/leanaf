@@ -5,7 +5,7 @@ import SimpleUnifiedCoachChat from '@/components/SimpleUnifiedCoachChat';
 import { COACH_REGISTRY } from '@/lib/coachRegistry';
 import coachPersonasData from '@/data/coach-personas.json';
 
-// Convert registry to frontend coach profiles
+// Convert registry to frontend coach profiles - Only FREYA and ARES
 const coachProfiles = Object.values(COACH_REGISTRY).map(coach => ({
   id: coach.id,
   name: coach.name,
@@ -15,7 +15,7 @@ const coachProfiles = Object.values(COACH_REGISTRY).map(coach => ({
   color: coach.color,
   accentColor: coach.accentColor,
   description: `${coach.role} - ${coach.personality}`,
-  persona: coachPersonasData.find(p => p.id === coach.prompt_template_id)
+  persona: coachPersonasData.find(p => p.id === coach.prompt_template_id || p.name === coach.name)
 }));
 
 const Coach = () => {

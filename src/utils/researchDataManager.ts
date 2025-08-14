@@ -9,10 +9,9 @@ export class ResearchDataManager {
   private data: ResearchNode[];
 
   constructor() {
-    // Merge research data with coach personas
+    // Only use research data - coach personas are now simplified
     this.data = [
-      ...(researchData as ResearchNode[]),
-      ...(coachPersonasData as CoachPersona[])
+      ...(researchData as ResearchNode[])
     ];
   }
 

@@ -25,126 +25,73 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
   freya: {
     id: 'freya',
     name: 'FREYA',
-    displayName: 'FREYA - Ultimate Female Intelligence',
-    personality: 'empowerment-fokussiert, wissenschaftlich fundiert, hormon-bewusst, ganzheitlich',
-    role: 'Ultimate Female Performance Intelligence',
+    displayName: 'FREYA',
+    personality: 'Ultimate Female Intelligence - vereint Ernährungswissen mit Hormonexpertise',
+    role: 'Ultimate Female Health & Performance Coach',
     prompt_template_id: 'freya_ultimate',
-    memory_id: 'freya_md',
-    avatar: '🌸',
-    imageUrl: '/coach-images/freya-main.jpg',
-    color: 'pink',
-    accentColor: 'from-pink-500 to-pink-600',
+    memory_id: 'freya_memory_v2',
+    avatar: '👑',
+    imageUrl: '/lovable-uploads/4b8ee7ce-3bfe-4f9d-8a58-e6b50b29d78c.png',
+    color: 'hsl(320, 70%, 65%)',
+    accentColor: 'hsl(280, 60%, 70%)',
+    isPremium: false,
     isFree: true,
-    expertise: ['Female Health', 'Hormone Optimization', 'Cycle Training', 'Nutrition', 'Supplements', 'Longevity', 'Mindfulness'],
+    expertise: [
+      'Female Hormone Optimization',
+      'Cycle-Based Training',
+      'Nutrition & Metabolism',
+      'Recovery & Wellness',
+      'Life Phase Coaching',
+      'Mindful Nutrition',
+      'Supplement Safety'
+    ],
     access: {
-      tools: ['mealplan', 'fat_analysis', 'supplement_advice', 'cycleAssessment', 'hormoneTracker', 'femalePeriodization', 'menopauseNavigator'],
-      datasets: ['meal_history', 'supplement_stack', 'cycle_data', 'hormone_levels', 'female_health_metrics'],
-      rag: ['rag_nutrition', 'rag_female_health', 'rag_hormones', 'rag_cycle_training', 'rag_longevity', 'rag_mindfulness', 'rag_lifestyle_medicine']
+      tools: ['cycleAssessment', 'femaleTraining', 'hormonalInsights', 'nutritionAnalysis', 'recoveryOptimization'],
+      datasets: ['hormone_research', 'cycle_data', 'nutrition_database', 'supplement_database'],
+      rag: ['vita_knowledge_semantic']
     },
-    aliases: ['freya', 'female', 'women', 'frau', 'frauen', 'hormone', 'cycle', 'zyklus', 'menstruation', 'lucy', 'vita', 'dr vita', 'female coach', 'woman coach', 'female health', 'hormone coach', 'ultimate female']
+    aliases: ['freya', 'female', 'women', 'frau', 'frauen', 'hormone', 'cycle', 'zyklus', 'lucy', 'vita', 'nutrition']
   },
-  lucy: {
-    id: 'lucy',
-    name: 'Lucy',
-    displayName: 'Dr. Lucy Martinez',
-    personality: 'empathisch, motivierend, lernorientiert, achtsam, vegan-freundlich',
-    role: 'Nutrition, Metabolism & Lifestyle Coach',
-    prompt_template_id: 'persona_lucy',
-    memory_id: 'lucy_md',
-    avatar: '❤️',
-    imageUrl: '/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png',
-    color: 'green',
-    accentColor: 'from-green-500 to-green-600',
-    isFree: true,
-    expertise: ['Chrononutrition', 'Supplements', 'Cycle-Aware Coaching', 'Mindfulness'],
-    access: {
-      tools: ['mealplan', 'fat_analysis', 'supplement_advice'],
-      datasets: ['meal_history', 'supplement_stack', 'cycle_data'],
-      rag: ['rag_nutrition', 'rag_general', 'rag_mindfulness']
-    },
-    aliases: ['lucy_backup', 'dr lucy backup', 'nutrition coach backup']
-  },
-  
   ares: {
     id: 'ares',
     name: 'ARES',
-    displayName: 'ARES - Ultimate Male Coach',
-    personality: 'intensiv, stoisch, transformativ - vereint Saschas Disziplin mit Kais Ganzheitlichkeit',
-    role: 'Ultimate Male Performance Intelligence',
-    prompt_template_id: 'ares_ultimate',
-    memory_id: 'ares_md',
+    displayName: 'ARES',
+    personality: 'Ultimate Performance Coach - Cross-domain mastery, meta-intelligence, supremely effective',
+    role: 'Ultimate Performance & Transformation Coach',
+    prompt_template_id: 'persona_ares',
+    memory_id: 'ares_memory_v1',
     avatar: '⚡',
-    imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
-    color: 'red',
-    accentColor: 'from-red-500 to-red-600',
-    isFree: true,
+    imageUrl: '/lovable-uploads/b4563c95-6bd0-4a46-8bb8-4c8c5e69b29e.png',
+    color: 'hsl(0, 80%, 60%)',
+    accentColor: 'hsl(20, 70%, 65%)',
+    isPremium: true,
+    isFree: false,
     expertise: [
-      'Ultimate Performance', 'Krafttraining & Progression', 'Mindset & Recovery', 
-      'Cross-Domain Mastery', 'Total Male Optimization'
+      'Cross-Domain Optimization',
+      'Ultimate Performance',
+      'Meta-Intelligence Coaching',
+      'Total Life Mastery',
+      'Advanced Periodization',
+      'Peak Performance Psychology',
+      'Biohacking & Optimization'
     ],
     access: {
-      tools: [
-        // ARES Super-Tools
-        'aresMetaCoach', 'aresTotalAssessment', 'aresUltimateWorkoutPlan', 'aresSuperNutrition',
-        'heavyTrainingPlan', 'massBuildingCalculator', 'mentalToughnessCoach',
-        // Sascha's consolidated tools
-        'trainingsplan', 'createPlanDraft', 'savePlanDraft', 'uebung', 'gewicht',
-        // Kai's consolidated tools  
-        'diary', 'goalCheckin', 'supplement', 'mealCapture'
-      ],
-      datasets: [
-        'total_user_profile', 'cross_coach_insights', 'meta_coaching_data',
-        'training_history', 'performance_data', 'strength_logs', 
-        'sleep_data', 'hrv_data', 'mindset_progress', 'hormone_levels'
-      ],
-      rag: [
-        'rag_total_coaching', 'rag_ares_meta', 'rag_user_journey',
-        'rag_training', 'rag_periodization', 'rag_biomechanics',
-        'rag_psychology', 'rag_recovery', 'rag_transformation', 'rag_male_health'
-      ]
+      tools: ['aresMetaCoach', 'aresTotalAssessment', 'ultimateOptimization', 'crossDomainAnalysis'],
+      datasets: ['all_knowledge', 'performance_research', 'optimization_protocols'],
+      rag: ['search_ares_ultimate_knowledge']
     },
-    aliases: [
-      'ares', 'ultimate coach', 'total coach', 'meta coach', 'super coach', 'dominator',
-      // Sascha legacy aliases - CONSOLIDATED INTO ARES
-      'sascha', 'sascha weber', 'performance coach', 'training coach', 'ex-feldwebel',
-      // Kai legacy aliases - CONSOLIDATED INTO ARES  
-      'kai', 'dr kai', 'kai nakamura', 'mindset coach', 'recovery coach', 'transformation coach',
-      // Original ARES aliases
-      'markus', 'markus rühl', 'markus ruhl', 'rühl', 'ruhl', 'german beast', 'bodybuilding coach'
-    ]
-  },
-  
-  vita: {
-    id: 'vita',
-    name: 'Dr. Vita',
-    displayName: 'Dr. Vita Femina',
-    personality: 'wissenschaftlich, empathisch, frauen-fokussiert, hormon-bewusst',
-    role: 'Female Health & Hormone Coach',
-    prompt_template_id: 'persona_vita',
-    memory_id: 'vita_md',
-    avatar: '🌺',
-    imageUrl: '/lovable-uploads/ad7fe6b6-c176-49df-b275-84345a40c5f5.png',
-    color: 'purple',
-    accentColor: 'from-purple-500 to-purple-600',
-    isPremium: true,
-    expertise: ['Zyklusorientiertes Training', 'Hormonbalance', 'Frauen-Gesundheit', 'Lebensphasen-Coaching'],
-    access: {
-      tools: ['cycleAssessment', 'hormoneTracker', 'femalePeriodization', 'menopauseNavigator'],
-      datasets: ['cycle_data', 'hormone_levels', 'female_health_metrics'],
-      rag: ['rag_female_health', 'rag_hormones', 'rag_cycle_training']
-    },
-    aliases: ['vita_backup', 'dr vita backup', 'hormone coach backup', 'women coach backup']
+    aliases: ['ares', 'ultimate', 'performance', 'meta', 'optimization', 'sascha', 'kai', 'male', 'markus', 'ruhl']
   }
 };
 
 /**
  * Resolves coach ID using fuzzy matching
  * @param inputId Raw coach ID from request
- * @returns Resolved coach metadata or fallback to Lucy
+ * @returns Resolved coach metadata or fallback to FREYA
  */
 export function resolveCoach(inputId: string): CoachMetadata {
   if (!inputId) {
-    return COACH_REGISTRY.lucy; // Default fallback
+    return COACH_REGISTRY.freya; // Default fallback
   }
 
   const normalized = inputId.trim().toLowerCase().replace(/[_-\s]/g, '');
@@ -164,31 +111,28 @@ export function resolveCoach(inputId: string): CoachMetadata {
     }
   }
   
-  // Legacy ID mappings for backwards compatibility
+  // Legacy redirects for old coaches
   const legacyMappings: Record<string, string> = {
-    'persona_ruhl': 'ares',
-    'persona_ares': 'ares', 
-    'markus': 'ares',
-    // SASCHA → ARES CONSOLIDATION
-    'persona_sascha': 'ares',
+    'lucy': 'freya',
+    'vita': 'freya',
     'sascha': 'ares',
-    // KAI → ARES CONSOLIDATION  
-    'persona_kai': 'ares',
     'kai': 'ares',
-    // FEMALE COACH CONSOLIDATION → FREYA
+    'markus': 'ares',
+    'ruhl': 'ares',
     'persona_lucy': 'freya',
     'persona_vita': 'freya',
-    'dr-vita': 'freya',
-    'drvita': 'freya'
+    'persona_sascha': 'ares',
+    'persona_kai': 'ares',
+    'persona_ares': 'ares',
+    'persona_ruhl': 'ares'
   };
   
   if (legacyMappings[normalized]) {
     return COACH_REGISTRY[legacyMappings[normalized]];
   }
   
-  // Fallback to Lucy for unknown coaches
-  console.warn(`Coach "${inputId}" not found, falling back to Lucy`);
-  return COACH_REGISTRY.lucy;
+  // Fallback to FREYA
+  return COACH_REGISTRY.freya;
 }
 
 /**

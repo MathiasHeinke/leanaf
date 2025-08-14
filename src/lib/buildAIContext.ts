@@ -93,21 +93,23 @@ async function getCoachPersona(coachId: string) {
   try {
     const persona = coachPersonasData.find(p => 
       p.id === `persona_${coachId}` || 
-      p.coachName.toLowerCase().includes(coachId.toLowerCase())
+      p.id === `${coachId}_ultimate` ||
+      p.name.toLowerCase().includes(coachId.toLowerCase())
     );
     
     if (persona) {
       return {
-        name: persona.coachName,
-        style: persona.personality.coreTraits || ["direkt", "lösungsorientiert"]
+        name: persona.name,
+        style: typeof persona.personality === 'string' 
+          ? [persona.personality] 
+          : ["empowerment", "optimization"]
       };
     }
     
     // Fallback mapping for compatibility
     const fallbackPersonas: Record<string, any> = {
-      lucy: { name: "Dr. Lucy Martinez", style: ["empathisch", "motivierend", "lernorientiert"] },
-      markus: { name: "Markus Rühl", style: ["direkt", "brachial", "old-school"] },
-      sascha: { name: "Sascha Weber", style: ["stoisch", "direkt", "analytisch"] }
+      freya: { name: "FREYA", style: ["empowerment", "hormon-bewusst", "ganzheitlich"] },
+      ares: { name: "ARES", style: ["ultimate", "dominant", "meta-intelligent"] }
     };
     
     return fallbackPersonas[coachId] || { name: "Coach", style: ["direkt", "lösungsorientiert"] };
