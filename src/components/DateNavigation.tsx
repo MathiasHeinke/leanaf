@@ -32,7 +32,7 @@ export const DateNavigation = ({ currentDate, onDateChange }: DateNavigationProp
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-1.5 mb-4">
+    <div className="flex items-center justify-between px-4 py-1 mb-2">
       <Button
         variant="ghost"
         size="sm"
@@ -44,9 +44,9 @@ export const DateNavigation = ({ currentDate, onDateChange }: DateNavigationProp
       
       <button
         onClick={goToToday}
-        className="text-center hover:bg-secondary/50 rounded-md px-3 py-1 transition-colors"
+        className="text-center hover:text-primary rounded-md px-2 py-0.5 transition-colors"
       >
-        <div className="text-lg font-semibold">{formatDate(currentDate)}</div>
+        <div className="text-sm font-medium">{formatDate(currentDate)}</div>
       </button>
       
       <Button

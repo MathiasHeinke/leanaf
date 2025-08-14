@@ -2,6 +2,7 @@ import React from "react";
 import FourBarsWithTrend from "./FourBarsWithTrend";
 import { Droplet, Footprints, Pill } from "lucide-react";
 import { useSupplementData } from "@/hooks/useSupplementData";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface Props {
   meals: any[];
@@ -105,35 +106,42 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   ];
 
   return (
-    <FourBarsWithTrend 
-      bars={bars} 
-      waterHalo={{
-        label: "WASSER",
-        value: formatFluid(totalFluidMl),
-        detailValue: formatFluidDetail(totalFluidMl, fluidGoalMl),
-        progress: fluidProgress,
-        gradient: ["#67e8f9", "#3b82f6"],
-        track: "rgba(59,130,246,0.15)",
-        icon: <Droplet size={16} />,
-      }}
-      stepsHalo={{
-        label: "SCHRITTE",
-        value: formatSteps(todaysSteps),
-        detailValue: formatStepsDetail(todaysSteps, stepsGoal),
-        progress: stepsProgress,
-        gradient: ["#fb923c", "#ef4444"],
-        track: "rgba(239,68,68,0.15)",
-        icon: <Footprints size={16} />,
-      }}
-      supplementsHalo={{
-        label: "SUPPLEMENTS",
-        value: formatSupplements(totalTaken, totalScheduled),
-        detailValue: formatSupplementsDetail(totalTaken, totalScheduled),
-        progress: supplementsProgress,
-        gradient: ["#a855f7", "#7c3aed"],
-        track: "rgba(168,85,247,0.15)",
-        icon: <Pill size={16} />,
-      }}
-    />
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle>Übersicht</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <FourBarsWithTrend 
+          bars={bars} 
+          waterHalo={{
+            label: "WASSER",
+            value: formatFluid(totalFluidMl),
+            detailValue: formatFluidDetail(totalFluidMl, fluidGoalMl),
+            progress: fluidProgress,
+            gradient: ["#67e8f9", "#3b82f6"],
+            track: "rgba(59,130,246,0.15)",
+            icon: <Droplet size={16} />,
+          }}
+          stepsHalo={{
+            label: "SCHRITTE",
+            value: formatSteps(todaysSteps),
+            detailValue: formatStepsDetail(todaysSteps, stepsGoal),
+            progress: stepsProgress,
+            gradient: ["#fb923c", "#ef4444"],
+            track: "rgba(239,68,68,0.15)",
+            icon: <Footprints size={16} />,
+          }}
+          supplementsHalo={{
+            label: "SUPPLEMENTS",
+            value: formatSupplements(totalTaken, totalScheduled),
+            detailValue: formatSupplementsDetail(totalTaken, totalScheduled),
+            progress: supplementsProgress,
+            gradient: ["#a855f7", "#7c3aed"],
+            track: "rgba(168,85,247,0.15)",
+            icon: <Pill size={16} />,
+          }}
+        />
+      </CardContent>
+    </Card>
   );
 };
