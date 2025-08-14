@@ -21,6 +21,7 @@ import { Progress } from "@/components/ui/progress";
 interface QuickWeightInputProps {
   onWeightAdded?: () => void;
   todaysWeight?: any;
+  currentDate?: Date;
 }
 
 // Utility function to safely parse photo_urls
@@ -56,7 +57,7 @@ function SmartChip({ text, onClick }: { text: string; onClick?: () => void }) {
   );
 }
 
-export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInputProps) => {
+export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: QuickWeightInputProps) => {
   const [weight, setWeight] = useState("");
   const [debouncedWeight, setDebouncedWeight] = useState("");
   const [bodyFat, setBodyFat] = useState("");
@@ -155,7 +156,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight }: QuickWeightInp
         return;
       }
 
-      const today = currentDate.toISOString().split('T')[0];
+      const today = (currentDate || new Date()).toISOString().split('T')[0];
       
       // Upload new photos if any
       let newPhotoUrls: string[] = [];
