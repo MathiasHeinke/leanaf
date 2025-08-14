@@ -700,18 +700,12 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
       <div className="space-y-5">
 
-        {/* New 4 Bars with 7-Day Trend */}
+        {/* New 4 Bars with Integrated Halos */}
         <DashboardFourBarsWithTrend 
           meals={meals}
           dailyGoals={dailyGoals}
           todaysFluids={todaysFluids}
-        />
-
-        {/* Water & Steps Halos */}
-        <DashboardHaloPair 
-          todaysFluids={todaysFluids}
           todaysWorkout={todaysWorkout}
-          dailyGoals={dailyGoals}
         />
 
         <div

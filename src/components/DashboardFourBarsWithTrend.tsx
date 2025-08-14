@@ -1,19 +1,20 @@
 import React from "react";
 import FourBarsWithTrend from "./FourBarsWithTrend";
-import { useDailySummaryData } from "@/hooks/useDailySummaryData";
+import { Droplet, Footprints } from "lucide-react";
 
 interface Props {
   meals: any[];
   dailyGoals: any;
   todaysFluids: any[];
+  todaysWorkout: any;
 }
 
 export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   meals,
   dailyGoals,
-  todaysFluids
+  todaysFluids,
+  todaysWorkout
 }) => {
-  const { data: summaryData } = useDailySummaryData(7);
 
   // Calculate current macro values from meals
   const totalCalories = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
@@ -33,23 +34,26 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const fatsGoal = dailyGoals?.fats || 65;
   const caloriesGoal = dailyGoals?.calories || 2000;
 
-  // Prepare trend data (last 7 days of calories)
-  const trend7d = summaryData
-    .slice(-7) // Last 7 days
-    .map((day, index) => ({
-      x: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][index % 7], // Day abbreviation
-      y: day.totalCalories
-    }));
+  // Calculate fluid intake (non-alcoholic only)
+  const totalFluidMl = todaysFluids
+    .filter(fluid => !fluid.has_alcohol)
+    .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
+  const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
+  const fluidProgress = Math.min(totalFluidMl / fluidGoalMl, 1);
 
-  // If no trend data, create empty trend
-  if (trend7d.length === 0) {
-    for (let i = 0; i < 7; i++) {
-      trend7d.push({
-        x: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][i],
-        y: 0
-      });
+  // Calculate steps
+  const todaysSteps = todaysWorkout?.steps || 0;
+  const stepsGoal = dailyGoals?.steps_goal || 10000;
+  const stepsProgress = Math.min(todaysSteps / stepsGoal, 1);
+
+  // Format values
+  const formatFluid = (ml: number) => `${(ml / 1000).toFixed(1)}L`;
+  const formatSteps = (steps: number) => {
+    if (steps >= 1000) {
+      return `${(steps / 1000).toFixed(1)}k`;
     }
-  }
+    return steps.toString();
+  };
 
   const bars: [any, any, any, any] = [
     {
@@ -78,5 +82,25 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
     }
   ];
 
-  return <FourBarsWithTrend bars={bars} trend7d={trend7d} />;
+  return (
+    <FourBarsWithTrend 
+      bars={bars} 
+      waterHalo={{
+        label: "WASSER",
+        value: formatFluid(totalFluidMl),
+        progress: fluidProgress,
+        gradient: ["#67e8f9", "#3b82f6"],
+        track: "rgba(59,130,246,0.15)",
+        icon: <Droplet size={16} />,
+      }}
+      stepsHalo={{
+        label: "SCHRITTE",
+        value: formatSteps(todaysSteps),
+        progress: stepsProgress,
+        gradient: ["#fb923c", "#ef4444"],
+        track: "rgba(239,68,68,0.15)",
+        icon: <Footprints size={16} />,
+      }}
+    />
+  );
 };

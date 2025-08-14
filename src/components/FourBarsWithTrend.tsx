@@ -1,5 +1,4 @@
 import React from "react";
-import { AreaChart, Area, ResponsiveContainer } from "recharts";
 
 type Bar = {
   key: "P" | "K" | "F" | "C";       // C = KCAL
@@ -8,14 +7,62 @@ type Bar = {
   gradient?: [string, string];      // Farben (top -> bottom)
 };
 
-type TrendPoint = { x: string | number; y: number };
+type Halo = {
+  label: string;         // "WASSER" | "SCHRITTE"
+  value: string;         // "2.5L" | "8.0k"
+  progress: number;      // 0..1
+  gradient: [string, string];
+  track?: string;
+  icon?: React.ReactNode; // optional
+};
 
 type Props = {
   bars: [Bar, Bar, Bar, Bar];       // Reihenfolge auf UI
-  trend7d: TrendPoint[];            // 7-Tage
+  waterHalo: Halo;                  // Wasser-Ring
+  stepsHalo: Halo;                  // Schritte-Ring
 };
 
-export default function FourBarsWithTrend({ bars, trend7d }: Props) {
+function HaloMeter({ label, value, progress, gradient, track = "rgba(0,0,0,0.08)", icon }: Halo) {
+  const R = 32, SW = 6, C = 2 * Math.PI * R, dash = C * Math.max(0, Math.min(1, progress));
+  const id = `grad-${label.replace(/\s+/g, "")}`;
+  return (
+    <div className="rounded-2xl p-3 bg-white/70 dark:bg-white/5 flex items-center gap-3">
+      <svg width={76} height={76} className="shrink-0">
+        <defs>
+          <linearGradient id={id} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={gradient[0]} />
+            <stop offset="100%" stopColor={gradient[1]} />
+          </linearGradient>
+        </defs>
+        <g transform="translate(38,38)">
+          <circle r={R} cx={0} cy={0} fill="none" stroke={track} strokeWidth={SW} />
+          <circle
+            r={R}
+            cx={0}
+            cy={0}
+            fill="none"
+            stroke={`url(#${id})`}
+            strokeWidth={SW}
+            strokeLinecap="round"
+            strokeDasharray={`${dash} ${C - dash}`}
+            transform="rotate(-90)"
+          />
+          {icon && (
+            <foreignObject x={-10} y={-10} width={20} height={20}>
+              <div className="w-5 h-5 flex items-center justify-center text-zinc-600 dark:text-zinc-300">{icon}</div>
+            </foreignObject>
+          )}
+        </g>
+      </svg>
+      <div className="flex flex-col">
+        <div className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{value}</div>
+        <div className="text-xs tracking-[0.2em] text-zinc-500 dark:text-zinc-400 uppercase">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo }: Props) {
   return (
     <section className="rounded-3xl p-4 sm:p-5 bg-white/80 dark:bg-[#0b0f14] shadow-[0_10px_30px_rgba(0,0,0,.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,.45)] backdrop-blur">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -68,28 +115,10 @@ export default function FourBarsWithTrend({ bars, trend7d }: Props) {
           })}
         </div>
 
-        {/* RIGHT: kompakte 7‑Tage‑Sparkline */}
-        <div className="md:col-span-5 rounded-2xl bg-white/70 dark:bg-white/5 p-3 sm:p-4">
-          <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">7‑Tage</div>
-          <div className="h-28 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trend7d}>
-                <defs>
-                  <linearGradient id="sparkBlue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.45} />
-                    <stop offset="100%" stopColor="#60a5fa" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area
-                  type="monotone"
-                  dataKey="y"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  fill="url(#sparkBlue)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+        {/* RIGHT: Wasser & Schritte Halos */}
+        <div className="md:col-span-5 flex flex-col gap-4">
+          <HaloMeter {...waterHalo} />
+          <HaloMeter {...stepsHalo} />
         </div>
       </div>
     </section>
