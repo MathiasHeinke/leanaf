@@ -13,7 +13,7 @@ import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
-import { CoachFeedbackCard } from "./CoachFeedbackCard";
+
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
@@ -366,13 +366,6 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                 )}
               </div>
               
-              <CoachFeedbackCard 
-                coachName="Lucy"
-                coachAvatar="/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
-                measurementData={todaysMeasurements}
-                userId={user?.id}
-                type="measurement"
-              />
               
               <div className="bg-card rounded-lg p-3">
                 <p className="text-xs text-muted-foreground mb-2">
