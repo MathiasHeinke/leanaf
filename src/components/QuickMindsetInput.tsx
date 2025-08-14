@@ -209,41 +209,35 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   return (
     <Card className="p-4">
       <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-        {/* Header - CaloriesCard style */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold">Mindset Journal</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-8 w-8 p-0"
-              onClick={() => startRecording()}
-              disabled={isRecording || isVoiceLoading}
-              title="Schnellaufnahme"
-            >
-              <Mic className="h-4 w-4" />
-            </Button>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2"
+          >
+            <div className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-semibold">Mindset Journal</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startRecording();
+                }}
+                disabled={isRecording || isVoiceLoading}
+                title="Schnellaufnahme"
               >
-                {!isCollapsed ? (
-                  <>
-                    Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-                  </>
-                ) : (
-                  <>
-                    Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-                  </>
-                )}
-              </button>
-            </CollapsibleTrigger>
-          </div>
-        </div>
+                <Mic className="h-4 w-4" />
+              </Button>
+              <div className="text-muted-foreground hover:text-foreground">
+                {!isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </div>
+            </div>
+          </button>
+        </CollapsibleTrigger>
 
         {/* Collapsed summary when card is closed - CaloriesCard style */}
         {isCollapsed && hasEntriesForDate && (

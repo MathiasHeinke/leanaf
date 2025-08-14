@@ -191,6 +191,28 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       return;
     }
 
+    const tempFluid: UserFluid = {
+      id: `temp-${Date.now()}`,
+      fluid_id: fluidId,
+      custom_name: customFluidName,
+      amount_ml: amountMl,
+      consumed_at: new Date().toISOString(),
+      notes: null,
+      fluid_name: fluidId ? fluids.find(f => f.id === fluidId)?.name || 'Getränk' : customFluidName || 'Getränk',
+      fluid_category: fluidId ? fluids.find(f => f.id === fluidId)?.category : undefined,
+      has_alcohol: fluidId ? fluids.find(f => f.id === fluidId)?.has_alcohol || false : false,
+      calories_per_100ml: fluidId ? fluids.find(f => f.id === fluidId)?.calories_per_100ml || 0 : 0,
+      fluid_database: fluidId ? {
+        name: fluids.find(f => f.id === fluidId)?.name || '',
+        category: fluids.find(f => f.id === fluidId)?.category || '',
+        has_alcohol: fluids.find(f => f.id === fluidId)?.has_alcohol || false,
+        calories_per_100ml: fluids.find(f => f.id === fluidId)?.calories_per_100ml || 0
+      } : undefined
+    };
+
+    // Optimistic update
+    setTodaysFluids(prev => [tempFluid, ...prev]);
+
     try {
       const fluidData = {
         user_id: user.id,
@@ -213,7 +235,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       
       toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
       
-      // Reload data
+      // Reload data to get the real ID
       await loadTodaysFluids();
       
       // Trigger parent update to refresh main page
@@ -223,6 +245,8 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       triggerDataRefresh();
     } catch (error) {
       console.error('Error adding fluid directly:', error);
+      // Rollback optimistic update on error
+      setTodaysFluids(prev => prev.filter(f => f.id !== tempFluid.id));
       toast.error('Fehler beim Hinzufügen des Getränks');
     }
   };
@@ -721,28 +745,20 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
   return (
     <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
       <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Droplets className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold">Flüssigkeiten</h2>
-          </div>
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-            >
-              {!isCollapsed ? (
-                <>
-                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </button>
-          </CollapsibleTrigger>
-        </div>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2"
+          >
+            <div className="flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-semibold">Flüssigkeiten</h2>
+            </div>
+            <div className="text-muted-foreground hover:text-foreground">
+              {!isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </div>
+          </button>
+        </CollapsibleTrigger>
 
         {/* Collapsed summary when card is closed */}
         {isCollapsed && (
