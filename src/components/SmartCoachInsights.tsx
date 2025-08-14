@@ -24,7 +24,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
 import { supabase } from "@/integrations/supabase/client";
-import { PremiumGate } from "@/components/PremiumGate";
+
 
 interface CoachInsight {
   type: 'success' | 'warning' | 'info' | 'motivation' | 'correlation' | 'habit' | 'trend';

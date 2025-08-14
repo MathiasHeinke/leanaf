@@ -12,7 +12,7 @@ import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
-import { PremiumGate } from "@/components/PremiumGate";
+
 import { parseLocaleFloat } from "@/utils/localeNumberHelpers";
 import { CollapsibleQuickInput } from "./CollapsibleQuickInput";
 import { CoachFeedbackCard } from "./CoachFeedbackCard";
@@ -310,12 +310,7 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
           </div>
         </div>
       ) : (
-        <PremiumGate 
-          feature="body_measurements"
-          hideable={true}
-          fallbackMessage="Körpermaße-Tracking ist ein Premium Feature. Upgrade für detaillierte Körpermaß-Aufzeichnung!"
-        >
-          <div className="space-y-4">
+        <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-medium text-foreground">
                 {hasMeasurementsThisWeek && !createNewEntry ? 'Maße bearbeiten' : 'Körpermaße erfassen'}
@@ -413,50 +408,53 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
                     onChange={(value) => handleInputChange('arms', value)}
                     allowDecimals={true}
                     min={0}
-                    max={100}
+                    max={200}
                   />
                 </div>
                 
-                <div className="space-y-2">
+                <div className="col-span-2 space-y-2">
                   <label className="text-sm font-medium text-muted-foreground">Oberschenkel (cm)</label>
                   <NumericInput
-                    placeholder="60.0"
+                    placeholder="55.0"
                     value={measurements.thigh}
                     onChange={(value) => handleInputChange('thigh', value)}
                     allowDecimals={true}
                     min={0}
-                    max={150}
+                    max={200}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground">Notizen</label>
-                <textarea
+                <label className="text-sm font-medium text-muted-foreground">
+                  Notizen <span className="text-xs opacity-60">(optional)</span>
+                </label>
+                <Input
                   value={measurements.notes}
                   onChange={(e) => handleInputChange('notes', e.target.value)}
-                  placeholder="Zusätzliche Notizen..."
-                  className="w-full p-2 rounded-lg border bg-background text-foreground placeholder-muted-foreground resize-none h-20"
+                  placeholder="z.B. besondere Umstände, Tageszeit..."
+                  className="text-sm"
                 />
               </div>
 
-              <div className="flex gap-2">
-                <Button 
+              <div className="flex items-center gap-3 pt-2">
+                <Button
                   type="submit"
                   disabled={isSubmitting}
                   className="flex-1"
                 >
-                  {isSubmitting ? 'Speichere...' : (hasMeasurementsThisWeek && !createNewEntry ? 'Aktualisieren' : 'Maße hinzufügen')}
+                  {isSubmitting ? "Speichere..." : hasMeasurementsThisWeek && !createNewEntry ? "Aktualisieren" : "Eintragen"}
                 </Button>
                 
-                {isEditing && (
-                  <Button 
+                {(isEditing || createNewEntry) && (
+                  <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
                       setIsEditing(false);
                       setCreateNewEntry(false);
                     }}
+                    className="px-4"
                   >
                     Abbrechen
                   </Button>
@@ -464,7 +462,6 @@ export const BodyMeasurements = ({ onMeasurementsAdded, todaysMeasurements }: Bo
               </div>
             </form>
           </div>
-        </PremiumGate>
       )}
     </CollapsibleQuickInput>
   );

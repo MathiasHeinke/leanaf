@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ProgressCharts } from "./ProgressCharts";
-import { PremiumGate } from '@/components/PremiumGate';
+
 import { 
   Target, 
   TrendingDown, 

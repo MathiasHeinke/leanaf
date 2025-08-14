@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ProgressCharts } from "./ProgressCharts";
 import { WorkoutCalendar } from "./WorkoutCalendar";
-import { PremiumGate } from '@/components/PremiumGate';
+
 import { 
   Target, 
   TrendingDown, 

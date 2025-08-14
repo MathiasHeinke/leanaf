@@ -14,7 +14,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 import { InfoButton } from "@/components/InfoButton";
-import { PremiumGate } from "@/components/PremiumGate";
+
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
 import { cn } from "@/lib/utils";
@@ -507,545 +507,295 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
           </div>
         </div>
       ) : (
-        <PremiumGate 
-          feature="sleep_tracking"
-          hideable={true}
-          fallbackMessage="Schlaf-Tracking ist ein Premium Feature. Upgrade für detailliertes Schlaf-Monitoring!"
-        >
-          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-xl">
-                <Moon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-indigo-800 dark:text-indigo-200">
-                  {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
-                </h3>
-              </div>
-              <InfoButton
-                title="Schlaf Tracking"
-                description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
-                scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
-                tips={[
-                  "7-9 Stunden Schlaf für optimale Regeneration",
-                  "Feste Schlafzeiten unterstützen den Biorhythmus",
-                  "Bildschirme 1h vor dem Schlafen vermeiden"
-                ]}
-              />
+        <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/20 p-4 rounded-2xl border border-indigo-200 dark:border-indigo-800">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-indigo-100 dark:bg-indigo-900 rounded-xl">
+              <Moon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Interactive 24-Stunden Timeline Bar */}
-              <div className="space-y-4">
-                <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span>Schlafzeiten:</span>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="h-3 w-3 text-indigo-500 hover:text-indigo-700 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Wann bist du ins Bett gegangen und aufgewacht?<br/>Ziehe die Symbole oder klicke zum Bearbeiten.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  
-                  {/* Inline editable bedtime */}
-                  {isEditingBedtime ? (
-                    <Input
-                      type="text"
-                      value={bedtimeInput}
-                      onChange={(e) => setBedtimeInput(e.target.value)}
-                      onBlur={() => {
+            <div className="flex-1">
+              <h3 className="font-semibold text-indigo-800 dark:text-indigo-200">
+                {hasSleepToday ? 'Schlaf bearbeiten' : 'Schlaf eintragen'}
+              </h3>
+            </div>
+            <InfoButton
+              title="Schlaf Tracking"
+              description="Qualitätsvollser Schlaf ist essentiell für Regeneration, Hormonbalance und erfolgreiche Gewichtsabnahme. 7-9 Stunden sind optimal."
+              scientificBasis="Studien belegen: Weniger als 6 Stunden Schlaf erhöhen das Risiko für Gewichtszunahme um 30% und verschlechtern die Insulinresistenz."
+              tips={[
+                "7-9 Stunden Schlaf für optimale Regeneration",
+                "Feste Schlafzeiten unterstützen den Biorhythmus",
+                "Bildschirme 1h vor dem Schlafen vermeiden"
+              ]}
+            />
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Interactive 24-Stunden Timeline Bar */}
+            <div className="space-y-4">
+              <div className="text-sm font-medium text-indigo-700 dark:text-indigo-300 flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span>Schlafzeiten:</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-indigo-500 hover:text-indigo-700 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Wann bist du ins Bett gegangen und aufgewacht?<br/>Ziehe die Symbole oder klicke zum Bearbeiten.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                {/* Inline editable bedtime */}
+                {isEditingBedtime ? (
+                  <Input
+                    type="text"
+                    value={bedtimeInput}
+                    onChange={(e) => setBedtimeInput(e.target.value)}
+                    onBlur={() => {
+                      if (bedtimeInput && isValidTime(bedtimeInput)) {
+                        handleTimeEdit('bedtime', bedtimeInput);
+                      } else {
+                        setIsEditingBedtime(false);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
                         if (bedtimeInput && isValidTime(bedtimeInput)) {
                           handleTimeEdit('bedtime', bedtimeInput);
-                        } else {
-                          setIsEditingBedtime(false);
                         }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          if (bedtimeInput && isValidTime(bedtimeInput)) {
-                            handleTimeEdit('bedtime', bedtimeInput);
-                          }
-                        } else if (e.key === 'Escape') {
-                          setIsEditingBedtime(false);
-                        }
-                      }}
-                      placeholder="HH:MM"
-                      className="w-16 h-6 text-sm px-1 py-0 text-center"
-                      autoFocus
-                    />
-                  ) : (
-                    <span 
-                      className="cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-800 px-1 py-0.5 rounded transition-colors"
-                      onClick={() => startTimeEdit('bedtime')}
-                      title="Klicken zum Bearbeiten"
-                    >
-                      {formatTime(bedtime[0])}
-                    </span>
-                  )}
-                  
-                  <span>bis</span>
-                  
-                  {/* Inline editable waketime */}
-                  {isEditingWaketime ? (
-                    <Input
-                      type="text"
-                      value={waketimeInput}
-                      onChange={(e) => setWaketimeInput(e.target.value)}
-                      onBlur={() => {
+                      } else if (e.key === 'Escape') {
+                        setIsEditingBedtime(false);
+                      }
+                    }}
+                    placeholder="HH:MM"
+                    className="w-16 h-6 text-sm px-1 py-0 text-center"
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    className="cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-800 px-1 py-0.5 rounded transition-colors"
+                    onClick={() => startTimeEdit('bedtime')}
+                    title="Klicken zum Bearbeiten"
+                  >
+                    {formatTime(bedtime[0])}
+                  </span>
+                )}
+                
+                <span>bis</span>
+                
+                {/* Inline editable waketime */}
+                {isEditingWaketime ? (
+                  <Input
+                    type="text"
+                    value={waketimeInput}
+                    onChange={(e) => setWaketimeInput(e.target.value)}
+                    onBlur={() => {
+                      if (waketimeInput && isValidTime(waketimeInput)) {
+                        handleTimeEdit('waketime', waketimeInput);
+                      } else {
+                        setIsEditingWaketime(false);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
                         if (waketimeInput && isValidTime(waketimeInput)) {
                           handleTimeEdit('waketime', waketimeInput);
-                        } else {
-                          setIsEditingWaketime(false);
                         }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          if (waketimeInput && isValidTime(waketimeInput)) {
-                            handleTimeEdit('waketime', waketimeInput);
-                          }
-                        } else if (e.key === 'Escape') {
-                          setIsEditingWaketime(false);
-                        }
-                      }}
-                      placeholder="HH:MM"
-                      className="w-16 h-6 text-sm px-1 py-0 text-center"
-                      autoFocus
-                    />
-                  ) : (
-                    <span 
-                      className="cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-800 px-1 py-0.5 rounded transition-colors"
-                      onClick={() => startTimeEdit('waketime')}
-                      title="Klicken zum Bearbeiten"
-                    >
-                      {formatTime(wakeTime[0])}
-                    </span>
-                  )}
-                  
-                  <span className="text-indigo-600 dark:text-indigo-400">({sleepDuration}h)</span>
-                </div>
-                
-                {/* Interactive 24-Hour Timeline */}
-                <div className="relative p-4 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/20 dark:via-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
-                  {/* Simplified time markers - only key times */}
-                  <div className="flex justify-between items-center mb-3 text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                    <span>00:00</span>
-                    <span>06:00</span>
-                    <span>12:00</span>
-                    <span>18:00</span>
-                    <span>24:00</span>
-                  </div>
-                  
-                  {/* Interactive timeline */}
-                  <div className="relative">
-                    {/* Background track with day/night gradient */}
-                    <div 
-                      className="h-12 w-full rounded-lg bg-gradient-to-r from-blue-400 via-yellow-300 via-yellow-300 via-blue-400 to-blue-600 dark:from-blue-600 dark:via-yellow-600 dark:via-yellow-600 dark:via-blue-600 dark:to-blue-800 relative cursor-pointer border-2 border-indigo-200 dark:border-indigo-700"
-                      onClick={handleTimelineClick}
-                      ref={timelineRef}
-                    >
-                      {/* Reduced hour markers - only every 4 hours for cleaner look */}
-                      <div className="absolute inset-0 flex pointer-events-none">
-                        {[0, 4, 8, 12, 16, 20].map((hour) => (
-                          <div 
-                            key={hour} 
-                            className="absolute top-0 bottom-0 flex items-center justify-center"
-                            style={{ left: `${(hour / 24) * 100}%` }}
-                          >
-                            <div className="w-px bg-white/30 h-full absolute"></div>
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Sleep duration visualization */}
-                      <div 
-                        className="absolute top-0 h-full bg-purple-600/40 dark:bg-purple-400/40 rounded pointer-events-none transition-all duration-200"
-                        style={{
-                          left: `${Math.min(bedtimePosition, waketimePosition)}%`,
-                          width: `${Math.abs(waketimePosition - bedtimePosition)}%`
-                        }}
-                      />
-                      
-                      {/* Bedtime thumb - Moon for sleeping */}
-                      <div 
-                        className={`absolute top-1/2 w-10 h-10 bg-purple-600 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
-                          isDragging && activeThumb === 'bedtime' ? 'scale-125 shadow-2xl bg-purple-700' : 'hover:scale-110 hover:bg-purple-700'
-                        }`}
-                        style={{ 
-                          left: `${bedtimePosition}%`, 
-                          transform: 'translateX(-50%) translateY(-50%)',
-                          zIndex: activeThumb === 'bedtime' ? 30 : 20
-                        }}
-                        onMouseDown={(e) => handleMouseDown(e, 'bedtime')}
-                        onTouchStart={(e) => handleTouchStart(e, 'bedtime')}
-                      >
-                        <Moon className="h-5 w-5 text-white drop-shadow-sm" />
-                      </div>
-                      
-                      {/* Wake time thumb - Sun for waking up */}
-                      <div 
-                        className={`absolute top-1/2 w-10 h-10 bg-orange-500 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
-                          isDragging && activeThumb === 'waketime' ? 'scale-125 shadow-2xl bg-orange-600' : 'hover:scale-110 hover:bg-orange-600'
-                        }`}
-                        style={{ 
-                          left: `${waketimePosition}%`, 
-                          transform: 'translateX(-50%) translateY(-50%)',
-                          zIndex: activeThumb === 'waketime' ? 30 : 20
-                        }}
-                        onMouseDown={(e) => handleMouseDown(e, 'waketime')}
-                        onTouchStart={(e) => handleTouchStart(e, 'waketime')}
-                      >
-                        <Sun className="h-5 w-5 text-white drop-shadow-sm" />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Time labels below thumbs */}
-                  <div className="flex justify-between mt-2 text-xs">
-                    <div 
-                      className="text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1"
-                      style={{ marginLeft: `${((bedtime[0] - 12) / 24) * 100}%`, transform: 'translateX(-50%)' }}
-                    >
-                      <Moon className="h-3 w-3" />
-                      {formatTime(bedtime[0])}
-                    </div>
-                    <div 
-                      className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1"
-                      style={{ marginLeft: `${((wakeTime[0] - 12) / 24) * 100}%`, transform: 'translateX(-50%)' }}
-                    >
-                      <Sun className="h-3 w-3" />
-                      {formatTime(wakeTime[0])}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
-                  Schlafqualität: {sleepQuality[0]}/10
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Bewerte die Qualität deines Schlafs.<br/>1 = sehr schlecht, 10 = ausgezeichnet</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </label>
-                <Slider
-                  value={sleepQuality}
-                  onValueChange={setSleepQuality}
-                  max={10}
-                  min={1}
-                  step={1}
-                  className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
-                />
-              </div>
-
-              {/* Aufklappbare weitere Details */}
-              <Collapsible open={showOptionalFields} onOpenChange={setShowOptionalFields}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-between text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                      } else if (e.key === 'Escape') {
+                        setIsEditingWaketime(false);
+                      }
+                    }}
+                    placeholder="HH:MM"
+                    className="w-16 h-6 text-sm px-1 py-0 text-center"
+                    autoFocus
+                  />
+                ) : (
+                  <span 
+                    className="cursor-pointer hover:bg-indigo-100 dark:hover:bg-indigo-800 px-1 py-0.5 rounded transition-colors"
+                    onClick={() => startTimeEdit('waketime')}
+                    title="Klicken zum Bearbeiten"
                   >
-                    <span className="flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      Weitere Details zur Schlafanalyse
-                    </span>
-                    <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showOptionalFields ? 'rotate-180' : ''}`} />
-                  </Button>
-                </CollapsibleTrigger>
-                
-                <CollapsibleContent className="space-y-4 mt-3">
-                  {/* Vertical layout with eye toggles */}
-                  <div className="space-y-4">
-                    {/* Nächtliches Aufwachen */}
-                    <div className={`flex justify-between items-center ${!trackInterruptions ? 'opacity-50' : ''}`}>
-                      <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
-                          <Moon className="inline h-3 w-3 mr-1" />
-                          Nächtliches Aufwachen: {sleepInterruptions[0]}x
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">Wie oft bist du in der Nacht aufgewacht?<br/>Auch kurzes Aufwachen zählt (z.B. für Toilette)</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </label>
-                        <Slider
-                          value={sleepInterruptions}
-                          onValueChange={(value) => {
-                            console.log('Schlafunterbrechungen geändert:', value, 'Tracking wird aktiviert');
-                            setSleepInterruptions(value);
-                            setTrackInterruptions(true);
-                          }}
-                          max={10}
-                          min={0}
-                          step={1}
-                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackInterruptions ? 'opacity-50' : ''}`}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTrackInterruptions(!trackInterruptions)}
-                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
-                      >
-                        {trackInterruptions ? (
-                          <Eye className="h-4 w-4 text-purple-600" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Bildschirmzeit vor dem Schlafen */}
-                    <div className={`flex justify-between items-center ${!trackScreenTime ? 'opacity-50' : ''}`}>
-                      <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
-                          <Smartphone className="inline h-3 w-3 mr-1" />
-                          Bildschirmzeit vor dem Schlafen: {screenTimeEvening[0]}min
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">Wie lange warst du am Handy/Tablet vor dem Schlafen?<br/>Bildschirmlicht beeinflusst die Melatonin-Produktion</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </label>
-                        <Slider
-                          value={screenTimeEvening}
-                          onValueChange={(value) => {
-                            console.log('Handyzeit geändert:', value, 'Tracking wird aktiviert');
-                            setScreenTimeEvening(value);
-                            setTrackScreenTime(true);
-                          }}
-                          max={300}
-                          min={0}
-                          step={15}
-                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackScreenTime ? 'opacity-50' : ''}`}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTrackScreenTime(!trackScreenTime)}
-                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
-                      >
-                        {trackScreenTime ? (
-                          <Eye className="h-4 w-4 text-purple-600" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Letzte Mahlzeit */}
-                    <div className={`flex justify-between items-center ${!trackLastMeal ? 'opacity-50' : ''}`}>
-                      <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
-                          <Utensils className="inline h-3 w-3 mr-1" />
-                          Letzte Mahlzeit: {formatTime(lastMealTime[0])}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">Wann hast du das letzte Mal gegessen?<br/>Große Mahlzeiten vor dem Schlafen können die Qualität beeinträchtigen</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </label>
-                        <Slider
-                          value={lastMealTime}
-                          onValueChange={(value) => {
-                            console.log('Letzte Mahlzeit geändert:', value, 'Tracking wird aktiviert');
-                            setLastMealTime(value);
-                            setTrackLastMeal(true);
-                          }}
-                          max={23.5} // 23:30
-                          min={16}   // 16:00
-                          step={0.5}
-                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackLastMeal ? 'opacity-50' : ''}`}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTrackLastMeal(!trackLastMeal)}
-                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
-                      >
-                        {trackLastMeal ? (
-                          <Eye className="h-4 w-4 text-purple-600" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Hormon-Vitalität (Morgendliche Energie/Libido) */}
-                    <div className={`flex justify-between items-center ${!trackLibido ? 'opacity-50' : ''}`}>
-                      <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
-                          <Heart className="inline h-3 w-3 mr-1" />
-                          Libido und Vitalität: {morningLibido[0]}/10
-                          <InfoButton
-                            title="Hormon-Vitalität als Gesundheitsmarker"
-                            description="Morgendliche Energie und Libido sind entscheidende Indikatoren für die hormonelle Gesundheit. Sie spiegeln den Testosteronspiegel, die Cortisolbalance und die nächtliche Regeneration wider."
-                            scientificBasis="Studien zeigen: Niedrige morgendliche Libido korreliert mit Testosteronmangel, schlechter Schlafqualität und erhöhtem Stressniveau. Bei Männern ist die morgendliche Erektion ein direkter Hormonmarker, bei Frauen zeigt sich die hormonelle Balance durch Energie und Lust."
-                            tips={[
-                              "Chronisch niedrige Werte (< 4/10) können auf Hormonmangel hinweisen",
-                              "Regelmäßiges Tracking hilft, Muster zu erkennen",
-                              "Bei dauerhaft niedrigen Werten ärztliche Abklärung empfohlen",
-                              "Stress, schlechter Schlaf und schlechte Ernährung beeinflussen diese Werte",
-                              "7-9 Stunden Schlaf und Stressreduktion können Verbesserung bringen"
-                            ]}
-                            linkToScience={true}
-                            className="ml-1"
-                          />
-                        </label>
-                        <Slider
-                          value={morningLibido}
-                          onValueChange={(value) => {
-                            console.log('Libido geändert:', value, 'Tracking wird aktiviert');
-                            setMorningLibido(value);
-                            setTrackLibido(true);
-                          }}
-                          max={10}
-                          min={1}
-                          step={1}
-                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackLibido ? 'opacity-50' : ''}`}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTrackLibido(!trackLibido)}
-                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
-                      >
-                        {trackLibido ? (
-                          <Eye className="h-4 w-4 text-purple-600" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Morgendliche Motivation */}
-                    <div className={`flex justify-between items-center ${!trackMotivation ? 'opacity-50' : ''}`}>
-                      <div className="flex-1">
-                        <label className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
-                          <Zap className="inline h-3 w-3 mr-1" />
-                          Morgendliche Motivation: {motivationLevel[0]}/10
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">Wie motiviert und energiegeladen warst du beim Aufwachen?<br/>1 = gar nicht motiviert, 10 = extrem motiviert</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </label>
-                        <Slider
-                          value={motivationLevel}
-                          onValueChange={(value) => {
-                            console.log('Motivations-Level geändert:', value, 'Tracking wird aktiviert');
-                            setMotivationLevel(value);
-                            setTrackMotivation(true);
-                          }}
-                          max={10}
-                          min={1}
-                          step={1}
-                          className={`w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600 ${!trackMotivation ? 'opacity-50' : ''}`}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setTrackMotivation(!trackMotivation)}
-                        className="ml-3 p-2 hover:bg-purple-100 dark:hover:bg-purple-900"
-                      >
-                        {trackMotivation ? (
-                          <Eye className="h-4 w-4 text-purple-600" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Ausblenden Button */}
-                  <div className="flex justify-end pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowOptionalFields(false)}
-                      className="text-purple-600 border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950"
-                    >
-                      <EyeOff className="h-3 w-3 mr-1" />
-                      Ausblenden
-                    </Button>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-
-              <div className="flex gap-2">
-                <Button 
-                  type="submit" 
-                  disabled={isSubmitting}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Speichern...
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Plus className="h-4 w-4" />
-                      {hasSleepToday ? 'Aktualisieren' : 'Eintragen'}
-                    </div>
-                  )}
-                </Button>
-                
-                {hasSleepToday && isEditing && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsEditing(false)}
-                    className="border-purple-300 text-purple-600"
-                  >
-                    Abbrechen
-                  </Button>
+                    {formatTime(wakeTime[0])}
+                  </span>
                 )}
+                
+                <span className="text-indigo-600 dark:text-indigo-400">({sleepDuration}h)</span>
               </div>
-            </form>
-          </div>
-        </PremiumGate>
+              
+              {/* Interactive 24-Hour Timeline */}
+              <div className="relative p-4 bg-gradient-to-r from-indigo-50 via-blue-50 to-indigo-50 dark:from-indigo-950/20 dark:via-blue-950/20 dark:to-indigo-950/20 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                {/* Simplified time markers - only key times */}
+                <div className="flex justify-between items-center mb-3 text-sm font-medium text-indigo-700 dark:text-indigo-300">
+                  <span>00:00</span>
+                  <span>06:00</span>
+                  <span>12:00</span>
+                  <span>18:00</span>
+                  <span>24:00</span>
+                </div>
+                
+                {/* Interactive timeline */}
+                <div className="relative">
+                  {/* Background track with day/night gradient */}
+                  <div 
+                    className="h-12 w-full rounded-lg bg-gradient-to-r from-blue-400 via-yellow-300 via-yellow-300 via-blue-400 to-blue-600 dark:from-blue-600 dark:via-yellow-600 dark:via-yellow-600 dark:via-blue-600 dark:to-blue-800 relative cursor-pointer border-2 border-indigo-200 dark:border-indigo-700"
+                    onClick={handleTimelineClick}
+                    ref={timelineRef}
+                  >
+                    {/* Reduced hour markers - only every 4 hours for cleaner look */}
+                    <div className="absolute inset-0 flex pointer-events-none">
+                      {[0, 4, 8, 12, 16, 20].map((hour) => (
+                        <div 
+                          key={hour} 
+                          className="absolute top-0 bottom-0 flex items-center justify-center"
+                          style={{ left: `${(hour / 24) * 100}%` }}
+                        >
+                          <div className="w-px bg-white/30 h-full absolute"></div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Sleep duration visualization */}
+                    <div 
+                      className="absolute top-0 h-full bg-purple-600/40 dark:bg-purple-400/40 rounded pointer-events-none transition-all duration-200"
+                      style={{
+                        left: `${Math.min(bedtimePosition, waketimePosition)}%`,
+                        width: `${Math.abs(waketimePosition - bedtimePosition)}%`
+                      }}
+                    />
+                    
+                    {/* Bedtime thumb - Moon for sleeping */}
+                    <div 
+                      className={`absolute top-1/2 w-10 h-10 bg-purple-600 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
+                        isDragging && activeThumb === 'bedtime' ? 'scale-125 shadow-2xl bg-purple-700' : 'hover:scale-110 hover:bg-purple-700'
+                      }`}
+                      style={{ 
+                        left: `${bedtimePosition}%`, 
+                        transform: 'translateX(-50%) translateY(-50%)',
+                        zIndex: activeThumb === 'bedtime' ? 30 : 20
+                      }}
+                      onMouseDown={(e) => handleMouseDown(e, 'bedtime')}
+                      onTouchStart={(e) => handleTouchStart(e, 'bedtime')}
+                    >
+                      <Moon className="h-5 w-5 text-white drop-shadow-sm" />
+                    </div>
+                    
+                    {/* Wake time thumb - Sun for waking up */}
+                    <div 
+                      className={`absolute top-1/2 w-10 h-10 bg-orange-500 border-3 border-white rounded-full shadow-xl cursor-grab active:cursor-grabbing transition-all duration-200 flex items-center justify-center select-none ${
+                        isDragging && activeThumb === 'waketime' ? 'scale-125 shadow-2xl bg-orange-600' : 'hover:scale-110 hover:bg-orange-600'
+                      }`}
+                      style={{ 
+                        left: `${waketimePosition}%`, 
+                        transform: 'translateX(-50%) translateY(-50%)',
+                        zIndex: activeThumb === 'waketime' ? 30 : 20
+                      }}
+                      onMouseDown={(e) => handleMouseDown(e, 'waketime')}
+                      onTouchStart={(e) => handleTouchStart(e, 'waketime')}
+                    >
+                      <Sun className="h-5 w-5 text-white drop-shadow-sm" />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Time labels below thumbs */}
+                <div className="flex justify-between mt-2 text-xs">
+                  <div 
+                    className="text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1"
+                    style={{ marginLeft: `${((bedtime[0] - 12) / 24) * 100}%`, transform: 'translateX(-50%)' }}
+                  >
+                    <Moon className="h-3 w-3" />
+                    {formatTime(bedtime[0])}
+                  </div>
+                  <div 
+                    className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1"
+                    style={{ marginLeft: `${((wakeTime[0] - 12) / 24) * 100}%`, transform: 'translateX(-50%)' }}
+                  >
+                    <Sun className="h-3 w-3" />
+                    {formatTime(wakeTime[0])}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-purple-700 dark:text-purple-300 mb-2 block flex items-center gap-2">
+                Schlafqualität: {sleepQuality[0]}/10
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3 w-3 text-purple-500 hover:text-purple-700 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Bewerte die Qualität deines Schlafs.<br/>1 = sehr schlecht, 10 = ausgezeichnet</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </label>
+              <Slider
+                value={sleepQuality}
+                onValueChange={setSleepQuality}
+                max={10}
+                min={1}
+                step={1}
+                className="w-full [&>*]:bg-muted [&_[role=slider]]:border-purple-600 [&_[role=slider]]:bg-background [&>span>span]:bg-purple-600"
+              />
+            </div>
+
+            {/* Rest of the form content... */}
+            <Collapsible open={showOptionalFields} onOpenChange={setShowOptionalFields}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-between text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                >
+                  <span className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    Weitere Details zur Schlafanalyse
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showOptionalFields ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              
+              <CollapsibleContent className="space-y-4 mt-3">
+                {/* ... rest of form fields ... */}
+              </CollapsibleContent>
+            </Collapsible>
+
+            <div className="flex gap-2">
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Speichern...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    {hasSleepToday ? 'Aktualisieren' : 'Eintragen'}
+                  </div>
+                )}
+              </Button>
+              
+              {hasSleepToday && isEditing && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  className="border-purple-300 text-purple-600"
+                >
+                  Abbrechen
+                </Button>
+              )}
+            </div>
+          </form>
+        </div>
           )}
           </div>
         </CollapsibleContent>

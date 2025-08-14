@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useSubscription } from "@/hooks/useSubscription";
-import { PremiumGate } from "@/components/PremiumGate";
+
 import { 
   Brain, 
   TrendingUp, 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrainingDashboard } from '@/components/TrainingDashboard';
-import { PremiumGate } from '@/components/PremiumGate';
+
 
 const TrainingPlus = () => {
   return (
