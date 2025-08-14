@@ -48,22 +48,19 @@ const DAILY_PROMPTS: MindsetPrompt[] = [
     id: 'general_daily',
     category: 'morning',
     expertise: 'Tagesreflexion',
-    question: 'Was gibt\'s Neues?',
-    followUp: 'Wie geht es dir heute?'
+    question: 'Was gibt\'s Neues?'
   },
   {
     id: 'general_midday',
     category: 'midday', 
     expertise: 'Tagesreflexion',
-    question: 'Was gibt\'s Neues?',
-    followUp: 'Wie läuft dein Tag bisher?'
+    question: 'Was gibt\'s Neues?'
   },
   {
     id: 'general_evening',
     category: 'evening',
     expertise: 'Tagesreflexion', 
-    question: 'Was gibt\'s Neues?',
-    followUp: 'Wie war dein Tag heute?'
+    question: 'Was gibt\'s Neues?'
   }
 ];
 

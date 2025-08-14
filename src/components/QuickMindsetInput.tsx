@@ -278,20 +278,6 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
 
         {/* Smart Chips & Journal Indicator */}
         <div className="mt-3 flex flex-wrap gap-3">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="h-8 px-3 rounded-full border"
-            onClick={(e) => {
-              e.stopPropagation();
-              startRecording();
-            }}
-            disabled={isRecording || isVoiceLoading}
-            title="Voice Input"
-          >
-            <Mic className="h-4 w-4 mr-1" />
-            Voice
-          </Button>
           {smartChips.map((chip, index) => (
             <SmartChip
               key={index}
@@ -363,62 +349,34 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
                 <p className="text-sm font-medium text-violet-900 dark:text-violet-100 mb-1">
                   {customPrompt || currentPrompt.question}
                 </p>
-                {currentPrompt.followUp && (
-                  <p className="text-xs text-violet-600 dark:text-violet-400">
-                    💡 {currentPrompt.followUp}
-                  </p>
-                )}
               </div>
             )}
 
             {/* Input Methods */}
             <div className="space-y-3">
-              {/* Voice Input & Analysis Mode */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={isRecording ? "destructive" : "secondary"}
-                  size="sm"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  disabled={isProcessing || isVoiceLoading}
-                  className="flex-1 relative"
-                >
-                  {isRecording ? (
-                    <>
-                      <MicOff className="h-4 w-4 mr-2" />
-                      Stoppen
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="h-4 w-4 mr-2" />
-                      Voice Input
-                      {hasPersistedAudio && (
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full animate-pulse" />
-                      )}
-                    </>
-                  )}
-                </Button>
-
-                {/* Analysis Mode Toggle */}
-                <div className="flex border rounded-md">
-                  <Button
-                    variant={analysisMode === 'simple' ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setAnalysisMode('simple')}
-                    className="rounded-r-none border-0 text-xs px-2"
-                  >
-                    Basic
-                  </Button>
-                  <Button
-                    variant={analysisMode === 'kai' ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => setAnalysisMode('kai')}
-                    className="rounded-l-none border-0 text-xs px-2"
-                  >
-                    <Brain className="h-3 w-3 mr-1" />
-                    Kai
-                  </Button>
-                </div>
-              </div>
+              {/* Voice Input Button - More Prominent */}
+              <Button
+                variant={isRecording ? "destructive" : "default"}
+                size="lg"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isProcessing || isVoiceLoading}
+                className="w-full relative"
+              >
+                {isRecording ? (
+                  <>
+                    <MicOff className="h-5 w-5 mr-2" />
+                    Aufnehmen stoppen
+                  </>
+                ) : (
+                  <>
+                    <Mic className="h-5 w-5 mr-2" />
+                    Voice Input starten
+                    {hasPersistedAudio && (
+                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full animate-pulse" />
+                    )}
+                  </>
+                )}
+              </Button>
 
               {/* Voice Visualizer */}
               {(isRecording || audioLevel > 0) && (
@@ -503,7 +461,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
                 className="w-full"
               >
                 <Send className="h-4 w-4 mr-2" />
-                {isUploadingPhoto ? 'Speichere...' : analysisMode === 'kai' ? 'Kai Analyse & Speichern' : 'Speichern'}
+                {isUploadingPhoto ? 'Speichere...' : 'Eintrag speichern'}
               </Button>
             </div>
 
