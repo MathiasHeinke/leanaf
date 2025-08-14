@@ -29,6 +29,7 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState<string>('');
 
   const { toast } = useToast();
   const {
@@ -42,6 +43,14 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
     refreshPrompt,
     togglePromptMode
   } = useMindsetJournal() || {};
+
+  const setContextualPrompt = (promptText: string) => {
+    setCustomPrompt(promptText);
+  };
+
+  const getEffectivePrompt = () => {
+    return customPrompt || currentPrompt?.question || '';
+  };
 
   const {
     isRecording = false,
@@ -98,7 +107,7 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
             gratitude_items: kaiAnalysis.gratitude_items || [],
             ai_summary_md: kaiAnalysis.ai_summary_md,
             kai_insight: kaiAnalysis.kai_insight,
-            prompt_used: currentPrompt?.question,
+            prompt_used: getEffectivePrompt(),
             photo_url: photoPreview || undefined
           });
         }
@@ -124,7 +133,7 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
           mood_score,
           sentiment_tag: mood_score > 0 ? 'positive' : mood_score < 0 ? 'negative' : 'neutral',
           gratitude_items,
-          prompt_used: currentPrompt?.question,
+          prompt_used: getEffectivePrompt(),
           photo_url: photoPreview || undefined
         });
       }
@@ -133,6 +142,7 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
       setManualText('');
       clearTranscription();
       handlePhotoRemove();
+      setCustomPrompt('');
       
       toast({
         title: "Eintrag gespeichert ✨",
@@ -195,17 +205,19 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Current Prompt */}
-          {currentPrompt && (
+          {(currentPrompt || customPrompt) && (
             <div className="p-3 rounded-lg bg-background/50 border border-primary/10">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="secondary" className="text-xs">
-                  {currentPrompt.expertise}
-                </Badge>
-              </div>
+              {currentPrompt && !customPrompt && (
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {currentPrompt.expertise}
+                  </Badge>
+                </div>
+              )}
               <p className="text-sm font-medium text-foreground mb-2">
-                {currentPrompt.question}
+                {getEffectivePrompt()}
               </p>
-              {currentPrompt.followUp && (
+              {currentPrompt?.followUp && !customPrompt && (
                 <p className="text-xs text-muted-foreground">
                   💡 {currentPrompt.followUp}
                 </p>
@@ -213,55 +225,84 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
             </div>
           )}
 
-          {/* Input Methods */}
-          <div className="space-y-3">
-            {/* Voice Input */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant={isRecording ? "destructive" : "secondary"}
-                size="sm"
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={isProcessing || isVoiceLoading}
-                className="flex-1 relative z-10 cursor-pointer"
-                type="button"
-              >
-                {isRecording ? (
-                  <>
-                    <MicOff className="h-4 w-4 mr-2" />
-                    Aufnahme stoppen
-                  </>
-                ) : (
-                  <>
-                    <Mic className="h-4 w-4 mr-2" />
-                    Voice Input
-                    {hasCachedAudio && (
-                      <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
-                    )}
-                  </>
-                )}
-              </Button>
+          {/* Smart Chips and Voice Input Row */}
+          <div className="flex items-center gap-2 overflow-hidden">
+            {/* Voice Recording Button */}
+            <Button
+              variant={isRecording ? "destructive" : "secondary"}
+              size="sm"
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isProcessing || isVoiceLoading}
+              className="flex-shrink-0 relative z-10 cursor-pointer"
+              type="button"
+            >
+              {isRecording ? (
+                <MicOff className="h-4 w-4" />
+              ) : (
+                <>
+                  <Mic className="h-4 w-4" />
+                  {hasCachedAudio && (
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
+                  )}
+                </>
+              )}
+            </Button>
 
-              {/* Analysis Mode Toggle */}
-              <div className="flex border rounded-md">
-                <Button
-                  variant={analysisMode === 'simple' ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setAnalysisMode('simple')}
-                  className="rounded-r-none border-0 text-xs px-2"
-                >
-                  Basic
-                </Button>
-                <Button
-                  variant={analysisMode === 'kai' ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setAnalysisMode('kai')}
-                  className="rounded-l-none border-0 text-xs px-2"
-                >
-                  <Brain className="h-3 w-3 mr-1" />
-                  Kai
-                </Button>
-              </div>
+            {/* Smart Chips */}
+            <div className="flex gap-2 overflow-hidden">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setContextualPrompt("Für welche 3 Dinge bist du heute dankbar?")}
+                className="flex-shrink-0 text-xs px-2 py-1 h-8"
+              >
+                <Heart className="h-3 w-3 mr-1" />
+                Dankbarkeit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setContextualPrompt("Was hast du heute über dich gelernt?")}
+                className="flex-shrink-0 text-xs px-2 py-1 h-8"
+              >
+                <Target className="h-3 w-3 mr-1" />
+                Reflektion
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setContextualPrompt("Welche Ziele möchtest du morgen erreichen?")}
+                className="flex-shrink-0 text-xs px-2 py-1 h-8"
+              >
+                <Sparkles className="h-3 w-3 mr-1" />
+                Ziele
+              </Button>
             </div>
+
+            {/* Analysis Mode Toggle */}
+            <div className="flex border rounded-md flex-shrink-0">
+              <Button
+                variant={analysisMode === 'simple' ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setAnalysisMode('simple')}
+                className="rounded-r-none border-0 text-xs px-2 h-8"
+              >
+                Basic
+              </Button>
+              <Button
+                variant={analysisMode === 'kai' ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setAnalysisMode('kai')}
+                className="rounded-l-none border-0 text-xs px-2 h-8"
+              >
+                <Brain className="h-3 w-3 mr-1" />
+                Kai
+              </Button>
+            </div>
+          </div>
+
+          {/* Input Methods */}
+          <div className="space-y-4">
 
             {/* Voice Visualizer */}
             {(isRecording || audioLevel > 0) && (
