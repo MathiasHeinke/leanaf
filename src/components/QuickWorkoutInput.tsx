@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { InfoButton } from "@/components/InfoButton";
+import { v4 as uuidv4 } from 'uuid';
 
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
@@ -304,17 +305,21 @@ export const QuickWorkoutInput = ({
 
         // Award points for new workout (only for actual workouts, not rest days)
         if (workoutType !== 'pause') {
-          await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen');
-          await updateStreak('workout');
-          
-          // Show points animation
-          setShowPointsAnimation(true);
-          setTimeout(() => setShowPointsAnimation(false), 3000);
+          try {
+            const clientEventId = uuidv4();
+            await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen', 1.0, undefined, undefined, clientEventId);
+            await updateStreak('workout');
+            
+            // Show points animation
+            setShowPointsAnimation(true);
+            setTimeout(() => setShowPointsAnimation(false), 3000);
+          } catch (pointsError) {
+            console.error('🎯 [QuickWorkoutInput] Points award failed (non-critical):', pointsError);
+          }
         }
-
-        toast.success('Workout erfolgreich eingetragen!');
       }
 
+      toast.success('Workout erfolgreich eingetragen!');
       triggerDataRefresh();
       resetForm();
       onWorkoutAdded?.();

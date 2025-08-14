@@ -18,6 +18,7 @@ import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { getCurrentDateString } from "@/utils/dateHelpers";
 import { cn } from "@/lib/utils";
+import { v4 as uuidv4 } from 'uuid';
 
 interface QuickSleepInputProps {
   onSleepAdded?: (sleepData?: any) => void;
@@ -297,15 +298,19 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
         if (error) throw error;
 
         // Award points for sleep tracking
-        await awardPoints('sleep_tracked', getPointsForActivity('sleep_tracked'), 'Schlaf eingetragen');
-        await updateStreak('sleep_tracking');
+        try {
+          const clientEventId = uuidv4();
+          await awardPoints('sleep_tracked', getPointsForActivity('sleep_tracked'), 'Schlaf eingetragen', 1.0, undefined, undefined, clientEventId);
+          await updateStreak('sleep_tracking');
 
-        // Show points animation
-        setShowPointsAnimation(true);
-        setTimeout(() => setShowPointsAnimation(false), 3000);
-
-        toast.success('Schlaf erfolgreich eingetragen!');
+          // Show points animation
+          setShowPointsAnimation(true);
+          setTimeout(() => setShowPointsAnimation(false), 3000);
+        } catch (pointsError) {
+          console.error('🎯 [QuickSleepInput] Points award failed (non-critical):', pointsError);
+        }
       }
+
 
       triggerDataRefresh();
       setIsEditing(false);

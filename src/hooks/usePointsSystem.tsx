@@ -119,7 +119,8 @@ export const usePointsSystem = () => {
     description?: string,
     multiplier: number = 1.0,
     bonusReason?: string,
-    streakLength?: number
+    streakLength?: number,
+    clientEventId?: string
   ) => {
     if (!user?.id) {
       console.warn('❌ Cannot award points: No user ID');
@@ -136,7 +137,8 @@ export const usePointsSystem = () => {
         p_activity_type: activityType,
         p_description: description,
         p_multiplier: multiplier,
-        p_trial_multiplier: trialMultiplier
+        p_trial_multiplier: trialMultiplier,
+        p_client_event_id: clientEventId
       });
 
       if (error) {

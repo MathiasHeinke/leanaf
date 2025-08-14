@@ -14,6 +14,7 @@ import { getCurrentDateString } from "@/utils/dateHelpers";
 import { InfoButton } from "@/components/InfoButton";
 import { PointsBadge } from "@/components/PointsBadge";
 import { uploadFilesWithProgress } from "@/utils/uploadHelpers";
+import { v4 as uuidv4 } from 'uuid';
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
@@ -254,7 +255,8 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
 
           // Award points for weight tracking (only for new entries)
           try {
-            await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen');
+            const clientEventId = uuidv4();
+            await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen', 1.0, undefined, undefined, clientEventId);
             await updateStreak('weight_tracking');
 
             // Show points animation
@@ -263,13 +265,12 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
           } catch (pointsError) {
             console.error('🎯 [QuickWeightInput] Points award failed (non-critical):', pointsError);
           }
-
-        toast.success('Gewicht erfolgreich eingetragen!');
         } catch (saveError) {
           console.error('💥 [QuickWeightInput] All save strategies failed:', saveError);
           throw saveError;
         }
       }
+
 
       triggerDataRefresh();
       setIsEditing(false);
