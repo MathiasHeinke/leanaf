@@ -414,7 +414,7 @@ export const QuickWorkoutInput = ({
         {isCollapsed && (
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
-              <div className="font-semibold">
+              <div className="font-medium">
                 {completedWorkouts.length} / {completedWorkouts.length + restDays.length} Workouts • {totalDuration} Min
               </div>
               <Progress

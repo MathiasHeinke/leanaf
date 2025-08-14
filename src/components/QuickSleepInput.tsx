@@ -374,7 +374,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
           <div className="mt-3 space-y-1 text-sm">
             {hasSleepToday ? (
               <div className="flex items-center gap-3">
-                <div className="font-semibold">
+                <div className="font-medium">
                   {todaysSleep?.sleep_hours || 0}h Schlaf • Qualität: {todaysSleep?.sleep_quality || 0}/10
                 </div>
                 <Progress
@@ -384,7 +384,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
                 />
               </div>
             ) : (
-              <div className="font-semibold text-muted-foreground">
+              <div className="font-medium text-muted-foreground">
                 Noch kein Schlaf eingetragen
               </div>
             )}

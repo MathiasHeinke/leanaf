@@ -244,7 +244,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
         {isCollapsed && hasEntriesForDate && (
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
-              <div className="font-semibold">
+              <div className="font-medium">
                 {todayEntries.length} Einträge
               </div>
               <Progress value={moodProgress} className="h-2 w-24 md:w-32" />
@@ -295,11 +295,11 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div className="rounded-md border bg-muted/30 p-3">
                   <div className="text-xs text-muted-foreground">Einträge heute</div>
-                  <div className="text-lg font-semibold">{todayEntries.length} Gedanken</div>
+                  <div className="text-lg font-medium">{todayEntries.length} Gedanken</div>
                 </div>
                 <div className="rounded-md border bg-muted/30 p-3">
                   <div className="text-xs text-muted-foreground">Durchschnittliche Stimmung</div>
-                  <div className="text-lg font-semibold flex items-center gap-2">
+                  <div className="text-lg font-medium flex items-center gap-2">
                     {avgMoodScore > 0 ? '😊' : avgMoodScore < 0 ? '😔' : '😐'}
                     <span>{avgMoodScore.toFixed(1)}/10</span>
                   </div>

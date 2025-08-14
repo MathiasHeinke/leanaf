@@ -268,9 +268,9 @@ export const QuickSupplementInput: React.FC<QuickSupplementInputProps> = ({ onSu
             {totalScheduled > 0 ? (
               <>
                 <div className="flex items-center gap-3">
-                  <div className="font-semibold">
-                    {formatNumber(totalTaken)} / {formatNumber(totalScheduled)} genommen
-                  </div>
+              <div className="font-medium">
+                {formatNumber(totalTaken)} / {formatNumber(totalScheduled)} genommen
+              </div>
                   <Progress
                     className="h-2 w-24 md:w-32"
                     value={completionPercent}
@@ -309,11 +309,11 @@ export const QuickSupplementInput: React.FC<QuickSupplementInputProps> = ({ onSu
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div className="rounded-md border bg-muted/30 p-3">
               <div className="text-xs text-muted-foreground">Genommen / Geplant</div>
-              <div className="text-lg font-semibold">{formatNumber(totalTaken)} / {formatNumber(totalScheduled)}</div>
+              <div className="text-lg font-medium">{formatNumber(totalTaken)} / {formatNumber(totalScheduled)}</div>
             </div>
             <div className="rounded-md border bg-muted/30 p-3">
               <div className="text-xs text-muted-foreground">Fortschritt</div>
-              <div className="text-lg font-semibold">{formatNumber(completionPercent)}%</div>
+              <div className="text-lg font-medium">{formatNumber(completionPercent)}%</div>
             </div>
           </div>
 

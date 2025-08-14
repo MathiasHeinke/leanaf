@@ -322,7 +322,7 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
         {!open && (
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
-              <div className="font-semibold">
+              <div className="font-medium">
                 {formatNumber(totals.caloriesUsed)} / {formatNumber(totals.caloriesTarget)} kcal
               </div>
               <Progress
@@ -369,11 +369,11 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div className="rounded-md border bg-muted/30 p-3">
             <div className="text-xs text-muted-foreground">Verbraucht / Ziel</div>
-            <div className="text-lg font-semibold">{formatNumber(totals.caloriesUsed)} / {formatNumber(totals.caloriesTarget)} kcal</div>
+            <div className="text-lg font-medium">{formatNumber(totals.caloriesUsed)} / {formatNumber(totals.caloriesTarget)} kcal</div>
           </div>
           <div className="rounded-md border bg-muted/30 p-3">
             <div className="text-xs text-muted-foreground">kcal übrig</div>
-            <div className="text-lg font-semibold">{formatNumber(kcalLeft)} kcal</div>
+            <div className="text-lg font-medium">{formatNumber(kcalLeft)} kcal</div>
           </div>
         </div>
 

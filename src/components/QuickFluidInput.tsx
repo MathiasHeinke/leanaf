@@ -765,7 +765,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
         {isCollapsed && (
           <div className="mt-3 space-y-1 text-sm">
             <div className="flex items-center gap-3">
-              <div className="font-semibold">
+              <div className="font-medium">
                 {totalWater}ml / {waterGoal}ml Wasser
               </div>
               <Progress
@@ -839,13 +839,13 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
                         </div>
                       ))
                     }
-                    <div className="border-t pt-1 flex justify-between font-semibold">
+                    <div className="border-t pt-1 flex justify-between font-medium">
                       <span>Gesamt:</span>
                       <span className="text-blue-600 dark:text-blue-400">{totalWater} ml</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-2xl font-medium text-blue-600 dark:text-blue-400">
                     {totalWater} ml
                   </div>
                 )}
@@ -863,13 +863,13 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-1">
                 <div className="text-xs text-muted-foreground">Kalorien aus Getränken</div>
-                <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                <div className="text-lg font-medium text-orange-600 dark:text-orange-400">
                   {Math.round(totalCalories)}
                 </div>
               </div>
               <div className="space-y-1">
                 <div className="text-xs text-muted-foreground">Status</div>
-                <div className={`text-lg font-bold flex items-center gap-1 ${hasAlcoholToday ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                <div className={`text-lg font-medium flex items-center gap-1 ${hasAlcoholToday ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                   {hasAlcoholToday ? 'Alkohol' : 'Nüchtern'}
                 </div>
               </div>
