@@ -237,13 +237,28 @@ export const useSupplementData = (currentDate?: Date) => {
     groupedSupplements
   });
 
-  // Mark supplement as taken
+  // Mark supplement as taken with optimistic updates
   const markSupplementTaken = async (supplementId: string, timing: string, taken: boolean = true) => {
     if (!user) return;
 
+    const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
+    
+    // Optimistic update - immediately update local state
+    setTodayIntakes(prev => {
+      const filtered = prev.filter(i => !(i.user_supplement_id === supplementId && i.timing === timing));
+      if (taken) {
+        filtered.push({
+          id: `temp-${Date.now()}`,
+          user_supplement_id: supplementId,
+          timing,
+          taken: true,
+          date: today
+        });
+      }
+      return filtered;
+    });
+
     try {
-      const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
-      
       const { error } = await supabase
         .from('supplement_intake_log')
         .upsert({
@@ -257,25 +272,41 @@ export const useSupplementData = (currentDate?: Date) => {
         });
 
       if (error) throw error;
-
-      // Reload data to reflect changes
-      await loadSupplementData();
     } catch (err) {
       console.error('Error marking supplement:', err);
+      // Rollback optimistic update on error
+      await loadSupplementData();
       setError(err instanceof Error ? err.message : 'Failed to update supplement');
     }
   };
 
-  // Mark entire timing group as taken
+  // Mark entire timing group as taken with optimistic updates
   const markTimingGroupTaken = async (timing: string, taken: boolean = true) => {
     if (!user) return;
 
-    try {
-      const group = groupedSupplements[timing];
-      if (!group) return;
+    const group = groupedSupplements[timing];
+    if (!group) return;
 
-      const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
+    const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
+    
+    // Optimistic update - immediately update local state for all supplements in group
+    setTodayIntakes(prev => {
+      const filtered = prev.filter(i => !(i.timing === timing && group.supplements.some(s => s.id === i.user_supplement_id)));
       
+      if (taken) {
+        const newIntakes = group.supplements.map(supplement => ({
+          id: `temp-${Date.now()}-${supplement.id}`,
+          user_supplement_id: supplement.id,
+          timing,
+          taken: true,
+          date: today
+        }));
+        filtered.push(...newIntakes);
+      }
+      return filtered;
+    });
+
+    try {
       const upsertData = group.supplements.map(supplement => ({
         user_id: user.id,
         user_supplement_id: supplement.id,
@@ -291,11 +322,10 @@ export const useSupplementData = (currentDate?: Date) => {
         });
 
       if (error) throw error;
-
-      // Reload data to reflect changes
-      await loadSupplementData();
     } catch (err) {
       console.error('Error marking timing group:', err);
+      // Rollback optimistic update on error
+      await loadSupplementData();
       setError(err instanceof Error ? err.message : 'Failed to update timing group');
     }
   };
