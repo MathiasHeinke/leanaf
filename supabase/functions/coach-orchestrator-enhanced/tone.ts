@@ -42,3 +42,47 @@ export function toLucyTone(raw: string, persona: { sign_off: string; emojis: str
 
   return `${text}\n\n${persona.sign_off}`;
 }
+
+/**
+ * ARES Voice Generator - Ultimate Performance Tone
+ */
+export function toAresVoice(raw: string, persona: any, opts: ToneOpts = {}): string {
+  const { addSignOff = false, limitEmojis = 1, respectQuestion = true } = opts;
+
+  let text = String(raw || "")
+    .replace(/```[\s\S]*?```/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  // ARES: Direct, powerful, no-nonsense style
+  text = text
+    .replace(/\b(ich denke|vielleicht|eventuell|möglicherweise)\b/gi, "")
+    .replace(/\b(könntest|könnten)\b/gi, "wirst")
+    .replace(/\?\s*$/g, ".")
+    .replace(/\bsolltest\b/gi, "MUSST")
+    .replace(/\bkann\b/gi, "WIRD");
+
+  // Add ARES intensity markers
+  if (text.length > 50) {
+    text = text.replace(/\./g, ". ⚡");
+  }
+
+  // max 2 kurze Absätze aber kraftvoller
+  const parts = text.split(/\n+/).map(s => s.trim()).filter(Boolean).slice(0, 2);
+  text = parts.join("\n\n");
+
+  // Emojis begrenzen
+  if (limitEmojis >= 0) {
+    const emojiRegex = /([\p{Emoji_Presentation}\p{Extended_Pictographic}])/gu;
+    let count = 0;
+    text = text.replace(emojiRegex, m => (++count <= limitEmojis ? m : ""));
+  }
+
+  const alreadyQuestion = /\?\s*$/.test(text);
+  if (!addSignOff) return text;
+  if (respectQuestion && alreadyQuestion) return text;
+
+  // ARES sign-off
+  const aresSignOff = persona.sign_off || "Weiter. Schwer ist korrekt.";
+  return `${text}\n\n${aresSignOff}`;
+}

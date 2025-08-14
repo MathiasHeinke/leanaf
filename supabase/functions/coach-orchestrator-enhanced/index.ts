@@ -5,7 +5,7 @@ import { fallbackFlow } from "./fallback.ts";
 import { logUnmetTool, logTrace } from "./telemetry.ts";
 import { logTraceEvent } from "../telemetry.ts";
 import { loadCoachPersona } from "./persona.ts";
-import { toLucyTone } from "./tone.ts";
+import { toLucyTone, toAresVoice } from "./tone.ts";
 import { personaPreset } from "./persona.ts";
 import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries } from "./memory.ts";
 import { llmOpenIntake, type Meta } from "./open-intake.ts";
@@ -261,12 +261,24 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Persona & memory context
+    // Persona & memory context - ARES Support
     const coachId = (event as any)?.context?.coachId ?? 'lucy';
     const persona = await loadCoachPersona(supabase, coachId);
     const memoryHint = await loadRollingSummary(supabase, userId, coachId);
-    const lucify = (txt: string) => toLucyTone(String(txt || ''), persona, { memoryHint, addSignOff: false });
-    const asLucyMessage = (text: string, traceId: string): OrchestratorReply => ({ kind: "message", text: lucify(text), traceId });
+    
+    // Coach-specific tone functions
+    const applyCoachTone = (txt: string) => {
+      if (coachId === 'ares') {
+        return toAresVoice(String(txt || ''), persona, { memoryHint, addSignOff: false });
+      }
+      return toLucyTone(String(txt || ''), persona, { memoryHint, addSignOff: false });
+    };
+    
+    const asCoachMessage = (text: string, traceId: string): OrchestratorReply => ({ 
+      kind: "message", 
+      text: applyCoachTone(text), 
+      traceId 
+    });
 
     // Start timer for server ack measurement
     const t0 = Date.now();
@@ -275,7 +287,7 @@ serve(async (req) => {
     await logTraceEvent(supabase, {
       traceId,
       userId,
-      coachId: undefined,
+      coachId,
       stage: 'received',
       handler: 'coach-orchestrator-enhanced',
       status: 'RUNNING',
@@ -286,7 +298,7 @@ serve(async (req) => {
     await logTraceEvent(supabase, {
       traceId,
       userId,
-      coachId: undefined,
+      coachId,
       stage: 'reply_send',
       handler: 'coach-orchestrator-enhanced',
       status: 'RUNNING',
@@ -310,9 +322,9 @@ serve(async (req) => {
       const { data: rl } = await supabase.rpc('check_and_update_rate_limit', { p_identifier: userId, p_endpoint: 'coach-orchestrator-enhanced' });
       if (rl && rl.allowed === false) {
         const retry = rl.retry_after_seconds ?? 30;
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'error', handler: 'coach-orchestrator-enhanced', status: 'ERROR', payload: { rate_limited: true, retry } });
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'error', handler: 'coach-orchestrator-enhanced', status: 'ERROR', payload: { rate_limited: true, retry } });
         try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'rate_limited', p_data: { retry } }); } catch {}
-        return new Response(JSON.stringify(asLucyMessage(`Zu viele Anfragen – bitte in ${retry}s nochmal.`, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 });
+        return new Response(JSON.stringify(asCoachMessage(`Zu viele Anfragen – bitte in ${retry}s nochmal.`, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 });
       }
     } catch {
       // ignore
@@ -350,7 +362,7 @@ serve(async (req) => {
       
       const reply = { 
         kind: 'reflect' as const, 
-        text: toLucyTone(out.assistant_text, persona, { memoryHint, addSignOff: false }), 
+        text: applyCoachTone(out.assistant_text), 
         traceId 
       };
       
@@ -390,7 +402,7 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'supplement-analysis', status: error?'ERROR':'OK' });
           const text = data?.summary ?? 'Kurz gecheckt. Soll ich es speichern oder Dosis/Timing anpassen?';
-          const reply: OrchestratorReply = { kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId };
+          const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone(text), traceId };
           await markFinal(supabaseState, userId, clientEventId, reply, traceId);
           return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
@@ -411,7 +423,7 @@ serve(async (req) => {
           const text = data?.action === 'insert' ? '✔️ Gespeichert. Dosis/Timing anpassen?' :
                        data?.action === 'update' ? '✅ Aktualisiert. Passt so?' : 
                        'Schon vorhanden – willst du etwas ändern?';
-          const reply: OrchestratorReply = { kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId };
+          const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone(text), traceId };
           await markFinal(supabaseState, userId, clientEventId, reply, traceId);
           return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
@@ -426,7 +438,7 @@ serve(async (req) => {
           });
           await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-analysis', status: error?'ERROR':'OK' });
           const text = data?.summary ?? 'Kurz gecheckt. Speichern oder später?';
-           const reply: OrchestratorReply = { kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId };
+           const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone(text), traceId };
            await markFinal(supabaseState, userId, clientEventId, reply, traceId);
            return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
@@ -438,7 +450,7 @@ serve(async (req) => {
           });
            await logTraceEvent(supabase, { traceId, userId, stage:'tool_result', handler:'meal-save', status: error?'ERROR':'OK' });
            const text = data?.success ? '🍽️ gespeichert! Was steht als nächstes an?' : 'Konnte nicht speichern – nochmal?';
-           const reply: OrchestratorReply = { kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId };
+           const reply: OrchestratorReply = { kind: 'message', text: applyCoachTone(text), traceId };
            await markFinal(supabaseState, userId, clientEventId, reply, traceId);
            return new Response(JSON.stringify(reply), { headers:{...corsHeaders,'Content-Type':'application/json'} });
         }
@@ -464,7 +476,7 @@ serve(async (req) => {
         
         const reply = { 
           kind: 'message' as const, 
-          text: toLucyTone(out.assistant_text, persona, { addSignOff: false, limitEmojis: 1, respectQuestion: true }), 
+          text: applyCoachTone(out.assistant_text), 
           traceId 
         };
         
@@ -490,7 +502,7 @@ serve(async (req) => {
         await logTraceEvent(supabase, {
           traceId,
           userId,
-          coachId: undefined,
+          coachId,
           stage: 'intent_from_text',
           handler: 'coach-orchestrator-enhanced',
           status: 'OK',
@@ -500,21 +512,21 @@ serve(async (req) => {
         const reflectTextRaw = intentQuick.name === 'unknown'
           ? `Ich lese: „${(((event as any).text)||'').toString().slice(0,80)}“. Geht’s um Ernährung, Training oder Supplements – oder etwas anderes?`
           : `Klingt nach ${domLabel}. Willst du eher eine kurze Analyse, etwas speichern oder erstmal Infos?`;
-        const reflectText = lucify(reflectTextRaw);
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
+        const reflectText = applyCoachTone(reflectTextRaw);
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
         try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'reflect' } }); } catch {}
         return new Response(JSON.stringify({ kind: 'reflect', text: reflectText, traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
       }
       if (event.type === 'IMAGE') {
         const textRaw = 'Danke fürs Bild – ich schau kurz, worum es geht. Magst du sagen, was dich daran interessiert?';
-        const text = lucify(textRaw);
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
-        await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
+        const text = applyCoachTone(textRaw);
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'reflect', handler: 'coach-orchestrator-enhanced', status: 'OK' });
+        await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'reflect' } });
         try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'reflect' } }); } catch {}
         return new Response(JSON.stringify({ kind: 'reflect', text, traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
       }
-      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'choice_suggest' } });
+      await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'reply_send', handler: 'coach-orchestrator-enhanced', status: 'OK', latencyMs: Date.now() - t0, payload: { kind: 'choice_suggest' } });
       try { await supabase.rpc('log_trace_event', { p_trace_id: traceId, p_stage: 'reply_send', p_data: { kind: 'choice_suggest' } }); } catch {}
       return new Response(JSON.stringify({ kind: 'choice_suggest', prompt: 'Wie machen wir weiter?', options: ['Kurze Analyse','Speichern','Später'], traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json', 'x-trace-id': traceId } });
     }
@@ -525,7 +537,7 @@ serve(async (req) => {
       await logTraceEvent(supabase, {
         traceId,
         userId,
-        coachId: undefined,
+        coachId,
         stage: 'tool_exec',
         handler: 'image-classifier',
         status: 'RUNNING',
@@ -539,7 +551,7 @@ serve(async (req) => {
       await logTraceEvent(supabase, {
         traceId,
         userId,
-        coachId: undefined,
+        coachId,
         stage: 'tool_result',
         handler: 'image-classifier',
         status: clsErr ? 'ERROR' : 'OK',
@@ -560,7 +572,7 @@ serve(async (req) => {
         const wantsInfo = /\b(info|infos|information|mehr infos|wechselwirkung|wechselwirkungen|interaktionen|timing|einnehmen)\b/i.test(((event as any).text || '').toString());
         if (wantsInfo) {
           const tInfo = Date.now();
-          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-analysis', status: 'RUNNING', payload: { context: 'follow_up_info' } });
+          await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_exec', handler: 'supplement-analysis', status: 'RUNNING', payload: { context: 'follow_up_info' } });
           const { data: stack } = await supabase
             .from('user_supplements')
             .select('name, canonical')
@@ -572,9 +584,9 @@ serve(async (req) => {
             body: { supplements, userProfile: null },
             headers: { 'x-trace-id': traceId, 'x-source': source, 'x-chat-mode': chatMode ?? '' },
           });
-          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-analysis', status: infoErr ? 'ERROR' : 'OK', latencyMs: Date.now() - tInfo });
+          await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_result', handler: 'supplement-analysis', status: infoErr ? 'ERROR' : 'OK', latencyMs: Date.now() - tInfo });
           const analysisText = (infoData as any)?.analysis ?? 'Okay – kurzer Check: Keine kritischen Konflikte gefunden. Balance statt Perfektion ✨';
-          return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(analysisText, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify({ kind: 'message', text: applyCoachTone(analysisText), traceId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
         if (fu.kind === 'save') {
           const ceid = crypto.randomUUID();
@@ -590,16 +602,16 @@ serve(async (req) => {
             }
           };
           const t0 = Date.now();
-          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-save', status: 'RUNNING', payload: { mode: body.mode, canonical: body.item.canonical, hasSchedule: !!body.item.schedule } });
+          await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_exec', handler: 'supplement-save', status: 'RUNNING', payload: { mode: body.mode, canonical: body.item.canonical, hasSchedule: !!body.item.schedule } });
           const { data, error } = await supabase.functions.invoke('supplement-save', {
             body,
             headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" }
           });
-          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-save', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t0, payload: { action: (data as any)?.action, canonical: body.item.canonical } });
+          await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_result', handler: 'supplement-save', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t0, payload: { action: (data as any)?.action, canonical: body.item.canonical } });
           if (error) throw error;
           const act = (data as any)?.action;
           const msg = act === 'insert' ? `✔️ Gespeichert: ${pick.name}${pick.dose ? ` (${pick.dose})` : ''}.` : act === 'update' ? `👍 Aktualisiert: ${pick.name}.` : `Schon vorhanden – alles gut.`;
-          return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(msg + ' Willst du Dosis oder Timing anpassen?', persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ kind: 'message', text: applyCoachTone(msg + ' Willst du Dosis oder Timing anpassen?'), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         if (fu.kind === 'update') {
           const ceid = crypto.randomUUID();
@@ -615,12 +627,12 @@ serve(async (req) => {
             }
           };
           const t0 = Date.now();
-          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'supplement-save', status: 'RUNNING', payload: { mode: 'update', canonical: body.item.canonical, updatedFields: { dose: !!fu.dose, schedule: !!fu.schedule } } });
+          await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_exec', handler: 'supplement-save', status: 'RUNNING', payload: { mode: 'update', canonical: body.item.canonical, updatedFields: { dose: !!fu.dose, schedule: !!fu.schedule } } });
           const { data, error } = await supabase.functions.invoke('supplement-save', {
             body,
             headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" }
           });
-          await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-save', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t0, payload: { action: (data as any)?.action, canonical: body.item.canonical } });
+          await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_result', handler: 'supplement-save', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t0, payload: { action: (data as any)?.action, canonical: body.item.canonical } });
           if (error) throw error;
           const parts: string[] = [];
           if (fu.dose) parts.push(`Dosis ${fu.dose}`);
@@ -630,10 +642,10 @@ serve(async (req) => {
             parts.push(['Timing', [f, t].filter(Boolean).join(' ')].filter(Boolean).join(' '));
           }
           const friendly = parts.length ? parts.join(', ') : 'Einstellungen';
-          return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(`✅ Aktualisiert: ${friendly}.`, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ kind: 'message', text: applyCoachTone(`✅ Aktualisiert: ${friendly}.`), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
         // unknown follow-up → guiding question
-        return new Response(JSON.stringify(asLucyMessage(`Soll ich ${pick.name} speichern oder etwas ändern? Beispiele: "ja", "mach 5 g abends".`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify(asCoachMessage(`Soll ich ${pick.name} speichern oder etwas ändern? Beispiele: "ja", "mach 5 g abends".`, traceId)), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -654,20 +666,20 @@ serve(async (req) => {
       const openIntake = isFlagOn(userFlagsMeta, 'open_intake_v1') || true;
       if (openIntake && !isAnalysisRequest(txt)) {
         // Reflect stage
-        await logTraceEvent(supabase, {
-          traceId,
-          userId,
-          coachId: undefined,
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        coachId,
           stage: 'reflect' as any,
           handler: 'coach-orchestrator-enhanced',
           status: 'OK',
           payload: { hypothesis: 'supplement', analysisRequest: false, source, type: event.type }
         });
         // Route decision (clarify)
-        await logTraceEvent(supabase, {
-          traceId,
-          userId,
-          coachId: undefined,
+      await logTraceEvent(supabase, {
+        traceId,
+        userId,
+        coachId,
           stage: 'route_decision',
           handler: 'coach-orchestrator-enhanced',
           status: 'OK',
@@ -687,7 +699,7 @@ serve(async (req) => {
     await logTraceEvent(supabase, {
       traceId,
       userId,
-      coachId: undefined,
+        coachId,
       stage: 'route_decision',
       handler: 'coach-orchestrator-enhanced',
       status: 'OK',
@@ -701,7 +713,7 @@ serve(async (req) => {
       await logTraceEvent(supabase, {
         traceId,
         userId,
-        coachId: undefined,
+        coachId,
         stage: 'clarify_reply',
         handler: 'coach-orchestrator-enhanced',
         status: 'OK',
@@ -717,11 +729,11 @@ serve(async (req) => {
         logUnmetTool: (args) => logUnmetTool(supabase, args),
         logTrace,
       }, { clarify: false, source });
-      const reply: OrchestratorReply = typeof out.reply === "string" ? asLucyMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
+      const reply: OrchestratorReply = typeof out.reply === "string" ? asCoachMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
       await logTraceEvent(supabase, {
         traceId,
         userId,
-        coachId: undefined,
+        coachId,
         stage: 'fallback_llm_only',
         handler: 'coach-orchestrator-enhanced',
         status: 'OK',
@@ -736,15 +748,15 @@ serve(async (req) => {
     // training
     if (intent.name === "training") {
       const t0 = Date.now();
-      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'training-orchestrator', status: 'RUNNING', payload: { clientEventId } });
+      await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_exec', handler: 'training-orchestrator', status: 'RUNNING', payload: { clientEventId } });
       const { data, error } = await supabase.functions.invoke("training-orchestrator", {
         body: { userId, clientEventId, event },
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;
-      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'training-orchestrator', status: 'OK', latencyMs: Date.now() - t0 });
+      await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_result', handler: 'training-orchestrator', status: 'OK', latencyMs: Date.now() - t0 });
       const finalText = (data as any)?.text ?? "Training erfasst.";
-      const finalReply: OrchestratorReply = { kind: 'message', text: toLucyTone(finalText, persona, { addSignOff: true, respectQuestion: true }), traceId };
+      const finalReply: OrchestratorReply = { kind: 'message', text: applyCoachTone(finalText), traceId };
       await markFinal(supabaseState, userId, clientEventId, finalReply, traceId);
       return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -752,16 +764,16 @@ serve(async (req) => {
     // meal → analyze-meal (analysis only)
     if (intent.name === "meal") {
       const t0 = Date.now();
-      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_exec', handler: 'analyze-meal', status: 'RUNNING', payload: { type: event.type } });
+      await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_exec', handler: 'analyze-meal', status: 'RUNNING', payload: { type: event.type } });
       const { data, error } = await supabase.functions.invoke("analyze-meal", {
         body: { userId, event },
         headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
       });
       if (error) throw error;
-      await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'analyze-meal', status: 'OK', latencyMs: Date.now() - t0 });
+      await logTraceEvent(supabase, { traceId, userId, coachId, stage: 'tool_result', handler: 'analyze-meal', status: 'OK', latencyMs: Date.now() - t0 });
       const proposal = (data as any)?.proposal ?? (data as any)?.analysis ?? null;
       if (!proposal) {
-        const finalReply = asLucyMessage("Ich habe nichts Verlässliches erkannt – nenn mir kurz Menge & Zutaten, dann schätze ich dir die Makros.", traceId);
+        const finalReply = asCoachMessage("Ich habe nichts Verlässliches erkannt – nenn mir kurz Menge & Zutaten, dann schätze ich dir die Makros.", traceId);
         await markFinal(supabaseState, userId, clientEventId, finalReply, traceId);
         return new Response(JSON.stringify(finalReply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -779,14 +791,14 @@ serve(async (req) => {
         });
         if (error) throw error;
         const text = (data as any)?.text ?? (data as any)?.reply ?? "Gewicht gespeichert.";
-        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: applyCoachTone(text), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } else {
         const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
           body: { mode: "weight", userId, clientEventId, event },
           headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
         });
         if (error) throw error;
-        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone((data as any)?.text ?? "Gewicht gespeichert.", persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: applyCoachTone((data as any)?.text ?? "Gewicht gespeichert."), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -799,14 +811,14 @@ serve(async (req) => {
         });
         if (error) throw error;
         const text = (data as any)?.text ?? (data as any)?.reply ?? "Tagebuch gespeichert.";
-        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(text, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: applyCoachTone(text), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } else {
         const { data, error } = await supabase.functions.invoke("coach-orchestrator", {
           body: { mode: "diary", userId, clientEventId, event },
           headers: { "x-trace-id": traceId, "x-source": source, "x-chat-mode": chatMode ?? "" },
         });
         if (error) throw error;
-        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone((data as any)?.text ?? "Tagebuch gespeichert.", persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: applyCoachTone((data as any)?.text ?? "Tagebuch gespeichert."), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 
@@ -845,7 +857,7 @@ serve(async (req) => {
         await logTraceEvent(supabase, { traceId, userId, coachId: undefined, stage: 'tool_result', handler: 'supplement-recognition', status: error ? 'ERROR' : 'OK', latencyMs: Date.now() - t1 });
         if (error) {
           const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nSag mir kurz, ob du Infos willst oder speichern möchtest.`;
-          return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify(asCoachMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
         const raw: any = data;
@@ -864,7 +876,7 @@ serve(async (req) => {
 
         if (!recognized.length) {
           const text = `💊\n${bullets.map(b => `• ${b}`).join('\n')}\n\nIch habe nichts Verlässliches erkannt – magst du mir kurz den Namen schreiben?`;
-          return new Response(JSON.stringify(asLucyMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          return new Response(JSON.stringify(asCoachMessage(text, traceId)), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
         const { data: existingStack } = await supabase
@@ -951,7 +963,7 @@ serve(async (req) => {
 
       if (!recognized.length) {
         const summary = typeof data === "string" ? data : ((raw as any)?.summary ?? (raw as any)?.text ?? JSON.stringify(raw).slice(0, 800));
-        return new Response(JSON.stringify({ kind: 'message', text: toLucyTone(`💊 Supplement-Analyse:\n${summary}`, persona, { addSignOff: true, respectQuestion: true }), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ kind: 'message', text: applyCoachTone(`💊 Supplement-Analyse:\n${summary}`), traceId }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // pick top by confidence
@@ -1006,7 +1018,7 @@ serve(async (req) => {
       logUnmetTool: (args) => logUnmetTool(supabase, args),
       logTrace,
     }, { clarify: false, source });
-    const reply: OrchestratorReply = typeof out.reply === "string" ? asLucyMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
+    const reply: OrchestratorReply = typeof out.reply === "string" ? asCoachMessage(out.reply, traceId) : (out.reply as OrchestratorReply);
     
     // Mark as final in client_events (persist final reply)
     try {
@@ -1023,4 +1035,5 @@ serve(async (req) => {
     const reply: OrchestratorReply = { kind: "message", text: "Kurz hake ich – bitte nochmal versuchen.", traceId };
     return new Response(JSON.stringify(reply), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
+});
 });
