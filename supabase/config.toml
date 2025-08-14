@@ -119,3 +119,7 @@ verify_jwt = true
 
 [functions.trigger-summary-backfill]
 verify_jwt = true
+
+[functions.ares-voice-generator]
+verify_jwt = true
+

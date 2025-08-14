@@ -943,7 +943,7 @@ async function executeTools(tools: { toolName: string; args: any }[], userId: st
       trainingsplan,
       createPlanDraft,
       savePlanDraft 
-    } = await import('../tool-handlers/index.ts');
+    } = await import('../_shared/tool-handlers/index.ts');
     
     toolHandlers['heavyTrainingPlan'] = heavyTrainingPlan;
     toolHandlers['massBuildingCalculator'] = massBuildingCalculator;
