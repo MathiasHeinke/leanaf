@@ -233,9 +233,16 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
               >
                 <Mic className="h-4 w-4" />
               </Button>
-              <div className="text-muted-foreground hover:text-foreground">
-                {!isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </div>
+              <button
+                type="button"
+                className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+              >
+                {!isCollapsed ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
             </div>
           </button>
         </CollapsibleTrigger>
