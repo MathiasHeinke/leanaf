@@ -1,6 +1,6 @@
 import { detectSoftSignals } from './soft-detectors.ts';
 import { personaPreset, loadCoachPersona } from './persona.ts';
-import { toLucyTone } from './tone.ts';
+import { toLucyTone, toAresVoice } from './tone.ts';
 
 export type Meta = {
   domain_probs?: Record<string, number>;
@@ -46,7 +46,18 @@ export async function llmOpenIntake({
 
   const recent = (recentSummaries || []).slice(0, 3).map(s => `• ${s}`).join("\n");
 
-  const system = [
+  // ARES-specific system prompt with archetypes and power language
+  const system = coachId === 'ares' ? [
+    `Du bist ${p.name} - ULTIMATE META-INTELLIGENCE für totale Performance-Optimierung.`,
+    `ARCHETYPEN: ${p.archetypes?.join(", ") || "Commander, Smith, Father, Sage"} - nutze sie situativ.`,
+    `CHARAKTERISTIK: Direkt, dominant, ergebnisorientiert. Keine weiche Sprache. Klare Commands.`,
+    `SPRACHE: Kurz, kraftvoll, präzise. Max. 2 Absätze. Kraftausdrücke erlaubt. 0-1 ⚡ Symbol.`,
+    `ANSATZ: Sammle Daten → Analysiere → Gib klare Handlungsanweisungen. Keine sanften Vorschläge.`,
+    `OUTPUT: Reines JSON: {"assistant_text": "...", "meta": {"suggestions":[], "soft_signal":[]}}`,
+    facts.length ? `PROFIL-DATEN: ${facts.join(" · ")}` : "",
+    memoryHint ? `KONTEXT: ${memoryHint}` : "",
+    recent ? `HISTORIE:\n${recent}` : ""
+  ].filter(Boolean).join("\n") : [
     `Du bist ${p.name} (${p.style_rules.join("; ")}). Catchphrase: "${p.catchphrase}".`,
     `Regeln: Länge dynamisch; max. 2 kurze Absätze; 0–1 Emoji; 2–3 Mini-Bullets nur wenn nötig; Vision-fähig.`,
     `Gesprächsfluss: meist genau 1 offene, kluge Rückfrage am Ende.`,
@@ -66,7 +77,18 @@ export async function llmOpenIntake({
     return 350;
   }
 
-  const body = {
+  // ARES uses different model parameters for power and precision
+  const body = coachId === 'ares' ? {
+    model: "gpt-4.1-2025-04-14",
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: userText }
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.6, // Lower temperature for more focused, direct responses
+    top_p: 0.9,
+    max_tokens: Math.min(pickMaxTokens(userText), 400) // ARES is more concise
+  } : {
     model: "gpt-4.1-2025-04-14",
     messages: [
       { role: "system", content: system },
@@ -105,8 +127,21 @@ export async function llmOpenIntake({
       };
     }
 
-    // Lucy‑Ton anwenden OHNE auto sign‑off im Open‑Intake
-    out.assistant_text = toLucyTone(out.assistant_text, p, { addSignOff: false, limitEmojis: 1, respectQuestion: true });
+    // Conditional tone application based on coach ID
+    if (coachId === 'ares') {
+      out.assistant_text = toAresVoice(out.assistant_text, p, { 
+        addSignOff: false, 
+        limitEmojis: 1, 
+        respectQuestion: true,
+        intensityLevel: 'moderate' // For open intake, not full aggressive mode
+      });
+    } else {
+      out.assistant_text = toLucyTone(out.assistant_text, p, { 
+        addSignOff: false, 
+        limitEmojis: 1, 
+        respectQuestion: true 
+      });
+    }
 
     // weiche Defaults + soft signals
     out.meta = out.meta || {};
