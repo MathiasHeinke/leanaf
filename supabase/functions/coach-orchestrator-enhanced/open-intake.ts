@@ -84,6 +84,39 @@ export async function llmOpenIntake({
   if (profile?.activity_level) facts.push(`Aktivitätslevel: ${profile.activity_level}`);
   if (profile?.macro_strategy) facts.push(`Makro-Strategie: ${profile.macro_strategy}`);
   
+  // Nutrition Calculation Intelligence
+  if (profile?.daily_calorie_target || profile?.calorie_deficit || profile?.bmr || profile?.tdee) {
+    facts.push(`NUTRITION-INTELLIGENCE:`);
+    if (profile?.bmr) facts.push(`  BMR: ${Math.round(profile.bmr)} kcal/Tag`);
+    if (profile?.tdee) facts.push(`  TDEE: ${Math.round(profile.tdee)} kcal/Tag`);
+    if (profile?.daily_calorie_target) facts.push(`  Kalorienziel: ${profile.daily_calorie_target} kcal/Tag`);
+    if (profile?.calorie_deficit) facts.push(`  Defizit: ${profile.calorie_deficit} kcal/Tag`);
+  }
+  
+  // Macro Targets (Percentage & Grams)
+  if (profile?.protein_percentage || profile?.carbs_percentage || profile?.fats_percentage) {
+    const macroPercentages = [
+      profile?.protein_percentage ? `Protein: ${profile.protein_percentage}%` : null,
+      profile?.carbs_percentage ? `Carbs: ${profile.carbs_percentage}%` : null,
+      profile?.fats_percentage ? `Fats: ${profile.fats_percentage}%` : null
+    ].filter(Boolean).join(' | ');
+    facts.push(`Makro-Verteilung: ${macroPercentages}`);
+  }
+  
+  if (profile?.protein_target_g || profile?.carbs_target_g || profile?.fats_target_g) {
+    const macroGrams = [
+      profile?.protein_target_g ? `${Math.round(profile.protein_target_g)}g P` : null,
+      profile?.carbs_target_g ? `${Math.round(profile.carbs_target_g)}g C` : null,
+      profile?.fats_target_g ? `${Math.round(profile.fats_target_g)}g F` : null
+    ].filter(Boolean).join(' | ');
+    facts.push(`Makro-Ziele: ${macroGrams}`);
+  }
+  
+  // Weight Loss Precision
+  if (profile?.weekly_weight_loss_target) {
+    facts.push(`Gewichtsverlust-Ziel: ${profile.weekly_weight_loss_target} kg/Woche`);
+  }
+  
   // Medical & Safety Context
   if (profile?.medical_risk_level && profile.medical_risk_level !== 'low') {
     facts.push(`Medizinisches Risiko: ${profile.medical_risk_level} - Angepasste Empfehlungen erforderlich`);
@@ -110,12 +143,14 @@ export async function llmOpenIntake({
     ``,
     `COACHING-DIRECTIVES:`,
     `• Basiere ALLE Empfehlungen auf spezifischen Profil-Metriken`,
-    `• Integriere BMI, Transformation-Status und Zeitrahmen in jeden Plan`,
+    `• Nutze BMR/TDEE für präzise Kalorienziele und Defizit-Anpassungen`,
+    `• Integriere exakte Makro-Verteilung (% & Gramm) in alle Ernährungspläne`,
+    `• Berücksichtige Gewichtsverlust-Tempo für realistische Expectations`,
     `• Respektiere medizinische Limits während du Grenzen sprengst`,
-    `• Nutze präzise Körperdaten für maximale Wirksamkeit`,
     `• Personalisiere mit bevorzugtem Namen für ultimative Connection`,
+    `• Nutze Zeitrahmen für Phase-spezifische Intensität`,
     ``,
-    `ANSATZ: Profil analysieren → Metriken berechnen → Präzise Commands ausgeben`,
+    `ANSATZ: Profil + Nutrition-Intelligence analysieren → Präzise Makro-Commands → Messbare Resultate`,
     `OUTPUT: Reines JSON: {"assistant_text": "...", "meta": {"suggestions":[], "soft_signal":[]}}`,
     facts.length ? `PROFIL-INTELLIGENCE:\n${facts.join("\n")}` : "",
     memoryHint ? `KONTEXT: ${memoryHint}` : "",

@@ -22,7 +22,11 @@ export async function loadUserProfile(supabase: any, userId: string) {
         display_name, email, preferred_name, first_name, last_name,
         start_weight, start_bmi, current_bmi, target_bmi, target_date,
         muscle_maintenance_priority, medical_screening_completed, medical_risk_level,
-        goal_type, target_body_fat_percentage, subscription_status
+        goal_type, target_body_fat_percentage, subscription_status,
+        daily_calorie_target, calorie_deficit, bmr, tdee,
+        protein_target_g, carbs_target_g, fats_target_g,
+        protein_percentage, carbs_percentage, fats_percentage,
+        weekly_weight_loss_target, nutrition_calculation_date
       `)
       .eq('user_id', userId)
       .maybeSingle();

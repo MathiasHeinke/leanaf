@@ -3619,12 +3619,19 @@ export type Database = {
           age: number | null
           avatar_preset_id: string | null
           avatar_type: string | null
+          bmr: number | null
+          calorie_deficit: number | null
+          carbs_percentage: number | null
+          carbs_target_g: number | null
           coach_personality: string | null
           created_at: string
           current_bmi: number | null
           current_period_end: string | null
+          daily_calorie_target: number | null
           display_name: string | null
           email: string | null
+          fats_percentage: number | null
+          fats_target_g: number | null
           first_name: string | null
           gender: string | null
           goal: string | null
@@ -3637,10 +3644,13 @@ export type Database = {
           medical_risk_level: string | null
           medical_screening_completed: boolean | null
           muscle_maintenance_priority: boolean | null
+          nutrition_calculation_date: string | null
           preferred_language: string | null
           preferred_name: string | null
           preferred_theme: string | null
           profile_avatar_url: string | null
+          protein_percentage: number | null
+          protein_target_g: number | null
           start_bmi: number | null
           start_weight: number | null
           subscription_id: string | null
@@ -3649,8 +3659,10 @@ export type Database = {
           target_body_fat_percentage: number | null
           target_date: string | null
           target_weight: number | null
+          tdee: number | null
           updated_at: string
           user_id: string
+          weekly_weight_loss_target: number | null
           weight: number | null
         }
         Insert: {
@@ -3658,12 +3670,19 @@ export type Database = {
           age?: number | null
           avatar_preset_id?: string | null
           avatar_type?: string | null
+          bmr?: number | null
+          calorie_deficit?: number | null
+          carbs_percentage?: number | null
+          carbs_target_g?: number | null
           coach_personality?: string | null
           created_at?: string
           current_bmi?: number | null
           current_period_end?: string | null
+          daily_calorie_target?: number | null
           display_name?: string | null
           email?: string | null
+          fats_percentage?: number | null
+          fats_target_g?: number | null
           first_name?: string | null
           gender?: string | null
           goal?: string | null
@@ -3676,10 +3695,13 @@ export type Database = {
           medical_risk_level?: string | null
           medical_screening_completed?: boolean | null
           muscle_maintenance_priority?: boolean | null
+          nutrition_calculation_date?: string | null
           preferred_language?: string | null
           preferred_name?: string | null
           preferred_theme?: string | null
           profile_avatar_url?: string | null
+          protein_percentage?: number | null
+          protein_target_g?: number | null
           start_bmi?: number | null
           start_weight?: number | null
           subscription_id?: string | null
@@ -3688,8 +3710,10 @@ export type Database = {
           target_body_fat_percentage?: number | null
           target_date?: string | null
           target_weight?: number | null
+          tdee?: number | null
           updated_at?: string
           user_id: string
+          weekly_weight_loss_target?: number | null
           weight?: number | null
         }
         Update: {
@@ -3697,12 +3721,19 @@ export type Database = {
           age?: number | null
           avatar_preset_id?: string | null
           avatar_type?: string | null
+          bmr?: number | null
+          calorie_deficit?: number | null
+          carbs_percentage?: number | null
+          carbs_target_g?: number | null
           coach_personality?: string | null
           created_at?: string
           current_bmi?: number | null
           current_period_end?: string | null
+          daily_calorie_target?: number | null
           display_name?: string | null
           email?: string | null
+          fats_percentage?: number | null
+          fats_target_g?: number | null
           first_name?: string | null
           gender?: string | null
           goal?: string | null
@@ -3715,10 +3746,13 @@ export type Database = {
           medical_risk_level?: string | null
           medical_screening_completed?: boolean | null
           muscle_maintenance_priority?: boolean | null
+          nutrition_calculation_date?: string | null
           preferred_language?: string | null
           preferred_name?: string | null
           preferred_theme?: string | null
           profile_avatar_url?: string | null
+          protein_percentage?: number | null
+          protein_target_g?: number | null
           start_bmi?: number | null
           start_weight?: number | null
           subscription_id?: string | null
@@ -3727,8 +3761,10 @@ export type Database = {
           target_body_fat_percentage?: number | null
           target_date?: string | null
           target_weight?: number | null
+          tdee?: number | null
           updated_at?: string
           user_id?: string
+          weekly_weight_loss_target?: number | null
           weight?: number | null
         }
         Relationships: []
