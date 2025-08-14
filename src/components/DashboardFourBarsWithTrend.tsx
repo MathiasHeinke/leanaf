@@ -16,7 +16,15 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   todaysFluids,
   todaysWorkout
 }) => {
-  const { groupedSupplements } = useSupplementData();
+  const { groupedSupplements, totalScheduled, totalTaken, completionPercent } = useSupplementData();
+  
+  // Debug logs for supplement data
+  console.log('Supplement Debug:', {
+    groupedSupplements,
+    totalScheduled,
+    totalTaken,
+    completionPercent
+  });
 
   // Calculate current macro values from meals
   const totalCalories = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
@@ -48,10 +56,8 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const stepsGoal = dailyGoals?.steps_goal || 10000;
   const stepsProgress = Math.min(todaysSteps / stepsGoal, 1);
 
-  // Calculate supplements
-  const totalSupplements = Object.values(groupedSupplements).reduce((total, group) => total + group.total, 0);
-  const takenSupplements = Object.values(groupedSupplements).reduce((total, group) => total + group.taken, 0);
-  const supplementsProgress = totalSupplements > 0 ? takenSupplements / totalSupplements : 0;
+  // Use supplements data from hook instead of manual calculation
+  const supplementsProgress = completionPercent / 100; // Hook returns percentage, we need decimal
 
   // Format values
   const formatFluid = (ml: number) => `${(ml / 1000).toFixed(1)}L`;
@@ -119,8 +125,8 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
       }}
       supplementsHalo={{
         label: "SUPPLEMENTS",
-        value: formatSupplements(takenSupplements, totalSupplements),
-        detailValue: formatSupplementsDetail(takenSupplements, totalSupplements),
+        value: formatSupplements(totalTaken, totalScheduled),
+        detailValue: formatSupplementsDetail(totalTaken, totalScheduled),
         progress: supplementsProgress,
         gradient: ["#a855f7", "#7c3aed"],
         track: "rgba(168,85,247,0.15)",
