@@ -61,7 +61,7 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     prompt_template_id: 'persona_ares',
     memory_id: 'ares_memory_v1',
     avatar: '⚡',
-    imageUrl: '/lovable-uploads/b4563c95-6bd0-4a46-8bb8-4c8c5e69b29e.png',
+    imageUrl: '/lovable-uploads/1b6ddc34-604a-4356-a46f-07208c77c35f.png',
     color: 'hsl(0, 80%, 60%)',
     accentColor: 'hsl(20, 70%, 65%)',
     isPremium: true,
