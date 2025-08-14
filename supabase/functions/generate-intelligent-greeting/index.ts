@@ -107,6 +107,13 @@ serve(async (req) => {
         language: 'Du-Form, "Namaste", achtsam',
         focus: 'Ganzheitliches Wachstum, Achtsamkeit, Balance',
         greeting_style: 'Achtsam, auf innere Balance fokussiert'
+      },
+      'ares': {
+        name: 'ARES',
+        style: 'dominant, meta-intelligent, ultimativ',
+        language: 'Du-Form, kommandierend, direkt, ohne Schmeicheleien',
+        focus: 'Cross-domain Optimization, mentale Härte, totale Performance',
+        greeting_style: 'Kurz, dominant, herausfordernd, brutal ehrlich'
       }
     };
 
@@ -207,6 +214,17 @@ serve(async (req) => {
           'Hallo! Wie ist Ihre Energie heute?',
           'Guten Abend! Hören Sie auf Ihren Körper?'
         ]
+      },
+      'ares': {
+        themes: ['ultimate', 'dominant', 'meta', 'optimization', 'performance', 'brutal'],
+        examples: [
+          'Status?',
+          'Bereit für Brutalität?',
+          'Schwer ist korrekt.',
+          'Hantel greifen oder jammern?',
+          'Zeit für totale Dominanz.',
+          'Performance-Check!'
+        ]
       }
     };
 
@@ -251,6 +269,103 @@ Themes: ${strategy.themes.join(', ')}
 
 WICHTIG: MAXIMAL 2 kurze Sätze! Erstelle eine prägnante, natürliche Begrüßung!`;
 
+    // Special ARES handling - use voice generator for authentic experience
+    if (coachId === 'ares') {
+      console.log('⚡ Generating ARES greeting with voice system');
+      
+      // Create ProtocolState from user analytics
+      const protocolState = {
+        training: [],
+        nutrition: [],
+        dev: [{
+          date: new Date().toISOString(),
+          sleep_hours: sleepData.data?.[0]?.duration || 7,
+          mood: recentJournal.data?.[0]?.mood_score ? 
+            Math.round((recentJournal.data[0].mood_score + 5) / 2) + 3 : 6, // Convert -5/+5 to 1-10
+          misses: recentWorkouts.data?.length === 0 ? 1 : 0,
+          wins: recentWorkouts.data?.length > 0 ? 1 : 0,
+          hrv_drop_pct: Math.random() > 0.5 ? 0.2 : -0.3 // Mock HRV data
+        }]
+      };
+
+      // Generate context tags based on user situation
+      const contextTags = [];
+      if (timeOfDay.includes('Morgen')) contextTags.push('morning');
+      if (timeOfDay.includes('Abend')) contextTags.push('evening');
+      if (recentWorkouts.data?.length > 0) contextTags.push('post-workout');
+      if (recentWorkouts.data?.length === 0) contextTags.push('missed-session');
+      if (sleepData.data?.[0]?.duration && sleepData.data[0].duration < 6) contextTags.push('sleep-deficit');
+
+      // ARES configuration - adaptive archetype blend based on performance
+      const runScore = protocolState.dev[0].mood - 5 + 
+        (protocolState.dev[0].wins || 0) * 0.5 - 
+        (protocolState.dev[0].misses || 0) * 0.5;
+      
+      const aresConfig = {
+        sentenceLength: { scale: 0.3, minWords: 4, maxWords: 8 }, // Short and brutal
+        archetypeBlend: runScore < -1 ? 
+          { commander: 0.5, drill: 0.3, smith: 0.2 } : // Poor performance = harsh
+          runScore > 1 ?
+          { father: 0.4, sage: 0.3, smith: 0.3 } : // Good performance = supportive
+          { commander: 0.4, smith: 0.4, comrade: 0.2 }, // Balanced
+        language: 'de',
+        humorHardnessBias: runScore < 0 ? -0.5 : 0.2, // Harder when performing poorly
+        allowDrill: runScore < -2 // Only allow drill mode for very poor performance
+      };
+
+      try {
+        // Call ARES voice generator
+        const aresResponse = await fetch(`https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/ares-voice-generator`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+          },
+          body: JSON.stringify({
+            cfg: aresConfig,
+            state: protocolState,
+            contextTags: contextTags
+          })
+        });
+
+        if (aresResponse.ok) {
+          const aresData = await aresResponse.json();
+          const aresGreeting = aresData.text || 'Status?';
+          console.log(`⚡ ARES voice generated: ${aresGreeting}`);
+          
+          return new Response(
+            JSON.stringify({ 
+              greeting: aresGreeting,
+              coach_name: 'ARES',
+              generated_at: new Date().toISOString(),
+              ares_meta: {
+                archetype: aresData.archetypePicked,
+                tone: aresData.tone,
+                runScore: aresData.meta?.runScore
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } else {
+          console.error('ARES voice generator failed:', await aresResponse.text());
+          throw new Error('ARES voice generator failed');
+        }
+      } catch (aresError) {
+        console.error('ARES voice system error:', aresError);
+        // Fallback to simple ARES greeting
+        return new Response(
+          JSON.stringify({ 
+            greeting: 'Status?',
+            coach_name: 'ARES',
+            generated_at: new Date().toISOString(),
+            fallback: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Standard OpenAI generation for other coaches
     console.log('🤖 Calling OpenAI with enhanced system prompt');
     console.log('📊 Context Summary sent to AI:', contextSummary);
 
@@ -307,7 +422,8 @@ WICHTIG: MAXIMAL 2 kurze Sätze! Erstelle eine prägnante, natürliche Begrüßu
       'kai': 'Hey! 🙏',
       'markus': 'Ei gude!',
       'dr_vita': 'Hey! 🌸',
-      'sophia': 'Hey! 🌿'
+      'sophia': 'Hey! 🌿',
+      'ares': 'Status? ⚡'
     };
 
     const fallback = fallbackGreetings[requestedCoachId] || fallbackGreetings['lucy'];
