@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -6229,21 +6229,21 @@ export type Database = {
         }
       }
       add_credits: {
-        Args: { p_user_id: string; p_credits: number }
+        Args: { p_credits: number; p_user_id: string }
         Returns: Json
       }
       award_badge_atomically: {
         Args: {
-          p_user_id: string
-          p_badge_type: string
-          p_badge_name: string
           p_badge_description: string
+          p_badge_name: string
+          p_badge_type: string
           p_metadata?: Json
+          p_user_id: string
         }
         Returns: boolean
       }
       backfill_daily_summaries_v2: {
-        Args: { p_user_id: string; p_days?: number }
+        Args: { p_days?: number; p_user_id: string }
         Returns: {
           date_processed: string
           request_id: number
@@ -6256,26 +6256,26 @@ export type Database = {
       }
       check_ai_usage_limit: {
         Args: {
-          p_user_id: string
-          p_feature_type: string
           p_daily_limit?: number
+          p_feature_type: string
           p_monthly_limit?: number
+          p_user_id: string
         }
         Returns: Json
       }
       check_and_update_rate_limit: {
         Args: {
-          p_identifier: string
           p_endpoint: string
-          p_window_minutes?: number
+          p_identifier: string
           p_max_requests?: number
+          p_window_minutes?: number
         }
         Returns: Json
       }
       check_rate_limit_progressive: {
         Args: {
-          p_identifier: string
           p_action: string
+          p_identifier: string
           p_max_attempts?: number
           p_window_minutes?: number
         }
@@ -6295,10 +6295,10 @@ export type Database = {
       }
       compute_monthly_summary: {
         Args: {
+          p_force?: boolean
+          p_month: number
           p_user_id: string
           p_year: number
-          p_month: number
-          p_force?: boolean
         }
         Returns: Json
       }
@@ -6307,7 +6307,7 @@ export type Database = {
         Returns: Json
       }
       consume_credits_for_feature: {
-        Args: { p_feature_type: string; p_deduct?: boolean }
+        Args: { p_deduct?: boolean; p_feature_type: string }
         Returns: Json
       }
       current_user_has_role: {
@@ -6315,11 +6315,11 @@ export type Database = {
         Returns: boolean
       }
       days_in_month: {
-        Args: { p_year: number; p_month: number }
+        Args: { p_month: number; p_year: number }
         Returns: number
       }
       deduct_credits: {
-        Args: { p_user_id: string; p_credits: number }
+        Args: { p_credits: number; p_user_id: string }
         Returns: Json
       }
       detect_suspicious_activity: {
@@ -6327,20 +6327,20 @@ export type Database = {
         Returns: Json
       }
       fast_fluid_totals: {
-        Args: { p_user: string; p_d: string }
+        Args: { p_d: string; p_user: string }
         Returns: number
       }
       fast_meal_totals: {
-        Args: { p_user: string; p_d: string }
+        Args: { p_d: string; p_user: string }
         Returns: {
           calories: number
-          protein: number
           carbs: number
           fats: number
+          protein: number
         }[]
       }
       fast_sets_volume: {
-        Args: { p_user: string; p_d: string }
+        Args: { p_d: string; p_user: string }
         Returns: number
       }
       get_coach_analytics_7d: {
@@ -6352,30 +6352,30 @@ export type Database = {
         Returns: Json
       }
       get_day_context: {
-        Args: { p_user: string; p_day: string }
+        Args: { p_day: string; p_user: string }
         Returns: Json
       }
       get_next_entry_sequence: {
-        Args: { p_user_id: string; p_date: string }
+        Args: { p_date: string; p_user_id: string }
         Returns: number
       }
       get_or_cache_query_embedding: {
-        Args: { query_text: string; query_embedding: string }
+        Args: { query_embedding: string; query_text: string }
         Returns: string
       }
       get_summary_range_v2: {
-        Args: { p_user_id: string; p_days?: number }
+        Args: { p_days?: number; p_user_id: string }
         Returns: {
+          completeness_score: number
           date: string
-          kcal: number
-          volume_kg: number
-          sleep_hours: number
-          sleep_score: number
           hydration_ml: number
           hydration_score: number
-          supplement_compliance: number
+          kcal: number
           mood: string
-          completeness_score: number
+          sleep_hours: number
+          sleep_score: number
+          supplement_compliance: number
+          volume_kg: number
         }[]
       }
       has_admin_access: {
@@ -6384,8 +6384,8 @@ export type Database = {
       }
       has_role: {
         Args: {
-          _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
         }
         Returns: boolean
       }
@@ -6415,188 +6415,188 @@ export type Database = {
       }
       log_admin_access_attempt: {
         Args: {
-          p_user_id: string
           p_access_granted: boolean
-          p_requested_resource: string
           p_ip_address?: unknown
+          p_requested_resource: string
           p_user_agent?: string
+          p_user_id: string
         }
         Returns: undefined
       }
       log_failed_login_attempt: {
         Args: {
           p_email?: string
-          p_ip_address?: unknown
-          p_user_agent?: string
           p_failure_reason?: string
+          p_ip_address?: unknown
           p_metadata?: Json
+          p_user_agent?: string
         }
         Returns: undefined
       }
       log_security_event: {
         Args: {
-          p_user_id: string
           p_action: string
-          p_resource_type?: string
-          p_resource_id?: string
           p_metadata?: Json
+          p_resource_id?: string
+          p_resource_type?: string
+          p_user_id: string
         }
         Returns: undefined
       }
       log_security_event_enhanced: {
         Args: {
-          p_user_id?: string
-          p_event_type?: string
           p_event_category?: string
+          p_event_type?: string
           p_ip_address?: unknown
-          p_user_agent?: string
           p_metadata?: Json
           p_severity?: string
+          p_user_agent?: string
+          p_user_id?: string
         }
         Returns: undefined
       }
       log_trace_event: {
-        Args: { p_trace_id: string; p_stage: string; p_data?: Json }
+        Args: { p_data?: Json; p_stage: string; p_trace_id: string }
         Returns: undefined
       }
       perform_medical_risk_assessment: {
         Args: {
-          p_user_id: string
           p_conditions: string[]
           p_custom_conditions: string[]
-          p_medications: string[]
           p_custom_medications: string[]
+          p_medications: string[]
+          p_user_id: string
         }
         Returns: Json
       }
       search_foods_by_text: {
-        Args: { search_query: string; match_count?: number }
+        Args: { match_count?: number; search_query: string }
         Returns: {
+          brand: string
+          calories: number
+          carbs: number
+          category: string
+          fats: number
           food_id: string
           name: string
-          brand: string
-          category: string
-          calories: number
           protein: number
-          carbs: number
-          fats: number
           rank: number
         }[]
       }
       search_knowledge_hybrid: {
         Args: {
-          query_text: string
-          query_embedding: string
           coach_filter?: string
+          match_count?: number
+          query_embedding: string
+          query_text: string
           semantic_weight?: number
           text_weight?: number
-          match_count?: number
         }
         Returns: {
-          knowledge_id: string
-          content_chunk: string
+          coach_id: string
           combined_score: number
+          content_chunk: string
+          expertise_area: string
+          knowledge_id: string
           semantic_score: number
           text_score: number
           title: string
-          expertise_area: string
-          coach_id: string
         }[]
       }
       search_knowledge_semantic: {
         Args: {
-          query_embedding: string
           coach_filter?: string
-          similarity_threshold?: number
           match_count?: number
+          query_embedding: string
+          similarity_threshold?: number
         }
         Returns: {
-          knowledge_id: string
+          chunk_index: number
+          coach_id: string
           content_chunk: string
+          expertise_area: string
+          knowledge_id: string
           similarity: number
           title: string
-          expertise_area: string
-          coach_id: string
-          chunk_index: number
         }[]
       }
       search_similar_foods: {
         Args: {
+          match_count?: number
           query_embedding: string
           similarity_threshold?: number
-          match_count?: number
         }
         Returns: {
-          food_id: string
-          name: string
           brand: string
-          similarity: number
           calories: number
-          protein: number
           carbs: number
           fats: number
+          food_id: string
+          name: string
+          protein: number
+          similarity: number
         }[]
       }
       search_vita_knowledge_hybrid: {
         Args: {
-          query_text: string
+          match_count?: number
           query_embedding: string
-          user_context?: Json
+          query_text: string
           semantic_weight?: number
           text_weight?: number
-          match_count?: number
+          user_context?: Json
         }
         Returns: {
-          knowledge_id: string
-          content_chunk: string
+          coach_id: string
           combined_score: number
+          content_chunk: string
+          expertise_area: string
+          knowledge_id: string
           semantic_score: number
           text_score: number
           title: string
-          expertise_area: string
-          coach_id: string
           vita_specialization_score: number
         }[]
       }
       search_vita_knowledge_semantic: {
         Args: {
-          query_embedding: string
-          user_age?: number
-          menopause_stage?: string
           cycle_phase?: string
           health_conditions?: string[]
-          similarity_threshold?: number
           match_count?: number
+          menopause_stage?: string
+          query_embedding: string
+          similarity_threshold?: number
+          user_age?: number
         }
         Returns: {
-          knowledge_id: string
+          chunk_index: number
+          coach_id: string
           content_chunk: string
+          evidence_quality_score: number
+          expertise_area: string
+          knowledge_id: string
+          life_stage_boost: number
           similarity: number
           title: string
-          expertise_area: string
-          coach_id: string
-          chunk_index: number
-          life_stage_boost: number
-          evidence_quality_score: number
         }[]
       }
       update_user_points_and_level: {
         Args: {
-          p_user_id: string
-          p_points: number
           p_activity_type: string
+          p_client_event_id?: string
           p_description?: string
           p_multiplier?: number
+          p_points: number
           p_trial_multiplier?: number
-          p_client_event_id?: string
+          p_user_id: string
         }
         Returns: Json
       }
       update_user_streak: {
         Args: {
-          p_user_id: string
-          p_streak_type: string
           p_activity_date?: string
+          p_streak_type: string
+          p_user_id: string
         }
         Returns: number
       }

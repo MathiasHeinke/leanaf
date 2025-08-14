@@ -237,8 +237,8 @@ async function performSemanticSearch(
   maxResults: number
 ): Promise<SearchResult[]> {
   
-  // Lucy can access all coaches' knowledge, others are restricted to their own
-  const coachFilter = coachId === 'lucy' ? null : coachId;
+  // ARES and Lucy can access all coaches' knowledge, others are restricted to their own
+  const coachFilter = (coachId === 'lucy' || coachId === 'ares') ? null : coachId;
   
   const { data, error } = await supabaseClient.rpc('search_knowledge_semantic', {
     query_embedding: queryEmbedding,
@@ -259,8 +259,8 @@ async function performHybridSearch(
   maxResults: number
 ): Promise<SearchResult[]> {
   
-  // Lucy can access all coaches' knowledge, others are restricted to their own
-  const coachFilter = coachId === 'lucy' ? null : coachId;
+  // ARES and Lucy can access all coaches' knowledge, others are restricted to their own  
+  const coachFilter = (coachId === 'lucy' || coachId === 'ares') ? null : coachId;
   
   const { data, error } = await supabaseClient.rpc('search_knowledge_hybrid', {
     query_text: queryText,
@@ -293,8 +293,8 @@ async function performKeywordSearch(
       coach_id
     `);
 
-  // Only filter by coach if not Lucy
-  if (coachId !== 'lucy') {
+  // Only filter by coach if not ARES or Lucy (they have universal access)
+  if (coachId !== 'lucy' && coachId !== 'ares') {
     queryBuilder = queryBuilder.eq('coach_id', coachId);
   }
 
