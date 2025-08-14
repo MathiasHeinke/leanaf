@@ -752,7 +752,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
             className="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2"
           >
             <div className="flex items-center gap-2">
-              <Droplets className="h-5 w-5 text-primary" />
               <h2 className="text-base font-semibold">Flüssigkeiten</h2>
             </div>
             <div className="text-muted-foreground hover:text-foreground">
