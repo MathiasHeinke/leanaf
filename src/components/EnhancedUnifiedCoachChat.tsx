@@ -815,9 +815,9 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
           {!isUser && (
             <div className="flex items-center justify-start gap-2 text-xs">
               <Avatar className="h-6 w-6 flex-shrink-0">
-                <AvatarImage src={message.coach_avatar} />
+                <AvatarImage src={message.coach_avatar || coach?.imageUrl} />
                 <AvatarFallback className="text-xs bg-muted">
-                  {message.coach_name?.[0] || 'C'}
+                  {message.coach_name?.[0] || coach?.name?.[0] || 'C'}
                 </AvatarFallback>
               </Avatar>
               <span className="text-muted-foreground">

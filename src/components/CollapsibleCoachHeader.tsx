@@ -106,7 +106,7 @@ export const CollapsibleCoachHeader = ({
   };
 
   const handleBack = () => {
-    navigate('/coach');
+    navigate('/');
   };
 
   const toggleCollapse = () => {
