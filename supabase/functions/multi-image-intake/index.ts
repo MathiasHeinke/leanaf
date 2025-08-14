@@ -57,11 +57,109 @@ function softTruncate(obj: any, maxLen: number = 8000) {
   }
 }
 
-// Fake classifier placeholder – replace with real model/logic if available
-async function classifyOne(url: string) {
-  // Simulate minimal async latency
-  await new Promise((r) => setTimeout(r, 10));
-  return { url, kind: "unknown", items: [], notes: null };
+// Real image classification using OpenAI analysis
+async function classifyOne(url: string, userId?: string) {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    console.error('OpenAI API key not found');
+    return { url, kind: "unknown", items: [], notes: "OpenAI API key not configured" };
+  }
+
+  try {
+    const messages = [
+      {
+        role: 'system',
+        content: `Du bist ein Ernährungsexperte. Analysiere das Bild und erkenne die Mahlzeit.
+        
+        PORTIONSSCHÄTZUNG:
+        - Teller: 24-26cm Durchmesser als Referenz
+        - Handfläche ohne Finger: ~100g Protein
+        - Geballte Faust: ~250g Kohlenhydrate
+        - Daumen: ~30g Fett
+        
+        Antworte nur mit dem angeforderten JSON-Format:
+        {
+          "title": "Name der Mahlzeit",
+          "items": [
+            {
+              "name": "Zutat Name",
+              "amount": "Menge",
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fats": 0
+            }
+          ],
+          "total": {
+            "calories": 0,
+            "protein": 0,
+            "carbs": 0,
+            "fats": 0
+          },
+          "confidence": "high|medium|low",
+          "notes": "Zusätzliche Hinweise"
+        }`
+      },
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'Analysiere diese Mahlzeit und schätze die Nährwerte.'
+          },
+          {
+            type: 'image_url',
+            image_url: { url }
+          }
+        ]
+      }
+    ];
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4.1-2025-04-14',
+        messages,
+        max_tokens: 1000,
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      }),
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('OpenAI API error:', data.error);
+      return { url, kind: "unknown", items: [], notes: `API Error: ${data.error?.message || 'Unknown error'}` };
+    }
+
+    const content = data.choices[0].message.content;
+    const parsed = JSON.parse(content);
+    
+    // Convert to expected format
+    return {
+      url,
+      kind: "food",
+      items: parsed.items || [],
+      notes: parsed.notes,
+      title: parsed.title,
+      total: parsed.total,
+      confidence: parsed.confidence
+    };
+
+  } catch (error) {
+    console.error('Error in classifyOne:', error);
+    return { 
+      url, 
+      kind: "unknown", 
+      items: [], 
+      notes: `Analysis failed: ${error.message || 'Unknown error'}` 
+    };
+  }
 }
 
 // Timeout guard per image to avoid worker stalls
