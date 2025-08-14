@@ -44,7 +44,8 @@ import confetti from "canvas-confetti";
 import { GripVertical } from "lucide-react";
 import { usePlusData } from "@/hooks/usePlusData";
 import ConcentricStatCard from "@/components/ConcentricStatCard";
-import { DashboardKeyMetrics } from "@/components/DashboardKeyMetrics";
+import { DashboardFourBarsWithTrend } from "@/components/DashboardFourBarsWithTrend";
+import { DashboardHaloPair } from "@/components/DashboardHaloPair";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -699,13 +700,18 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
       <div className="space-y-5">
 
-        {/* Key Metrics Dashboard */}
-        <DashboardKeyMetrics 
-          currentDate={currentDate}
-          calorieSummary={calorieSummary}
+        {/* New 4 Bars with 7-Day Trend */}
+        <DashboardFourBarsWithTrend 
+          meals={meals}
           dailyGoals={dailyGoals}
           todaysFluids={todaysFluids}
+        />
+
+        {/* Water & Steps Halos */}
+        <DashboardHaloPair 
+          todaysFluids={todaysFluids}
           todaysWorkout={todaysWorkout}
+          dailyGoals={dailyGoals}
         />
 
         <div
