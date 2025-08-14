@@ -213,7 +213,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
       
       // Reload data
-      loadTodaysFluids();
+      await loadTodaysFluids();
       
       // Trigger parent update to refresh main page
       onFluidUpdate?.();
@@ -260,7 +260,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       setShowAddForm(false);
       
       // Reload data
-      loadTodaysFluids();
+      await loadTodaysFluids();
       
       // Trigger parent update to refresh main page
       onFluidUpdate?.();
@@ -340,7 +340,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       if (error) throw error;
 
       toast.success('Getränk gelöscht');
-      loadTodaysFluids();
+      await loadTodaysFluids();
       onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
@@ -379,7 +379,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       setEditingFluidId(null);
       setEditAmount('');
       setEditNotes('');
-      loadTodaysFluids();
+      await loadTodaysFluids();
       onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
@@ -413,7 +413,7 @@ export const QuickFluidInput = ({ onFluidUpdate }: QuickFluidInputProps = {}) =>
       if (error) throw error;
 
       toast.success('Getränk dupliziert');
-      loadTodaysFluids();
+      await loadTodaysFluids();
       onFluidUpdate?.();
     } catch (error) {
       console.error('Error duplicating fluid:', error);

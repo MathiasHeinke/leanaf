@@ -64,7 +64,7 @@ function SupplementRow({
         />
         <div className="min-w-0">
           <div className="text-sm font-medium truncate">
-            {supplement.supplement_name || supplement.custom_name || 'Supplement'}
+            {supplement.custom_name || supplement.name || supplement.supplement_database?.name || 'Supplement'}
           </div>
           <div className="text-xs text-muted-foreground">
             {supplement.dosage} {supplement.unit}
@@ -124,18 +124,6 @@ function TimingSection({
             size="sm"
             onClick={(e) => {
               e.stopPropagation();
-              onEditTiming(timing, group.supplements);
-            }}
-            className="h-8 px-2 text-xs"
-          >
-            <Edit className="h-3 w-3 mr-1" />
-            Bearbeiten
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
               onToggleGroup(timing, !isComplete);
             }}
             className="h-8 px-2 text-xs"
@@ -147,8 +135,19 @@ function TimingSection({
       </button>
       {open && (
         <div className="px-3 pb-3 space-y-2">
+          <div className="flex justify-end mb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEditTiming(timing, group.supplements)}
+              className="h-8 px-2"
+            >
+              <Edit className="h-3 w-3" />
+            </Button>
+          </div>
           {group.supplements.map((supplement: any) => {
             const intake = group.intakes.find((i: any) => i.user_supplement_id === supplement.id);
+            console.log('Supplement object:', supplement); // Debug log
             return (
               <SupplementRow
                 key={supplement.id}
