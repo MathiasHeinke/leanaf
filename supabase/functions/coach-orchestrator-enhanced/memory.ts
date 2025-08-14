@@ -17,7 +17,13 @@ export async function loadUserProfile(supabase: any, userId: string) {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('age, gender, height, weight, target_weight, goal, activity_level, macro_strategy, display_name, email')
+      .select(`
+        age, gender, height, weight, target_weight, goal, activity_level, macro_strategy, 
+        display_name, email, preferred_name, first_name, last_name,
+        start_weight, start_bmi, current_bmi, target_bmi, target_date,
+        muscle_maintenance_priority, medical_screening_completed, medical_risk_level,
+        goal_type, target_body_fat_percentage, subscription_status
+      `)
       .eq('user_id', userId)
       .maybeSingle();
     if (error) return {};
