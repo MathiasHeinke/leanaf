@@ -298,37 +298,31 @@ export default function Science() {
                     
                     <CollapsibleContent>
                       {principle.isPremium ? (
-                        <div className="mt-4">
-                          <PremiumGate 
-                            feature="premium_insights"
-                            fallbackMessage="Detaillierte wissenschaftliche Inhalte sind ein Pro-Feature"
-                            showUpgrade={false}
-                          >
-                          <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
-                            <div>
-                              <h4 className="text-xs font-medium text-foreground mb-1">Detaillierte Erklärung:</h4>
-                              <p className="text-xs text-muted-foreground leading-relaxed">
-                                {principle.detailedDescription}
-                              </p>
-                            </div>
+                        <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+                          <div>
+                            <h4 className="text-xs font-medium text-foreground mb-1">Detaillierte Erklärung:</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {principle.detailedDescription}
+                            </p>
+                          </div>
+                          {principle.keyMethods && (
                             <div>
                               <h4 className="text-xs font-medium text-foreground mb-2">Schlüsselmethoden:</h4>
                               <div className="flex flex-wrap gap-1">
-                                {principle.keyMethods?.map((method, idx) => (
+                                {principle.keyMethods.map((method, idx) => (
                                   <Badge key={idx} variant="secondary" className="text-xs">
                                     {method}
                                   </Badge>
                                 ))}
                               </div>
                             </div>
-                            <div>
-                              <h4 className="text-xs font-medium text-foreground mb-1">Evidenzbasis:</h4>
-                              <p className="text-xs text-muted-foreground leading-relaxed">
-                                {principle.evidenceBase}
-                              </p>
-                            </div>
+                          )}
+                          <div>
+                            <h4 className="text-xs font-medium text-foreground mb-1">Evidenzbasis:</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {principle.evidenceBase}
+                            </p>
                           </div>
-                          </PremiumGate>
                         </div>
                       ) : (
                         <div className="mt-4 pt-4 border-t border-border/50 space-y-3">

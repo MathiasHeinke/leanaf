@@ -926,27 +926,21 @@ export const SmartCoachInsights = () => {
                 ))}
               </div>
             ) : (
-              <PremiumGate 
-                feature="premium_insights"
-                hideable={true}
-                fallbackMessage="KI-Coach Insights sind ein Premium Feature. Upgrade für erweiterte KI-gestützte Analyse!"
-              >
-                <div className="text-center py-8">
-                  <Brain className="h-12 w-12 text-indigo-400 mx-auto mb-4" />
-                  <h4 className="font-medium mb-2">Sammle mehr Daten</h4>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Tracke mindestens 5-7 Tage Mahlzeiten, Schlaf und Aktivitäten für aussagekräftige Korrelationen
-                  </p>
-                  <Button 
-                    onClick={generateInsights}
-                    disabled={loading}
-                    className="bg-indigo-500 hover:bg-indigo-600 text-white"
-                  >
-                    <TrendingUp className="h-4 w-4 mr-2" />
-                    Analyse starten
-                  </Button>
-                </div>
-              </PremiumGate>
+              <div className="text-center py-8">
+                <Brain className="h-12 w-12 text-indigo-400 mx-auto mb-4" />
+                <h4 className="font-medium mb-2">Sammle mehr Daten</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Tracke mindestens 5-7 Tage Mahlzeiten, Schlaf und Aktivitäten für aussagekräftige Korrelationen
+                </p>
+                <Button 
+                  onClick={generateInsights}
+                  disabled={loading}
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white"
+                >
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Analyse starten
+                </Button>
+              </div>
             )}
 
             {/* Quick Tips */}
