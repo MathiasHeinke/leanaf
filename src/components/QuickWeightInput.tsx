@@ -369,16 +369,16 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
 
         {/* Collapsed summary for non-completed state */}
         {!open && !isCompleted && (
-          <div className="mt-3 space-y-1 text-sm">
+          <div className="mt-3 space-y-2 text-sm">
             <div className="flex items-center gap-3">
-              <div className="font-medium text-muted-foreground">
-                Gewicht noch nicht erfasst
-              </div>
               <Progress
-                className="h-2 w-24 md:w-32"
+                className="h-2 w-24 md:w-32 animate-pulse border border-dashed border-muted-foreground/30"
                 value={0}
-                aria-label="Gewicht noch nicht erfasst"
+                aria-label="Bereit für Eingabe"
               />
+              <SmartChip variant="primary" size="sm" onClick={() => setOpen(true)}>
+                Jetzt erfassen
+              </SmartChip>
             </div>
           </div>
         )}

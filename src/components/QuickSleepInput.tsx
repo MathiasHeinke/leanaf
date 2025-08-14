@@ -384,8 +384,15 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
                 />
               </div>
             ) : (
-              <div className="font-medium text-muted-foreground">
-                Noch kein Schlaf eingetragen
+              <div className="flex items-center gap-3">
+                <Progress
+                  className="h-2 w-24 md:w-32 animate-pulse border border-dashed border-muted-foreground/30"
+                  value={0}
+                  aria-label="Bereit für Eingabe"
+                />
+                <SmartChip variant="primary" size="sm" onClick={() => setIsCollapsed(false)}>
+                  Jetzt erfassen
+                </SmartChip>
               </div>
             )}
           </div>
