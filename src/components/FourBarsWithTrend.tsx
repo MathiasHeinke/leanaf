@@ -72,9 +72,9 @@ function HaloMeter({ label, value, detailValue, progress, gradient, track = "rgb
 export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, supplementsHalo }: Props) {
   return (
     <section className="rounded-3xl p-4 sm:p-5 bg-white/80 dark:bg-[#0b0f14] shadow-[0_10px_30px_rgba(0,0,0,.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,.45)] backdrop-blur">
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* LEFT: 4 Bars */}
-        <div className="md:col-span-7 flex items-end justify-between gap-4">
+      <div className="grid grid-cols-1 gap-6">
+        {/* 4 Bars */}
+        <div className="flex items-end justify-between gap-4">
           {bars.map((b) => {
             const actualRatio = b.value / Math.max(1, b.target);
             const ratio = Math.max(0, Math.min(1, actualRatio)); // Clamped for visual fill
@@ -165,8 +165,8 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, suppleme
           })}
         </div>
 
-        {/* RIGHT: Wasser, Schritte & Supplements Halos */}
-        <div className="md:col-span-5 grid grid-cols-3 gap-2">
+        {/* Wasser, Schritte & Supplements Halos */}
+        <div className="grid grid-cols-3 gap-2">
           <HaloMeter {...waterHalo} />
           <HaloMeter {...stepsHalo} />
           <HaloMeter {...supplementsHalo} />
