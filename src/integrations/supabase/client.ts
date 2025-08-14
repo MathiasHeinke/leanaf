@@ -49,6 +49,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         signal: controller.signal,
         headers: {
           'apikey': SUPABASE_PUBLISHABLE_KEY,
+          'Content-Type': 'application/json',
           ...(authToken && { 'authorization': authToken }),
           ...(options as RequestInit).headers,
           'X-User-Timezone': timezone,

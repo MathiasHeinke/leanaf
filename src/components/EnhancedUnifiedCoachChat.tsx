@@ -774,13 +774,18 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
   try {
     if (!user?.id) return;
     const today = getCurrentDateString();
-    await supabase.from('coach_conversations').insert({
+    
+    const { error } = await supabase.from('coach_conversations').insert({
       user_id: user.id,
       coach_personality: coach?.id || 'lucy',
       conversation_date: today,
       message_role: role,
       message_content: content
     });
+    
+    if (error) {
+      console.warn('persistConversation failed:', error);
+    }
   } catch (e) {
     console.warn('persistConversation failed', e);
   }

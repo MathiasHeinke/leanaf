@@ -266,9 +266,11 @@ serve(async (req) => {
     const persona = await loadCoachPersona(supabase, coachId);
     const memoryHint = await loadRollingSummary(supabase, userId, coachId);
     
-    // ARES-specific voice generation or standard tone application
+    // ARES-specific voice generation helper function
     const generateAresResponse = async (userText: string, userProfile: any, analytics: any) => {
       try {
+        console.log('[ARES] Generating response for:', userText);
+        
         // Build protocol state from user data
         const protocolState = {
           training: analytics?.training ? [{
@@ -299,7 +301,7 @@ serve(async (req) => {
         };
 
         // ARES config based on user performance
-        const performanceScore = (analytics?.training?.workout_days || 0) / 7;
+        const performanceScore = Math.min(1, Math.max(0, (analytics?.training?.workout_days || 0) / 7));
         const aresConfig = {
           language: 'de' as const,
           humorHardnessBias: performanceScore > 0.5 ? 0.2 : -0.3,
@@ -328,19 +330,27 @@ serve(async (req) => {
         if (/(abend|spät|müde)/.test(lowerText)) contextTags.push('evening');
         if (/(schlecht|miss|fail)/.test(lowerText)) contextTags.push('missed');
 
+        console.log('[ARES] Config and state prepared, calling voice generator');
+
         // Call ARES voice generator
         const { data: aresResult, error } = await supabase.functions.invoke('ares-voice-generator', {
           body: { cfg: aresConfig, state: protocolState, contextTags }
         });
 
-        if (error || !aresResult?.text) {
-          console.error('ARES generator error:', error);
+        if (error) {
+          console.error('[ARES] Voice generator error:', error);
           return 'Wer jammert, hat schon verloren.'; // Fallback signature
         }
 
+        if (!aresResult?.text) {
+          console.warn('[ARES] No text returned from generator:', aresResult);
+          return 'Schwer ist korrekt. Weiter.'; // Fallback signature
+        }
+
+        console.log('[ARES] Successfully generated:', aresResult.text);
         return aresResult.text;
       } catch (error) {
-        console.error('ARES response generation failed:', error);
+        console.error('[ARES] Response generation failed:', error);
         return 'Schwer ist korrekt. Weiter.'; // Fallback signature
       }
     };
