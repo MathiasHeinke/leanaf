@@ -681,55 +681,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         <DateNavigation currentDate={currentDate} onDateChange={handleDateChange} />
       </div>
 
-      {/* Stats Hero Card */}
-      <div className="container mx-auto px-4 max-w-lg mt-4">
-        <ConcentricStatCard
-          dateLabel={currentDate.toLocaleDateString("de-DE", { 
-            weekday: "long", 
-            day: "numeric", 
-            month: "long" 
-          })}
-          left={{ 
-            value: calorieSummary.consumed ? Math.round(calorieSummary.consumed).toLocaleString("de-DE") : "0", 
-            label: "KALORIEN"
-          }}
-          right={{ 
-            value: plusData.stepsToday?.toLocaleString("de-DE") || "0", 
-            label: "SCHRITTE"
-          }}
-          center={{ 
-            top: plusData.hydrationMlToday ? `${(plusData.hydrationMlToday / 1000).toFixed(1)}L` : "0L", 
-            bottom: "WASSER",
-            progress: plusData.hydrationMlToday ? Math.min(1, plusData.hydrationMlToday / 2000) : 0
-          }}
-          centerRing={{
-            trackColor: "hsl(var(--muted))",
-            color: ["#34d399", "#10b981"],
-            width: 16,
-          }}
-          outerLeft={{
-            startDeg: 210,
-            sweepDeg: calorieSummary.consumed && dailyGoals?.calories 
-              ? Math.min(120, (calorieSummary.consumed / dailyGoals.calories) * 120)
-              : 0,
-            gradient: ["#fb923c", "#f97316"],
-            width: 16,
-            trackColor: "rgba(255,255,255,0.06)",
-            trackOpacity: 1,
-          }}
-          outerRight={{
-            startDeg: 330,
-            sweepDeg: plusData.stepsToday 
-              ? Math.min(100, (plusData.stepsToday / 7000) * 100)
-              : 0,
-            gradient: ["#60a5fa", "#3b82f6"],
-            width: 16,
-            trackColor: "rgba(255,255,255,0.06)",
-            trackOpacity: 1,
-          }}
-          size={720}
-        />
-      </div>
       
       {/* DEAKTIVIERT: XP Bar auf Benutzerwunsch ausgeblendet */}
       {/*

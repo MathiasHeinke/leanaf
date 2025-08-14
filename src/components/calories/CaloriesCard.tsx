@@ -383,11 +383,11 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
           </div>
         </div>
 
-        {/* Macros left with colors */}
+        {/* Macros consumed with colors */}
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <MacroPill label="Protein" left={proteinLeft} max={totals.targetProtein || 0} macroType="protein" />
-          <MacroPill label="Kohlenhydrate" left={carbsLeft} max={totals.targetCarbs || 0} macroType="carbs" />
-          <MacroPill label="Fett" left={fatLeft} max={totals.targetFat || 0} macroType="fat" />
+          <MacroPill label="Protein" left={totals.protein} max={totals.targetProtein || 0} macroType="protein" />
+          <MacroPill label="Kohlenhydrate" left={totals.carbs} max={totals.targetCarbs || 0} macroType="carbs" />
+          <MacroPill label="Fett" left={totals.fat} max={totals.targetFat || 0} macroType="fat" />
         </div>
 
 
