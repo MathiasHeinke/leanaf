@@ -39,8 +39,7 @@ const timingOptions = [
   { value: 'evening', label: 'Abends' },
   { value: 'pre_workout', label: 'Vor dem Training' },
   { value: 'post_workout', label: 'Nach dem Training' },
-  { value: 'before_bed', label: 'Vor dem Schlafengehen' },
-  { value: 'with_meals', label: 'Zu den Mahlzeiten' }
+  { value: 'before_bed', label: 'Vor dem Schlafengehen' }
 ];
 
 export const SupplementTrackingModal = ({ isOpen, onClose, contextData }: SupplementTrackingModalProps) => {

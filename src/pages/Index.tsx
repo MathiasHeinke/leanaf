@@ -640,7 +640,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       case 'supplements':
         return (
           <SortableCard key="supplements" id="supplements">
-            <QuickSupplementInput />
+            <QuickSupplementInput onSupplementUpdate={() => loadTodaysData(currentDate)} />
           </SortableCard>
         );
       case 'fluids':
