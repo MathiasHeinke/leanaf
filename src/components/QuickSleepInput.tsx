@@ -360,7 +360,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
             className="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2"
           >
             <div className="flex items-center gap-2">
-              <Moon className="h-5 w-5 text-primary" />
+              <Moon className="h-5 w-5" />
               <h2 className="text-base font-semibold">Schlaf & Regeneration</h2>
             </div>
             <div className="text-muted-foreground hover:text-foreground">

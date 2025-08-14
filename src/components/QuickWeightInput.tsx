@@ -320,7 +320,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
         <CollapsibleTrigger asChild>
           <div className="flex items-center justify-between cursor-pointer">
             <div className="flex items-center gap-2">
-              <Scale className="h-5 w-5 text-primary" />
+              <Scale className="h-5 w-5" />
               <h2 className="text-base font-semibold">Gewicht</h2>
             </div>
             <button
