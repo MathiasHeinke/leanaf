@@ -84,13 +84,17 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, suppleme
             // Debug logging for red bar issue
             console.log(`Bar ${b.key}: value=${b.value}, target=${b.target}, ratio=${actualRatio}, isOverTarget=${isOverTarget}`);
             
-            // Target line position at 100% height (full target)
-            const targetLinePosition = 100;
+            // Target line position at 80% height (4/5 of bar = 100% goal)
+            const targetLinePosition = 80;
             
-            // Check if fill overlaps with target text (at 100% position)
-            const fillHeight = actualRatio * 100;
-            const textPosition = 100 - targetLinePosition + 2; // Actual text position from top
-            const textOverlapped = fillHeight >= (100 - textPosition);
+            // Fill logic: 80% visual height = 100% goal, remaining 20% for overflow
+            const visualFillRatio = actualRatio <= 1.0 
+              ? actualRatio * 0.8 // Scale to 80% for normal range
+              : 0.8 + (actualRatio - 1.0) * 0.2; // 80% base + overflow in remaining 20%
+            const fillHeight = Math.min(visualFillRatio * 100, 100); // Cap at 100% visual
+            
+            // Text turns white when fill reaches 80% (target line)
+            const textOverlapped = fillHeight >= targetLinePosition;
             
             // Format target value
             const formatTarget = (key: string, target: number) => {
@@ -134,8 +138,8 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, suppleme
                   {/* Fill - can exceed 100% */}
                   <div
                     className="absolute bottom-0 left-0 right-0 transition-[height] duration-600 ease-out"
-                    style={{
-                      height: `${actualRatio * 100}%`, // Fill can exceed 100% visually for overflow
+                     style={{
+                       height: `${fillHeight}%`, // Controlled fill height with overflow logic
                       background: `linear-gradient(180deg, ${grad[0]}, ${grad[1]})`,
                       boxShadow: isOverTarget
                         ? "0 8px 18px rgba(239,68,68,0.3)"
