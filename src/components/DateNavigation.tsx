@@ -32,7 +32,7 @@ export const DateNavigation = ({ currentDate, onDateChange }: DateNavigationProp
   };
 
   return (
-    <div className="flex items-center justify-between px-4 py-1.5">
+    <div className="flex items-center justify-between px-4 py-1.5 mb-4">
       <Button
         variant="ghost"
         size="sm"
