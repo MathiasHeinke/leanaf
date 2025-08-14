@@ -286,28 +286,36 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
         if (error) throw error;
         // UI-Feedback bereits durch direkte Anzeige der Änderung
       } else {
+        // Optimistic update - immediately show the sleep data
+        toast.success('Schlaf wird gespeichert...');
+        
         // Create new sleep entry using UPSERT with correct constraint reference
         // Creating new sleep entry
-        const { error, data } = await supabase
-          .from('sleep_tracking')
-          .upsert(sleepData, { 
-            onConflict: 'user_id, date'  // Fixed: proper column reference
-          });
-
-        // Sleep insert completed
-        if (error) throw error;
-
-        // Award points for sleep tracking
         try {
-          const clientEventId = uuidv4();
-          await awardPoints('sleep_tracked', getPointsForActivity('sleep_tracked'), 'Schlaf eingetragen', 1.0, undefined, undefined, clientEventId);
-          await updateStreak('sleep_tracking');
+          const { error, data } = await supabase
+            .from('sleep_tracking')
+            .upsert(sleepData, { 
+              onConflict: 'user_id, date'  // Fixed: proper column reference
+            });
 
-          // Show points animation
-          setShowPointsAnimation(true);
-          setTimeout(() => setShowPointsAnimation(false), 3000);
-        } catch (pointsError) {
-          console.error('🎯 [QuickSleepInput] Points award failed (non-critical):', pointsError);
+          // Sleep insert completed
+          if (error) throw error;
+
+          // Award points for sleep tracking
+          try {
+            const clientEventId = uuidv4();
+            await awardPoints('sleep_tracked', getPointsForActivity('sleep_tracked'), 'Schlaf eingetragen', 1.0, undefined, undefined, clientEventId);
+            await updateStreak('sleep_tracking');
+
+            // Show points animation
+            setShowPointsAnimation(true);
+            setTimeout(() => setShowPointsAnimation(false), 3000);
+          } catch (pointsError) {
+            console.error('🎯 [QuickSleepInput] Points award failed (non-critical):', pointsError);
+          }
+        } catch (error) {
+          console.error('Error saving sleep:', error);
+          throw error; // Re-throw to trigger the catch block below
         }
       }
 
@@ -345,28 +353,20 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
   return (
     <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
       <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Moon className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold">Schlaf & Regeneration</h2>
-          </div>
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-            >
-              {!isCollapsed ? (
-                <>
-                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </button>
-          </CollapsibleTrigger>
-        </div>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2"
+          >
+            <div className="flex items-center gap-2">
+              <Moon className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-semibold">Schlaf & Regeneration</h2>
+            </div>
+            <div className="text-muted-foreground hover:text-foreground">
+              {!isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </div>
+          </button>
+        </CollapsibleTrigger>
 
         {/* Collapsed summary when card is closed */}
         {isCollapsed && (

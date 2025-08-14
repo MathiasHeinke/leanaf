@@ -296,26 +296,39 @@ export const QuickWorkoutInput = ({
         if (error) throw error;
         // UI-Feedback bereits durch direkte Anzeige der Änderung
       } else {
+        // Optimistic update - add temporary workout immediately
+        const tempWorkout = {
+          id: `temp-${Date.now()}`,
+          ...workoutData,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
         // Create new workout using INSERT (not UPSERT to allow multiple workouts per day)
-        const { error } = await supabase
-          .from('workouts')
-          .insert(workoutData);
+        try {
+          const { error } = await supabase
+            .from('workouts')
+            .insert(workoutData);
 
-        if (error) throw error;
+          if (error) throw error;
 
-        // Award points for new workout (only for actual workouts, not rest days)
-        if (workoutType !== 'pause') {
-          try {
-            const clientEventId = uuidv4();
-            await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen', 1.0, undefined, undefined, clientEventId);
-            await updateStreak('workout');
-            
-            // Show points animation
-            setShowPointsAnimation(true);
-            setTimeout(() => setShowPointsAnimation(false), 3000);
-          } catch (pointsError) {
-            console.error('🎯 [QuickWorkoutInput] Points award failed (non-critical):', pointsError);
+          // Award points for new workout (only for actual workouts, not rest days)
+          if (workoutType !== 'pause') {
+            try {
+              const clientEventId = uuidv4();
+              await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen', 1.0, undefined, undefined, clientEventId);
+              await updateStreak('workout');
+              
+              // Show points animation
+              setShowPointsAnimation(true);
+              setTimeout(() => setShowPointsAnimation(false), 3000);
+            } catch (pointsError) {
+              console.error('🎯 [QuickWorkoutInput] Points award failed (non-critical):', pointsError);
+            }
           }
+        } catch (error) {
+          console.error('Error saving workout:', error);
+          throw error; // Re-throw to trigger the catch block below
         }
       }
 
@@ -392,28 +405,20 @@ export const QuickWorkoutInput = ({
   return (
     <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
       <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Dumbbell className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-semibold">Workout & Training</h2>
-          </div>
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-            >
-              {!isCollapsed ? (
-                <>
-                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </button>
-          </CollapsibleTrigger>
-        </div>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between hover:bg-muted/50 rounded-md p-2 -m-2"
+          >
+            <div className="flex items-center gap-2">
+              <Dumbbell className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-semibold">Workout & Training</h2>
+            </div>
+            <div className="text-muted-foreground hover:text-foreground">
+              {!isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </div>
+          </button>
+        </CollapsibleTrigger>
 
         {/* Collapsed summary when card is closed */}
         {isCollapsed && (
