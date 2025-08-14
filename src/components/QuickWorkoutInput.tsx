@@ -7,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2, ChevronDown, Edit2, Utensils } from "lucide-react";
+import { Dumbbell, Plus, Edit, CheckCircle, Footprints, Moon, Trash2, ChevronDown, ChevronUp, Edit2, Utensils } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -362,7 +362,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
   };
 
   const isCompleted = !!hasWorkoutToday;
-  const [isCollapsed, setIsCollapsed] = useState(!isEditing && hasWorkoutToday);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Calculate workout stats
   const completedWorkouts = todaysWorkouts.filter(w => w.did_workout);
@@ -698,11 +698,11 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
             >
               {!isCollapsed ? (
                 <>
-                  Einklappen <ChevronDown className="ml-1 h-4 w-4" />
+                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
                 </>
               ) : (
                 <>
-                  Ausklappen <ChevronDown className="ml-1 h-4 w-4 rotate-180" />
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
                 </>
               )}
             </button>
@@ -736,7 +736,7 @@ export const QuickWorkoutInput = ({ onWorkoutAdded, todaysWorkout, todaysWorkout
 
         {/* Smart Chips for quick workouts - visible in both collapsed and expanded states */}
         {(!hasWorkoutToday || isCollapsed) && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-3">
             {smartChips.slice(0, 3).map((chip, index) => (
               <button
                 key={index}

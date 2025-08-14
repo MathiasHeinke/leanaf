@@ -5,9 +5,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collap
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
-import { Pill, ChevronDown, ChevronUp, Check, Clock } from 'lucide-react';
+import { Pill, ChevronDown, ChevronUp, Check, Clock, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSupplementData, TIMING_OPTIONS, getTimingOption } from '@/hooks/useSupplementData';
+import { SupplementEditModal } from '@/components/SupplementEditModal';
 
 function formatNumber(n: number) {
   return Math.max(0, Math.round(n));
@@ -84,12 +85,14 @@ function TimingSection({
   timing, 
   group, 
   onToggleSupplement, 
-  onToggleGroup 
+  onToggleGroup,
+  onEditTiming 
 }: { 
   timing: string; 
   group: any; 
   onToggleSupplement: (supplementId: string, timing: string, taken: boolean) => void;
   onToggleGroup: (timing: string, taken: boolean) => void;
+  onEditTiming: (timing: string, supplements: any[]) => void;
 }) {
   const [open, setOpen] = useState(false);
   const timingInfo = getTimingOption(timing);
@@ -116,6 +119,18 @@ function TimingSection({
           </Badge>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditTiming(timing, group.supplements);
+            }}
+            className="h-8 px-2 text-xs"
+          >
+            <Edit className="h-3 w-3 mr-1" />
+            Bearbeiten
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -150,7 +165,11 @@ function TimingSection({
   );
 }
 
-export const QuickSupplementInput = () => {
+interface QuickSupplementInputProps {
+  onSupplementUpdate?: () => void;
+}
+
+export const QuickSupplementInput: React.FC<QuickSupplementInputProps> = ({ onSupplementUpdate }) => {
   const {
     groupedSupplements,
     totalScheduled,
@@ -163,6 +182,26 @@ export const QuickSupplementInput = () => {
   } = useSupplementData();
   
   const [isCollapsed, setIsCollapsed] = useState(true);
+  const [editingTiming, setEditingTiming] = useState<{ timing: string; supplements: any[] } | null>(null);
+
+  const handleSupplementToggle = async (supplementId: string, timing: string, taken: boolean) => {
+    await markSupplementTaken(supplementId, timing, taken);
+    onSupplementUpdate?.();
+  };
+
+  const handleGroupToggle = async (timing: string, taken: boolean) => {
+    await markTimingGroupTaken(timing, taken);
+    onSupplementUpdate?.();
+  };
+
+  const handleEditTiming = (timing: string, supplements: any[]) => {
+    setEditingTiming({ timing, supplements });
+  };
+
+  const handleCloseEdit = () => {
+    setEditingTiming(null);
+    onSupplementUpdate?.();
+  };
 
   // Get smart chips for timing groups (show top 3 with supplements)
   const smartChips = Object.entries(groupedSupplements)
@@ -173,7 +212,7 @@ export const QuickSupplementInput = () => {
       timing,
       taken: group.taken,
       total: group.total,
-      action: () => markTimingGroupTaken(timing, group.taken < group.total)
+      action: () => handleGroupToggle(timing, group.taken < group.total)
     }));
 
   if (loading) {
@@ -255,7 +294,7 @@ export const QuickSupplementInput = () => {
 
         {/* Smart Chips for timing groups - visible in both collapsed and expanded states */}
         {smartChips.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-3">
             {smartChips.map((chip) => (
               <TimingChip
                 key={chip.timing}
@@ -300,14 +339,25 @@ export const QuickSupplementInput = () => {
                       key={timing}
                       timing={timing}
                       group={group}
-                      onToggleSupplement={markSupplementTaken}
-                      onToggleGroup={markTimingGroupTaken}
+                      onToggleSupplement={handleSupplementToggle}
+                      onToggleGroup={handleGroupToggle}
+                      onEditTiming={handleEditTiming}
                     />
                   ))}
               </div>
             )}
           </div>
         </CollapsibleContent>
+
+        {editingTiming && (
+          <SupplementEditModal
+            isOpen={!!editingTiming}
+            onClose={handleCloseEdit}
+            timing={editingTiming.timing}
+            supplements={editingTiming.supplements}
+            onUpdate={handleCloseEdit}
+          />
+        )}
       </Card>
     </Collapsible>
   );

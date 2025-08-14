@@ -129,13 +129,14 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
     }
   }, []);
 
-  // Clear persisted audio
+  // Clear persisted audio - NOTE: Audio is now permanently stored for journal history
   const clearPersistedAudio = useCallback(() => {
+    // Only clear from localStorage for UI purposes, audio remains in Supabase for journal history
     localStorage.removeItem(AUDIO_STORAGE_KEY);
     localStorage.removeItem(AUDIO_META_STORAGE_KEY);
-    setServerFileId(null);
     setCachedAudioBlob(null);
-    console.log('🗑️ Cleared all persisted audio');
+    // NOTE: serverFileId is preserved for journal history access
+    console.log('🗑️ Cleared UI audio cache (server audio preserved for journal)');
   }, []);
 
   // Check for microphone permission
@@ -262,7 +263,7 @@ export const useEnhancedVoiceRecording = (): UseEnhancedVoiceRecordingReturn => 
               setTranscript(transcriptionResult);
               toast.success(`Sprache erkannt: "${transcriptionResult.substring(0, 50)}${transcriptionResult.length > 50 ? '...' : ''}"`);
               
-              // Clear all cached audio after successful transcription
+              // Clear UI cache but preserve server audio for journal history
               clearPersistedAudio();
             } else {
               toast.error('Transkription fehlgeschlagen');

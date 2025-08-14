@@ -281,7 +281,7 @@ function MealRow({
 }
 
 export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, onEditMeal, onDeleteMeal }: CaloriesCardProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [showMeals, setShowMeals] = useState(false);
 
   const kcalLeft = Math.max(0, (totals.caloriesTarget || 0) - (totals.caloriesUsed || 0));
@@ -383,11 +383,11 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
           </div>
         </div>
 
-        {/* Macros left with colors */}
+        {/* Macros consumed with colors */}
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <MacroPill label="Protein" left={proteinLeft} max={totals.targetProtein || 0} macroType="protein" />
-          <MacroPill label="Kohlenhydrate" left={carbsLeft} max={totals.targetCarbs || 0} macroType="carbs" />
-          <MacroPill label="Fett" left={fatLeft} max={totals.targetFat || 0} macroType="fat" />
+          <MacroPill label="Protein" left={totals.protein} max={totals.targetProtein || 0} macroType="protein" />
+          <MacroPill label="Kohlenhydrate" left={totals.carbs} max={totals.targetCarbs || 0} macroType="carbs" />
+          <MacroPill label="Fett" left={totals.fat} max={totals.targetFat || 0} macroType="fat" />
         </div>
 
 

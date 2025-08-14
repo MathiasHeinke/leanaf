@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Moon, Plus, Edit, CheckCircle, ChevronDown, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye, Info } from "lucide-react";
+import { Moon, Plus, Edit, CheckCircle, ChevronDown, ChevronUp, Clock, Smartphone, Heart, Zap, Utensils, Sun, EyeOff, Eye, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -324,7 +324,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
   };
 
   const isCompleted = !!hasSleepToday;
-  const [isCollapsed, setIsCollapsed] = useState(!isEditing && hasSleepToday);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Calculate sleep quality percentage for progress
   const sleepQualityPercent = hasSleepToday ? ((todaysSleep?.sleep_quality || 0) / 10) * 100 : 0;
@@ -351,11 +351,11 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
             >
               {!isCollapsed ? (
                 <>
-                  Einklappen <ChevronDown className="ml-1 h-4 w-4" />
+                  Einklappen <ChevronUp className="ml-1 h-4 w-4" />
                 </>
               ) : (
                 <>
-                  Ausklappen <ChevronDown className="ml-1 h-4 w-4 rotate-180" />
+                  Ausklappen <ChevronDown className="ml-1 h-4 w-4" />
                 </>
               )}
             </button>
@@ -386,7 +386,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep }: QuickSleepInputPr
 
         {/* Smart Chips for quick actions - visible in both collapsed and expanded states */}
         {!hasSleepToday && smartChips.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-3">
             {smartChips.map((chip, index) => (
               <button
                 key={index}

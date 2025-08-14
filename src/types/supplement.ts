@@ -41,8 +41,7 @@ export const VALID_TIMING_VALUES = [
   'evening',
   'pre_workout', 
   'post_workout',
-  'before_bed',
-  'with_meals'
+  'before_bed'
 ] as const;
 
 export type ValidTimingValue = typeof VALID_TIMING_VALUES[number];
