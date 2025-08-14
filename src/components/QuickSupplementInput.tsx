@@ -37,6 +37,9 @@ function TimingChip({ timing, taken, total, onClick }: { timing: string; taken: 
           {taken}/{total}
         </span>
       )}
+      <div className="ml-2">
+        <RadioButtonCheckbox checked={isComplete} />
+      </div>
     </button>
   );
 }
