@@ -44,99 +44,53 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     aliases: ['lucy', 'dr lucy', 'dr. lucy', 'dr lucy martinez', 'dr. lucy martinez', 'nutrition coach']
   },
   
-  sascha: {
-    id: 'sascha',
-    name: 'Sascha',
-    displayName: 'Sascha Weber',
-    personality: 'stoisch, direkt, kameradschaftlich, pflichtbewusst, analytisch',
-    role: 'Performance & Training Coach',
-    prompt_template_id: 'persona_sascha',
-    memory_id: 'sascha_md',
-    avatar: '🎯',
-    imageUrl: '/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png',
-    color: 'blue',
-    accentColor: 'from-blue-500 to-blue-600',
-    isPremium: true,
-    expertise: ['Periodisierung', 'Progressive Overload', 'Biomechanik-Optimierung'],
-    access: {
-      tools: ['trainingsplan', 'progression_analysis', 'biomechanics', 'savePlanDraft'],
-      datasets: ['training_history', 'performance_data', 'strength_logs'],
-      rag: ['rag_training', 'rag_periodization', 'rag_biomechanics']
-    },
-    aliases: ['sascha', 'sascha weber', 'performance coach', 'training coach', 'ex-feldwebel']
-  },
-  
-  kai: {
-    id: 'kai',
-    name: 'Kai',
-    displayName: 'Dr. Kai Nakamura',
-    personality: 'achtsam, strategisch, wissenschaftlich, ganzheitlich',
-    role: 'Mindset, Recovery & Transformation Coach',
-    prompt_template_id: 'persona_kai',
-    memory_id: 'kai_md',
-    avatar: '💪',
-    imageUrl: '/lovable-uploads/eb684927-b546-4179-9b7f-aec4dfbd227f.png',
-    color: 'purple',
-    accentColor: 'from-purple-500 to-purple-600',
-    isPremium: true,
-    expertise: ['Neuroplastizität & HRV', 'Schlafoptimierung', 'Vier-Quadranten-Analyse', 'Transformational Breakthrough', 'Male Health Optimization', 'Libido Wheel Methodology'],
-    access: {
-      tools: ['mindset_coaching', 'hrv_analysis', 'sleep_optimization', 'transformation_plan', 'hormone_optimization', 'libido_assessment'],
-      datasets: ['sleep_data', 'hrv_data', 'mindset_progress', 'hormone_levels'],
-      rag: ['rag_psychology', 'rag_recovery', 'rag_transformation', 'rag_male_health']
-    },
-    aliases: ['kai', 'dr kai', 'kai nakamura', 'mindset coach', 'recovery coach', 'transformation coach', 'hormone coach', 'male health coach']
-  },
-  
   ares: {
     id: 'ares',
     name: 'ARES',
-    displayName: 'ARES - The Ultimate Coach',
-    personality: 'dominierend, allwissend, unbarmherzig effektiv, totale kompetenz',
-    role: 'ARES - Ultimate Performance Dominator',
-    prompt_template_id: 'persona_ares',
+    displayName: 'ARES - Ultimate Male Coach',
+    personality: 'intensiv, stoisch, transformativ - vereint Saschas Disziplin mit Kais Ganzheitlichkeit',
+    role: 'Ultimate Male Performance Intelligence',
+    prompt_template_id: 'ares_ultimate',
     memory_id: 'ares_md',
     avatar: '⚡',
     imageUrl: '/lovable-uploads/90efce37-f808-4894-8ea5-1093f3587aa4.png',
     color: 'red',
     accentColor: 'from-red-500 to-red-600',
-    isPremium: true,
-    expertise: ['Total Coaching Supremacy', 'Cross-Domain Mastery', 'Ultimate Transformation', 'Meta-Coaching Intelligence'],
+    isFree: true,
+    expertise: [
+      'Ultimate Performance', 'Krafttraining & Progression', 'Mindset & Recovery', 
+      'Cross-Domain Mastery', 'Total Male Optimization'
+    ],
     access: {
       tools: [
-        // Original ARES tools
-        'heavy_training_plan', 'mass_building', 'mental_toughness', 'savePlanDraft',
-        // Lucy's tools
-        'mealplan', 'fat_analysis', 'supplement_advice', 'mealCapture',
-        // Sascha's tools  
-        'trainingsplan', 'progression_analysis', 'biomechanics', 'createPlanDraft',
-        // Kai's tools
-        'mindset_coaching', 'hrv_analysis', 'sleep_optimization', 'transformation_plan', 'hormone_optimization', 'libido_assessment', 'diary', 'goalCheckin',
-        // Vita's tools
-        'cycle_training', 'hormone_analysis', 'female_nutrition', 'menopause_support', 'cycleAssessment', 'hormoneTracker', 'femalePeriodization', 'menopauseNavigator',
-        // General tools
-        'uebung', 'supplement', 'gewicht',
         // ARES Super-Tools
-        'aresMetaCoach', 'aresTotalAssessment', 'aresUltimateWorkoutPlan', 'aresSuperNutrition'
+        'aresMetaCoach', 'aresTotalAssessment', 'aresUltimateWorkoutPlan', 'aresSuperNutrition',
+        'heavyTrainingPlan', 'massBuildingCalculator', 'mentalToughnessCoach',
+        // Sascha's consolidated tools
+        'trainingsplan', 'createPlanDraft', 'savePlanDraft', 'uebung', 'gewicht',
+        // Kai's consolidated tools  
+        'diary', 'goalCheckin', 'supplement', 'mealCapture'
       ],
       datasets: [
-        // All user datasets
-        'meal_history', 'supplement_stack', 'cycle_data', 'training_history', 'performance_data', 'strength_logs',
-        'sleep_data', 'hrv_data', 'mindset_progress', 'hormone_levels', 'strength_data', 'mass_progress', 'heavy_lifts',
-        'female_health_metrics', 'workout_data', 'nutrition_data', 'recovery_data',
-        // ARES aggregated datasets
-        'total_user_profile', 'cross_coach_insights', 'meta_coaching_data'
+        'total_user_profile', 'cross_coach_insights', 'meta_coaching_data',
+        'training_history', 'performance_data', 'strength_logs', 
+        'sleep_data', 'hrv_data', 'mindset_progress', 'hormone_levels'
       ],
       rag: [
-        // All RAG areas
-        'rag_nutrition', 'rag_general', 'rag_mindfulness', 'rag_training', 'rag_periodization', 'rag_biomechanics',
-        'rag_psychology', 'rag_recovery', 'rag_transformation', 'rag_male_health', 'rag_bodybuilding', 
-        'rag_heavy_training', 'rag_mass_building', 'rag_female_health', 'rag_hormones', 'rag_cycle_training',
-        // ARES Super-RAG
-        'rag_total_coaching', 'rag_ares_meta', 'rag_user_journey'
+        'rag_total_coaching', 'rag_ares_meta', 'rag_user_journey',
+        'rag_training', 'rag_periodization', 'rag_biomechanics',
+        'rag_psychology', 'rag_recovery', 'rag_transformation', 'rag_male_health'
       ]
     },
-    aliases: ['ares', 'ultimate coach', 'total coach', 'meta coach', 'super coach', 'coaching weapon', 'dominator', 'markus', 'markus rühl', 'markus ruhl', 'rühl', 'ruhl', 'german beast', 'bodybuilding coach', 'massa']
+    aliases: [
+      'ares', 'ultimate coach', 'total coach', 'meta coach', 'super coach', 'dominator',
+      // Sascha legacy aliases - CONSOLIDATED INTO ARES
+      'sascha', 'sascha weber', 'performance coach', 'training coach', 'ex-feldwebel',
+      // Kai legacy aliases - CONSOLIDATED INTO ARES  
+      'kai', 'dr kai', 'kai nakamura', 'mindset coach', 'recovery coach', 'transformation coach',
+      // Original ARES aliases
+      'markus', 'markus rühl', 'markus ruhl', 'rühl', 'ruhl', 'german beast', 'bodybuilding coach'
+    ]
   },
   
   vita: {
@@ -154,7 +108,7 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     isPremium: true,
     expertise: ['Zyklusorientiertes Training', 'Hormonbalance', 'Frauen-Gesundheit', 'Lebensphasen-Coaching'],
     access: {
-      tools: ['cycle_training', 'hormone_analysis', 'female_nutrition', 'menopause_support'],
+      tools: ['cycleAssessment', 'hormoneTracker', 'femalePeriodization', 'menopauseNavigator'],
       datasets: ['cycle_data', 'hormone_levels', 'female_health_metrics'],
       rag: ['rag_female_health', 'rag_hormones', 'rag_cycle_training']
     },
@@ -189,12 +143,18 @@ export function resolveCoach(inputId: string): CoachMetadata {
     }
   }
   
-  // Legacy ID mappings for backwards compatibility
+  // Legacy ID mappings for backwards compatibility - ALL CONSOLIDATED TO ARES
   const legacyMappings: Record<string, string> = {
     'persona_ruhl': 'ares',
-    'persona_ares': 'ares',
+    'persona_ares': 'ares', 
     'markus': 'ares',
-    'persona_sascha': 'sascha', 
+    // SASCHA → ARES CONSOLIDATION
+    'persona_sascha': 'ares',
+    'sascha': 'ares',
+    // KAI → ARES CONSOLIDATION  
+    'persona_kai': 'ares',
+    'kai': 'ares',
+    // LUCY & VITA unchanged
     'persona_lucy': 'lucy',
     'dr-vita': 'vita',
     'drvita': 'vita'
