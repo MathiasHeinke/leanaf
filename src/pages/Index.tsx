@@ -573,7 +573,8 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         className={`relative rounded-xl`}
         data-progress={Math.round(progressPercentage)}
       >
-        {/* Progress indicator dot */}
+        {/* DISABLED: Status dots removed per user request */}
+        {/* 
         <span 
           className={`pointer-events-none absolute top-2 right-2 h-3.5 w-3.5 rounded-full ring-[3px]`}
           style={{
@@ -581,6 +582,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             borderColor: glowColors.ringColor,
           }}
         />
+        */}
         {children}
       </div>
     );
