@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
-import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { Brain, Mic, MicOff, Send, Sparkles, Clock, Heart, Camera, ChevronDown, ChevronUp, FileText, Target } from "lucide-react";
 import { SmartChip } from "@/components/ui/smart-chip";
 import { useMindsetJournal } from "@/hooks/useMindsetJournal";
 import { useEnhancedVoiceRecording } from "@/hooks/useEnhancedVoiceRecording";
@@ -27,6 +27,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showDetailWidget, setShowDetailWidget] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState<string>('');
 
   const { toast } = useToast();
   const mindsetJournal = useMindsetJournal();
@@ -200,11 +201,35 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
     : 0;
   const moodProgress = ((avgMoodScore + 5) / 10) * 100; // Convert -5 to +5 scale to 0-100%
 
+  // Set contextual prompt function
+  const setContextualPrompt = (prompt: string, text: string) => {
+    setCustomPrompt(prompt);
+    setManualText(text);
+  };
+
   // Smart chip actions
   const smartChips = [
-    { label: "Dankbarkeit", action: () => { setManualText("Heute bin ich dankbar für "); } },
-    { label: "Reflektion", action: () => { setManualText("Heute habe ich gelernt, dass "); } },
-    { label: "Ziele", action: () => { setManualText("Morgen möchte ich "); } }
+    { 
+      label: "Dankbarkeit", 
+      icon: Heart,
+      action: () => { 
+        setContextualPrompt("Für welche 3 Dinge bist du heute dankbar?", "Heute bin ich dankbar für "); 
+      } 
+    },
+    { 
+      label: "Reflektion", 
+      icon: Target,
+      action: () => { 
+        setContextualPrompt("Was hast du heute über dich gelernt?", "Heute habe ich gelernt, dass "); 
+      } 
+    },
+    { 
+      label: "Ziele", 
+      icon: Sparkles,
+      action: () => { 
+        setContextualPrompt("Welche Ziele möchtest du morgen erreichen?", "Morgen möchte ich "); 
+      } 
+    }
   ];
 
   return (
@@ -217,19 +242,6 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
               <h2 className="text-base font-semibold">Mindset Journal</h2>
             </div>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8 w-8 p-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  startRecording();
-                }}
-                disabled={isRecording || isVoiceLoading}
-                title="Schnellaufnahme"
-              >
-                <Mic className="h-4 w-4" />
-              </Button>
               <button
                 type="button"
                 className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
@@ -266,12 +278,26 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
 
         {/* Smart Chips & Journal Indicator */}
         <div className="mt-3 flex flex-wrap gap-3">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="h-8 px-3 rounded-full border"
+            onClick={(e) => {
+              e.stopPropagation();
+              startRecording();
+            }}
+            disabled={isRecording || isVoiceLoading}
+            title="Voice Input"
+          >
+            <Mic className="h-4 w-4 mr-1" />
+            Voice
+          </Button>
           {smartChips.map((chip, index) => (
             <SmartChip
               key={index}
               variant="mindset"
               size="default"
-              icon={<Brain className="h-3.5 w-3.5" />}
+              icon={<chip.icon className="h-3.5 w-3.5" />}
               onClick={() => { 
                 chip.action(); 
                 if (isCollapsed) setIsCollapsed(false);
@@ -292,7 +318,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
           )}
         </div>
 
-        <CollapsibleContent>
+        <CollapsibleContent className="pt-4">
           <div className="space-y-4">
             {/* Header numbers - CaloriesCard style grid */}
             {hasEntriesForDate && (
@@ -335,7 +361,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
                   </Button>
                 </div>
                 <p className="text-sm font-medium text-violet-900 dark:text-violet-100 mb-1">
-                  {currentPrompt.question}
+                  {customPrompt || currentPrompt.question}
                 </p>
                 {currentPrompt.followUp && (
                   <p className="text-xs text-violet-600 dark:text-violet-400">
