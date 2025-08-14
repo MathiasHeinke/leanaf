@@ -6000,6 +6000,13 @@ export type Database = {
         }
         Relationships: []
       }
+      v_missing_summaries_tz: {
+        Row: {
+          date: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       v_momentum_meals_compat: {
         Row: {
           carbs: number | null
@@ -6389,6 +6396,10 @@ export type Database = {
       }
       get_day_context: {
         Args: { p_day: string; p_user: string }
+        Returns: Json
+      }
+      get_day_context_tz: {
+        Args: { p_day: string; p_timezone?: string; p_user: string }
         Returns: Json
       }
       get_next_entry_sequence: {

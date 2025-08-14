@@ -24,13 +24,14 @@ serve(async (req) => {
   try {
     console.log("🚀 Starting daily summaries generation...");
 
-    // Check for force header
+    // Check for force header and timezone
     const force = req.headers.get("x-force") === "true";
-    console.log(`🔧 Force mode: ${force}`);
+    const userTimezone = req.headers.get("x-user-timezone") || "Europe/Berlin";
+    console.log(`🔧 Force mode: ${force}, Timezone: ${userTimezone}`);
 
-    // Get all missing summaries from the last 30 days
+    // Get all missing summaries from the last 30 days using timezone-aware view
     const { data: missingDays, error: fetchError } = await supabase
-      .from("v_missing_summaries")
+      .from("v_missing_summaries_tz")
       .select("*");
 
     if (fetchError) {
@@ -68,11 +69,12 @@ serve(async (req) => {
           }
         }
 
-        // Get complete day context using our new RPC function
+        // Get complete day context using timezone-aware RPC function
         const { data: dayContext, error: contextError } = await supabase
-          .rpc("get_day_context", { 
+          .rpc("get_day_context_tz", { 
             p_user: row.user_id, 
-            p_day: row.date 
+            p_day: row.date,
+            p_timezone: userTimezone
           });
 
         if (contextError) {

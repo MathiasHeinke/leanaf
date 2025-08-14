@@ -24,6 +24,13 @@ export const setUserTimezone = (timezone: string): void => {
  */
 export const getCurrentDateString = (): string => {
   const timezone = getUserTimezone();
+  return getCurrentDateInTimezone(timezone);
+};
+
+/**
+ * Get current date in specific timezone as YYYY-MM-DD string
+ */
+export const getCurrentDateInTimezone = (timezone: string): string => {
   const now = new Date();
   
   // Convert to user timezone and format as YYYY-MM-DD

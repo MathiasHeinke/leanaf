@@ -17,7 +17,7 @@ serve(async (req) => {
   try {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    const { userId, startDate, endDate } = await req.json();
+    const { userId, startDate, endDate, timezone = 'Europe/Berlin' } = await req.json();
 
     if (!userId) {
       throw new Error('User ID is required');

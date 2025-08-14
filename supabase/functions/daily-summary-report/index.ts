@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const { userId, days = 14 }: ReportRequest = await req.json()
+    const { userId, days = 14, timezone = 'Europe/Berlin' }: ReportRequest & { timezone?: string } = await req.json()
     if (!userId) {
       return new Response(JSON.stringify({ error: 'userId is required' }), {
         status: 400,
@@ -37,12 +37,20 @@ Deno.serve(async (req) => {
       })
     }
 
-    const end = new Date()
+    // Generate dates in user's timezone
     const dates: string[] = []
     for (let i = 0; i < days; i++) {
-      const d = new Date(end)
-      d.setDate(d.getDate() - i)
-      dates.push(d.toISOString().slice(0, 10))
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      
+      // Format in user's timezone
+      const formatter = new Intl.DateTimeFormat('sv-SE', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      })
+      dates.push(formatter.format(date))
     }
 
     const startDate = dates[dates.length - 1]
