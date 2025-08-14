@@ -71,6 +71,12 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
 
   const bars: [any, any, any, any] = [
     {
+      key: "C" as const,
+      value: totalCalories + fluidCalories,
+      target: caloriesGoal
+      // No gradient specified - will use anthrazit default
+    },
+    {
       key: "P" as const,
       value: totalProtein,
       target: proteinGoal,
@@ -87,12 +93,6 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
       value: totalFats,
       target: fatsGoal,
       gradient: ["#f59e0b", "#ef4444"] as [string, string]
-    },
-    {
-      key: "C" as const,
-      value: totalCalories + fluidCalories,
-      target: caloriesGoal
-      // No gradient specified - will use anthrazit default
     }
   ];
 
