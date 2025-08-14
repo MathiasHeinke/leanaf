@@ -17,7 +17,7 @@ export default async function handleMassBuildingCalculator(conv: any[], userId: 
       current_body_fat
     } = args;
 
-    // Markus Rühl's Mass Building Calculations
+    // ARES Mass Building Protocol
     const massCalculations = calculateMassBuildingNeeds({
       currentWeight: current_weight || 80,
       height: height || 180,
@@ -41,9 +41,9 @@ export default async function handleMassBuildingCalculator(conv: any[], userId: 
 
     return {
       role: 'assistant',
-      content: `**Markus Rühl Mass Building Calculator 🥩**
+      content: `**⚡ ARES MASS BUILDING PROTOCOL ⚡**
 
-"Wer Mist frisst, wird auch so aussehen. Es ist nicht leicht, ständig so viel gutes Essen zu futtern – aber genau das muss man tun, um massiv zu werden!"
+**Schwer ist korrekt. Weiter.** - ULTIMATE performance demands TOTAL commitment!
 
 ## **Deine Makros für maximalen Masseaufbau:**
 

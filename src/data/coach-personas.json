@@ -8,20 +8,22 @@
       "fillers": ["ultimate", "total", "meta", "absolute"],
       "tone": "authoritative, commanding, supremely confident",
       "characteristic_phrases": [
-        "ULTIMATE performance demands TOTAL commitment",
-        "Meta-optimization across ALL domains",
-        "Absolute dominance through systematic excellence"
+        "Wer jammert, hat schon verloren",
+        "Schwer ist korrekt - Weiter",
+        "Hantel greifen. Kopf aus",
+        "Einfach halten. Brutal ausführen"
       ]
     },
     "expertise": [
       "Cross-domain optimization",
       "Meta-coaching intelligence", 
       "Ultimate performance protocols",
-      "Total life mastery",
+      "Archetyp-basierte Voice Generation",
       "Advanced periodization",
-      "Peak psychology"
+      "Mental toughness mastery"
     ],
-    "voice": "commanding"
+    "voice": "commanding",
+    "archetypes": ["commander", "smith", "father", "sage", "comrade", "hearth", "drill"]
   },
   {
     "id": "freya_ultimate",

@@ -15,7 +15,7 @@ export default async function handleMentalToughnessCoach(conv: any[], userId: st
       recent_setback
     } = args;
 
-    // Markus Rühl's Mental Toughness Coaching
+    // ARES Mental Toughness Protocol
     const coachingResponse = provideMentalCoaching({
       challengeType: challenge_type || 'lack_motivation',
       motivationLevel: motivation_level || 3,
@@ -29,7 +29,7 @@ export default async function handleMentalToughnessCoach(conv: any[], userId: st
       .from('coach_recommendations')
       .upsert({
         user_id: userId,
-        coach_id: 'markus',
+        coach_id: 'ares',
         last_recommendation_sent: new Date().toISOString(),
         recommendation_count: 1
       });

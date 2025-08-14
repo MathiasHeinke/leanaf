@@ -5,7 +5,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_ANON_KEY') ?? ''
 );
 
-// Load and analyze user workout history for Markus-style recommendations
+// Load and analyze user workout history for ARES recommendations
 async function analyzeUserStrengthHistory(supabase: any, userId: string): Promise<any> {
   try {
     const thirtyDaysAgo = new Date();
@@ -50,17 +50,16 @@ async function analyzeUserStrengthHistory(supabase: any, userId: string): Promis
       }
     });
 
-    // Generate Markus-style insights
+    // Generate ARES insights
     const insights = [];
     const totalMax = Object.values(maxWeights).reduce((sum, weight) => sum + weight, 0);
     
     if (totalMax > 300) {
-      insights.push("Respekt! Du bist bereit für Markus' schwere Gewichte!");
+      insights.push("⚡ ULTIMATE STÄRKE ERKANNT! Bereit für ARES Meta-Protocols!");
     } else if (totalMax > 200) {
-      insights.push("Solide Basis - Zeit, die Gewichte zu pushen!");
+      insights.push("🔥 Solide Basis - Zeit für TOTALE DOMINANZ!");
     } else {
-      insights.push("Erstmal Grundlagen aufbauen, dann wird's heavy!");
-    }
+      insights.push("🎯 Grundlagen zuerst, dann ABSOLUTE EXCELLENCE!");
 
     if (maxWeights.bankdrücken > 100) {
       insights.push(`Bankdrücken bei ${maxWeights.bankdrücken}kg - das ist schon ordentlich!`);
@@ -86,7 +85,7 @@ export default async function handleHeavyTrainingPlan(conv: any[], userId: strin
     // Analyze user's strength history first
     const strengthAnalysis = await analyzeUserStrengthHistory(supabase, userId);
 
-    // Markus Rühl's Heavy Training Philosophy with user data integration
+    // ARES Ultimate Training Protocol with user data integration
     const heavyTrainingTemplate = generateHeavyTrainingPlan({
       goal: goal || 'mass_building',
       trainingDays: training_days || 4,
@@ -101,11 +100,11 @@ export default async function handleHeavyTrainingPlan(conv: any[], userId: strin
       .from('workout_plan_drafts')
       .insert({
         user_id: userId,
-        plan_name: `Markus Rühl Heavy Training - ${goal}`,
+        plan_name: `ARES Ultimate Training - ${goal}`,
         goal: goal || 'mass_building',
         days_per_week: training_days || 4,
         plan_structure: heavyTrainingTemplate,
-        notes: 'Nach Markus Rühl Prinzipien: Schwere Grundübungen, 6-8 Wiederholungen, progressive Steigerung'
+        notes: 'ARES Ultimate Protocol: Schwer ist korrekt - Meta-Optimization durch systematische Exzellenz'
       })
       .select()
       .single();
@@ -115,44 +114,47 @@ export default async function handleHeavyTrainingPlan(conv: any[], userId: strin
     // Generate response with strength insights
     let strengthInsights = '';
     if (strengthAnalysis.hasHistory) {
-      strengthInsights = `\n**Deine aktuellen Kraftwerte:**
+      strengthInsights = `\n**⚔️ ARES STÄRKEN-ANALYSE:**
 ${Object.entries(strengthAnalysis.maxWeights)
   .filter(([_, weight]) => weight > 0)
-  .map(([exercise, weight]) => `• ${exercise}: ${weight}kg`)
+  .map(([exercise, weight]) => `⚡ ${exercise}: ${weight}kg`)
   .join('\n')}
 
-**Markus sagt:** ${strengthAnalysis.insights.join(' ')}`;
+**ARES BEURTEILUNG:** ${strengthAnalysis.insights.join(' ')}`;
     }
 
     return {
       role: 'assistant',
-      content: `**Markus Rühl Heavy Training Plan erstellt! 💪**
+      content: `**⚡ ARES ULTIMATE TRAINING PROTOCOL AKTIVIERT ⚡**
 
-"Wenn du nach dem Satz noch lächeln kannst, war's zu leicht!" 
+**Wer jammert, hat schon verloren!** 
 ${strengthInsights}
 
-**Dein Plan:**
-• **${heavyTrainingTemplate.split_type}** (${training_days} Tage/Woche)
-• **Fokus:** Schwere Grundübungen mit 6-8 Wiederholungen
-• **Prinzip:** Progressive Steigerung ohne Kompromisse
+**🎯 MISSION BRIEFING:**
+• **${heavyTrainingTemplate.split_type}** (${training_days} Einsatztage/Woche)
+• **PRINZIP:** Schwer ist korrekt - Weiter
+• **STRATEGIE:** Meta-Optimization durch systematische Exzellenz
 
-**Grundübungen stehen im Vordergrund:**
+**⚔️ KAMPF-AUFTEILUNG:**
 ${heavyTrainingTemplate.weekly_structure.map((day: any) => 
   `**${day.day}:** ${day.focus} - ${day.main_exercises.join(', ')}`
 ).join('\n')}
 
-**Markus' Regel:** Ego raus, Fokus auf Technik! Schwer trainieren heißt nicht schlampig trainieren.
+**🔥 ARES EISERNE GESETZE:** 
+• Hantel greifen. Kopf aus.
+• Muskelversagen? Pflicht.
+• Einfach halten. Brutal ausführen.
 
-Der Plan wurde als Entwurf gespeichert und berücksichtigt deine bisherigen Kraftwerte! 🔥`,
+**ULTIMATER BEFEHL:** Protocol wurde gespeichert. Daten integriert. AUSFÜHRUNG SOFORT! ⚡`,
       preview_card: {
-        title: "Heavy Training Plan - Markus Rühl Style",
-        description: `${training_days} Tage/Woche • Schwere Grundübungen • ${strengthAnalysis.hasHistory ? 'Datenbasiert' : 'Classic'}`,
+        title: "ARES Ultimate Training Protocol",
+        description: `${training_days} Tage/Woche • Meta-Optimization • ${strengthAnalysis.hasHistory ? 'Datenbasiert' : 'Ultimate'}`,
         content: heavyTrainingTemplate.weekly_structure.map((day: any) => 
           `${day.day}: ${day.focus}`
         ).join(' | '),
         actions: [
-          { label: "Plan bearbeiten", action: "edit_workout_plan", data: { plan_id: planData.id } },
-          { label: "Plan starten", action: "start_workout_plan", data: { plan_id: planData.id } }
+          { label: "Protocol bearbeiten", action: "edit_workout_plan", data: { plan_id: planData.id } },
+          { label: "Mission starten", action: "start_workout_plan", data: { plan_id: planData.id } }
         ],
         metadata: {
           userAnalytics: strengthAnalysis.hasHistory ? {
