@@ -8,8 +8,9 @@ type Bar = {
 };
 
 type Halo = {
-  label: string;         // "WASSER" | "SCHRITTE"
-  value: string;         // "2.5L" | "8.0k"
+  label: string;         // "WASSER" | "SCHRITTE" | "SUPPLEMENTS"
+  value: string;         // "2.5L" | "8.0k" | "3/5"
+  detailValue: string;   // "1.5/2.0L" | "7200/12000" | "3/5"
   progress: number;      // 0..1
   gradient: [string, string];
   track?: string;
@@ -20,15 +21,20 @@ type Props = {
   bars: [Bar, Bar, Bar, Bar];       // Reihenfolge auf UI
   waterHalo: Halo;                  // Wasser-Ring
   stepsHalo: Halo;                  // Schritte-Ring
+  supplementsHalo: Halo;            // Supplements-Ring
 };
 
-function HaloMeter({ label, value, progress, gradient, track = "rgba(0,0,0,0.08)", icon }: Halo) {
-  const R = 32, SW = 6, C = 2 * Math.PI * R, dash = C * Math.max(0, Math.min(1, progress));
+function HaloMeter({ label, value, detailValue, progress, gradient, track = "rgba(0,0,0,0.08)", icon }: Halo) {
+  const [showDetail, setShowDetail] = React.useState(false);
+  const R = 32, SW = 9, C = 2 * Math.PI * R, dash = C * Math.max(0, Math.min(1, progress));
   const id = `grad-${label.replace(/\s+/g, "")}`;
   const percentage = Math.round(progress * 100);
   
   return (
-    <div className="rounded-2xl p-3 bg-white/70 dark:bg-white/5 flex flex-col items-center gap-2">
+    <div 
+      className="rounded-2xl p-3 bg-white/70 dark:bg-white/5 flex flex-col items-center gap-2 cursor-pointer hover:bg-white/80 dark:hover:bg-white/10 transition-colors duration-200"
+      onClick={() => setShowDetail(!showDetail)}
+    >
       <svg width={76} height={76} className="shrink-0">
         <defs>
           <linearGradient id={id} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -56,12 +62,14 @@ function HaloMeter({ label, value, progress, gradient, track = "rgba(0,0,0,0.08)
           )}
         </g>
       </svg>
-      <div className="text-sm font-semibold text-zinc-600 dark:text-zinc-400">{percentage}%</div>
+      <div className="text-sm font-semibold text-zinc-600 dark:text-zinc-400 transition-all duration-200 text-center min-h-[20px]">
+        {showDetail ? detailValue : `${percentage}%`}
+      </div>
     </div>
   );
 }
 
-export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo }: Props) {
+export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, supplementsHalo }: Props) {
   return (
     <section className="rounded-3xl p-4 sm:p-5 bg-white/80 dark:bg-[#0b0f14] shadow-[0_10px_30px_rgba(0,0,0,.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,.45)] backdrop-blur">
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -100,24 +108,24 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo }: Props)
 
             return (
               <div key={b.key} className="flex flex-col items-center w-full">
-                <div className="relative w-12 sm:w-14 h-40 sm:h-48 rounded-2xl overflow-hidden bg-zinc-200/70 dark:bg-white/10 border border-black/5 dark:border-white/5">
+                <div className="relative w-12 sm:w-14 h-40 sm:h-48 rounded-2xl overflow-hidden bg-gradient-to-b from-white/20 to-white/5 dark:from-white/8 dark:to-white/3 border border-white/20 dark:border-white/10 backdrop-blur-sm">
                   {/* Target line at 80% (4/5) height */}
                   <div 
                     className="absolute left-0 right-0 h-[1px] bg-zinc-400/50 dark:bg-zinc-500/50"
                     style={{ top: `${100 - targetLinePosition}%` }}
                   />
                   
-                  {/* Target value text */}
-                  <div 
-                    className={`absolute left-1/2 transform -translate-x-1/2 text-[10px] font-medium transition-colors duration-300 ${
-                      textOverlapped 
-                        ? 'text-white' 
-                        : 'text-zinc-500 dark:text-zinc-400'
-                    }`}
-                    style={{ top: `${100 - targetLinePosition + 2}%` }}
-                  >
-                    {formatTarget(b.key, b.target)}
-                  </div>
+                   {/* Target value text */}
+                   <div 
+                     className={`absolute left-1/2 transform -translate-x-1/2 text-[10px] font-medium transition-colors duration-300 z-10 ${
+                       textOverlapped 
+                         ? 'text-white' 
+                         : 'text-zinc-500 dark:text-zinc-400'
+                     }`}
+                     style={{ top: `${100 - targetLinePosition + 2}%` }}
+                   >
+                     {formatTarget(b.key, b.target)}
+                   </div>
                   
                   {/* Fill - can exceed 100% */}
                   <div
@@ -157,10 +165,11 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo }: Props)
           })}
         </div>
 
-        {/* RIGHT: Wasser & Schritte Halos */}
-        <div className="md:col-span-5 grid grid-cols-2 gap-3">
+        {/* RIGHT: Wasser, Schritte & Supplements Halos */}
+        <div className="md:col-span-5 grid grid-cols-3 gap-2">
           <HaloMeter {...waterHalo} />
           <HaloMeter {...stepsHalo} />
+          <HaloMeter {...supplementsHalo} />
         </div>
       </div>
     </section>

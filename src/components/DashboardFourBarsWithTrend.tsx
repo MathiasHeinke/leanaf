@@ -1,6 +1,7 @@
 import React from "react";
 import FourBarsWithTrend from "./FourBarsWithTrend";
-import { Droplet, Footprints } from "lucide-react";
+import { Droplet, Footprints, Pill } from "lucide-react";
+import { useSupplementData } from "@/hooks/useSupplementData";
 
 interface Props {
   meals: any[];
@@ -15,6 +16,7 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   todaysFluids,
   todaysWorkout
 }) => {
+  const { groupedSupplements } = useSupplementData();
 
   // Calculate current macro values from meals
   const totalCalories = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
@@ -46,14 +48,26 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const stepsGoal = dailyGoals?.steps_goal || 10000;
   const stepsProgress = Math.min(todaysSteps / stepsGoal, 1);
 
+  // Calculate supplements
+  const totalSupplements = Object.values(groupedSupplements).reduce((total, group) => total + group.total, 0);
+  const takenSupplements = Object.values(groupedSupplements).reduce((total, group) => total + group.taken, 0);
+  const supplementsProgress = totalSupplements > 0 ? takenSupplements / totalSupplements : 0;
+
   // Format values
   const formatFluid = (ml: number) => `${(ml / 1000).toFixed(1)}L`;
+  const formatFluidDetail = (current: number, goal: number) => `${(current / 1000).toFixed(1)}/${(goal / 1000).toFixed(1)}L`;
   const formatSteps = (steps: number) => {
     if (steps >= 1000) {
       return `${(steps / 1000).toFixed(1)}k`;
     }
     return steps.toString();
   };
+  const formatStepsDetail = (current: number, goal: number) => {
+    const formatNumber = (num: number) => num >= 1000 ? `${(num / 1000).toFixed(1)}k` : num.toString();
+    return `${formatNumber(current)}/${formatNumber(goal)}`;
+  };
+  const formatSupplements = (taken: number, total: number) => `${taken}/${total}`;
+  const formatSupplementsDetail = (taken: number, total: number) => `${taken}/${total}`;
 
   const bars: [any, any, any, any] = [
     {
@@ -88,6 +102,7 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
       waterHalo={{
         label: "WASSER",
         value: formatFluid(totalFluidMl),
+        detailValue: formatFluidDetail(totalFluidMl, fluidGoalMl),
         progress: fluidProgress,
         gradient: ["#67e8f9", "#3b82f6"],
         track: "rgba(59,130,246,0.15)",
@@ -96,10 +111,20 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
       stepsHalo={{
         label: "SCHRITTE",
         value: formatSteps(todaysSteps),
+        detailValue: formatStepsDetail(todaysSteps, stepsGoal),
         progress: stepsProgress,
         gradient: ["#fb923c", "#ef4444"],
         track: "rgba(239,68,68,0.15)",
         icon: <Footprints size={16} />,
+      }}
+      supplementsHalo={{
+        label: "SUPPLEMENTS",
+        value: formatSupplements(takenSupplements, totalSupplements),
+        detailValue: formatSupplementsDetail(takenSupplements, totalSupplements),
+        progress: supplementsProgress,
+        gradient: ["#a855f7", "#7c3aed"],
+        track: "rgba(168,85,247,0.15)",
+        icon: <Pill size={16} />,
       }}
     />
   );
