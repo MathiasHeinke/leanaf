@@ -788,8 +788,8 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
             </div>
             
             {/* Smart Chips - always show */}
-            <div className="flex flex-wrap gap-1 mt-2">
-              {smartChips.map((chip, index) => (
+            <div className="flex gap-1 mt-2 overflow-hidden">
+              {smartChips.slice(0, 3).map((chip, index) => (
                 <SmartChip
                   key={index}
                   variant="fluid"
@@ -806,8 +806,8 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
         <CollapsibleContent>
           <div className="pt-4 space-y-6">
             {/* Smart Chips - always show when expanded */}
-            <div className="flex flex-wrap gap-1">
-              {smartChips.map((chip, index) => (
+            <div className="flex gap-1 overflow-hidden">
+              {smartChips.slice(0, 3).map((chip, index) => (
                 <SmartChip
                   key={index}
                   variant="fluid"
