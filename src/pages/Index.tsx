@@ -14,7 +14,7 @@ import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
 import { QuickFluidInput } from "@/components/QuickFluidInput";
 import { QuickMindsetInput } from "@/components/QuickMindsetInput";
-// Removed: QuickMeasurementsCard - migrated functionality to standalone components
+import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { MealConfirmationDialog } from "@/components/MealConfirmationDialog";
@@ -637,8 +637,14 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           </SortableCard>
         );
       case 'measurements':
-        // Measurements functionality removed - was part of Momentum
-        return null;
+        return (
+          <SortableCard key="measurements" id="measurements">
+            <BodyMeasurements 
+              onMeasurementsAdded={() => loadTodaysData(currentDate)}
+              todaysMeasurements={todaysMeasurements}
+            />
+          </SortableCard>
+        );
       case 'supplements':
         return (
           <SortableCard key="supplements" id="supplements">
