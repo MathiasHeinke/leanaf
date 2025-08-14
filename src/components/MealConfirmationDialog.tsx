@@ -358,9 +358,6 @@ export const MealConfirmationDialog = ({
       <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-md border border-border/50 shadow-2xl z-[9999]">
         <AlertDialogHeader>
           <AlertDialogTitle>{t('meal.confirm')}</AlertDialogTitle>
-          <AlertDialogDescription>
-            Bitte prüfe und bestätige die Nährwerte.
-          </AlertDialogDescription>
           
           {confidence === 'low' && (
             <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
@@ -451,7 +448,6 @@ export const MealConfirmationDialog = ({
         
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="title">{t('meal.title')}</Label>
             <Input
               id="title"
               value={editableValues.title}
@@ -461,10 +457,7 @@ export const MealConfirmationDialog = ({
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{t('meal.nutrition')}</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="calories">{t('meal.calories')}</Label>
