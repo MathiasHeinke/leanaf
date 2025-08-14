@@ -81,6 +81,9 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, suppleme
             const percentage = Math.round(actualRatio * 100);
             const isOverTarget = actualRatio > 1;
             
+            // Debug logging for red bar issue
+            console.log(`Bar ${b.key}: value=${b.value}, target=${b.target}, ratio=${actualRatio}, isOverTarget=${isOverTarget}`);
+            
             // Target line position at 80% height (4/5)
             const targetLinePosition = 80;
             

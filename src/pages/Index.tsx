@@ -707,6 +707,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           dailyGoals={dailyGoals}
           todaysFluids={todaysFluids}
           todaysWorkout={todaysWorkout}
+          currentDate={currentDate}
         />
 
         <div

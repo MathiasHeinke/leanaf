@@ -8,15 +8,17 @@ interface Props {
   dailyGoals: any;
   todaysFluids: any[];
   todaysWorkout: any;
+  currentDate?: Date;
 }
 
 export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   meals,
   dailyGoals,
   todaysFluids,
-  todaysWorkout
+  todaysWorkout,
+  currentDate
 }) => {
-  const { groupedSupplements, totalScheduled, totalTaken, completionPercent } = useSupplementData();
+  const { groupedSupplements, totalScheduled, totalTaken, completionPercent } = useSupplementData(currentDate);
   
   // Debug logs for supplement data
   console.log('Supplement Debug:', {
