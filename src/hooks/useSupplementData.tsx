@@ -110,10 +110,12 @@ export const useSupplementData = (currentDate?: Date) => {
   const [error, setError] = useState<string | null>(null);
 
   const loadSupplementData = async () => {
+    const dateStr = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
     console.log('🔄 useSupplementData: Starting data load', {
       hasUser: !!user,
       userId: user?.id,
-      currentDate: currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString()
+      currentDate: dateStr,
+      rawCurrentDate: currentDate
     });
     
     if (!user) {
