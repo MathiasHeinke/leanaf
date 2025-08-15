@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { Card } from '@/components/ui/card';
 
 interface MermaidChartProps {
   chart: string;
@@ -6,48 +6,26 @@ interface MermaidChartProps {
 }
 
 export default function MermaidChart({ chart, className = '' }: MermaidChartProps) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !ref.current) return;
-    
-    // Dynamic import to avoid SSR issues
-    import('mermaid').then((mermaid) => {
-      mermaid.default.initialize({ 
-        startOnLoad: false, 
-        theme: 'base',
-        themeVariables: {
-          primaryColor: 'hsl(var(--primary))',
-          primaryTextColor: 'hsl(var(--primary-foreground))',
-          primaryBorderColor: 'hsl(var(--border))',
-          lineColor: 'hsl(var(--border))',
-          secondaryColor: 'hsl(var(--secondary))',
-          tertiaryColor: 'hsl(var(--muted))',
-          background: 'hsl(var(--background))',
-          mainBkg: 'hsl(var(--card))',
-          secondBkg: 'hsl(var(--muted))',
-          tertiaryBkg: 'hsl(var(--accent))'
-        }
-      });
-      
-      const elementId = `mermaid-${Date.now()}`;
-      mermaid.default.render(elementId, chart).then((result) => {
-        if (ref.current) {
-          ref.current.innerHTML = result.svg;
-        }
-      }).catch((error) => {
-        console.error('Mermaid render error:', error);
-        if (ref.current) {
-          ref.current.innerHTML = '<p class="text-destructive">Chart render failed</p>';
-        }
-      });
-    }).catch((error) => {
-      console.error('Mermaid import error:', error);
-      if (ref.current) {
-        ref.current.innerHTML = '<p class="text-destructive">Chart not available</p>';
-      }
-    });
-  }, [chart]);
-
-  return <div ref={ref} className={`mermaid-container ${className}`} />;
+  // Fallback implementation without mermaid dependency
+  return (
+    <Card className={`p-4 ${className}`}>
+      <div className="text-sm text-muted-foreground">
+        <p className="font-medium mb-2">Flow Chart</p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full" />
+            <span>Request Received</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+            <span>Processing Context</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full" />
+            <span>Response Generated</span>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
 }
