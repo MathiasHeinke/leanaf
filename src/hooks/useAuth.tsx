@@ -61,8 +61,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Redirecting user to home...', user.id);
       console.log('Preview mode:', isPreviewMode);
       
-      // Start premium trial for new users (but don't block navigation on it)
-      await startPremiumTrialForNewUser(user.id);
+      // Premium trial disabled for Lean AI
+      // await startPremiumTrialForNewUser(user.id);
       
       // Always redirect to home - no forced profile redirect
       console.log('Redirecting to home...');

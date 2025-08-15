@@ -121,7 +121,7 @@ export const TrackingPreferences = () => {
 
         const { data, error } = await supabase
           .from('user_tracking_preferences')
-          .insert([prefData]) // Single item in array
+          .upsert(prefData, { onConflict: 'user_id,tracking_type' })
           .select()
           .single();
 

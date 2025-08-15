@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/schemas/user-profile';
-import { AresProfileLoader } from '@/utils/aresProfileLoader';
+
 
 interface ProfilesData {
   id: string;
@@ -42,66 +42,49 @@ export const useUserProfile = () => {
       return;
     }
 
-    // PHASE 2: Session Context Validation
-    if (!AresProfileLoader.validateSession(user, session)) {
-      console.error('❌ Invalid session context detected');
-      setError('🚨 Invalid session context - Please refresh page');
-      setIsLoading(false);
-      return;
-    }
+    // Session context OK - direct profile loading
 
     try {
       setIsLoading(true);
       setError(null);
       
-      console.log('🎯 ARES Profile Loading Service starting...', {
+      console.log('🎯 Profile loading starting...', {
         userId: user.id,
-        email: user.email,
-        hasAccessToken: !!session.access_token,
-        sessionUserId: session.user?.id,
-        sessionMatch: user.id === session.user?.id
+        email: user.email
       });
       
-      // PHASE 3: Use ARES Profile Loading Service
-      const result = await AresProfileLoader.loadUserProfile(
-        user.id,
-        session.access_token,
-        3 // maxRetries
-      );
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
       
-      if (result.error) {
-        console.error('❌ ARES Profile Loading failed:', {
-          error: result.error,
-          isRLSBlocked: result.isRLSBlocked,
-          attemptsMade: result.attemptsMade
-        });
-        setError(result.error);
+      if (error) {
+        console.error('❌ Profile load failed:', error);
+        setError(error.message);
         setProfileData(null);
         return;
       }
       
-      // Check if this is first app start (no profile exists)
-      if (!result.data) {
+      if (!data) {
         setIsFirstAppStart(true);
         console.log('🚀 First app start detected - no profile exists for user:', user.email);
+        setProfileData(null);
       } else {
         setIsFirstAppStart(false);
-        console.log('✅ ARES Profile loaded successfully for user:', user.email, { 
-          profile_id: result.data.id,
-          display_name: result.data.display_name,
-          weight: result.data.weight, 
-          height: result.data.height, 
-          age: result.data.age, 
-          gender: result.data.gender,
-          goal: result.data.goal,
-          isRLSBlocked: result.isRLSBlocked,
-          attemptsMade: result.attemptsMade
+        console.log('✅ Profile loaded successfully for user:', user.email, { 
+          profile_id: data.id,
+          display_name: data.display_name,
+          weight: data.weight, 
+          height: data.height, 
+          age: data.age, 
+          gender: data.gender,
+          goal: data.goal
         });
+        setProfileData(data as ProfilesData);
       }
-      
-      setProfileData(result.data as ProfilesData);
     } catch (err) {
-      console.error('🚨 Unexpected ARES Profile Loading Error:', err);
+      console.error('🚨 Unexpected Profile Loading Error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unexpected error occurred';
       setError(`❌ Unexpected error: ${errorMessage}`);
       setProfileData(null);
@@ -113,10 +96,10 @@ export const useUserProfile = () => {
   // PHASE 6: Session-Synchronized Profile Loading
   useEffect(() => {
     if (user && session && isSessionReady) {
-      console.log('🚀 ARES Profile Loading triggered by complete session');
+      console.log('🚀 Profile loading triggered by complete session');
       fetchProfile();
     } else {
-      console.log('⏳ ARES waiting for complete auth session...', {
+      console.log('⏳ Waiting for complete auth session...', {
         hasUser: !!user,
         hasSession: !!session,
         isSessionReady

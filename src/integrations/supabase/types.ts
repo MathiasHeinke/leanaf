@@ -6393,7 +6393,9 @@ export type Database = {
         Returns: Json
       }
       current_user_has_role: {
-        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Args:
+          | { _role: Database["public"]["Enums"]["app_role"] }
+          | { _role: string }
         Returns: boolean
       }
       days_in_month: {
