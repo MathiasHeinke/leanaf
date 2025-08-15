@@ -29,6 +29,7 @@ export const useUserProfile = () => {
 
   const fetchProfile = async (retryCount = 0) => {
     if (!user) {
+      console.log('❌ No authenticated user, clearing profile data');
       setProfileData(null);
       setIsLoading(false);
       return;
@@ -39,6 +40,7 @@ export const useUserProfile = () => {
       setError(null);
       
       console.log(`🔄 Fetching profile for user ${user.id} (attempt ${retryCount + 1})`);
+      console.log(`📧 User email: ${user.email}`);
       
       const { data, error } = await supabase
         .from('profiles')
@@ -47,35 +49,41 @@ export const useUserProfile = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('Profile fetch error:', error);
+        console.error('❌ Profile fetch error:', error);
         throw error;
       }
       
       // Check if this is first app start (no profile exists)
       if (!data) {
         setIsFirstAppStart(true);
-        console.log('🚀 First app start detected - no profile exists');
+        console.log('🚀 First app start detected - no profile exists for user:', user.email);
       } else {
-        console.log('✅ Profile loaded successfully:', { 
+        setIsFirstAppStart(false);
+        console.log('✅ Profile loaded successfully for user:', user.email, { 
+          profile_id: data.id,
+          display_name: data.display_name,
           weight: data.weight, 
           height: data.height, 
           age: data.age, 
-          gender: data.gender 
+          gender: data.gender,
+          goal: data.goal
         });
       }
       
       setProfileData(data as ProfilesData);
     } catch (err) {
-      console.error('Error fetching user profile:', err);
+      console.error('❌ Error fetching user profile:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile';
       
-      // Retry once on failure
-      if (retryCount < 1) {
-        console.log('🔄 Retrying profile fetch...');
-        setTimeout(() => fetchProfile(retryCount + 1), 1000);
+      // Enhanced retry with exponential backoff
+      if (retryCount < 2) {
+        const retryDelay = Math.pow(2, retryCount) * 1000; // 1s, 2s
+        console.log(`🔄 Retrying profile fetch in ${retryDelay}ms...`);
+        setTimeout(() => fetchProfile(retryCount + 1), retryDelay);
         return;
       }
       
+      console.error('❌ Profile fetch failed after all retries');
       setError(errorMessage);
       setProfileData(null);
     } finally {

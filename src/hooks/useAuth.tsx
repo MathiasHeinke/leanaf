@@ -129,11 +129,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         // Handle different auth events
         if (event === 'SIGNED_IN' && session?.user) {
-          console.log('✅ User signed in successfully');
-          // Always redirect to home after successful login
+          console.log('✅ User signed in successfully:', session.user.email);
+          // Ensure auth state is fully settled before navigation
           timeoutId = setTimeout(() => {
             redirectToHome(session.user);
-          }, 200); // Increased timeout to allow auth state settling
+          }, 500); // Increased timeout for better auth state settling
         }
         
         if (event === 'SIGNED_OUT') {
@@ -170,10 +170,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           // Handle redirect for existing session - only if on auth page
           if (session?.user && window.location.pathname === '/auth') {
-            console.log('🔄 User already logged in, redirecting...');
+            console.log('🔄 User already logged in, redirecting...', session.user.email);
             setTimeout(() => {
               redirectToHome(session.user);
-            }, 200);
+            }, 300); // Slightly longer for existing sessions
           }
         }
       } catch (error) {

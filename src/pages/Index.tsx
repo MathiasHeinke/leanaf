@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { useTrackingPreferences } from "@/hooks/useTrackingPreferences";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
@@ -78,6 +79,14 @@ const Index = () => {
 const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const { t } = useTranslation();
   
+  // CENTRALIZED PROFILE LOADING - Primary source for profile data
+  const { 
+    profileData: userProfile, 
+    isLoading: profileLoading, 
+    error: profileError,
+    refreshProfile 
+  } = useUserProfile();
+  
   // All auth-dependent hooks - AFTER authentication is confirmed
   const { status: creditsStatus } = useCredits();
   const mealInputHook = useGlobalMealInput();
@@ -95,7 +104,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calorieSummary, setCalorieSummary] = useState<{ consumed: number; burned: number }>({ consumed: 0, burned: 0 });
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [dailyGoals, setDailyGoals] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
   
@@ -119,14 +127,15 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'measurements', 'workout', 'supplements', 'fluids', 'mindset'];
   });
 
-  // Load user data - serialize loading to prevent race conditions
+  // Load user data - wait for both user auth AND profile loading
   useEffect(() => {
-    if (user) {
+    if (user && !profileLoading) {
       const initializeUserData = async () => {
-        console.log('🔄 Starting user data initialization...');
+        console.log('🔄 Starting user data initialization after profile loaded...');
+        console.log('📊 Profile data available:', userProfile ? 'Yes' : 'No');
         
-        // First load profile and goals sequentially
-        await loadUserData();
+        // Only load daily goals now - profile comes from useUserProfile
+        await loadDailyGoals();
         
         // Then load points
         await loadUserPoints();
@@ -136,7 +145,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       
       initializeUserData();
     }
-  }, [user]);
+  }, [user, profileLoading, userProfile]);
 
   // Load meals when date changes - only after daily goals are loaded
   useEffect(() => {
@@ -154,25 +163,14 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     }
   }, [todaysFluids, meals]);
 
-  const loadUserData = async () => {
+  const loadDailyGoals = async () => {
     if (!user) return;
     
     setDataLoading(true);
     try {
-      // Load user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.error('Error loading profile:', profileError);
-      } else {
-        setUserProfile(profileData);
-      }
-
-      // Load daily goals
+      console.log('🎯 Loading daily goals for user:', user.id);
+      
+      // Only load daily goals - profile comes from useUserProfile hook
       const { data: goalsData, error: goalsError } = await supabase
         .from('daily_goals')
         .select('*')
@@ -188,15 +186,24 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           fats: 65
         });
       } else {
-        setDailyGoals(goalsData || {
+        const goals = goalsData || {
           calories: 2000,
           protein: 150,
           carbs: 250,
           fats: 65
-        });
+        };
+        setDailyGoals(goals);
+        console.log('✅ Daily goals loaded:', goals);
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error('Error loading daily goals:', error);
+      // Fallback goals
+      setDailyGoals({
+        calories: 2000,
+        protein: 150,
+        carbs: 250,
+        fats: 65
+      });
     } finally {
       setDataLoading(false);
     }
@@ -460,7 +467,10 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     
     // Then reload all data to ensure consistency
     await loadTodaysData(currentDate);
-    await loadUserData();
+    // Refresh profile if needed
+    if (refreshProfile) {
+      refreshProfile();
+    }
   };
 
   const handleWorkoutAdded = async (workoutData?: any) => {
