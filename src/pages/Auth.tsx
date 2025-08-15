@@ -259,8 +259,8 @@ const Auth = () => {
             
             if (data.user) {
               toast.success(t('auth.signInSuccess'));
-              // Force full reload to ensure a clean authenticated state
-              window.location.href = '/';
+              // Use React Router navigation instead of hard reload
+              navigate('/', { replace: true });
             }
             break;
           }

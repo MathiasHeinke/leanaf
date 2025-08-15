@@ -156,11 +156,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Handle different auth events
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in successfully');
-          if (window.location.pathname === '/auth') {
-            // Defer redirect to prevent deadlocks
+          // Only redirect if we're on auth page or initial load
+          const currentPath = window.location.pathname;
+          if (currentPath === '/auth') {
+            // Defer redirect to prevent deadlocks and data loading issues
             timeoutId = setTimeout(() => {
               checkIfNewUserAndRedirect(session.user);
-            }, 200);
+            }, 100);
           }
         }
         
@@ -197,12 +199,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           setUser(session?.user ?? null);
           
-          // Handle redirect for existing session
+          // Handle redirect for existing session - only if on auth page
           if (session?.user && window.location.pathname === '/auth') {
             console.log('🔄 User already logged in, redirecting...');
             setTimeout(() => {
               checkIfNewUserAndRedirect(session.user);
-            }, 200);
+            }, 100);
           }
         }
       } catch (error) {
