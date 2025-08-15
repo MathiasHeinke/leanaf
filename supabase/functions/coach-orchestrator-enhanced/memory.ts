@@ -67,3 +67,59 @@ export async function loadCoachAnalytics7d(supabase: any, userId: string) {
     return {};
   }
 }
+
+// Phase 2: Enhanced context loading for ARES mood integration
+export async function loadUserMoodDataForCoaching(supabase: any, userId: string) {
+  try {
+    console.log('[MEMORY] Loading enhanced mood data for user:', userId);
+    
+    // Get recent journal entries with mood and energy
+    const { data: journalEntries } = await supabase
+      .from('journal_entries')
+      .select('mood_score, energy_level, content, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    
+    // Get cycle assessment data for female users
+    const { data: cycleData } = await supabase
+      .from('cycle_assessments')
+      .select('current_phase, energy_level, mood_assessment, symptoms, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(2);
+    
+    // Get recent workout consistency
+    const { data: workoutConsistency } = await supabase
+      .from('workouts')
+      .select('date, did_workout, workout_type, notes')
+      .eq('user_id', userId)
+      .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+      .order('date', { ascending: false });
+    
+    // Get nutrition quality indicators
+    const { data: nutritionQuality } = await supabase
+      .from('daily_summaries')
+      .select('date, total_calories, macro_distribution, sleep_score, hydration_score')
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .limit(7);
+    
+    return {
+      mood_history: journalEntries || [],
+      cycle_context: cycleData || [],
+      workout_consistency: workoutConsistency || [],
+      nutrition_quality: nutritionQuality || [],
+      loaded_at: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('[MEMORY] Error loading mood data:', error);
+    return {
+      mood_history: [],
+      cycle_context: [],
+      workout_consistency: [],
+      nutrition_quality: [],
+      loaded_at: new Date().toISOString()
+    };
+  }
+}

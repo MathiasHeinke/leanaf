@@ -7,7 +7,9 @@ import { logTraceEvent } from "../telemetry.ts";
 import { loadCoachPersona } from "./persona.ts";
 import { toLucyTone, toAresVoice } from "./tone.ts";
 import { personaPreset } from "./persona.ts";
-import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries } from "./memory.ts";
+import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries, loadUserMoodDataForCoaching } from "./memory.ts";
+import { decideAresDial, loadUserMoodContext, type UserMoodContext } from "./aresDial.ts";
+import { getCurrentRitual, enhanceDialWithRitual, buildRitualContext, getRitualPrompt } from "./ritual.ts";
 import { llmOpenIntake, type Meta } from "./open-intake.ts";
 import { saveShadowState, loadShadowState } from "./shadow-state.ts";
 
@@ -333,12 +335,25 @@ serve(async (req) => {
       );
     }
 
-    // Enhanced persona & memory context with ARES Support
+    // Enhanced persona & memory context with ARES Support + Mood Integration
     const coachId = (event as any)?.context?.coachId ?? 'freya'; // Default to FREYA
     console.log(`[ORCHESTRATOR-${traceId}] Coach ID: ${coachId}, User: ${userId}`);
     
     const persona = await loadCoachPersona(supabase, coachId);
     const memoryHint = await loadRollingSummary(supabase, userId, coachId);
+    
+    // Phase 2 & 3: Load mood context and check for rituals (ARES only)
+    let userMoodContext: UserMoodContext = {};
+    let currentRitual = null;
+    let enhancedMoodData = null;
+    
+    if (coachId === 'ares') {
+      userMoodContext = await loadUserMoodContext(supabase, userId);
+      enhancedMoodData = await loadUserMoodDataForCoaching(supabase, userId);
+      currentRitual = getCurrentRitual();
+      console.log(`[ORCHESTRATOR-${traceId}] ARES mood context loaded:`, userMoodContext);
+      console.log(`[ORCHESTRATOR-${traceId}] Current ritual:`, currentRitual?.type || 'none');
+    }
     
     console.log(`[ORCHESTRATOR-${traceId}] Persona loaded: ${persona?.name || 'unknown'}, Memory: ${memoryHint ? 'present' : 'empty'}`);
     
@@ -431,19 +446,52 @@ serve(async (req) => {
       }
     };
 
-    // Coach-specific tone functions
+    // Phase 1 & 4: Enhanced coach-specific tone functions with dial integration
     const applyCoachTone = (txt: string) => {
       if (coachId === 'ares') {
-        return toAresVoice(String(txt || ''), persona, { memoryHint, addSignOff: false });
+        // Get ARES dial and archetype
+        const userText = event.type === 'TEXT' ? event.text : '';
+        let dialResult = decideAresDial(userMoodContext, userText);
+        
+        // Phase 3: Check for ritual override
+        if (currentRitual) {
+          const enhanced = enhanceDialWithRitual(dialResult.dial, dialResult.archetype);
+          dialResult = { ...dialResult, ...enhanced };
+        }
+        
+        console.log(`[ORCHESTRATOR-${traceId}] ARES dial selected:`, dialResult);
+        
+        // Apply enhanced tone with dial and progress data
+        return toAresVoice(String(txt || ''), persona, { 
+          memoryHint, 
+          addSignOff: false,
+          dial: dialResult.dial,
+          archetype: dialResult.archetype,
+          progressData: enhancedMoodData?.workout_consistency ? {
+            workout_days: enhancedMoodData.workout_consistency.filter((w: any) => w.did_workout).length
+          } : undefined
+        });
       }
       return toLucyTone(String(txt || ''), persona, { memoryHint, addSignOff: false });
     };
     
-    const asCoachMessage = (text: string, traceId: string): OrchestratorReply => ({ 
-      kind: "message", 
-      text: applyCoachTone(text), 
-      traceId 
-    });
+    const asCoachMessage = (text: string, traceId: string): OrchestratorReply => {
+      let finalText = text;
+      
+      // Phase 3: Add ritual context for ARES if in ritual time
+      if (coachId === 'ares' && currentRitual) {
+        const ritualContext = buildRitualContext(enhancedMoodData);
+        if (ritualContext) {
+          finalText = `${ritualContext}\n\n${text}`;
+        }
+      }
+      
+      return {
+        kind: "message",
+        text: applyCoachTone(finalText),
+        traceId
+      };
+    };
 
     // Start timer for server ack measurement
     const t0 = Date.now();
