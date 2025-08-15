@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/schemas/user-profile';
+import { AresProfileLoader } from '@/utils/aresProfileLoader';
 
 interface ProfilesData {
   id: string;
@@ -27,7 +28,7 @@ export const useUserProfile = () => {
   const [isFirstAppStart, setIsFirstAppStart] = useState(false);
   const { user, session, isSessionReady, authDebugInfo } = useAuth();
 
-  const fetchProfile = async (retryCount = 0) => {
+  const fetchProfile = async () => {
     // PHASE 1: Session Validation - Wait for complete auth session
     if (!user || !session || !isSessionReady) {
       console.log('⏳ Waiting for complete auth session...', {
@@ -41,17 +42,19 @@ export const useUserProfile = () => {
       return;
     }
 
-    // PHASE 2: JWT Session Timing - Add delay for JWT settling
-    if (retryCount === 0) {
-      console.log('🔐 JWT Session settling delay (200ms)...');
-      await new Promise(resolve => setTimeout(resolve, 200));
+    // PHASE 2: Session Context Validation
+    if (!AresProfileLoader.validateSession(user, session)) {
+      console.error('❌ Invalid session context detected');
+      setError('🚨 Invalid session context - Please refresh page');
+      setIsLoading(false);
+      return;
     }
 
     try {
       setIsLoading(true);
       setError(null);
       
-      console.log(`🔄 ARES Profile Loading (attempt ${retryCount + 1})`, {
+      console.log('🎯 ARES Profile Loading Service starting...', {
         userId: user.id,
         email: user.email,
         hasAccessToken: !!session.access_token,
@@ -59,68 +62,48 @@ export const useUserProfile = () => {
         sessionMatch: user.id === session.user?.id
       });
       
-      // PHASE 3: RLS-Ready Database Query with Debug
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error('❌ RLS Policy Error detected:', {
-          error: error.message,
-          code: error.code,
-          hint: error.hint,
-          authDebugInfo,
-          retryCount
+      // PHASE 3: Use ARES Profile Loading Service
+      const result = await AresProfileLoader.loadUserProfile(
+        user.id,
+        session.access_token,
+        3 // maxRetries
+      );
+      
+      if (result.error) {
+        console.error('❌ ARES Profile Loading failed:', {
+          error: result.error,
+          isRLSBlocked: result.isRLSBlocked,
+          attemptsMade: result.attemptsMade
         });
-        throw error;
+        setError(result.error);
+        setProfileData(null);
+        return;
       }
       
       // Check if this is first app start (no profile exists)
-      if (!data) {
+      if (!result.data) {
         setIsFirstAppStart(true);
         console.log('🚀 First app start detected - no profile exists for user:', user.email);
       } else {
         setIsFirstAppStart(false);
-        console.log('✅ Profile loaded successfully for user:', user.email, { 
-          profile_id: data.id,
-          display_name: data.display_name,
-          weight: data.weight, 
-          height: data.height, 
-          age: data.age, 
-          gender: data.gender,
-          goal: data.goal
+        console.log('✅ ARES Profile loaded successfully for user:', user.email, { 
+          profile_id: result.data.id,
+          display_name: result.data.display_name,
+          weight: result.data.weight, 
+          height: result.data.height, 
+          age: result.data.age, 
+          gender: result.data.gender,
+          goal: result.data.goal,
+          isRLSBlocked: result.isRLSBlocked,
+          attemptsMade: result.attemptsMade
         });
       }
       
-      setProfileData(data as ProfilesData);
+      setProfileData(result.data as ProfilesData);
     } catch (err) {
-      console.error('🚨 ARES Profile Loading Error:', {
-        error: err,
-        message: err instanceof Error ? err.message : 'Unknown error',
-        retryCount,
-        authDebugInfo,
-        isRLSError: err instanceof Error && err.message.includes('row-level security')
-      });
-      
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile';
-      
-      // PHASE 4: Production-Ready Retry with RLS Detection
-      if (retryCount < 3) { // Increased retries
-        const retryDelay = Math.pow(2, retryCount) * 500; // 500ms, 1s, 2s
-        console.log(`🔄 ARES Retry ${retryCount + 1}/3 in ${retryDelay}ms...`);
-        setTimeout(() => fetchProfile(retryCount + 1), retryDelay);
-        return;
-      }
-      
-      // PHASE 5: RLS Failure Detection & Fallback Strategy
-      if (errorMessage.includes('row-level security') || errorMessage.includes('permission denied')) {
-        console.error('🛡️ RLS Policy blocking access - auth.uid() might be null');
-        setError('🚨 Profile blocked by RLS - Session timing issue detected');
-      } else {
-        setError(`❌ Profile loading failed: ${errorMessage}`);
-      }
+      console.error('🚨 Unexpected ARES Profile Loading Error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Unexpected error occurred';
+      setError(`❌ Unexpected error: ${errorMessage}`);
       setProfileData(null);
     } finally {
       setIsLoading(false);
