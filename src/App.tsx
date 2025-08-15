@@ -51,14 +51,14 @@ const App = () => (
         disableTransitionOnChange={false}
       >
         <TranslationProvider>
-          <AuthProvider>
-            <MealInputProvider>
-                <EnhancedSecurityManager>
-                  <Sonner />
-                  <BrowserRouter>
-                  <SidebarProvider>
-                    <Layout>
-                      <Routes>
+          <BrowserRouter>
+            <AuthProvider>
+              <MealInputProvider>
+                  <EnhancedSecurityManager>
+                    <Sonner />
+                    <SidebarProvider>
+                      <Layout>
+                        <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/account" element={<Account />} />
@@ -90,14 +90,14 @@ const App = () => (
                       <Route path="/subscription" element={<Navigate to="/credits" replace />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </Layout>
-                  </SidebarProvider>
-                </BrowserRouter>
-              </EnhancedSecurityManager>
-            </MealInputProvider>
-          </AuthProvider>
-        </TranslationProvider>
+                       </Routes>
+                     </Layout>
+                   </SidebarProvider>
+                   </EnhancedSecurityManager>
+                 </MealInputProvider>
+               </AuthProvider>
+             </BrowserRouter>
+           </TranslationProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </ErrorBoundary>
