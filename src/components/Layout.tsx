@@ -73,6 +73,7 @@ export const Layout = ({ children }: LayoutProps) => {
           {children}
         </main>
         <Footer />
+        <DebugFloatingButton />
       </div>
     </div>
   );

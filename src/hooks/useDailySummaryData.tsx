@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { dataLogger } from '@/utils/dataLogger';
 
-interface DailySummaryData {
+export interface DailySummaryData {
   date: string;
   displayDate: string;
   totalCalories: number;
