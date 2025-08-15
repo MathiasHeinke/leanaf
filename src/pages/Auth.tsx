@@ -88,15 +88,14 @@ const Auth = () => {
         return;
       }
 
-      // Check for debug mode - Only auto-open if explicitly requested AND not in preview
-      const isPreviewDomain = window.location.hostname.includes('preview--') || window.location.hostname.includes('lovable');
-      if (authLogger.isDebugEnabled() && !isPreviewDomain && window.location.search.includes('openDebug=1')) {
+      // Check for debug mode - Only auto-open if explicitly requested
+      if (authLogger.isDebugEnabled() && window.location.search.includes('openDebug=1')) {
         setShowDebugOverlay(true);
       }
       
-      // Check rate limiting on component mount
+      // Check rate limiting on component mount - NON-BLOCKING
       const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
-      await authLogger.log({ 
+      authLogger.log({ 
         event: 'RATE_LIMIT_CHECK', 
         stage: 'componentMount',
         details: { 
@@ -114,13 +113,13 @@ const Auth = () => {
         
         if (remaining === 0) {
           toast.error(`Zu viele Anmeldeversuche. Bitte warten Sie ${minutesUntilReset} Minuten.`);
-          await logSuspiciousActivity('rate_limit_exceeded', { 
+          logSuspiciousActivity('rate_limit_exceeded', { 
             action: 'auth_attempt',
             client_info: navigator.userAgent,
             remaining_attempts: remaining,
             minutes_until_reset: minutesUntilReset
           });
-          await authLogger.log({ 
+          authLogger.log({ 
             event: 'RATE_LIMIT_EXCEEDED', 
             stage: 'componentMount',
             details: { remaining, minutesUntilReset }
@@ -241,9 +240,9 @@ const Auth = () => {
     
     console.log('🔧 DEBUG: Login attempt started', { email, isSignUp, isPasswordReset });
     
-    // Check rate limiting
+    // Check rate limiting - NON-BLOCKING
     const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
-    await authLogger.log({ 
+    authLogger.log({ 
       event: 'RATE_LIMIT_CHECK', 
       stage: 'handleSubmit',
       details: { 
@@ -260,13 +259,13 @@ const Auth = () => {
       const minutesUntilReset = Math.ceil(timeUntilReset / (60 * 1000));
       
       setError(`Zu viele Anmeldeversuche. Versuchen Sie es in ${minutesUntilReset} Minuten erneut. (${remaining} Versuche übrig)`);
-      await logSuspiciousActivity('rate_limit_exceeded', { 
+      logSuspiciousActivity('rate_limit_exceeded', { 
         action: 'auth_attempt',
         client_info: navigator.userAgent,
         remaining_attempts: remaining,
         minutes_until_reset: minutesUntilReset
       });
-      await authLogger.log({ 
+      authLogger.log({ 
         event: 'RATE_LIMIT_EXCEEDED', 
         stage: 'handleSubmit',
         details: { remaining, minutesUntilReset, clientId: clientId.substring(0, 50) }
@@ -291,11 +290,11 @@ const Auth = () => {
     setError('');
     setShowResend(false);
 
-    // Check for preview domain warning
-    const isPreviewDomain = window.location.hostname.includes('preview--') || window.location.hostname.includes('lovable');
+    // Check for preview domain warning - ONLY for real preview domains
+    const isPreviewDomain = window.location.hostname.includes('preview--');
     if (isPreviewDomain) {
       console.warn('🚨 PREVIEW MODE: Sessions may not persist correctly. Use production URL for full testing.');
-      await authLogger.log({ 
+      authLogger.log({ 
         event: 'PREVIEW_DOMAIN_WARNING', 
         stage: 'handleSubmit',
         details: { hostname: window.location.hostname }
@@ -311,7 +310,7 @@ const Auth = () => {
     const maxAttempts = 3;
     
     try {
-      await authLogger.log({ 
+      authLogger.log({ 
         event: 'AUTH_ATTEMPT', 
         stage: 'handleSubmit',
         details: { isSignUp, email: email.substring(0, 3) + '***' }
@@ -338,12 +337,12 @@ const Auth = () => {
             });
             
             if (error) {
-              await authLogger.log({ 
+              authLogger.log({ 
                 event: 'ERROR', 
                 stage: 'signup',
                 details: { error: error.message }
               });
-              await logSuspiciousActivity('auth_failure', {
+              logSuspiciousActivity('auth_failure', {
                 error_message: error.message,
                 email_domain: email.split('@')[1],
                 action: 'sign_up'
@@ -359,7 +358,7 @@ const Auth = () => {
               throw error;
             }
             
-            await authLogger.log({ 
+            authLogger.log({ 
               event: 'SIGNUP_SUCCESS', 
               stage: 'handleSubmit'
             });
@@ -377,12 +376,12 @@ const Auth = () => {
             });
             
             if (error) {
-              await authLogger.log({ 
+              authLogger.log({ 
                 event: 'ERROR', 
                 stage: 'signin',
                 details: { error: error.message }
               });
-              await logSuspiciousActivity('auth_failure', {
+              logSuspiciousActivity('auth_failure', {
                 error_message: error.message,
                 email_domain: email.split('@')[1],
                 action: 'sign_in'
@@ -403,10 +402,10 @@ const Auth = () => {
             }
             
             if (data.user) {
-              // Log token persistence 
+              // Log token persistence - NON-BLOCKING
               const session = data.session;
               const hasTokens = !!(session?.access_token && session?.refresh_token);
-              await authLogger.log({ 
+              authLogger.log({ 
                 event: 'SIGNIN_SUCCESS', 
                 stage: 'handleSubmit',
                 from_path: '/auth',
@@ -419,20 +418,9 @@ const Auth = () => {
                 }
               });
 
-              // Force session storage check
-              setTimeout(() => {
-                const supabaseKey = 'gzczjscctgyxjyodhnhk'; // Project ref
-                const storageKey = `sb-${supabaseKey}-auth-token`;
-                const storedSession = localStorage.getItem(storageKey);
-                console.log('🔍 Token persistence check:', { 
-                  hasStoredSession: !!storedSession,
-                  storageKey
-                });
-              }, 100);
-
               toast.success(t('auth.signInSuccess'));
-              // Force hard reload for clean session state in preview environments
-              const isPreviewDomain = window.location.hostname.includes('preview--') || window.location.hostname.includes('lovable');
+              // Force hard reload for clean session state ONLY in preview environments
+              const isPreviewDomain = window.location.hostname.includes('preview--');
               if (isPreviewDomain) {
                 window.location.href = '/';
               } else {
@@ -450,8 +438,8 @@ const Auth = () => {
         }
       }
     } catch (error: any) {
-      // Log authentication failure for security monitoring
-      await logAuthAttempt(
+      // Log authentication failure for security monitoring - NON-BLOCKING
+      logAuthAttempt(
         isSignUp ? 'sign_up' : 'sign_in',
         false,
         {
@@ -461,7 +449,7 @@ const Auth = () => {
         }
       );
       
-      await logSuspiciousActivity('auth_error', {
+      logSuspiciousActivity('auth_error', {
         error_message: error.message,
         action: isSignUp ? 'sign_up' : 'sign_in'
       });
