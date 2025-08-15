@@ -64,8 +64,8 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     imageUrl: '/lovable-uploads/1b6ddc34-604a-4356-a46f-07208c77c35f.png',
     color: 'hsl(0, 80%, 60%)',
     accentColor: 'hsl(20, 70%, 65%)',
-    isPremium: true,
-    isFree: false,
+    isPremium: false,
+    isFree: true,
     expertise: [
       'Cross-Domain Optimization',
       'Ultimate Performance',

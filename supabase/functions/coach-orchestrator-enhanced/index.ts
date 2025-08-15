@@ -279,6 +279,8 @@ serve(async (req) => {
   const chatMode = req.headers.get("x-chat-mode") ?? undefined;
   const source = req.headers.get("x-source") ?? "chat";
 
+  console.log(`[ORCHESTRATOR-${traceId}] Request: method=${req.method}, auth=${authorization ? 'present' : 'missing'}, mode=${chatMode}, source=${source}`);
+
   // Create two Supabase clients: one for user data, one for system state
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -301,20 +303,44 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Missing event" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Identify user if not provided
+    // Enhanced user identification with better error handling
     let userId = providedUserId;
     if (!userId) {
-      const { data } = await supabase.auth.getUser();
-      userId = data.user?.id ?? undefined;
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn(`[ORCHESTRATOR-${traceId}] Auth error:`, error.message);
+        }
+        userId = data.user?.id ?? undefined;
+        console.log(`[ORCHESTRATOR-${traceId}] User resolved: ${userId ? 'authenticated' : 'anonymous'}`);
+      } catch (authError) {
+        console.error(`[ORCHESTRATOR-${traceId}] Auth failed:`, authError);
+      }
     }
+    
     if (!userId) {
-      return new Response(JSON.stringify({ error: "Authentication required" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      console.warn(`[ORCHESTRATOR-${traceId}] No valid user ID - returning auth error`);
+      return new Response(
+        JSON.stringify({ 
+          kind: 'message', 
+          text: 'Bitte logge dich ein, um mit dem Coach zu chatten.', 
+          traceId 
+        }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
     }
 
-    // Persona & memory context - ARES Support
-    const coachId = (event as any)?.context?.coachId ?? 'lucy';
+    // Enhanced persona & memory context with ARES Support
+    const coachId = (event as any)?.context?.coachId ?? 'freya'; // Default to FREYA
+    console.log(`[ORCHESTRATOR-${traceId}] Coach ID: ${coachId}, User: ${userId}`);
+    
     const persona = await loadCoachPersona(supabase, coachId);
     const memoryHint = await loadRollingSummary(supabase, userId, coachId);
+    
+    console.log(`[ORCHESTRATOR-${traceId}] Persona loaded: ${persona?.name || 'unknown'}, Memory: ${memoryHint ? 'present' : 'empty'}`);
     
     // ARES-specific voice generation helper function
     const generateAresResponse = async (userText: string, userProfile: any, analytics: any) => {
@@ -1383,9 +1409,36 @@ serve(async (req) => {
     
     return new Response(JSON.stringify(reply), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    await logTrace({ traceId, stage: "error", data: { error: String(e) } });
-    await logTraceEvent(supabase, { traceId, userId: undefined, coachId: undefined, stage: 'error', handler: 'coach-orchestrator-enhanced', status: 'ERROR', errorMessage: String(e) });
-    const reply: OrchestratorReply = { kind: "message", text: "Kurz hake ich – bitte nochmal versuchen.", traceId };
+    console.error(`[ORCHESTRATOR-${traceId}] Critical error:`, e);
+    
+    try {
+      await logTrace({ traceId, stage: "error", data: { error: String(e) } });
+      await logTraceEvent(supabase, { 
+        traceId, 
+        userId: userId || 'unknown', 
+        coachId: 'unknown', 
+        stage: 'error', 
+        handler: 'coach-orchestrator-enhanced', 
+        status: 'ERROR', 
+        errorMessage: String(e) 
+      });
+    } catch (logError) {
+      console.error(`[ORCHESTRATOR-${traceId}] Logging failed:`, logError);
+    }
+    
+    // Enhanced error recovery with different messages based on error type
+    let errorMessage = "Kurz hake ich – bitte nochmal versuchen.";
+    const errorStr = String(e).toLowerCase();
+    
+    if (errorStr.includes('auth') || errorStr.includes('token')) {
+      errorMessage = "Authentication-Problem erkannt. Bitte lade die Seite neu.";
+    } else if (errorStr.includes('network') || errorStr.includes('fetch')) {
+      errorMessage = "Verbindungsproblem. Bitte prüfe deine Internetverbindung.";
+    } else if (errorStr.includes('timeout')) {
+      errorMessage = "Anfrage zu langsam. Versuche es in einem Moment erneut.";
+    }
+    
+    const reply: OrchestratorReply = { kind: "message", text: errorMessage, traceId };
     return new Response(JSON.stringify(reply), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

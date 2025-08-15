@@ -5421,7 +5421,7 @@ export type Database = {
           confidence: number | null
           created_at: string
           custom_name: string | null
-          dosage: string
+          dosage: string | null
           dose: string | null
           frequency_days: number | null
           goal: string | null
@@ -5445,7 +5445,7 @@ export type Database = {
           confidence?: number | null
           created_at?: string
           custom_name?: string | null
-          dosage: string
+          dosage?: string | null
           dose?: string | null
           frequency_days?: number | null
           goal?: string | null
@@ -5469,7 +5469,7 @@ export type Database = {
           confidence?: number | null
           created_at?: string
           custom_name?: string | null
-          dosage?: string
+          dosage?: string | null
           dose?: string | null
           frequency_days?: number | null
           goal?: string | null

@@ -230,6 +230,7 @@ Deno.serve(async (req) => {
       canonical,
       name,
       dose: sanitizeText(item.dose, 60),
+      dosage: sanitizeText(item.dose, 60) || '1', // Ensure dosage is not null
       schedule: sanitizeSchedule(item.schedule),
       notes: sanitizeText(item.notes, 1000),
       client_event_id: clientEventId,
