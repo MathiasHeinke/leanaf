@@ -59,44 +59,30 @@ export const useCredits = () => {
 
   const check = useCallback(
     async (feature: FeatureType) => {
+      // ✅ UNLIMITED MODE: Always return success without consuming credits
       if (!isAuthenticated) return null;
-      const { data, error } = await supabase.rpc('consume_credits_for_feature', {
-        p_feature_type: feature,
-        p_deduct: false,
-      });
-      if (error) {
-        console.error('check credits error', error);
-        return null;
-      }
-      return data as unknown as ConsumeResult;
+      return {
+        success: true,
+        feature_type: feature,
+        cost: 0,
+        deducted: false,
+        credits_remaining: 999999, // Show unlimited
+      } as ConsumeResult;
     },
     [isAuthenticated]
   );
 
   const consume = useCallback(
     async (feature: FeatureType) => {
+      // ✅ UNLIMITED MODE: Always return success without consuming credits
       if (!isAuthenticated) return null;
-      const { data, error } = await supabase.rpc('consume_credits_for_feature', {
-        p_feature_type: feature,
-        p_deduct: true,
-      });
-      if (error) {
-        console.error('consume credits error', error);
-        return null;
-      }
-      // Optimistically update local state
-      const res = data as unknown as ConsumeResult;
-      if (res?.success) {
-        setStatus((prev) =>
-          prev
-            ? {
-                ...prev,
-                credits_remaining: res.credits_remaining,
-              }
-            : prev
-        );
-      }
-      return res;
+      return {
+        success: true,
+        feature_type: feature,
+        cost: 0,
+        deducted: false,
+        credits_remaining: 999999, // Show unlimited
+      } as ConsumeResult;
     },
     [isAuthenticated]
   );

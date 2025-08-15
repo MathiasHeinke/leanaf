@@ -27,20 +27,16 @@ export const useAIUsageLimits = () => {
   ): Promise<AIUsageStatus | null> => {
     if (!user) return null;
     
-    // Credit-based system: users can use features if they have credits
-    if (creditsStatus.credits_remaining > 0) {
-      return {
-        can_use: true,
-        daily_count: 0,
-        monthly_count: 0,
-        daily_limit: -1, // Unlimited
-        monthly_limit: -1, // Unlimited
-        daily_remaining: -1,
-        monthly_remaining: -1
-      };
-    }
-
-    // All AI features are now available for free users with limits
+    // ✅ UNLIMITED MODE: All users get unlimited access
+    return {
+      can_use: true,
+      daily_count: 0,
+      monthly_count: 0,
+      daily_limit: -1, // Unlimited
+      monthly_limit: -1, // Unlimited
+      daily_remaining: -1,
+      monthly_remaining: -1
+    };
 
     setLoading(true);
     try {

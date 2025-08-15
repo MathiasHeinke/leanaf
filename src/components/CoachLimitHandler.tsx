@@ -83,11 +83,8 @@ export const useCoachLimitHandler = ({ coachPersonality, feature }: CoachLimitHa
   };
 
   const handleError = (error: LimitError): string => {
-    // Check if it's a rate limit error (429)
-    if (error.status === 429) {
-      showLimitReachedToast(coachPersonality, feature);
-      return getPersonalizedLimitMessage(coachPersonality, feature);
-    }
+    // ✅ UNLIMITED MODE: No more 429 rate limiting
+    // All errors are treated as technical issues only
 
     // Handle other errors with coach personality
     const coachName = getCoachName(coachPersonality);
