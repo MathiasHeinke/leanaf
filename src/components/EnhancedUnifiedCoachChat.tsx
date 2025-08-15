@@ -59,6 +59,9 @@ import { WeightEntryModal } from '@/components/WeightEntryModal';
 import { v4 as uuidv4 } from 'uuid';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useOrchestrator, OrchestratorReply } from '@/hooks/useOrchestrator';
+import { useOrchestratorWithDebug } from '@/hooks/useOrchestratorWithDebug';
+import { UserChatDebugger } from '@/components/debug/UserChatDebugger';
+import { useDebugSteps } from '@/hooks/useDebugSteps';
 import ChoiceBar from '@/components/ChoiceBar';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
 import ConfirmSupplementModal from '@/components/ConfirmSupplementModal';
@@ -157,6 +160,11 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const autoTool = isFlagEnabled('auto_tool_orchestration');
   const legacyEnabled = isFlagEnabled('legacy_fallback_enabled');
   const { sendEvent } = useOrchestrator();
+  
+  // Debug system integration
+  const debugSteps = useDebugSteps();
+  const [showDebugger, setShowDebugger] = useState(false);
+  const { sendEvent: sendEventWithDebug } = useOrchestratorWithDebug(debugSteps);
 
   // Points & streaks
   const { awardPoints, updateStreak } = usePointsSystem();
