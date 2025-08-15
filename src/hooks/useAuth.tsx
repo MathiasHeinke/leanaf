@@ -48,46 +48,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const checkIfNewUserAndRedirect = async (user: User) => {
+  const redirectToHome = async (user: User) => {
     try {
-      console.log('Checking user profile for redirect...', user.id);
+      console.log('Redirecting user to home...', user.id);
       console.log('Preview mode:', isPreviewMode);
       
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('weight, height, age, gender')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        secureLogger.error('Error checking profile', error);
-        return;
-      }
-
-      console.log('Profile data:', profile);
-
-      // Check if profile is incomplete (new user)
-      const isIncomplete = !profile || 
-        !profile.weight || 
-        !profile.height || 
-        !profile.age || 
-        !profile.gender;
-
-      console.log('Profile incomplete:', isIncomplete);
-
-      if (isIncomplete) {
-        // New user - start premium trial and redirect to profile
-        await startPremiumTrialForNewUser(user.id);
-        console.log('Redirecting new user to profile...');
-        navigate('/profile', { replace: true });
-      } else {
-        // Existing user - redirect to home
-        console.log('Redirecting existing user to home...');
-        navigate('/', { replace: true });
-      }
+      // Start premium trial for new users (but don't block navigation on it)
+      await startPremiumTrialForNewUser(user.id);
+      
+      // Always redirect to home - no forced profile redirect
+      console.log('Redirecting to home...');
+      navigate('/', { replace: true });
     } catch (error) {
-      console.error('Error checking user status:', error);
-      // Fallback to home
+      console.error('Error during redirect:', error);
+      // Fallback to home regardless of error
       console.log('Fallback redirect to home...');
       navigate('/', { replace: true });
     }
@@ -156,9 +130,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Handle different auth events
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in successfully');
-          // Always redirect after successful login, regardless of current path
+          // Always redirect to home after successful login
           timeoutId = setTimeout(() => {
-            checkIfNewUserAndRedirect(session.user);
+            redirectToHome(session.user);
           }, 200); // Increased timeout to allow auth state settling
         }
         
@@ -198,7 +172,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (session?.user && window.location.pathname === '/auth') {
             console.log('🔄 User already logged in, redirecting...');
             setTimeout(() => {
-              checkIfNewUserAndRedirect(session.user);
+              redirectToHome(session.user);
             }, 200);
           }
         }
