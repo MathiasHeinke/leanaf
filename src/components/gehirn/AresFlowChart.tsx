@@ -15,7 +15,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import type { TraceBundle, TraceStage } from '@/lib/traceTypes';
 import { JsonPanel } from './JsonPanel';
-import { X, Info } from 'lucide-react';
+import { X, Info, Brain } from 'lucide-react';
 
 type FlowNode = Node & {
   data: {
@@ -28,6 +28,7 @@ type FlowNode = Node & {
 type Props = {
   bundle: TraceBundle | null;
   isLive: boolean;
+  onShowPrompt?: (traceId: string) => void;
 };
 
 const statusToColor = (status: 'pending' | 'running' | 'success' | 'error') => {
@@ -62,7 +63,11 @@ const stageToTitle = (stage: string) => {
   return stageMap[stage] || stage;
 };
 
-const FlowNodeComponent = React.memo(({ data }: { data: FlowNode['data'] }) => {
+const FlowNodeComponent = React.memo(({ data, onShowPrompt, bundle }: { 
+  data: FlowNode['data']; 
+  onShowPrompt?: (traceId: string) => void;
+  bundle?: TraceBundle | null;
+}) => {
   const [showDetails, setShowDetails] = useState(false);
   
   return (
@@ -74,7 +79,21 @@ const FlowNodeComponent = React.memo(({ data }: { data: FlowNode['data'] }) => {
       >
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm font-medium">{stageToTitle(data.stage.stage)}</div>
-          <div className="text-lg">{statusToDotColor(data.status)}</div>
+          <div className="flex items-center gap-1">
+            {bundle?.hasPromptData && (data.stage.stage.includes('prompt') || data.stage.stage.includes('llm')) && onShowPrompt && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShowPrompt(bundle.traceId);
+                }}
+                className="p-1 hover:bg-accent rounded text-blue-500"
+                title="Show Prompt Analysis"
+              >
+                <Brain className="h-3 w-3" />
+              </button>
+            )}
+            <div className="text-lg">{statusToDotColor(data.status)}</div>
+          </div>
         </div>
         
         <div className="text-xs text-muted-foreground mb-1">
@@ -146,10 +165,10 @@ const FlowNodeComponent = React.memo(({ data }: { data: FlowNode['data'] }) => {
 FlowNodeComponent.displayName = 'FlowNodeComponent';
 
 const nodeTypes = {
-  aresStage: FlowNodeComponent,
+  aresStage: (props: any) => <FlowNodeComponent {...props} onShowPrompt={props.data.onShowPrompt} bundle={props.data.bundle} />,
 };
 
-export function AresFlowChart({ bundle, isLive }: Props) {
+export function AresFlowChart({ bundle, isLive, onShowPrompt }: Props) {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   const { nodes, edges } = useMemo(() => {
@@ -196,6 +215,8 @@ export function AresFlowChart({ bundle, isLive }: Props) {
           status,
           isDecisionNode: stage.stage.includes('tool_picker') || stage.stage.includes('decision'),
           branchCount: stage.stage.includes('tool_picker') ? 3 : 1,
+          onShowPrompt,
+          bundle,
         },
       });
 

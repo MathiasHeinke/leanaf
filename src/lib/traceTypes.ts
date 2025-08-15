@@ -29,6 +29,7 @@ export type TraceBundle = {
   coachId?: string | null;
   stages: TraceStage[]; // sorted by time
   agg: { status: 'green' | 'yellow' | 'red'; maxLatencyMs: number; hasError: boolean; running: boolean };
+  hasPromptData?: boolean; // indicates if prompt viewer data is available
 };
 
 export const SLA_MS = 2000;
@@ -63,6 +64,14 @@ export function aggregateTrace(rows: TraceRow[]): TraceBundle {
   const running = hasRunning && !hasError;
   const status: 'green' | 'yellow' | 'red' = hasError ? 'red' : running || maxLatencyMs >= SLA_MS ? 'yellow' : 'green';
 
+  // Check if prompt data might be available
+  const hasPromptData = sorted.some(r => 
+    r.stage.includes('prompt') || 
+    r.stage.includes('llm') || 
+    r.stage.includes('context') || 
+    r.stage.includes('rag')
+  );
+
   return {
     traceId,
     startedAt,
@@ -71,5 +80,6 @@ export function aggregateTrace(rows: TraceRow[]): TraceBundle {
     coachId,
     stages,
     agg: { status, maxLatencyMs, hasError, running },
+    hasPromptData,
   };
 }

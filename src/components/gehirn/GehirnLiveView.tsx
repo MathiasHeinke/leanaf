@@ -3,14 +3,17 @@ import { useTraceFeed, type TraceFilters } from '@/hooks/useTraceFeed';
 import type { TraceBundle } from '@/lib/traceTypes';
 import { TraceFlow } from '@/components/gehirn/TraceFlow';
 import { AresFlowChart } from '@/components/gehirn/AresFlowChart';
-import { Eye, BarChart3 } from 'lucide-react';
+import { PromptViewer } from '@/components/gehirn/PromptViewer';
+import { usePromptTraceData } from '@/hooks/usePromptTraceData';
+import { Eye, BarChart3, Brain } from 'lucide-react';
 
 export function GehirnLiveView() {
   const [coachId, setCoachId] = useState('');
   const [userId, setUserId] = useState('');
   const [range, setRange] = useState<'5m' | '1h' | '12h' | '24h'>('1h');
   const [selectedBundle, setSelectedBundle] = useState<TraceBundle | null>(null);
-  const [viewMode, setViewMode] = useState<'classic' | 'flowchart'>('classic');
+  const [viewMode, setViewMode] = useState<'classic' | 'flowchart' | 'prompt'>('classic');
+  const [promptTraceId, setPromptTraceId] = useState<string | null>(null);
 
   const now = new Date();
   const since = useMemo(() => {
@@ -28,6 +31,7 @@ export function GehirnLiveView() {
   }), [coachId, userId, since]);
 
   const { bundles, isLoading, error, refresh } = useTraceFeed(filters);
+  const { promptData, loading: promptLoading } = usePromptTraceData(promptTraceId);
 
   const coachOptions = useMemo(() => Array.from(new Set(bundles.map(b => b.coachId).filter(Boolean))) as string[], [bundles]);
 
@@ -63,15 +67,21 @@ export function GehirnLiveView() {
         <div className="flex items-center gap-1 border rounded-lg">
           <button 
             onClick={() => setViewMode('classic')}
-            className={`px-3 py-1.5 text-sm rounded-l-lg transition ${viewMode === 'classic' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
+            className={`px-3 py-1.5 text-sm transition ${viewMode === 'classic' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
           >
             <BarChart3 className="h-3 w-3" />
           </button>
           <button 
             onClick={() => setViewMode('flowchart')}
-            className={`px-3 py-1.5 text-sm rounded-r-lg transition ${viewMode === 'flowchart' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
+            className={`px-3 py-1.5 text-sm transition ${viewMode === 'flowchart' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
           >
             <Eye className="h-3 w-3" />
+          </button>
+          <button 
+            onClick={() => setViewMode('prompt')}
+            className={`px-3 py-1.5 text-sm rounded-r-lg transition ${viewMode === 'prompt' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}`}
+          >
+            <Brain className="h-3 w-3" />
           </button>
         </div>
       </header>
@@ -86,7 +96,11 @@ export function GehirnLiveView() {
             <h2 className="text-lg font-semibold mb-4">🧠 ARES Gehirn - Flowchart View</h2>
             <AresFlowChart 
               bundle={selectedBundle} 
-              isLive={selectedBundle?.agg.running || false} 
+              isLive={selectedBundle?.agg.running || false}
+              onShowPrompt={(traceId) => {
+                setPromptTraceId(traceId);
+                setViewMode('prompt');
+              }}
             />
           </div>
           
@@ -109,6 +123,7 @@ export function GehirnLiveView() {
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {new Date(b.startedAt).toLocaleTimeString()} • {b.stages.length} Schritte
+                    {b.hasPromptData && <span className="ml-2 text-blue-500">🧠</span>}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     User: {b.userId?.slice(0, 8) ?? '—'} · Coach: {b.coachId ?? '—'}
@@ -117,6 +132,51 @@ export function GehirnLiveView() {
               ))}
             </div>
           </div>
+        </section>
+      )}
+
+      {/* Prompt Analysis View */}
+      {viewMode === 'prompt' && (
+        <section className="space-y-4">
+          {promptData && promptTraceId ? (
+            <PromptViewer 
+              data={promptData} 
+              onClose={() => {
+                setPromptTraceId(null);
+                setViewMode('classic');
+              }}
+            />
+          ) : (
+            <div className="rounded-2xl border p-4">
+              <h3 className="text-md font-semibold mb-3">Prompt-Analyse: Trace auswählen</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {bundles.filter(bundle => bundle.hasPromptData).map((b: TraceBundle) => (
+                  <button
+                    key={b.traceId}
+                    onClick={() => setPromptTraceId(b.traceId)}
+                    className="p-3 rounded-lg border text-left hover:bg-accent transition"
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`inline-block h-2 w-2 rounded-full ${b.agg.status === 'green' ? 'bg-green-500' : b.agg.status === 'yellow' ? 'bg-yellow-500' : 'bg-red-500'}`} />
+                      <div className="text-sm font-medium">Trace {b.traceId.slice(0, 8)}…</div>
+                      <span className="text-blue-500">🧠</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(b.startedAt).toLocaleTimeString()} • Prompt verfügbar
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      User: {b.userId?.slice(0, 8) ?? '—'} · Coach: {b.coachId ?? '—'}
+                    </div>
+                  </button>
+                ))}
+                {bundles.filter(bundle => bundle.hasPromptData).length === 0 && (
+                  <div className="col-span-full text-center py-8 text-muted-foreground">
+                    Keine Traces mit Prompt-Daten im gewählten Zeitraum gefunden.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </section>
       )}
 
