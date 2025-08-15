@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { dataLogger } from '@/utils/dataLogger';
 
-export interface DailySummaryData {
+interface DailySummaryData {
   date: string;
   displayDate: string;
   totalCalories: number;
@@ -96,6 +97,11 @@ export const useDailySummaryData = (timeRange: 7 | 14 | 30 = 14): DailySummaryHo
     setLoading(true);
     setError(null);
 
+    const operationId = dataLogger.startOperation('FETCH_DAILY_SUMMARIES', 'daily_summaries', {
+      user_id: user.id,
+      time_range: timeRange
+    });
+
     try {
       // Get daily summaries for the specified time range
       const { data: summaries, error: fetchError } = await supabase
@@ -106,10 +112,12 @@ export const useDailySummaryData = (timeRange: 7 | 14 | 30 = 14): DailySummaryHo
         .order('date', { ascending: false });
 
       if (fetchError) {
+        dataLogger.errorOperation(operationId, fetchError);
         throw fetchError;
       }
 
       if (!summaries || summaries.length === 0) {
+        dataLogger.completeOperation(operationId, { count: 0 });
         setData([]);
         return;
       }
@@ -120,9 +128,11 @@ export const useDailySummaryData = (timeRange: 7 | 14 | 30 = 14): DailySummaryHo
         .map(parseStructuredData)
         .reverse(); // Show chronologically (oldest first for charts)
 
+      dataLogger.completeOperation(operationId, { count: parsedData.length });
       setData(parsedData);
     } catch (err) {
       console.error('Error fetching daily summary data:', err);
+      dataLogger.errorOperation(operationId, err);
       setError(err instanceof Error ? err.message : 'Ein Fehler ist aufgetreten');
     } finally {
       setLoading(false);

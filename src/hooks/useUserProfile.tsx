@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { UserProfile } from '@/schemas/user-profile';
+import { dataLogger } from '@/utils/dataLogger';
 
 
 interface ProfilesData {
@@ -53,6 +54,10 @@ export const useUserProfile = () => {
         email: user.email
       });
       
+      const operationId = dataLogger.startOperation('FETCH_USER_PROFILE', 'profiles', {
+        user_id: user.id
+      });
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -61,6 +66,7 @@ export const useUserProfile = () => {
       
       if (error) {
         console.error('❌ Profile load failed:', error);
+        dataLogger.errorOperation(operationId, error);
         setError(error.message);
         setProfileData(null);
         return;
@@ -69,6 +75,7 @@ export const useUserProfile = () => {
       if (!data) {
         setIsFirstAppStart(true);
         console.log('🚀 First app start detected - no profile exists for user:', user.email);
+        dataLogger.completeOperation(operationId, { first_app_start: true });
         setProfileData(null);
       } else {
         setIsFirstAppStart(false);
@@ -81,6 +88,7 @@ export const useUserProfile = () => {
           gender: data.gender,
           goal: data.goal
         });
+        dataLogger.completeOperation(operationId, data);
         setProfileData(data as ProfilesData);
       }
     } catch (err) {

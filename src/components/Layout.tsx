@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { DebugFloatingButton } from "@/components/debug/DebugFloatingButton";
 
 
 

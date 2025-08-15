@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { getUserTimezone, getCurrentDateInTimezone } from '../../utils/dateHelpers';
+import { dataLogger } from '../../utils/dataLogger';
 
 const SUPABASE_URL = "https://gzczjscctgyxjyodhnhk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I";
@@ -25,6 +26,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
       
+      // Debug logging for all Supabase requests
+      let operationId: string | undefined;
+      if (dataLogger.isDebugEnabled()) {
+        const urlPath = new URL(url).pathname;
+        const method = (options as RequestInit)?.method || 'GET';
+        const bodyData = (options as RequestInit)?.body;
+        
+        operationId = dataLogger.startOperation(`${method}_REQUEST`, undefined, {
+          url: urlPath,
+          method,
+          hasBody: !!bodyData,
+          bodySize: bodyData ? String(bodyData).length : 0
+        });
+      }
+      
       // Add timezone headers to all requests
       const timezone = getUserTimezone();
       const currentDate = getCurrentDateInTimezone(timezone);
@@ -40,12 +56,27 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         }
       };
       
-      return fetch(url, enhancedOptions).finally(() => {
-        clearTimeout(timeoutId);
-      }).catch((error) => {
-        console.warn('Supabase request failed:', error);
-        throw error;
-      });
+      return fetch(url, enhancedOptions)
+        .then(response => {
+          if (operationId && dataLogger.isDebugEnabled()) {
+            dataLogger.completeOperation(operationId, {
+              status: response.status,
+              statusText: response.statusText,
+              ok: response.ok
+            });
+          }
+          return response;
+        })
+        .catch((error) => {
+          if (operationId && dataLogger.isDebugEnabled()) {
+            dataLogger.errorOperation(operationId, error);
+          }
+          console.warn('Supabase request failed:', error);
+          throw error;
+        })
+        .finally(() => {
+          clearTimeout(timeoutId);
+        });
     }
   },
   db: {
