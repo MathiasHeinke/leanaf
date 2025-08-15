@@ -77,7 +77,6 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
         userId,
         event: ev,
         traceId: trace,
-        clientEventId,
         context: finalContext || {},
       };
 
