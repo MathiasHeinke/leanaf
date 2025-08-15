@@ -33,7 +33,7 @@ export const ChatLayout = ({ children, chatInput, bannerCollapsed = false }: Cha
         
         {/* Eingabefeld direkt auf Footer */}
         {chatInput && (
-          <div className="px-3 py-1 bg-card/80 backdrop-blur-sm border-t border-border/30">
+          <div className="px-3 py-1">
             {chatInput}
           </div>
         )}
