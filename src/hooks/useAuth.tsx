@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { secureLogger } from '@/utils/secureLogger';
 
@@ -24,6 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   
   // Detect if running in Lovable Preview mode
   const isPreviewMode = window.location.hostname.includes('lovable.app');
@@ -72,17 +74,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // New user - start premium trial and redirect to profile
         await startPremiumTrialForNewUser(user.id);
         console.log('Redirecting new user to profile...');
-        window.location.href = '/profile';
+        navigate('/profile', { replace: true });
       } else {
         // Existing user - redirect to home
         console.log('Redirecting existing user to home...');
-        window.location.href = '/';
+        navigate('/', { replace: true });
       }
     } catch (error) {
       console.error('Error checking user status:', error);
       // Fallback to home
       console.log('Fallback redirect to home...');
-      window.location.href = '/';
+      navigate('/', { replace: true });
     }
   };
 
@@ -122,14 +124,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(null);
       setUser(null);
       await supabase.auth.signOut({ scope: 'global' });
-      window.location.replace('/auth');
+      navigate('/auth', { replace: true });
     } catch (error) {
       // Force cleanup even if signOut fails
       cleanupAuthState();
       setSession(null);
       setUser(null);
       console.error('Sign out error occurred');
-      window.location.replace('/auth');
+      navigate('/auth', { replace: true });
     }
   };
 
@@ -156,7 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(null);
           setUser(null);
           if (!isPreviewMode && window.location.pathname !== '/auth') {
-            window.location.href = '/auth';
+            navigate('/auth', { replace: true });
           }
         }
 

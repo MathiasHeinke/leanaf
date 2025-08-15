@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Camera, Plus, X } from 'lucide-react';
 import { useMealImageManager } from '@/hooks/useMealImageManager';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 interface MealImageManagerProps {
   mealId: string;
@@ -36,9 +37,10 @@ export const MealImageManager = ({
       console.log('📸 [MealImageManager] No files selected');
       return;
     }
-    
+
     if (!user) {
-      console.error('📸 [MealImageManager] No user available');
+      console.error('📸 [MealImageManager] No user available - authentication required');
+      toast.error('Bitte loggen Sie sich ein, um Bilder hochzuladen');
       return;
     }
     
@@ -58,6 +60,12 @@ export const MealImageManager = ({
 
   const handleAddPhoto = () => {
     console.log('📸 [MealImageManager] Add photo button clicked');
+    
+    if (!user) {
+      console.error('📸 [MealImageManager] No user available - authentication required');
+      toast.error('Bitte loggen Sie sich ein, um Bilder hochzuladen');
+      return;
+    }
     
     if (!fileInputRef.current) {
       console.error('📸 [MealImageManager] File input ref not available');
