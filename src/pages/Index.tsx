@@ -49,7 +49,7 @@ import { DashboardHaloPair } from "@/components/DashboardHaloPair";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isSessionReady } = useAuth();
   const navigate = useNavigate();
 
   // Check authentication and redirect if needed
@@ -60,13 +60,19 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // If still loading auth or no user, show loading state
-  if (authLoading || !user) {
+  // Wait for complete session including JWT token
+  if (authLoading || !user || !isSessionReady) {
     return (
       <div className="space-y-6 animate-pulse">
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-64 w-full" />
+        <div className="text-sm text-muted-foreground text-center">
+          {authLoading ? 'Checking authentication...' : 
+           !user ? 'No user found...' : 
+           'Waiting for session...'
+          }
+        </div>
       </div>
     );
   }
@@ -127,17 +133,20 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'measurements', 'workout', 'supplements', 'fluids', 'mindset'];
   });
 
-  // Load user data - wait for both user auth AND profile loading
+  // Load user data - wait for profile loading to complete (either success or error)
   useEffect(() => {
     if (user && !profileLoading) {
       const initializeUserData = async () => {
-        console.log('🔄 Starting user data initialization after profile loaded...');
-        console.log('📊 Profile data available:', userProfile ? 'Yes' : 'No');
+        console.log('🔄 Starting user data initialization...', {
+          hasProfile: !!userProfile,
+          profileError: !!profileError,
+          userId: user.id
+        });
         
-        // Only load daily goals now - profile comes from useUserProfile
+        // Load daily goals regardless of profile success/failure
         await loadDailyGoals();
         
-        // Then load points
+        // Load points
         await loadUserPoints();
         
         console.log('✅ User data initialization complete');
@@ -145,7 +154,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       
       initializeUserData();
     }
-  }, [user, profileLoading, userProfile]);
+  }, [user?.id, profileLoading]);
 
   // Load meals when date changes - only after daily goals are loaded
   useEffect(() => {

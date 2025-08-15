@@ -9,6 +9,13 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  isSessionReady: boolean;
+  authDebugInfo: {
+    hasUser: boolean;
+    hasSession: boolean;
+    hasAccessToken: boolean;
+    sessionUserId?: string;
+  };
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,6 +32,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSessionReady, setIsSessionReady] = useState(false);
   const navigate = useNavigate();
   
   // Detect if running in Lovable Preview mode
@@ -127,6 +135,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null);
         setLoading(false);
         
+        // Mark session as ready when we have both user and valid access token
+        const sessionIsReady = !!(session?.user && session?.access_token);
+        setIsSessionReady(sessionIsReady);
+        
+        if (sessionIsReady) {
+          console.log('🔐 Session fully ready - JWT available:', {
+            userId: session.user.id,
+            email: session.user.email,
+            hasAccessToken: !!session.access_token,
+            tokenLength: session.access_token?.length || 0
+          });
+        }
+        
         // Handle different auth events
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in successfully:', session.user.email);
@@ -194,11 +215,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [navigate, isPreviewMode]);
 
+  const authDebugInfo = {
+    hasUser: !!user,
+    hasSession: !!session,
+    hasAccessToken: !!session?.access_token,
+    sessionUserId: session?.user?.id,
+  };
+
   const value = {
     user,
     session,
     loading,
     signOut,
+    isSessionReady,
+    authDebugInfo,
   };
 
   return (

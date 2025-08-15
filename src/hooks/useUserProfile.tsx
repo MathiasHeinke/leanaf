@@ -25,23 +25,41 @@ export const useUserProfile = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFirstAppStart, setIsFirstAppStart] = useState(false);
-  const { user } = useAuth();
+  const { user, session, isSessionReady, authDebugInfo } = useAuth();
 
   const fetchProfile = async (retryCount = 0) => {
-    if (!user) {
-      console.log('❌ No authenticated user, clearing profile data');
+    // PHASE 1: Session Validation - Wait for complete auth session
+    if (!user || !session || !isSessionReady) {
+      console.log('⏳ Waiting for complete auth session...', {
+        hasUser: !!user,
+        hasSession: !!session,
+        isSessionReady,
+        authDebugInfo
+      });
       setProfileData(null);
       setIsLoading(false);
       return;
+    }
+
+    // PHASE 2: JWT Session Timing - Add delay for JWT settling
+    if (retryCount === 0) {
+      console.log('🔐 JWT Session settling delay (200ms)...');
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
 
     try {
       setIsLoading(true);
       setError(null);
       
-      console.log(`🔄 Fetching profile for user ${user.id} (attempt ${retryCount + 1})`);
-      console.log(`📧 User email: ${user.email}`);
+      console.log(`🔄 ARES Profile Loading (attempt ${retryCount + 1})`, {
+        userId: user.id,
+        email: user.email,
+        hasAccessToken: !!session.access_token,
+        sessionUserId: session.user?.id,
+        sessionMatch: user.id === session.user?.id
+      });
       
+      // PHASE 3: RLS-Ready Database Query with Debug
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -49,7 +67,13 @@ export const useUserProfile = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('❌ Profile fetch error:', error);
+        console.error('❌ RLS Policy Error detected:', {
+          error: error.message,
+          code: error.code,
+          hint: error.hint,
+          authDebugInfo,
+          retryCount
+        });
         throw error;
       }
       
@@ -72,28 +96,50 @@ export const useUserProfile = () => {
       
       setProfileData(data as ProfilesData);
     } catch (err) {
-      console.error('❌ Error fetching user profile:', err);
+      console.error('🚨 ARES Profile Loading Error:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Unknown error',
+        retryCount,
+        authDebugInfo,
+        isRLSError: err instanceof Error && err.message.includes('row-level security')
+      });
+      
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile';
       
-      // Enhanced retry with exponential backoff
-      if (retryCount < 2) {
-        const retryDelay = Math.pow(2, retryCount) * 1000; // 1s, 2s
-        console.log(`🔄 Retrying profile fetch in ${retryDelay}ms...`);
+      // PHASE 4: Production-Ready Retry with RLS Detection
+      if (retryCount < 3) { // Increased retries
+        const retryDelay = Math.pow(2, retryCount) * 500; // 500ms, 1s, 2s
+        console.log(`🔄 ARES Retry ${retryCount + 1}/3 in ${retryDelay}ms...`);
         setTimeout(() => fetchProfile(retryCount + 1), retryDelay);
         return;
       }
       
-      console.error('❌ Profile fetch failed after all retries');
-      setError(errorMessage);
+      // PHASE 5: RLS Failure Detection & Fallback Strategy
+      if (errorMessage.includes('row-level security') || errorMessage.includes('permission denied')) {
+        console.error('🛡️ RLS Policy blocking access - auth.uid() might be null');
+        setError('🚨 Profile blocked by RLS - Session timing issue detected');
+      } else {
+        setError(`❌ Profile loading failed: ${errorMessage}`);
+      }
       setProfileData(null);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // PHASE 6: Session-Synchronized Profile Loading
   useEffect(() => {
-    fetchProfile();
-  }, [user]);
+    if (user && session && isSessionReady) {
+      console.log('🚀 ARES Profile Loading triggered by complete session');
+      fetchProfile();
+    } else {
+      console.log('⏳ ARES waiting for complete auth session...', {
+        hasUser: !!user,
+        hasSession: !!session,
+        isSessionReady
+      });
+    }
+  }, [user?.id, session?.access_token, isSessionReady]);
 
   const convertToUserProfile = (profilesData?: ProfilesData): UserProfile | null => {
     if (!profilesData) return null;
