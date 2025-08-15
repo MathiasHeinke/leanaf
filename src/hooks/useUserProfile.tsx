@@ -168,26 +168,7 @@ export const useUserProfile = () => {
   };
 
   const shouldShowCheckUp = (): boolean => {
-    // Reaktiviert für Profil-Vervollständigung
-    // Users mit fehlenden Daten sollen das Modal sehen
-    
-    // First app start always shows modal
-    if (isFirstAppStart) {
-      console.log('🎯 ShowCheckUp: First app start');
-      return true;
-    }
-    // Missing required fields
-    if (missingRequired(profileData)) {
-      console.log('🎯 ShowCheckUp: Missing required fields');
-      return true;
-    }
-
-    // Profile is stale (over 30 days old)
-    if (isStale(profileData?.updated_at)) {
-      console.log('🎯 ShowCheckUp: Profile is stale');
-      return true;
-    }
-
+    // KOMPLETT DEAKTIVIERT - Kein automatisches Onboarding
     return false;
   };
 
