@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { secureLogger } from '@/utils/secureLogger';
+import { authLogger } from '@/lib/authLogger';
 
 interface AuthContextType {
   user: User | null;
@@ -130,7 +131,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log('🔐 Auth state change:', event, session?.user?.id);
         
         // Update state synchronously
@@ -141,6 +142,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Mark session as ready when we have user - don't wait for JWT validation
         const sessionIsReady = !!(session?.user);
         setIsSessionReady(sessionIsReady);
+        
+        // Log auth state changes
+        await authLogger.log({ 
+          event: 'AUTH_STATE_CHANGE', 
+          stage: 'onAuthStateChange',
+          auth_event: event,
+          session_user_id: session?.user?.id,
+          details: { event, hasSession: !!session }
+        });
         
         if (sessionIsReady) {
           console.log('🔐 Session fully ready - JWT available:', {
@@ -154,11 +164,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Handle different auth events
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in successfully:', session.user.email);
+          await authLogger.log({ 
+            event: 'SIGNED_IN', 
+            stage: 'onAuthStateChange',
+            from_path: window.location.pathname,
+            details: { willRedirect: window.location.pathname === '/auth' }
+          });
+          
           // Defer navigation to prevent deadlocks and allow Auth.tsx to handle first
           timeoutId = setTimeout(() => {
             // Only redirect if user isn't already being redirected by Auth.tsx
             if (window.location.pathname === '/auth') {
               console.log('useAuth: Redirecting from /auth to home after sign in');
+              authLogger.log({ 
+                event: 'REDIRECT_DECISION', 
+                stage: 'postSignIn',
+                from_path: '/auth',
+                to_path: '/',
+                details: { reason: 'signed_in_redirect_useauth' }
+              });
               redirectToHome(session.user);
             } else {
               console.log('useAuth: Already navigated away from /auth, skipping redirect');
@@ -170,6 +194,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log('🚪 User signed out');
           setSession(null);
           setUser(null);
+          await authLogger.log({ 
+            event: 'SIGNED_OUT', 
+            stage: 'onAuthStateChange',
+            details: { sessionCleared: true }
+          });
           if (!isPreviewMode && window.location.pathname !== '/auth') {
             navigate('/auth', { replace: true });
           }
@@ -179,6 +208,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log('🔄 Token refreshed');
           setSession(session);
           setUser(session?.user ?? null);
+          await authLogger.log({ 
+            event: 'TOKEN_REFRESHED', 
+            stage: 'onAuthStateChange',
+            session_user_id: session?.user?.id
+          });
         }
       }
     );
@@ -186,10 +220,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Check for existing session AFTER setting up listener
     const initAuth = async () => {
       try {
+        await authLogger.log({ 
+          event: 'INIT', 
+          stage: 'initAuth', 
+          details: { pathname: window.location.pathname } 
+        });
+        
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error('❌ Session fetch error:', error.message);
+          await authLogger.log({ 
+            event: 'ERROR', 
+            stage: 'initAuth',
+            details: { error: error.message }
+          });
           setSession(null);
           setUser(null);
           cleanupAuthState();
@@ -198,9 +243,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           setUser(session?.user ?? null);
           
+          await authLogger.log({ 
+            event: 'SESSION_CHECK', 
+            stage: 'initAuth',
+            session_user_id: session?.user?.id,
+            details: { hasSession: !!session, sessionChecked: true }
+          });
+          
           // Handle redirect for existing session - only if on auth page
           if (session?.user && window.location.pathname === '/auth') {
             console.log('🔄 User already logged in, redirecting...', session.user.email);
+            await authLogger.log({ 
+              event: 'REDIRECT_DECISION', 
+              stage: 'initAuth',
+              from_path: '/auth',
+              to_path: '/',
+              details: { reason: 'existing_session_redirect' }
+            });
             setTimeout(() => {
               redirectToHome(session.user);
             }, 50); // Quick redirect for existing sessions
@@ -208,6 +267,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (error) {
         console.error('❌ Auth initialization error:', error);
+        await authLogger.log({ 
+          event: 'ERROR', 
+          stage: 'initAuth',
+          details: { error: error instanceof Error ? error.message : 'Unknown error' }
+        });
         setSession(null);
         setUser(null);
         cleanupAuthState();

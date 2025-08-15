@@ -14,8 +14,10 @@ import { PasswordStrengthIndicator } from '@/components/PasswordStrengthIndicato
 import { signUpSchema, signInSchema, ClientRateLimit } from '@/utils/validationSchemas';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Shield } from 'lucide-react';
+import { Eye, EyeOff, Shield, Bug } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { authLogger } from '@/lib/authLogger';
+import { AuthDebugOverlay } from '@/components/AuthDebugOverlay';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -31,6 +33,7 @@ const Auth = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [privacyAccepted, setPrivacyAccepted] = useState(true); // Vorausgewählt wie gewünscht
   const [rateLimiter] = useState(() => new ClientRateLimit(5, 15 * 60 * 1000)); // 5 attempts per 15 minutes
+  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -38,6 +41,23 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Redirect if already logged in + debug detection
+    if (user) {
+      console.log('User already logged in, redirecting to home');
+      authLogger.log({ 
+        event: 'REDIRECT_DECISION', 
+        stage: 'authPageMount',
+        from_path: '/auth',
+        to_path: '/',
+        details: { reason: 'already_authenticated' }
+      });
+      navigate('/', { replace: true });
+    }
+
+    // Check for debug mode
+    if (authLogger.isDebugEnabled()) {
+      setShowDebugOverlay(true);
+    }
     
     // Check rate limiting on component mount
     const clientId = `${navigator.userAgent}_${window.location.href}`;
@@ -185,6 +205,11 @@ const Auth = () => {
     const maxAttempts = 3;
     
     try {
+      await authLogger.log({ 
+        event: 'AUTH_ATTEMPT', 
+        stage: 'handleSubmit',
+        details: { isSignUp, email: email.substring(0, 3) + '***' }
+      });
       
       while (attempt < maxAttempts) {
         try {
@@ -207,6 +232,11 @@ const Auth = () => {
             });
             
             if (error) {
+              await authLogger.log({ 
+                event: 'ERROR', 
+                stage: 'signup',
+                details: { error: error.message }
+              });
               await logSuspiciousActivity('auth_failure', {
                 error_message: error.message,
                 email_domain: email.split('@')[1],
@@ -223,6 +253,10 @@ const Auth = () => {
               throw error;
             }
             
+            await authLogger.log({ 
+              event: 'SIGNUP_SUCCESS', 
+              stage: 'handleSubmit'
+            });
             toast.success(t('auth.accountCreated'));
             setIsSignUp(false); // Switch to login view after successful signup
             break;
@@ -237,6 +271,11 @@ const Auth = () => {
             });
             
             if (error) {
+              await authLogger.log({ 
+                event: 'ERROR', 
+                stage: 'signin',
+                details: { error: error.message }
+              });
               await logSuspiciousActivity('auth_failure', {
                 error_message: error.message,
                 email_domain: email.split('@')[1],
@@ -258,6 +297,13 @@ const Auth = () => {
             }
             
             if (data.user) {
+              await authLogger.log({ 
+                event: 'SIGNIN_SUCCESS', 
+                stage: 'handleSubmit',
+                from_path: '/auth',
+                to_path: '/',
+                details: { immediateRedirect: true }
+              });
               toast.success(t('auth.signInSuccess'));
               // Use React Router navigation immediately - don't wait for useAuth
               console.log('Auth.tsx: Immediate redirect after successful sign in');
@@ -668,7 +714,7 @@ const Auth = () => {
             )}
           </div>
 
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center space-y-2">
             <Button
               type="button"
               variant="ghost"
@@ -681,9 +727,30 @@ const Auth = () => {
             >
               Auth zurücksetzen
             </Button>
+            
+            {/* Debug Toggle */}
+            {authLogger.isDebugEnabled() && (
+              <div className="pt-2 border-t">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDebugOverlay(!showDebugOverlay)}
+                  className="w-full text-xs"
+                >
+                  <Bug className="h-3 w-3 mr-1" />
+                  Auth Debug Timeline
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      <AuthDebugOverlay 
+        isVisible={showDebugOverlay}
+        onClose={() => setShowDebugOverlay(false)}
+      />
     </div>
   );
 };
