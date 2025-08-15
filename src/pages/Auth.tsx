@@ -18,6 +18,7 @@ import { Eye, EyeOff, Shield, Bug } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { authLogger } from '@/lib/authLogger';
 import { AuthDebugOverlay } from '@/components/AuthDebugOverlay';
+import { AuthErrorBoundary } from '@/components/AuthErrorBoundary';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -35,9 +36,40 @@ const Auth = () => {
   const [rateLimiter] = useState(() => new ClientRateLimit(10, 5 * 60 * 1000)); // 10 attempts per 5 minutes
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   
-  const { user } = useAuth();
-  const { t } = useTranslation();
-  const { logAuthAttempt, logSuspiciousActivity } = useSecurityMonitoring();
+  // CRITICAL DEBUG: Wrap all hooks in try-catch to detect hook errors
+  let user, t, logAuthAttempt, logSuspiciousActivity;
+  
+  try {
+    console.log('🔧 DEBUG: Loading useAuth hook...');
+    const authResult = useAuth();
+    user = authResult.user;
+    console.log('🔧 DEBUG: useAuth loaded successfully', { hasUser: !!user });
+  } catch (error) {
+    console.error('🔧 CRITICAL ERROR: useAuth hook failed:', error);
+    throw new Error(`useAuth hook error: ${error}`);
+  }
+
+  try {
+    console.log('🔧 DEBUG: Loading useTranslation hook...');
+    const translationResult = useTranslation();
+    t = translationResult.t;
+    console.log('🔧 DEBUG: useTranslation loaded successfully');
+  } catch (error) {
+    console.error('🔧 CRITICAL ERROR: useTranslation hook failed:', error);
+    t = (key: string) => key; // Fallback function
+  }
+
+  try {
+    console.log('🔧 DEBUG: Loading useSecurityMonitoring hook...');
+    const securityResult = useSecurityMonitoring();
+    logAuthAttempt = securityResult.logAuthAttempt;
+    logSuspiciousActivity = securityResult.logSuspiciousActivity;
+    console.log('🔧 DEBUG: useSecurityMonitoring loaded successfully');
+  } catch (error) {
+    console.error('🔧 CRITICAL ERROR: useSecurityMonitoring hook failed:', error);
+    logAuthAttempt = async () => {}; // Fallback function
+    logSuspiciousActivity = async () => {}; // Fallback function
+  }
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -189,8 +221,19 @@ const Auth = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log('Login attempt started', { email, isSignUp, isPasswordReset });
+    console.log('🔧 DEBUG: handleSubmit CALLED - START OF FUNCTION');
+    console.log('🔧 DEBUG: Event object:', e);
+    console.log('🔧 DEBUG: Form data:', { email, password: '***', isSignUp, isPasswordReset });
+    
+    try {
+      e.preventDefault();
+      console.log('🔧 DEBUG: e.preventDefault() executed successfully');
+    } catch (error) {
+      console.error('🔧 CRITICAL ERROR: e.preventDefault() failed:', error);
+      return;
+    }
+    
+    console.log('🔧 DEBUG: Login attempt started', { email, isSignUp, isPasswordReset });
     
     // Check rate limiting
     const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
@@ -496,7 +539,19 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => {
+              console.log('🔧 DEBUG: Form onSubmit triggered');
+              try {
+                handleSubmit(e);
+              } catch (error) {
+                console.error('🔧 CRITICAL ERROR: handleSubmit crashed:', error);
+                authLogger.log({
+                  event: 'FORM_SUBMIT_ERROR',
+                  stage: 'onSubmit',
+                  details: { error: String(error) }
+                });
+              }
+            }} className="space-y-4">
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -814,8 +869,9 @@ const Auth = () => {
       <AuthDebugOverlay 
         isVisible={showDebugOverlay}
         onClose={() => setShowDebugOverlay(false)}
-      />
-    </div>
+        />
+      </div>
+    </AuthErrorBoundary>
   );
 };
 
