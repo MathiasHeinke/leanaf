@@ -133,10 +133,32 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 }) => {
   
   // ============= BASIC STATE =============
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [messages, setMessages] = useState<EnhancedChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+
+  // Add authentication check
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center p-6">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user?.id) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center p-6">
+          <h2 className="text-xl font-semibold mb-2">Authentication Required</h2>
+          <p className="text-muted-foreground">Please log in to chat with your coach.</p>
+        </div>
+      </div>
+    );
+  }
   
   // FireBackdrop for ARES
   const fireBackdropRef = useRef<FireBackdropHandle>(null);

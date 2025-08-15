@@ -1,8 +1,9 @@
 
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
 import EnhancedUnifiedCoachChat from "@/components/EnhancedUnifiedCoachChat";
 import { CoachSelection } from "@/components/CoachSelection";
+import { useAuth } from "@/hooks/useAuth";
 
 import { COACH_REGISTRY } from '@/lib/coachRegistry';
 
@@ -21,6 +22,23 @@ const coachProfiles = Object.values(COACH_REGISTRY).map(coach => ({
 
 const CoachPage = () => {
   const { coachId } = useParams<{ coachId: string }>();
+  const { user, loading } = useAuth();
+
+  // Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to auth if not logged in and trying to access specific coach
+  if (coachId && !user) {
+    return <Navigate to="/auth" replace />;
+  }
   
   // If coachId is provided, find the specific coach and render chat
   if (coachId) {

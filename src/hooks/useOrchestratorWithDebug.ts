@@ -47,6 +47,16 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
     traceId?: string,
     context?: CoachEventContext
   ): Promise<OrchestratorReply> {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    // Check authentication before sending
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error('User is not authenticated');
+    }
+
     const trace = traceId || newTraceId();
     const clientEventId = currentClientEventId.current || beginUserAction();
     
@@ -225,7 +235,17 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
     } catch (e) {
       // Error all pending steps
       if (debugCallbacks) {
-        const errorMsg = `Fehler: ${e instanceof Error ? e.message : 'Unbekannter Fehler'}`;
+        let errorMsg = `Fehler: ${e instanceof Error ? e.message : 'Unbekannter Fehler'}`;
+        
+        // Handle 401 authentication errors specifically
+        if (e instanceof Error && (
+          e.message?.includes('authentication') || 
+          e.message?.includes('Unauthorized') ||
+          e.message?.includes('Bearer token') ||
+          e.message?.includes('not authenticated')
+        )) {
+          errorMsg = 'Authentication fehler - Bitte neu einloggen';
+        }
         
         if (messageStep) debugCallbacks.errorStep(messageStep, errorMsg);
         if (routeStep) debugCallbacks.errorStep(routeStep, errorMsg);
