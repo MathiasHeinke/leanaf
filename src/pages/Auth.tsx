@@ -526,9 +526,12 @@ const Auth = () => {
     }
   };
 
+  console.log('🔧 DEBUG: Auth component rendering, about to return JSX');
+  
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <AuthErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold flex items-center justify-center gap-2">
             <Shield className="h-6 w-6 text-primary" />
@@ -864,11 +867,11 @@ const Auth = () => {
             )}
           </div>
         </CardContent>
-      </Card>
+        </Card>
 
-      <AuthDebugOverlay 
-        isVisible={showDebugOverlay}
-        onClose={() => setShowDebugOverlay(false)}
+        <AuthDebugOverlay 
+          isVisible={showDebugOverlay}
+          onClose={() => setShowDebugOverlay(false)}
         />
       </div>
     </AuthErrorBoundary>
