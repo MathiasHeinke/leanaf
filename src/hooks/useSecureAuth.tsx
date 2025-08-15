@@ -24,11 +24,7 @@ export const useSecureAuth = () => {
     setAuthState({ loading: true, error: null });
 
     try {
-      // Rate limiting check
-      if (!authRateLimit.isAllowed(email)) {
-        const remaining = authRateLimit.getRemainingAttempts(email);
-        throw new Error(`Too many login attempts. Try again later. ${remaining} attempts remaining.`);
-      }
+      // ✅ UNLIMITED MODE: Rate limiting disabled
 
       // Input validation
       const emailValidation = validateEmail(email);
@@ -89,10 +85,7 @@ export const useSecureAuth = () => {
     setAuthState({ loading: true, error: null });
 
     try {
-      // Rate limiting check
-      if (!authRateLimit.isAllowed(email)) {
-        throw new Error('Too many signup attempts. Please try again later.');
-      }
+      // ✅ UNLIMITED MODE: Rate limiting disabled
 
       // Input validation
       const emailValidation = validateEmail(email);

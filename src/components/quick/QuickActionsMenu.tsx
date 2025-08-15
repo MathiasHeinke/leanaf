@@ -116,19 +116,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ open, onSele
                   aria-label={a.label}
                 >
                   <Icon className="w-6 h-6 text-foreground" />
-                  {/* status dot */}
-                  { (typeof (open) !== 'undefined') && (
-                    <span
-                      className={
-                        `absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full ring-2 ring-background ${
-                          (statuses?.[a.key] === 'due') ? 'bg-destructive animate-pulse' :
-                          (statuses?.[a.key] === 'partial') ? 'bg-warning' :
-                          (statuses?.[a.key] === 'ok') ? 'bg-fats' : 'bg-transparent'
-                        }`
-                      }
-                      aria-hidden
-                    />
-                  )}
+                  {/* ✅ UNLIMITED MODE: All actions always available */}
                 </motion.button>
               );
             })}

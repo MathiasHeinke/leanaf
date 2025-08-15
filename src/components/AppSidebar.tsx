@@ -191,20 +191,15 @@ export function AppSidebar() {
   };
 
   const getNavClass = (path: string) => {
-    const baseClass = isActive(path) 
+    // ✅ UNLIMITED MODE: All navigation always enabled
+    return isActive(path) 
       ? "bg-accent text-accent-foreground font-medium" 
       : "hover:bg-accent/50";
-    
-    // Disable navigation if profile not complete (except for Profile and Settings pages)
-    if (!isProfileComplete && path !== "/profile" && path !== "/account") {
-      return `${baseClass} opacity-50 cursor-not-allowed`;
-    }
-    
-    return baseClass;
   };
 
   const isNavDisabled = (path: string) => {
-    return !isProfileComplete && path !== "/profile" && path !== "/account";
+    // ✅ UNLIMITED MODE: Never disable navigation
+    return false;
   };
 
   const handleNavigation = (url: string, disabled: boolean = false) => {
@@ -347,11 +342,6 @@ export function AppSidebar() {
                       {!collapsed && (
                         <div className="flex items-center justify-between w-full">
                           <span>{item.key ? t(item.key) : item.title}</span>
-                          {item.url === "/profile" && !isProfileComplete && (
-                            <Badge variant="destructive" className="text-xs ml-2">
-                              Jetzt ausfüllen
-                            </Badge>
-                          )}
                         </div>
                       )}
                     </button>

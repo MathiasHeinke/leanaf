@@ -70,33 +70,14 @@ export const useCoachLimitHandler = ({ coachPersonality, feature }: CoachLimitHa
   };
 
   const showLimitReachedToast = (personality: string, feature: string) => {
-    const message = getPersonalizedLimitMessage(personality, feature);
-    const featureData = FEATURE_LIMITS[feature as keyof typeof FEATURE_LIMITS];
-    
-    toast.error(message, {
-      duration: 8000,
-      action: {
-        label: "Credits holen",
-        onClick: () => navigate('/credits')
-      }
-    });
+    // ✅ UNLIMITED MODE: No limit toasts
+    return;
   };
 
   const handleError = (error: LimitError): string => {
-    // ✅ UNLIMITED MODE: No more 429 rate limiting
-    // All errors are treated as technical issues only
-
-    // Handle other errors with coach personality
-    const coachName = getCoachName(coachPersonality);
-    const icon = getCoachIcon(coachPersonality);
-
-    const errorMessages = {
-      hart: `${icon} ${coachName} hier! Technisches Problem - aber wir geben nicht auf! Versuch's nochmal!`,
-      soft: `${icon} Oh, da ist etwas schiefgegangen. ${coachName} ist trotzdem für dich da. Versuch es gerne nochmal! ❤️`,
-      motivierend: `${icon} Hey! ${coachName} hier. Kleiner technischer Haken, aber wir lassen uns nicht stoppen! Nochmal probieren! 💪`
-    };
-
-    return errorMessages[coachPersonality as keyof typeof errorMessages] || errorMessages.motivierend;
+    // ✅ UNLIMITED MODE: All features unlimited, no rate limiting
+    // Return simple technical error message
+    return "Technisches Problem aufgetreten. Bitte versuche es nochmal.";
   };
 
   return {
