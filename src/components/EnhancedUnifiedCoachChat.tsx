@@ -58,7 +58,7 @@ import { PlanInlineEditor } from '@/components/PlanInlineEditor';
 import { WeightEntryModal } from '@/components/WeightEntryModal';
 import { v4 as uuidv4 } from 'uuid';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
-import { useOrchestrator, OrchestratorReply } from '@/hooks/useOrchestrator';
+import { useOrchestrator, OrchestratorReply, CoachEvent } from '@/hooks/useOrchestrator';
 import { useOrchestratorWithDebug } from '@/hooks/useOrchestratorWithDebug';
 import { UserChatDebugger } from '@/components/debug/UserChatDebugger';
 import { useDebugSteps } from '@/hooks/useDebugSteps';
@@ -1035,18 +1035,28 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
     awaitingFirstPaintRef.current = true;
 
     // Decide event type
-    let event: { type: 'TEXT'|'IMAGE'|'END'; text?: string; url?: string } = { type: 'TEXT', text: msg };
-    if (mediaUrls && mediaUrls.length > 0 && !msg) {
-      event = { type: 'IMAGE', url: mediaUrls[0] };
-    }
+    let event: CoachEvent;
+    
     if (msg === '/end' || msg.toLowerCase() === 'end') {
       event = { type: 'END' };
+    } else if (mediaUrls && mediaUrls.length > 0) {
+      // IMAGE event - either pure image or image with text
+      event = { type: 'IMAGE', url: mediaUrls[0] };
+      if (msg) {
+        // If there's also text, include it in the image event
+        event.text = msg;
+      }
+    } else {
+      // Pure TEXT event
+      event = { type: 'TEXT', text: msg };
     }
 
     const t0 = performance.now();
     const reply = await sendEventWithDebug(
       user.id,
-      { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', followup: messages.some(m => m.role === 'assistant'), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any
+      { ...event, clientEventId },
+      undefined,
+      { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', followup: messages.some(m => m.role === 'assistant'), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) }
     );
 
     // Client metric: server_ack_ms

@@ -54,7 +54,7 @@ export type OrchestratorReply =
 
 export type CoachEvent =
   | { type: 'TEXT'; text: string; clientEventId?: string; context?: CoachEventContext }
-  | { type: 'IMAGE'; url: string; clientEventId?: string; context?: CoachEventContext }
+  | { type: 'IMAGE'; url: string; text?: string; clientEventId?: string; context?: CoachEventContext }
   | { type: 'END'; clientEventId?: string; context?: CoachEventContext };
 
 function normalizeReply(raw: any): OrchestratorReply {
@@ -82,20 +82,22 @@ export function useOrchestrator() {
     currentClientEventId.current = null;
   }
   
-  async function sendEvent(userId: string, ev: CoachEvent, traceId?: string): Promise<OrchestratorReply> {
+  async function sendEvent(userId: string, ev: CoachEvent, traceId?: string, context?: CoachEventContext): Promise<OrchestratorReply> {
     // Ensure we have a clientEventId for proper idempotency
     if (!ev.clientEventId) {
       ev.clientEventId = currentClientEventId.current || beginUserAction();
     }
     
-    const coachId = ev.context?.coachId || 'lucy';
+    // Merge context from parameter and event context
+    const finalContext = { ...ev.context, ...context };
+    const coachId = finalContext?.coachId || 'lucy';
     const headers: Record<string, string> = {
       'x-trace-id': traceId ?? crypto.randomUUID(),
-      'x-chat-mode': ev.context?.coachMode ?? '',
-      'x-source': ev.context?.source ?? 'chat',
+      'x-chat-mode': finalContext?.coachMode ?? '',
+      'x-source': finalContext?.source ?? 'chat',
     };
 
-    const payload = { userId, event: ev };
+    const payload = { userId, event: ev, context: finalContext };
 
     // Local intent detection (feature-flagged)
     let localIntent: any = null;
