@@ -31,16 +31,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isPreviewMode = window.location.hostname.includes('lovable.app');
 
   const cleanupAuthState = () => {
-    Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        localStorage.removeItem(key);
-      }
-    });
-    Object.keys(sessionStorage || {}).forEach((key) => {
-      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-        sessionStorage.removeItem(key);
-      }
-    });
+    try {
+      Object.keys(localStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          localStorage.removeItem(key);
+        }
+      });
+      Object.keys(sessionStorage || {}).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      console.log('Auth state cleaned up successfully');
+    } catch (error) {
+      console.error('Error cleaning up auth state:', error);
+    }
   };
 
   const checkIfNewUserAndRedirect = async (user: User) => {
@@ -138,22 +143,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     
-    // Set up auth state listener
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        console.log('Auth state change:', event, session?.user?.id);
+        console.log('🔐 Auth state change:', event, session?.user?.id);
+        
+        // Update state synchronously
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Handle auth events with debouncing
-        if (event === 'SIGNED_IN' && session?.user && window.location.pathname === '/auth') {
-          timeoutId = setTimeout(() => {
-            checkIfNewUserAndRedirect(session.user);
-          }, 100);
+        // Handle different auth events
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('✅ User signed in successfully');
+          if (window.location.pathname === '/auth') {
+            // Defer redirect to prevent deadlocks
+            timeoutId = setTimeout(() => {
+              checkIfNewUserAndRedirect(session.user);
+            }, 200);
+          }
         }
         
         if (event === 'SIGNED_OUT') {
+          console.log('🚪 User signed out');
           cleanupAuthState();
           setSession(null);
           setUser(null);
@@ -163,41 +175,53 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (event === 'TOKEN_REFRESHED') {
+          console.log('🔄 Token refreshed');
           setSession(session);
           setUser(session?.user ?? null);
         }
       }
     );
 
-    // Check for existing session and handle redirect
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.error('Session fetch error:', error.message);
+    // Check for existing session AFTER setting up listener
+    const initAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('❌ Session fetch error:', error.message);
+          cleanupAuthState();
+          setSession(null);
+          setUser(null);
+        } else {
+          console.log('🔍 Initial session check:', session?.user?.id || 'No session');
+          setSession(session);
+          setUser(session?.user ?? null);
+          
+          // Handle redirect for existing session
+          if (session?.user && window.location.pathname === '/auth') {
+            console.log('🔄 User already logged in, redirecting...');
+            setTimeout(() => {
+              checkIfNewUserAndRedirect(session.user);
+            }, 200);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Auth initialization error:', error);
         cleanupAuthState();
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      
-      // If user is logged in and on auth page, redirect them
-      if (session?.user && window.location.pathname === '/auth') {
-        console.log('User already logged in, checking redirect...');
-        setTimeout(() => {
-          checkIfNewUserAndRedirect(session.user);
-        }, 100);
-      }
-    }).catch(() => {
-      cleanupAuthState();
-      setSession(null);
-      setUser(null);
-      setLoading(false);
-    });
+    };
+
+    initAuth();
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate, isPreviewMode]);
 
   const value = {
     user,
