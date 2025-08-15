@@ -79,34 +79,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const startPremiumTrialForNewUser = async (userId: string) => {
-    try {
-      // Check if user already has a trial
-      const { data: existingTrial } = await supabase
-        .from('user_trials')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('trial_type', 'premium')
-        .maybeSingle();
+  const startPremiumTrialForNewUser = (userId: string) => {
+    // Defer trial creation to not block auth flow
+    setTimeout(async () => {
+      try {
+        const { data: existingTrial } = await supabase
+          .from('user_trials')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('trial_type', 'premium')
+          .maybeSingle();
 
-      if (existingTrial) return; // Trial already exists
+        if (existingTrial) return;
 
-      // Create new 3-day premium trial
-      const { error } = await supabase
-        .from('user_trials')
-        .insert({
-          user_id: userId,
-          trial_type: 'premium',
-          is_active: true,
-          expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString() // 3 days
-        });
-
-      if (error) {
-        console.error('Error creating premium trial:', error);
+        await supabase
+          .from('user_trials')
+          .insert({
+            user_id: userId,
+            trial_type: 'premium',
+            is_active: true,
+            expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+          });
+      } catch (error) {
+        console.error('Error starting premium trial:', error);
       }
-    } catch (error) {
-      console.error('Error starting premium trial:', error);
-    }
+    }, 1000);
   };
 
   const signOut = async () => {
@@ -143,8 +140,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const sessionIsReady = !!(session?.user);
         setIsSessionReady(sessionIsReady);
         
-        // Log auth state changes
-        await authLogger.log({ 
+        // Log auth state changes (non-blocking)
+        authLogger.log({ 
           event: 'AUTH_STATE_CHANGE', 
           stage: 'onAuthStateChange',
           auth_event: event,
@@ -164,7 +161,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Handle different auth events
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in successfully:', session.user.email);
-          await authLogger.log({ 
+          authLogger.log({ 
             event: 'SIGNED_IN', 
             stage: 'onAuthStateChange',
             from_path: window.location.pathname,
@@ -194,7 +191,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log('🚪 User signed out');
           setSession(null);
           setUser(null);
-          await authLogger.log({ 
+          authLogger.log({ 
             event: 'SIGNED_OUT', 
             stage: 'onAuthStateChange',
             details: { sessionCleared: true }
@@ -208,7 +205,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.log('🔄 Token refreshed');
           setSession(session);
           setUser(session?.user ?? null);
-          await authLogger.log({ 
+          authLogger.log({ 
             event: 'TOKEN_REFRESHED', 
             stage: 'onAuthStateChange',
             session_user_id: session?.user?.id
@@ -220,7 +217,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Check for existing session AFTER setting up listener
     const initAuth = async () => {
       try {
-        await authLogger.log({ 
+        authLogger.log({ 
           event: 'INIT', 
           stage: 'initAuth', 
           details: { pathname: window.location.pathname } 
@@ -230,7 +227,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (error) {
           console.error('❌ Session fetch error:', error.message);
-          await authLogger.log({ 
+          authLogger.log({ 
             event: 'ERROR', 
             stage: 'initAuth',
             details: { error: error.message }
@@ -243,7 +240,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(session);
           setUser(session?.user ?? null);
           
-          await authLogger.log({ 
+          authLogger.log({ 
             event: 'SESSION_CHECK', 
             stage: 'initAuth',
             session_user_id: session?.user?.id,
@@ -253,7 +250,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // Handle redirect for existing session - only if on auth page
           if (session?.user && window.location.pathname === '/auth') {
             console.log('🔄 User already logged in, redirecting...', session.user.email);
-            await authLogger.log({ 
+            authLogger.log({ 
               event: 'REDIRECT_DECISION', 
               stage: 'initAuth',
               from_path: '/auth',
@@ -267,7 +264,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (error) {
         console.error('❌ Auth initialization error:', error);
-        await authLogger.log({ 
+        authLogger.log({ 
           event: 'ERROR', 
           stage: 'initAuth',
           details: { error: error instanceof Error ? error.message : 'Unknown error' }
