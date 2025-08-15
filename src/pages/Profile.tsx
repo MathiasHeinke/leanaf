@@ -172,17 +172,29 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   const loadProfile = async () => {
     try {
+      console.log('🔄 Loading profile for user:', user?.id);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user?.id)
         .maybeSingle();
 
+      console.log('📋 Profile data loaded:', { data, error });
+
       if (error && error.code !== 'PGRST116') {
+        console.error('❌ Profile loading error:', error);
         throw error;
       }
 
       if (data) {
+        console.log('✅ Profile data found, populating fields:', {
+          weight: data.weight,
+          height: data.height,
+          age: data.age,
+          gender: data.gender
+        });
+        
         setProfileExists(true);
         setPreferredName(data.preferred_name || '');
         setWeight(data.weight ? data.weight.toString() : '');
@@ -205,13 +217,17 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         if (data.preferred_language) {
           setLanguage(data.preferred_language);
         }
+        
+        console.log('✅ Profile fields populated successfully');
       } else {
+        console.log('⚠️ No profile data found, using defaults');
         setProfileExists(false);
         // Set default strategy to high_protein for new users
         setMacroStrategy('high_protein');
       }
     } catch (error: any) {
-      console.error('Error loading profile:', error);
+      console.error('❌ Error loading profile:', error);
+      toast.error('Fehler beim Laden des Profils');
     } finally {
       setInitialLoading(false);
     }
@@ -532,14 +548,65 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Lädt...</p>
+          <p>Lädt Profildaten...</p>
         </div>
       </div>
     );
   }
 
+  // Debug info - show current state
+  const debugInfo = {
+    user: !!user,
+    profileExists,
+    hasBasicData: !!(weight && height && age && gender),
+    weight,
+    height,
+    age,
+    gender
+  };
+  console.log('🔍 Profile Debug Info:', debugInfo);
+
   return (
     <>
+      {/* Display basic profile info at the top if available */}
+      {(weight || height || age || gender) && (
+        <div className="p-4 max-w-lg mx-auto">
+          <Card className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-3 mb-3">
+                <User className="h-5 w-5 text-blue-600" />
+                <h3 className="font-semibold text-blue-900">Dein Profil</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {weight && (
+                  <div>
+                    <span className="text-blue-700 font-medium">Gewicht:</span>
+                    <span className="ml-1 text-blue-900">{weight} kg</span>
+                  </div>
+                )}
+                {height && (
+                  <div>
+                    <span className="text-blue-700 font-medium">Größe:</span>
+                    <span className="ml-1 text-blue-900">{height} cm</span>
+                  </div>
+                )}
+                {age && (
+                  <div>
+                    <span className="text-blue-700 font-medium">Alter:</span>
+                    <span className="ml-1 text-blue-900">{age} Jahre</span>
+                  </div>
+                )}
+                {gender && (
+                  <div>
+                    <span className="text-blue-700 font-medium">Geschlecht:</span>
+                    <span className="ml-1 text-blue-900">{gender === 'male' ? 'Männlich' : 'Weiblich'}</span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <div className="p-4 max-w-lg mx-auto">
         <div className="space-y-6 pb-20">
@@ -550,7 +617,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
               <Settings className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-lg md:text-xl font-bold">Persönliche Daten</h2>
+            <h2 className="text-lg md:text-xl font-bold">Persönliche Daten bearbeiten</h2>
           </div>
 
 

@@ -240,6 +240,9 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
     try {
       const dateString = date.toISOString().split('T')[0];
+      
+      // Try to load data for the specified date, if none found, try previous days
+      await loadDataForDateWithFallback(dateString);
 
       // Load today's workouts (all workouts for the day)
       const { data: workoutsData, error: workoutsError } = await supabase
@@ -362,6 +365,139 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     }
   };
 
+  const loadDataForDateWithFallback = async (dateString: string) => {
+    // Helper function to load data for a specific date
+    const loadDataForSingleDate = async (targetDate: string) => {
+      // Load workouts
+      const { data: workoutsData } = await supabase
+        .from('workouts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', targetDate)
+        .order('created_at', { ascending: true });
+
+      // Load sleep
+      const { data: sleepData } = await supabase
+        .from('sleep_tracking')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', targetDate)
+        .maybeSingle();
+
+      // Load weight
+      const { data: weightData } = await supabase
+        .from('weight_history')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', targetDate)
+        .maybeSingle();
+
+      // Load fluids
+      const { data: fluidsData } = await supabase
+        .from('user_fluids')
+        .select(`
+          *,
+          fluid_database:fluid_id (
+            name,
+            calories_per_100ml,
+            protein_per_100ml,
+            carbs_per_100ml,
+            fats_per_100ml,
+            has_alcohol,
+            category
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('date', targetDate)
+        .order('consumed_at', { ascending: false });
+
+      // Load mindset
+      const { data: mindsetData } = await supabase
+        .from('journal_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('date', targetDate)
+        .order('created_at', { ascending: false });
+
+      return {
+        workouts: workoutsData || [],
+        sleep: sleepData,
+        weight: weightData,
+        fluids: fluidsData || [],
+        mindset: mindsetData || []
+      };
+    };
+
+    const currentDateString = new Date().toISOString().split('T')[0];
+    let dataFound = false;
+    let lastDataDate = dateString;
+
+    // First try the requested date
+    let data = await loadDataForSingleDate(dateString);
+    
+    // Check if we have any meaningful data
+    if (data.workouts.length > 0 || data.sleep || data.weight || data.fluids.length > 0) {
+      dataFound = true;
+    }
+
+    // If no data for requested date and it's today, try previous days (up to 7 days back)
+    if (!dataFound && dateString === currentDateString) {
+      for (let i = 1; i <= 7; i++) {
+        const fallbackDate = new Date();
+        fallbackDate.setDate(fallbackDate.getDate() - i);
+        const fallbackDateString = fallbackDate.toISOString().split('T')[0];
+        
+        const fallbackData = await loadDataForSingleDate(fallbackDateString);
+        
+        if (fallbackData.workouts.length > 0 || fallbackData.sleep || fallbackData.weight || fallbackData.fluids.length > 0) {
+          data = fallbackData;
+          lastDataDate = fallbackDateString;
+          dataFound = true;
+          break;
+        }
+      }
+    }
+
+    // Set the data (even if empty)
+    setTodaysWorkouts(data.workouts);
+    setTodaysWorkout(data.workouts.length > 0 ? data.workouts[0] : null);
+    setTodaysSleep(data.sleep);
+    setTodaysWeight(data.weight);
+    
+    // Process fluids
+    const processedFluids = data.fluids.map(fluid => ({
+      ...fluid,
+      fluid_name: fluid.custom_name || fluid.fluid_database?.name || 'Unknown',
+      calories_per_100ml: fluid.fluid_database?.calories_per_100ml || 0,
+      protein_per_100ml: fluid.fluid_database?.protein_per_100ml || 0,
+      carbs_per_100ml: fluid.fluid_database?.carbs_per_100ml || 0,
+      fats_per_100ml: fluid.fluid_database?.fats_per_100ml || 0,
+      has_alcohol: fluid.fluid_database?.has_alcohol || false,
+      fluid_category: fluid.fluid_database?.category || 'other'
+    }));
+    setTodaysFluids(processedFluids);
+    setTodaysMindset(data.mindset);
+
+    // Load measurements (weekly)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const { data: measurementsData } = await supabase
+      .from('body_measurements')
+      .select('*')
+      .eq('user_id', user.id)
+      .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setTodaysMeasurements(measurementsData);
+
+    // Show message if using fallback data
+    if (dateString === currentDateString && lastDataDate !== dateString && dataFound) {
+      const fallbackDateFormatted = new Date(lastDataDate).toLocaleDateString('de-DE');
+      toast.info(`Keine Daten für heute. Zeige letzte Daten vom ${fallbackDateFormatted}`);
+    }
+  };
+
   const fetchMealsForDate = async (date: Date) => {
     setLoading(true);
     try {
@@ -371,7 +507,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      // Fetch meals
+      // Fetch meals for the specified date
       const { data: mealsData, error: mealsError } = await supabase
         .from('meals')
         .select('*')
@@ -381,6 +517,12 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         .order('created_at', { ascending: false });
 
       if (mealsError) throw mealsError;
+      
+      // If no meals for today and it's today, try to load from recent days
+      if ((!mealsData || mealsData.length === 0) && date.toDateString() === new Date().toDateString()) {
+        await loadMealsWithFallback(date);
+        return;
+      }
       
       if (!mealsData || mealsData.length === 0) {
         setMeals([]);
@@ -423,6 +565,61 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadMealsWithFallback = async (date: Date) => {
+    // Try to find meals from recent days if today has none
+    for (let i = 1; i <= 7; i++) {
+      const fallbackDate = new Date(date);
+      fallbackDate.setDate(fallbackDate.getDate() - i);
+      
+      const startOfDay = new Date(fallbackDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(fallbackDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      const { data: fallbackMealsData, error } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .gte('created_at', startOfDay.toISOString())
+        .lte('created_at', endOfDay.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (!error && fallbackMealsData && fallbackMealsData.length > 0) {
+        // Load images for fallback meals
+        const mealIds = fallbackMealsData.map(meal => meal.id);
+        const { data: imagesData } = await supabase
+          .from('meal_images')
+          .select('meal_id, image_url')
+          .in('meal_id', mealIds);
+
+        const imagesByMeal = (imagesData || []).reduce((acc, img) => {
+          if (!acc[img.meal_id]) {
+            acc[img.meal_id] = [];
+          }
+          acc[img.meal_id].push(img.image_url);
+          return acc;
+        }, {} as Record<string, string[]>);
+
+        const mealsWithImages = fallbackMealsData.map(meal => ({
+          ...meal,
+          images: imagesByMeal[meal.id] || []
+        }));
+        
+        setMeals(mealsWithImages);
+        updateCalorieSummary(mealsWithImages);
+        
+        const fallbackDateFormatted = fallbackDate.toLocaleDateString('de-DE');
+        toast.info(`Keine Mahlzeiten für heute. Zeige letzte Mahlzeiten vom ${fallbackDateFormatted}`);
+        return;
+      }
+    }
+    
+    // No meals found in recent days
+    setMeals([]);
+    updateCalorieSummary([]);
   };
 
   const updateCalorieSummary = (meals: any[]) => {

@@ -85,6 +85,11 @@ export const DashboardKeyMetrics: React.FC<Props> = ({
     );
   }
 
+  // Show meaningful data even if today's consumption is 0
+  const displayTitle = calorieSummary.consumed > 0 
+    ? "Kalorien heute" 
+    : "Letzte Aktivität";
+
   // Calculate fluid intake in liters
   const totalFluidMl = todaysFluids.reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
   const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
@@ -123,7 +128,7 @@ export const DashboardKeyMetrics: React.FC<Props> = ({
 
   return (
     <KeyMetricsBoard
-      sparkTitle="Kalorien heute"
+      sparkTitle={displayTitle}
       sparkValue={formatCalories(calorieSummary.consumed)}
       sparkUnit="kcal"
       sparkData={weeklyCalories}
