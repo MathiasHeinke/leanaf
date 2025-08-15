@@ -58,20 +58,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const redirectToHome = async (user: User) => {
     try {
-      console.log('Redirecting user to home...', user.id);
+      console.log('Auth redirectToHome called for user:', user.id);
       console.log('Preview mode:', isPreviewMode);
       
-      // Premium trial disabled for Lean AI
-      // await startPremiumTrialForNewUser(user.id);
-      
-      // Always redirect to home - no forced profile redirect
-      console.log('Redirecting to home...');
-      navigate('/', { replace: true });
+      // Only redirect if not already on home page to prevent loops
+      if (window.location.pathname !== '/') {
+        console.log('Redirecting to home from useAuth...');
+        navigate('/', { replace: true });
+      } else {
+        console.log('Already on home page, skipping redirect');
+      }
     } catch (error) {
       console.error('Error during redirect:', error);
-      // Fallback to home regardless of error
-      console.log('Fallback redirect to home...');
-      navigate('/', { replace: true });
+      // Fallback to home only if not already there
+      if (window.location.pathname !== '/') {
+        console.log('Fallback redirect to home...');
+        navigate('/', { replace: true });
+      }
     }
   };
 
@@ -135,8 +138,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Mark session as ready when we have both user and valid access token
-        const sessionIsReady = !!(session?.user && session?.access_token);
+        // Mark session as ready when we have user - don't wait for JWT validation
+        const sessionIsReady = !!(session?.user);
         setIsSessionReady(sessionIsReady);
         
         if (sessionIsReady) {
@@ -151,10 +154,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Handle different auth events
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in successfully:', session.user.email);
-          // Ensure auth state is fully settled before navigation
+          // Defer navigation to prevent deadlocks and allow Auth.tsx to handle first
           timeoutId = setTimeout(() => {
-            redirectToHome(session.user);
-          }, 500); // Increased timeout for better auth state settling
+            // Only redirect if user isn't already being redirected by Auth.tsx
+            if (window.location.pathname === '/auth') {
+              console.log('useAuth: Redirecting from /auth to home after sign in');
+              redirectToHome(session.user);
+            } else {
+              console.log('useAuth: Already navigated away from /auth, skipping redirect');
+            }
+          }, 100); // Reduced timeout - Auth.tsx should handle immediate redirect
         }
         
         if (event === 'SIGNED_OUT') {
@@ -194,7 +203,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.log('🔄 User already logged in, redirecting...', session.user.email);
             setTimeout(() => {
               redirectToHome(session.user);
-            }, 300); // Slightly longer for existing sessions
+            }, 50); // Quick redirect for existing sessions
           }
         }
       } catch (error) {

@@ -259,7 +259,8 @@ const Auth = () => {
             
             if (data.user) {
               toast.success(t('auth.signInSuccess'));
-              // Use React Router navigation instead of hard reload
+              // Use React Router navigation immediately - don't wait for useAuth
+              console.log('Auth.tsx: Immediate redirect after successful sign in');
               navigate('/', { replace: true });
             }
             break;

@@ -60,18 +60,15 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Wait for complete session including JWT token
-  if (authLoading || !user || !isSessionReady) {
+  // Show dashboard immediately when user is available - don't wait for isSessionReady
+  if (authLoading || !user) {
     return (
       <div className="space-y-6 animate-pulse">
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-64 w-full" />
         <div className="text-sm text-muted-foreground text-center">
-          {authLoading ? 'Checking authentication...' : 
-           !user ? 'No user found...' : 
-           'Waiting for session...'
-          }
+          {authLoading ? 'Checking authentication...' : 'No user found...'}
         </div>
       </div>
     );

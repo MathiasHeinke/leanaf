@@ -90,8 +90,10 @@ export const TrackingPreferences = () => {
         .order('display_order');
 
       if (error) {
-        console.error('Error in loadPreferences query:', error);
-        throw error;
+        console.error('TrackingPreferences: Error loading preferences:', error);
+        // Don't block the UI - set empty preferences and let user continue
+        setPreferences([]);
+        return;
       }
 
       console.log('Loaded preferences data:', data);
@@ -116,8 +118,10 @@ export const TrackingPreferences = () => {
       console.log('All preferences found, setting state');
       setPreferences(data);
     } catch (error) {
-      console.error('Error loading tracking preferences:', error);
-      toast.error('Fehler beim Laden der Tracking-Einstellungen');
+      console.error('TrackingPreferences: Error in loadPreferences:', error);
+      // Don't block the UI - set empty preferences
+      setPreferences([]);
+      // Don't show error toast to prevent blocking the login flow
     } finally {
       setLoading(false);
     }
