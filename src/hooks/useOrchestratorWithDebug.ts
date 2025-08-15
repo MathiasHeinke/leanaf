@@ -50,6 +50,11 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
     const trace = traceId || newTraceId();
     const clientEventId = currentClientEventId.current || beginUserAction();
     
+    // Ensure clientEventId is in the event
+    if (!ev.clientEventId) {
+      ev.clientEventId = clientEventId;
+    }
+    
     // Debug steps
     let messageStep: string | undefined;
     let routeStep: string | undefined;
@@ -65,12 +70,15 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
         );
       }
 
+      // Merge context from event and parameter
+      const finalContext = { ...ev.context, ...context };
+
       const payload = {
         userId,
         event: ev,
         traceId: trace,
         clientEventId,
-        context: context || {},
+        context: finalContext || {},
       };
 
       const headers: Record<string, string> = {
