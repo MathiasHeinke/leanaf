@@ -104,25 +104,63 @@ export const TrackingPreferences = () => {
     if (!user) return;
 
     try {
-      const defaultPrefs = trackingOptions.map((option, index) => ({
-        user_id: user.id,
-        tracking_type: option.type,
-        is_enabled: option.isDefault,
-        display_order: index + 1
-      }));
+      console.log('Creating default preferences for user:', user.id);
+      const createdPreferences: TrackingPreference[] = [];
 
-      const { data, error } = await supabase
-        .from('user_tracking_preferences')
-        .insert(defaultPrefs)
-        .select();
+      // Insert each preference individually to avoid bulk insert Content-Type issues
+      for (let i = 0; i < trackingOptions.length; i++) {
+        const option = trackingOptions[i];
+        const prefData = {
+          user_id: user.id,
+          tracking_type: option.type,
+          is_enabled: option.isDefault,
+          display_order: i + 1
+        };
 
-      if (error) throw error;
+        console.log('Inserting preference:', prefData);
 
-      setPreferences(data);
+        const { data, error } = await supabase
+          .from('user_tracking_preferences')
+          .insert([prefData]) // Single item in array
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error inserting preference:', error);
+          throw error;
+        }
+
+        if (data) {
+          createdPreferences.push(data);
+        }
+      }
+
+      console.log('Successfully created preferences:', createdPreferences);
+      setPreferences(createdPreferences);
       toast.success('Standard-Tracking-Einstellungen erstellt');
     } catch (error) {
       console.error('Error creating default preferences:', error);
-      toast.error('Fehler beim Erstellen der Standard-Einstellungen');
+      
+      // Fallback: Load existing preferences if any were created partially
+      try {
+        const { data } = await supabase
+          .from('user_tracking_preferences')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('display_order');
+        
+        if (data && data.length > 0) {
+          setPreferences(data);
+          toast.warning('Einige Standard-Einstellungen wurden erstellt');
+        } else {
+          toast.error('Fehler beim Erstellen der Standard-Einstellungen');
+        }
+      } catch (fallbackError) {
+        console.error('Fallback load also failed:', fallbackError);
+        toast.error('Fehler beim Erstellen der Standard-Einstellungen');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
