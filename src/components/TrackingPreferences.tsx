@@ -74,23 +74,46 @@ export const TrackingPreferences = () => {
   }, [user]);
 
   const loadPreferences = async () => {
-    if (!user) return;
+    if (!user?.id) {
+      console.log('No user available, skipping preferences load');
+      setLoading(false);
+      return;
+    }
 
     try {
+      console.log('Loading preferences for user:', user.id);
+      
       const { data, error } = await supabase
         .from('user_tracking_preferences')
         .select('*')
         .eq('user_id', user.id)
         .order('display_order');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error in loadPreferences query:', error);
+        throw error;
+      }
 
-      // Wenn keine Präferenzen existieren, erstelle Standard-Präferenzen
+      console.log('Loaded preferences data:', data);
+
+      // Only create defaults if truly no preferences exist
       if (!data || data.length === 0) {
+        console.log('No preferences found, creating defaults');
         await createDefaultPreferences();
         return;
       }
 
+      // Check if we have all required tracking types
+      const existingTypes = data.map(p => p.tracking_type);
+      const missingTypes = trackingOptions.filter(option => !existingTypes.includes(option.type));
+      
+      if (missingTypes.length > 0) {
+        console.log('Found missing preference types:', missingTypes.map(t => t.type));
+        await createMissingPreferences(missingTypes, data);
+        return;
+      }
+
+      console.log('All preferences found, setting state');
       setPreferences(data);
     } catch (error) {
       console.error('Error loading tracking preferences:', error);
@@ -100,14 +123,69 @@ export const TrackingPreferences = () => {
     }
   };
 
+  const createMissingPreferences = async (missingTypes: typeof trackingOptions, existingPrefs: TrackingPreference[]) => {
+    if (!user?.id) return;
+
+    try {
+      console.log('Creating missing preferences:', missingTypes.map(t => t.type));
+      const allPreferences = [...existingPrefs];
+
+      for (const option of missingTypes) {
+        const prefData = {
+          user_id: user.id,
+          tracking_type: option.type,
+          is_enabled: option.isDefault,
+          display_order: allPreferences.length + 1
+        };
+
+        const { data, error } = await supabase
+          .from('user_tracking_preferences')
+          .upsert(prefData, { onConflict: 'user_id,tracking_type' })
+          .select()
+          .single();
+
+        if (error) {
+          console.warn('Error creating missing preference:', error);
+          continue; // Skip this one and continue
+        }
+
+        if (data) {
+          allPreferences.push(data);
+        }
+      }
+
+      setPreferences(allPreferences);
+      if (missingTypes.length > 0) {
+        toast.success('Tracking-Einstellungen aktualisiert');
+      }
+    } catch (error) {
+      console.error('Error creating missing preferences:', error);
+      // Still set what we have
+      setPreferences(existingPrefs);
+    }
+  };
+
   const createDefaultPreferences = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       console.log('Creating default preferences for user:', user.id);
+      
+      // First check if any already exist to prevent duplicates
+      const { data: existing } = await supabase
+        .from('user_tracking_preferences')
+        .select('tracking_type')
+        .eq('user_id', user.id);
+
+      if (existing && existing.length > 0) {
+        console.log('Preferences already exist, loading them instead');
+        await loadPreferences();
+        return;
+      }
+
       const createdPreferences: TrackingPreference[] = [];
 
-      // Insert each preference individually to avoid bulk insert Content-Type issues
+      // Use individual inserts with better error handling
       for (let i = 0; i < trackingOptions.length; i++) {
         const option = trackingOptions[i];
         const prefData = {
@@ -117,31 +195,52 @@ export const TrackingPreferences = () => {
           display_order: i + 1
         };
 
-        console.log('Inserting preference:', prefData);
+        try {
+          const { data, error } = await supabase
+            .from('user_tracking_preferences')
+            .insert(prefData)
+            .select()
+            .single();
 
-        const { data, error } = await supabase
-          .from('user_tracking_preferences')
-          .upsert(prefData, { onConflict: 'user_id,tracking_type' })
-          .select()
-          .single();
+          if (error) {
+            // If conflict error, try to fetch the existing one
+            if (error.code === '23505') {
+              const { data: existingData } = await supabase
+                .from('user_tracking_preferences')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('tracking_type', option.type)
+                .single();
+              
+              if (existingData) {
+                createdPreferences.push(existingData);
+                continue;
+              }
+            }
+            throw error;
+          }
 
-        if (error) {
-          console.error('Error inserting preference:', error);
-          throw error;
-        }
-
-        if (data) {
-          createdPreferences.push(data);
+          if (data) {
+            createdPreferences.push(data);
+          }
+        } catch (singleError) {
+          console.warn(`Error creating preference for ${option.type}:`, singleError);
+          // Continue with other preferences
         }
       }
 
-      console.log('Successfully created preferences:', createdPreferences);
-      setPreferences(createdPreferences);
-      toast.success('Standard-Tracking-Einstellungen erstellt');
+      if (createdPreferences.length > 0) {
+        setPreferences(createdPreferences);
+        toast.success('Standard-Tracking-Einstellungen erstellt');
+      } else {
+        // Final fallback - try to load what exists
+        await loadPreferences();
+      }
     } catch (error) {
       console.error('Error creating default preferences:', error);
+      toast.error('Fehler beim Erstellen der Standard-Einstellungen');
       
-      // Fallback: Load existing preferences if any were created partially
+      // Try to load any existing preferences as fallback
       try {
         const { data } = await supabase
           .from('user_tracking_preferences')
@@ -151,13 +250,9 @@ export const TrackingPreferences = () => {
         
         if (data && data.length > 0) {
           setPreferences(data);
-          toast.warning('Einige Standard-Einstellungen wurden erstellt');
-        } else {
-          toast.error('Fehler beim Erstellen der Standard-Einstellungen');
         }
       } catch (fallbackError) {
-        console.error('Fallback load also failed:', fallbackError);
-        toast.error('Fehler beim Erstellen der Standard-Einstellungen');
+        console.error('Fallback load failed:', fallbackError);
       }
     } finally {
       setLoading(false);
