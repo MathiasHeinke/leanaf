@@ -62,6 +62,7 @@ import { useOrchestrator, OrchestratorReply } from '@/hooks/useOrchestrator';
 import { useOrchestratorWithDebug } from '@/hooks/useOrchestratorWithDebug';
 import { UserChatDebugger } from '@/components/debug/UserChatDebugger';
 import { useDebugSteps } from '@/hooks/useDebugSteps';
+import { Bug } from 'lucide-react';
 import ChoiceBar from '@/components/ChoiceBar';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
 import ConfirmSupplementModal from '@/components/ConfirmSupplementModal';
@@ -632,8 +633,8 @@ if (enableAdvancedFeatures) {
         return;
       }
 
-      // Default: route via Orchestrator
-      await handleEnhancedSendMessage(messageText, mediaUrls, selectedTool);
+  // Default: route via Orchestrator (with debug)
+  await handleEnhancedSendMessage(messageText, mediaUrls, selectedTool);
       return;
 
     } catch (error) {
@@ -963,7 +964,7 @@ const handleChipClick = useCallback(async (label: string) => {
   if (!user?.id || isOrchestratorLoading) return;
   clearChips(); setUserTyping(false); setIsOrchestratorLoading(true);
   try {
-    const reply = await sendEvent(user.id, {
+    const reply = await sendEventWithDebug(user.id, {
       type: "TEXT",
       text: label,
       clientEventId: crypto.randomUUID(),
@@ -1043,7 +1044,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
     }
 
     const t0 = performance.now();
-    const reply = await sendEvent(
+    const reply = await sendEventWithDebug(
       user.id,
       { ...event, clientEventId, context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', followup: messages.some(m => m.role === 'assistant'), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) } } as any
     );
@@ -1119,16 +1120,28 @@ chatInput={
         bannerCollapsed={bannerCollapsed}
       >
         {/* Collapsible Coach Header */}
-        <CollapsibleCoachHeader
-          coach={{
-            ...coach,
-            id: coach?.id
-          }}
-          onCollapseChange={setBannerCollapsed}
-          onDailyReset={() => {
-            setMessages([]);
-          }}
-        />
+        <div className="relative">
+          <CollapsibleCoachHeader
+            coach={{
+              ...coach,
+              id: coach?.id
+            }}
+            onCollapseChange={setBannerCollapsed}
+            onDailyReset={() => {
+              setMessages([]);
+            }}
+          />
+          <div className="absolute top-2 right-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDebugger(!showDebugger)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Bug className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
 
         {/* Messages - transparent scrollable area over fire */}
         <div 
@@ -1168,6 +1181,14 @@ chatInput={
             </div>
           )}
         </div>
+        
+        {/* Debug Console */}
+        <UserChatDebugger
+          isVisible={showDebugger}
+          onToggle={() => setShowDebugger(!showDebugger)}
+          steps={debugSteps.steps}
+          onClear={debugSteps.clearSteps}
+        />
         <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
         <ConfirmMealModal
           open={confirmMeal.open}

@@ -173,17 +173,29 @@ export function AresFlowChart({ bundle, isLive }: Props) {
         status = 'success';
       }
 
+      // Enhanced positioning with branching support
+      const baseX = (index % 4) * 300;
+      const baseY = Math.floor(index / 4) * 150;
+      
+      // Add branching offset for decision nodes
+      let branchOffset = 0;
+      if (stage.stage.includes('tool_picker') || stage.stage.includes('decision')) {
+        branchOffset = Math.random() * 100 - 50; // Small random offset for branching
+      }
+
       nodes.push({
         id: `stage-${index}`,
         type: 'aresStage',
         position: {
-          x: (index % 3) * 250,
-          y: Math.floor(index / 3) * 120,
+          x: baseX + branchOffset,
+          y: baseY,
         },
         data: {
           stage,
           isActive: isLive && status === 'running',
           status,
+          isDecisionNode: stage.stage.includes('tool_picker') || stage.stage.includes('decision'),
+          branchCount: stage.stage.includes('tool_picker') ? 3 : 1,
         },
       });
 
