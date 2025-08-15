@@ -100,12 +100,18 @@ export const useProactiveTooltips = () => {
       return true;
     });
 
-    const updatedTooltips = tooltips.map(tooltip => ({
+    const updatedTooltips = DEFAULT_TOOLTIPS.map(tooltip => ({
       ...tooltip, 
       isVisible: filteredTooltips.some(ft => ft.id === tooltip.id)
     }));
 
-    setTooltips(updatedTooltips);
+    // Only update if the visibility actually changed
+    setTooltips(prev => {
+      const hasChanged = prev.some((prevTooltip, index) => 
+        prevTooltip.isVisible !== updatedTooltips[index].isVisible
+      );
+      return hasChanged ? updatedTooltips : prev;
+    });
   }, [user, completionStatus, incompleteFields, dismissedTooltips]);
 
   const dismissTooltip = (tooltipId: string) => {
