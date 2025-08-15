@@ -168,36 +168,27 @@ export const useUserProfile = () => {
   };
 
   const shouldShowCheckUp = (): boolean => {
-    // Deactivated automatic check-up triggers
-    // Users can manually open the modal if needed
-    return false;
+    // Reaktiviert für Profil-Vervollständigung
+    // Users mit fehlenden Daten sollen das Modal sehen
     
-    // OLD LOGIC (commented out):
-    // // First app start always shows modal
-    // if (isFirstAppStart) {
-    //   console.log('🎯 ShowCheckUp: First app start');
-    //   return true;
-    // }
-    // 
-    // // No profile exists
-    // if (!profileData) {
-    //   console.log('🎯 ShowCheckUp: No profile data');
-    //   return true;
-    // }
-    // 
-    // // Missing required fields
-    // if (missingRequired(profileData)) {
-    //   console.log('🎯 ShowCheckUp: Missing required fields');
-    //   return true;
-    // }
-    // 
-    // // Profile is stale (over 30 days old)
-    // if (isStale(profileData.updated_at)) {
-    //   console.log('🎯 ShowCheckUp: Profile is stale');
-    //   return true;
-    // }
-    // 
-    // return false;
+    // First app start always shows modal
+    if (isFirstAppStart) {
+      console.log('🎯 ShowCheckUp: First app start');
+      return true;
+    }
+    // Missing required fields
+    if (missingRequired(profileData)) {
+      console.log('🎯 ShowCheckUp: Missing required fields');
+      return true;
+    }
+
+    // Profile is stale (over 30 days old)
+    if (isStale(profileData?.updated_at)) {
+      console.log('🎯 ShowCheckUp: Profile is stale');
+      return true;
+    }
+
+    return false;
   };
 
   const refreshProfile = () => {

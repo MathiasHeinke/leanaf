@@ -19,13 +19,13 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { profile, shouldShowCheckUp, isStale, missingRequired, refreshProfile, isLoading, error, isFirstAppStart } = useUserProfile();
 
-  // Auto-show modal disabled - users can manually open it
-  // useEffect(() => {
-  //   if (missingRequired && !isLoading) {
-  //     console.log('🚨 Auto-opening CheckUp modal - missing required fields');
-  //     setIsModalOpen(true);
-  //   }
-  // }, [missingRequired, isLoading]);
+  // Auto-show modal for users with missing required fields
+  useEffect(() => {
+    if (shouldShowCheckUp && !isLoading) {
+      console.log('🚨 Auto-opening CheckUp modal - profile check required');
+      setIsModalOpen(true);
+    }
+  }, [shouldShowCheckUp, isLoading]);
 
   // Listen for slash command events
   useEffect(() => {
