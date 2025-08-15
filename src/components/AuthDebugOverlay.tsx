@@ -57,6 +57,13 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
       case 'TOKEN_REFRESHED': return 'bg-yellow-100 text-yellow-800';
       case 'REDIRECT_DECISION': return 'bg-purple-100 text-purple-800';
       case 'ERROR': return 'bg-red-100 text-red-800';
+      case 'RATE_LIMIT_CHECK': return 'bg-orange-100 text-orange-800';
+      case 'RATE_LIMIT_EXCEEDED': return 'bg-red-200 text-red-900';
+      case 'RATE_LIMIT_RESET': return 'bg-green-200 text-green-900';
+      case 'AUTH_ATTEMPT': return 'bg-yellow-100 text-yellow-800';
+      case 'SIGNIN_SUCCESS': return 'bg-green-100 text-green-800';
+      case 'SIGNUP_SUCCESS': return 'bg-green-100 text-green-800';
+      case 'INITIAL_SESSION': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };

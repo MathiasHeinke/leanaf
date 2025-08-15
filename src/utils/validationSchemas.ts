@@ -163,8 +163,8 @@ export class ClientRateLimit {
   private attempts: Map<string, number[]> = new Map();
   
   constructor(
-    private maxAttempts: number = 5,
-    private windowMs: number = 15 * 60 * 1000 // 15 minutes
+    private maxAttempts: number = 10,
+    private windowMs: number = 5 * 60 * 1000 // 5 minutes
   ) {}
   
   isAllowed(key: string): boolean {
@@ -200,5 +200,29 @@ export class ClientRateLimit {
     
     const validAttempts = this.attempts.get(key)!.filter(time => time > windowStart);
     return Math.max(0, this.maxAttempts - validAttempts.length);
+  }
+  
+  getTimeUntilReset(key: string): number {
+    const now = Date.now();
+    
+    if (!this.attempts.has(key)) {
+      return 0;
+    }
+    
+    const keyAttempts = this.attempts.get(key)!;
+    if (keyAttempts.length === 0) return 0;
+    
+    const oldestAttempt = Math.min(...keyAttempts);
+    const resetTime = oldestAttempt + this.windowMs;
+    
+    return Math.max(0, resetTime - now);
+  }
+  
+  reset(key: string): void {
+    this.attempts.delete(key);
+  }
+  
+  resetAll(): void {
+    this.attempts.clear();
   }
 }

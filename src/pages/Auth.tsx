@@ -32,7 +32,7 @@ const Auth = () => {
   const [showResend, setShowResend] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [privacyAccepted, setPrivacyAccepted] = useState(true); // Vorausgewählt wie gewünscht
-  const [rateLimiter] = useState(() => new ClientRateLimit(5, 15 * 60 * 1000)); // 5 attempts per 15 minutes
+  const [rateLimiter] = useState(() => new ClientRateLimit(10, 5 * 60 * 1000)); // 10 attempts per 5 minutes
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   
   const { user } = useAuth();
@@ -41,36 +41,62 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect if already logged in + debug detection
-    if (user) {
-      console.log('User already logged in, redirecting to home');
-      authLogger.log({ 
-        event: 'REDIRECT_DECISION', 
-        stage: 'authPageMount',
-        from_path: '/auth',
-        to_path: '/',
-        details: { reason: 'already_authenticated' }
-      });
-      navigate('/', { replace: true });
-    }
-
-    // Check for debug mode
-    if (authLogger.isDebugEnabled()) {
-      setShowDebugOverlay(true);
-    }
-    
-    // Check rate limiting on component mount
-    const clientId = `${navigator.userAgent}_${window.location.href}`;
-    if (!rateLimiter.isAllowed(clientId)) {
-      const remaining = rateLimiter.getRemainingAttempts(clientId);
-      if (remaining === 0) {
-        toast.error('Zu viele Anmeldeversuche. Bitte warten Sie 15 Minuten.');
-        logSuspiciousActivity('rate_limit_exceeded', { 
-          action: 'auth_attempt',
-          client_info: navigator.userAgent 
+    const initializeAuth = async () => {
+      // Redirect if already logged in + debug detection
+      if (user) {
+        console.log('User already logged in, redirecting to home');
+        authLogger.log({ 
+          event: 'REDIRECT_DECISION', 
+          stage: 'authPageMount',
+          from_path: '/auth',
+          to_path: '/',
+          details: { reason: 'already_authenticated' }
         });
+        navigate('/', { replace: true });
+        return;
       }
-    }
+
+      // Check for debug mode
+      if (authLogger.isDebugEnabled()) {
+        setShowDebugOverlay(true);
+      }
+      
+      // Check rate limiting on component mount
+      const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
+      await authLogger.log({ 
+        event: 'RATE_LIMIT_CHECK', 
+        stage: 'componentMount',
+        details: { 
+          clientId: clientId.substring(0, 50),
+          isAllowed: rateLimiter.isAllowed(clientId),
+          remainingAttempts: rateLimiter.getRemainingAttempts(clientId),
+          timeUntilReset: rateLimiter.getTimeUntilReset(clientId)
+        }
+      });
+      
+      if (!rateLimiter.isAllowed(clientId)) {
+        const remaining = rateLimiter.getRemainingAttempts(clientId);
+        const timeUntilReset = rateLimiter.getTimeUntilReset(clientId);
+        const minutesUntilReset = Math.ceil(timeUntilReset / (60 * 1000));
+        
+        if (remaining === 0) {
+          toast.error(`Zu viele Anmeldeversuche. Bitte warten Sie ${minutesUntilReset} Minuten.`);
+          await logSuspiciousActivity('rate_limit_exceeded', { 
+            action: 'auth_attempt',
+            client_info: navigator.userAgent,
+            remaining_attempts: remaining,
+            minutes_until_reset: minutesUntilReset
+          });
+          await authLogger.log({ 
+            event: 'RATE_LIMIT_EXCEEDED', 
+            stage: 'componentMount',
+            details: { remaining, minutesUntilReset }
+          });
+        }
+      }
+    };
+
+    initializeAuth();
   }, [user, navigate, rateLimiter, logSuspiciousActivity]);
 
   const cleanupAuthState = () => {
@@ -167,16 +193,36 @@ const Auth = () => {
     console.log('Login attempt started', { email, isSignUp, isPasswordReset });
     
     // Check rate limiting
-    const clientId = `${navigator.userAgent}_${window.location.href}`;
+    const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
+    await authLogger.log({ 
+      event: 'RATE_LIMIT_CHECK', 
+      stage: 'handleSubmit',
+      details: { 
+        clientId: clientId.substring(0, 50),
+        isAllowed: rateLimiter.isAllowed(clientId),
+        remainingAttempts: rateLimiter.getRemainingAttempts(clientId),
+        timeUntilReset: rateLimiter.getTimeUntilReset(clientId)
+      }
+    });
+    
     if (!rateLimiter.isAllowed(clientId)) {
       const remaining = rateLimiter.getRemainingAttempts(clientId);
-      setError(`Zu viele Anmeldeversuche. Versuchen Sie es in 15 Minuten erneut. (${remaining} Versuche übrig)`);
+      const timeUntilReset = rateLimiter.getTimeUntilReset(clientId);
+      const minutesUntilReset = Math.ceil(timeUntilReset / (60 * 1000));
+      
+      setError(`Zu viele Anmeldeversuche. Versuchen Sie es in ${minutesUntilReset} Minuten erneut. (${remaining} Versuche übrig)`);
       await logSuspiciousActivity('rate_limit_exceeded', { 
         action: 'auth_attempt',
         client_info: navigator.userAgent,
-        remaining_attempts: remaining
+        remaining_attempts: remaining,
+        minutes_until_reset: minutesUntilReset
       });
-      console.log('Rate limit exceeded');
+      await authLogger.log({ 
+        event: 'RATE_LIMIT_EXCEEDED', 
+        stage: 'handleSubmit',
+        details: { remaining, minutesUntilReset, clientId: clientId.substring(0, 50) }
+      });
+      console.log('Rate limit exceeded:', { remaining, minutesUntilReset });
       return;
     }
     
@@ -730,7 +776,7 @@ const Auth = () => {
             
             {/* Debug Toggle */}
             {authLogger.isDebugEnabled() && (
-              <div className="pt-2 border-t">
+              <div className="pt-2 border-t space-y-2">
                 <Button
                   type="button"
                   variant="outline"
@@ -740,6 +786,24 @@ const Auth = () => {
                 >
                   <Bug className="h-3 w-3 mr-1" />
                   Auth Debug Timeline
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
+                    rateLimiter.reset(clientId);
+                    await authLogger.log({ 
+                      event: 'RATE_LIMIT_RESET', 
+                      stage: 'manual',
+                      details: { clientId: clientId.substring(0, 50) }
+                    });
+                    toast.success('Rate Limiter zurückgesetzt');
+                  }}
+                  className="w-full text-xs"
+                >
+                  Rate Limiter Reset
                 </Button>
               </div>
             )}
