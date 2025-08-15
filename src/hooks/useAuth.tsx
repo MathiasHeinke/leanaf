@@ -125,16 +125,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      cleanupAuthState();
       setSession(null);
       setUser(null);
       await supabase.auth.signOut({ scope: 'global' });
+      cleanupAuthState();
       navigate('/auth', { replace: true });
     } catch (error) {
       // Force cleanup even if signOut fails
-      cleanupAuthState();
       setSession(null);
       setUser(null);
+      cleanupAuthState();
       console.error('Sign out error occurred');
       navigate('/auth', { replace: true });
     }
@@ -156,19 +156,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Handle different auth events
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('✅ User signed in successfully');
-          // Only redirect if we're on auth page or initial load
-          const currentPath = window.location.pathname;
-          if (currentPath === '/auth') {
-            // Defer redirect to prevent deadlocks and data loading issues
-            timeoutId = setTimeout(() => {
-              checkIfNewUserAndRedirect(session.user);
-            }, 100);
-          }
+          // Always redirect after successful login, regardless of current path
+          timeoutId = setTimeout(() => {
+            checkIfNewUserAndRedirect(session.user);
+          }, 200); // Increased timeout to allow auth state settling
         }
         
         if (event === 'SIGNED_OUT') {
           console.log('🚪 User signed out');
-          cleanupAuthState();
           setSession(null);
           setUser(null);
           if (!isPreviewMode && window.location.pathname !== '/auth') {
@@ -191,9 +186,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (error) {
           console.error('❌ Session fetch error:', error.message);
-          cleanupAuthState();
           setSession(null);
           setUser(null);
+          cleanupAuthState();
         } else {
           console.log('🔍 Initial session check:', session?.user?.id || 'No session');
           setSession(session);
@@ -204,14 +199,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.log('🔄 User already logged in, redirecting...');
             setTimeout(() => {
               checkIfNewUserAndRedirect(session.user);
-            }, 100);
+            }, 200);
           }
         }
       } catch (error) {
         console.error('❌ Auth initialization error:', error);
-        cleanupAuthState();
         setSession(null);
         setUser(null);
+        cleanupAuthState();
       } finally {
         setLoading(false);
       }

@@ -27,7 +27,7 @@ export const useUserProfile = () => {
   const [isFirstAppStart, setIsFirstAppStart] = useState(false);
   const { user } = useAuth();
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (retryCount = 0) => {
     if (!user) {
       setProfileData(null);
       setIsLoading(false);
@@ -38,24 +38,45 @@ export const useUserProfile = () => {
       setIsLoading(true);
       setError(null);
       
+      console.log(`🔄 Fetching profile for user ${user.id} (attempt ${retryCount + 1})`);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Profile fetch error:', error);
+        throw error;
+      }
       
       // Check if this is first app start (no profile exists)
       if (!data) {
         setIsFirstAppStart(true);
         console.log('🚀 First app start detected - no profile exists');
+      } else {
+        console.log('✅ Profile loaded successfully:', { 
+          weight: data.weight, 
+          height: data.height, 
+          age: data.age, 
+          gender: data.gender 
+        });
       }
       
       setProfileData(data as ProfilesData);
     } catch (err) {
       console.error('Error fetching user profile:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch profile');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile';
+      
+      // Retry once on failure
+      if (retryCount < 1) {
+        console.log('🔄 Retrying profile fetch...');
+        setTimeout(() => fetchProfile(retryCount + 1), 1000);
+        return;
+      }
+      
+      setError(errorMessage);
       setProfileData(null);
     } finally {
       setIsLoading(false);

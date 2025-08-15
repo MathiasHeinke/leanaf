@@ -119,26 +119,33 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'measurements', 'workout', 'supplements', 'fluids', 'mindset'];
   });
 
-  // Load user data
+  // Load user data - serialize loading to prevent race conditions
   useEffect(() => {
     if (user) {
-      loadUserData();
+      const initializeUserData = async () => {
+        console.log('🔄 Starting user data initialization...');
+        
+        // First load profile and goals sequentially
+        await loadUserData();
+        
+        // Then load points
+        await loadUserPoints();
+        
+        console.log('✅ User data initialization complete');
+      };
+      
+      initializeUserData();
     }
   }, [user]);
 
+  // Load meals when date changes - only after daily goals are loaded
   useEffect(() => {
-    if (user) {
-      loadUserPoints();
-    }
-  }, [user]);
-
-  // Load meals when date changes
-  useEffect(() => {
-    if (user && dailyGoals) {
+    if (user && dailyGoals && !dataLoading) {
+      console.log('🔄 Loading date-specific data for:', currentDate.toDateString());
       fetchMealsForDate(currentDate);
       loadTodaysData(currentDate);
     }
-  }, [user, currentDate, dailyGoals]);
+  }, [user, currentDate, dailyGoals, dataLoading]);
 
   // Update calorie summary when fluids change
   useEffect(() => {
