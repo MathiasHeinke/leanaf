@@ -88,8 +88,9 @@ const Auth = () => {
         return;
       }
 
-      // Check for debug mode
-      if (authLogger.isDebugEnabled()) {
+      // Check for debug mode - Only auto-open if explicitly requested AND not in preview
+      const isPreviewDomain = window.location.hostname.includes('preview--') || window.location.hostname.includes('lovable');
+      if (authLogger.isDebugEnabled() && !isPreviewDomain && window.location.search.includes('openDebug=1')) {
         setShowDebugOverlay(true);
       }
       
@@ -225,6 +226,11 @@ const Auth = () => {
     console.log('🔧 DEBUG: Event object:', e);
     console.log('🔧 DEBUG: Form data:', { email, password: '***', isSignUp, isPasswordReset });
     
+    // Close debug overlay if open to prevent blocking
+    if (showDebugOverlay) {
+      setShowDebugOverlay(false);
+    }
+    
     try {
       e.preventDefault();
       console.log('🔧 DEBUG: e.preventDefault() executed successfully');
@@ -284,6 +290,17 @@ const Auth = () => {
     setLoading(true);
     setError('');
     setShowResend(false);
+
+    // Check for preview domain warning
+    const isPreviewDomain = window.location.hostname.includes('preview--') || window.location.hostname.includes('lovable');
+    if (isPreviewDomain) {
+      console.warn('🚨 PREVIEW MODE: Sessions may not persist correctly. Use production URL for full testing.');
+      await authLogger.log({ 
+        event: 'PREVIEW_DOMAIN_WARNING', 
+        stage: 'handleSubmit',
+        details: { hostname: window.location.hostname }
+      });
+    }
 
     // Pre-clean any stale auth state
     cleanupAuthState();
@@ -386,17 +403,41 @@ const Auth = () => {
             }
             
             if (data.user) {
+              // Log token persistence 
+              const session = data.session;
+              const hasTokens = !!(session?.access_token && session?.refresh_token);
               await authLogger.log({ 
                 event: 'SIGNIN_SUCCESS', 
                 stage: 'handleSubmit',
                 from_path: '/auth',
                 to_path: '/',
-                details: { immediateRedirect: true }
+                details: { 
+                  immediateRedirect: true,
+                  hasTokens,
+                  sessionExpiry: session?.expires_at,
+                  tokenLength: session?.access_token?.length || 0
+                }
               });
+
+              // Force session storage check
+              setTimeout(() => {
+                const supabaseKey = 'gzczjscctgyxjyodhnhk'; // Project ref
+                const storageKey = `sb-${supabaseKey}-auth-token`;
+                const storedSession = localStorage.getItem(storageKey);
+                console.log('🔍 Token persistence check:', { 
+                  hasStoredSession: !!storedSession,
+                  storageKey
+                });
+              }, 100);
+
               toast.success(t('auth.signInSuccess'));
-              // Use React Router navigation immediately - don't wait for useAuth
-              console.log('Auth.tsx: Immediate redirect after successful sign in');
-              navigate('/', { replace: true });
+              // Force hard reload for clean session state in preview environments
+              const isPreviewDomain = window.location.hostname.includes('preview--') || window.location.hostname.includes('lovable');
+              if (isPreviewDomain) {
+                window.location.href = '/';
+              } else {
+                navigate('/', { replace: true });
+              }
             }
             break;
           }
