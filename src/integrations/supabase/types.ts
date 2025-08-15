@@ -257,6 +257,72 @@ export type Database = {
         }
         Relationships: []
       }
+      auth_debug_logs: {
+        Row: {
+          auth_event: string | null
+          client_ts: string | null
+          details: Json | null
+          event: string
+          event_time: string
+          from_path: string | null
+          has_access_token: boolean | null
+          has_session: boolean | null
+          has_user: boolean | null
+          id: string
+          ip: string | null
+          is_preview_mode: boolean | null
+          pathname: string | null
+          session_user_id: string | null
+          stage: string | null
+          to_path: string | null
+          trace_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_event?: string | null
+          client_ts?: string | null
+          details?: Json | null
+          event: string
+          event_time?: string
+          from_path?: string | null
+          has_access_token?: boolean | null
+          has_session?: boolean | null
+          has_user?: boolean | null
+          id?: string
+          ip?: string | null
+          is_preview_mode?: boolean | null
+          pathname?: string | null
+          session_user_id?: string | null
+          stage?: string | null
+          to_path?: string | null
+          trace_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_event?: string | null
+          client_ts?: string | null
+          details?: Json | null
+          event?: string
+          event_time?: string
+          from_path?: string | null
+          has_access_token?: boolean | null
+          has_session?: boolean | null
+          has_user?: boolean | null
+          id?: string
+          ip?: string | null
+          is_preview_mode?: boolean | null
+          pathname?: string | null
+          session_user_id?: string | null
+          stage?: string | null
+          to_path?: string | null
+          trace_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       automated_pipeline_runs: {
         Row: {
           completed_at: string | null
