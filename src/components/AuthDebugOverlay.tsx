@@ -21,6 +21,9 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
       setLogs(recentLogs);
     } catch (error) {
       console.error('Failed to fetch logs:', error);
+      // Fallback to localStorage only
+      const localLogs = JSON.parse(localStorage.getItem('auth_debug_logs') || '[]');
+      setLogs(localLogs.slice(0, 50));
     }
     setIsLoading(false);
   };
@@ -71,6 +74,9 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
             <Badge variant="outline" className="text-xs">
               Trace: {authLogger.getTraceId().slice(-8)}
             </Badge>
+            <Badge className="text-xs bg-green-100 text-green-800">
+              ACTIVE
+            </Badge>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -101,24 +107,35 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
         <ScrollArea className="flex-1 p-4">
           {logs.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
-              No auth logs found. Try logging in/out to generate events.
+              <div className="mb-4">No auth events logged yet.</div>
+              <div className="text-sm space-y-2">
+                <div>Try:</div>
+                <div>• Logging in/out</div>
+                <div>• Refreshing the page</div>
+                <div>• Check console for 🔐 Auth Debug messages</div>
+              </div>
             </div>
           ) : (
             <div className="space-y-3">
               {logs.map((log, index) => (
-                <div key={log.id} className="bg-gray-50 rounded-lg p-3">
+                <div key={log.id || index} className="bg-gray-50 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Badge className={getEventColor(log.event)}>
                         {log.event}
                       </Badge>
-                      {log.stage && (
+                       {log.stage && (
                         <Badge variant="outline" className="text-xs">
                           {log.stage}
                         </Badge>
                       )}
+                      {log.id && log.id.startsWith('local_') && (
+                        <Badge variant="outline" className="text-xs text-orange-600">
+                          LOCAL
+                        </Badge>
+                      )}
                       <span className="text-xs text-gray-500">
-                        {formatTimestamp(log.event_time)}
+                        {formatTimestamp(log.event_time || log.client_ts)}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -158,8 +175,10 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
         </ScrollArea>
 
         {/* Footer */}
-        <div className="p-4 border-t bg-gray-50 text-xs text-gray-500">
-          Debug mode: Add ?authDebug=1 to URL or set localStorage.auth_debug = 'true'
+        <div className="p-4 border-t bg-gray-50 text-xs text-gray-500 space-y-1">
+          <div>Debug mode: Add ?authDebug=1 to URL or run:</div>
+          <code className="bg-gray-100 px-2 py-1 rounded">localStorage.setItem('auth_debug', 'true')</code>
+          <div>Console logs: Look for 🔐 Auth Debug messages</div>
         </div>
       </div>
     </div>

@@ -23,8 +23,23 @@ class AuthLogger {
 
   constructor() {
     this.generateNewTrace();
-    this.isEnabled = window.location.search.includes('authDebug=1') || 
-                     localStorage.getItem('auth_debug') === 'true';
+    this.isEnabled = this.checkDebugMode();
+  }
+
+  private checkDebugMode(): boolean {
+    try {
+      // Check URL parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('authDebug') === '1') {
+        localStorage.setItem('auth_debug', 'true');
+        return true;
+      }
+      
+      // Check localStorage
+      return localStorage.getItem('auth_debug') === 'true';
+    } catch (error) {
+      return false;
+    }
   }
 
   generateNewTrace() {
@@ -41,7 +56,7 @@ class AuthLogger {
 
   async log(entry: Partial<AuthLogEntry>) {
     const user = (await supabase.auth.getUser()).data.user;
-    if (!user) return; // Can't log without user
+    const session = (await supabase.auth.getSession()).data.session;
 
     const logEntry: AuthLogEntry = {
       event: entry.event || 'UNKNOWN',
@@ -51,8 +66,8 @@ class AuthLogger {
       to_path: entry.to_path,
       is_preview_mode: window.location.hostname.includes('lovable'),
       has_user: !!user,
-      has_session: !!(await supabase.auth.getSession()).data.session,
-      has_access_token: !!(await supabase.auth.getSession()).data.session?.access_token,
+      has_session: !!session,
+      has_access_token: !!session?.access_token,
       auth_event: entry.auth_event,
       session_user_id: user?.id,
       details: entry.details || {},
@@ -60,53 +75,89 @@ class AuthLogger {
       client_ts: new Date(),
     };
 
-    try {
-      await supabase.from('auth_debug_logs').insert({
-        user_id: user.id,
-        event_time: logEntry.client_ts.toISOString(),
-        event: logEntry.event,
-        stage: logEntry.stage,
-        pathname: logEntry.pathname,
-        from_path: logEntry.from_path,
-        to_path: logEntry.to_path,
-        is_preview_mode: logEntry.is_preview_mode,
-        has_user: logEntry.has_user,
-        has_session: logEntry.has_session,
-        has_access_token: logEntry.has_access_token,
-        auth_event: logEntry.auth_event,
-        session_user_id: logEntry.session_user_id,
-        details: logEntry.details,
-        trace_id: logEntry.trace_id,
-        client_ts: logEntry.client_ts.toISOString(),
-        user_agent: navigator.userAgent,
-        ip: null // Will be populated by Supabase
+    // Always log to console if debug is enabled
+    if (this.isEnabled) {
+      console.log('🔐 Auth Debug:', {
+        ...logEntry,
+        timestamp: logEntry.client_ts.toISOString()
       });
+    }
 
-      if (this.isEnabled) {
-        console.log('🔐 Auth Debug:', logEntry);
-      }
+    // Store in localStorage for overlay access
+    try {
+      const logs = JSON.parse(localStorage.getItem('auth_debug_logs') || '[]');
+      logs.unshift({ ...logEntry, id: `local_${Date.now()}` });
+      // Keep only last 50 logs
+      logs.splice(50);
+      localStorage.setItem('auth_debug_logs', JSON.stringify(logs));
     } catch (error) {
-      console.warn('Failed to log auth event:', error);
+      // Ignore localStorage errors
+    }
+
+    // Try to save to database only if user exists
+    if (user) {
+      try {
+        await supabase.from('auth_debug_logs').insert({
+          user_id: user.id,
+          event_time: logEntry.client_ts.toISOString(),
+          event: logEntry.event,
+          stage: logEntry.stage,
+          pathname: logEntry.pathname,
+          from_path: logEntry.from_path,
+          to_path: logEntry.to_path,
+          is_preview_mode: logEntry.is_preview_mode,
+          has_user: logEntry.has_user,
+          has_session: logEntry.has_session,
+          has_access_token: logEntry.has_access_token,
+          auth_event: logEntry.auth_event,
+          session_user_id: logEntry.session_user_id,
+          details: logEntry.details,
+          trace_id: logEntry.trace_id,
+          client_ts: logEntry.client_ts.toISOString(),
+          user_agent: navigator.userAgent,
+          ip: null // Will be populated by Supabase
+        });
+      } catch (error) {
+        console.warn('Failed to log auth event to database:', error);
+      }
     }
   }
 
   async getRecentLogs(limit: number = 50) {
+    // First try localStorage for immediate access
+    const localLogs = JSON.parse(localStorage.getItem('auth_debug_logs') || '[]');
+    
     const user = (await supabase.auth.getUser()).data.user;
-    if (!user) return [];
-
-    const { data, error } = await supabase
-      .from('auth_debug_logs')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('event_time', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      console.error('Failed to fetch auth logs:', error);
-      return [];
+    if (!user) {
+      return localLogs.slice(0, limit);
     }
 
-    return data || [];
+    try {
+      const { data, error } = await supabase
+        .from('auth_debug_logs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('event_time', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        console.error('Failed to fetch auth logs:', error);
+        return localLogs.slice(0, limit);
+      }
+
+      // Merge database and local logs, removing duplicates
+      const allLogs = [...(data || []), ...localLogs];
+      const uniqueLogs = allLogs.filter((log, index, self) => 
+        index === self.findIndex(l => l.trace_id === log.trace_id && l.event === log.event)
+      );
+
+      return uniqueLogs
+        .sort((a, b) => new Date(b.event_time || b.client_ts).getTime() - new Date(a.event_time || a.client_ts).getTime())
+        .slice(0, limit);
+    } catch (error) {
+      console.error('Failed to fetch auth logs:', error);
+      return localLogs.slice(0, limit);
+    }
   }
 }
 
