@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { authLogger } from '@/lib/authLogger';
 import { useAuth } from '@/hooks/useAuth';
+import { useBootstrap } from '@/hooks/useBootstrap';
 
 interface AuthDebugOverlayProps {
   isVisible: boolean;
@@ -15,6 +16,7 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { isSessionReady, session } = useAuth();
+  const bootstrapState = useBootstrap();
   
   // Check if we should use local-only mode
   const useLocalOnly = !isSessionReady || !session?.access_token;
@@ -102,6 +104,24 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
                 🌐 FULL MODE
               </Badge>
             )}
+            
+            {/* Bootstrap Status */}
+            {bootstrapState.isBootstrapping && (
+              <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-300 animate-pulse">
+                🚀 BOOTSTRAPPING...
+              </Badge>
+            )}
+            {bootstrapState.bootstrapComplete && (
+              <Badge className="text-xs bg-emerald-100 text-emerald-800 border-emerald-300">
+                ✅ BOOTSTRAP COMPLETE ({bootstrapState.bootstrapDuration?.toFixed(0)}ms)
+              </Badge>
+            )}
+            {bootstrapState.error && (
+              <Badge className="text-xs bg-red-100 text-red-800 border-red-300">
+                ❌ BOOTSTRAP ERROR
+              </Badge>
+            )}
+            
             {session?.expires_at && (
               <Badge variant="outline" className="text-xs text-blue-600">
                 Token expires: {Math.max(0, Math.ceil((new Date(session.expires_at).getTime() - Date.now()) / (1000 * 60)))}m

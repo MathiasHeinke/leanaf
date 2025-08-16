@@ -169,7 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(isValidSession && session?.user ? session.user : null);
         setLoading(false);
         
-        // Mark session as ready based on valid session
+        // Mark session as ready IMMEDIATELY for valid sessions - no waiting for profile
         const sessionIsReady = isValidSession && !!session?.user;
         setIsSessionReady(sessionIsReady);
         

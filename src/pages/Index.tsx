@@ -7,6 +7,7 @@ import { useTrackingPreferences } from "@/hooks/useTrackingPreferences";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { useCredits } from "@/hooks/useCredits";
+import { useBootstrap } from "@/hooks/useBootstrap";
 import { MealList } from "@/components/MealList";
 
 import { QuickWeightInput } from "@/components/QuickWeightInput";
@@ -82,6 +83,9 @@ const Index = () => {
 const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const { t } = useTranslation();
   
+  // CENTRALIZED BOOTSTRAP PROCESS - Replaces complex useEffect chains
+  const bootstrapState = useBootstrap();
+  
   // CENTRALIZED PROFILE LOADING - Primary source for profile data
   const { 
     profileData: userProfile, 
@@ -130,37 +134,31 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'measurements', 'workout', 'supplements', 'fluids', 'mindset'];
   });
 
-  // Load user data - wait for profile loading to complete (either success or error)
+  // SIMPLIFIED DATA LOADING - Single effect triggered by bootstrap completion
   useEffect(() => {
-    if (user && !profileLoading) {
-      const initializeUserData = async () => {
-        console.log('🔄 Starting user data initialization...', {
-          hasProfile: !!userProfile,
-          profileError: !!profileError,
-          userId: user.id
-        });
-        
-        // Load daily goals regardless of profile success/failure
-        await loadDailyGoals();
-        
-        // Load points
-        await loadUserPoints();
-        
-        console.log('✅ User data initialization complete');
-      };
+    if (bootstrapState.bootstrapComplete && user) {
+      console.log('🚀 Bootstrap complete, loading date-specific data...', {
+        date: currentDate.toDateString(),
+        duration: bootstrapState.bootstrapDuration
+      });
       
-      initializeUserData();
-    }
-  }, [user?.id, profileLoading]);
-
-  // Load meals when date changes - only after daily goals are loaded
-  useEffect(() => {
-    if (user && dailyGoals && !dataLoading) {
-      console.log('🔄 Loading date-specific data for:', currentDate.toDateString());
+      // Load meals and today's data for current date
       fetchMealsForDate(currentDate);
       loadTodaysData(currentDate);
     }
-  }, [user, currentDate, dailyGoals, dataLoading]);
+  }, [bootstrapState.bootstrapComplete, user?.id, currentDate]);
+
+  // Legacy data loading (kept as fallback) - only runs if bootstrap hasn't completed
+  useEffect(() => {
+    if (user && !profileLoading && !bootstrapState.isBootstrapping && !bootstrapState.bootstrapComplete) {
+      console.log('🔧 Fallback data loading triggered...');
+      const initializeUserData = async () => {
+        await loadDailyGoals();
+        await loadUserPoints();
+      };
+      initializeUserData();
+    }
+  }, [user?.id, profileLoading, bootstrapState.isBootstrapping, bootstrapState.bootstrapComplete]);
 
   // Update calorie summary when fluids change
   useEffect(() => {
