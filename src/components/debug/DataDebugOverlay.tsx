@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { X, RotateCcw, Download, Eye, EyeOff } from 'lucide-react';
+import { X, RotateCcw, Download, Eye, EyeOff, Shield, ShieldOff, Trash2 } from 'lucide-react';
 import { DebugConsole } from './DebugConsole';
 import { RequestInspector } from './RequestInspector';
 import { useDebug } from '@/contexts/DebugContext';
@@ -68,8 +68,9 @@ export function DataDebugOverlay({ isVisible, onClose }: DataDebugOverlayProps) 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-background border rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col">
-        <header className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-4">
+        <header className="p-4 border-b space-y-3">
+          {/* Title and Trace Info */}
+          <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Data Debug Console</h2>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span>Data Trace: {dataLogger.getTraceId().slice(-8)}</span>
@@ -77,34 +78,66 @@ export function DataDebugOverlay({ isVisible, onClose }: DataDebugOverlayProps) 
               <span>Auth Trace: {authLogger.getTraceId().slice(-8)}</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+
+          {/* Action Buttons Row */}
+          <div className="flex items-center gap-1">
             <Button
               size="sm"
-              variant="outline"
+              variant={dataLogger.isDebugEnabled() ? "default" : "outline"}
               onClick={toggleDataDebug}
-              className="gap-2"
+              title={`Data Debug ${dataLogger.isDebugEnabled() ? 'ON' : 'OFF'}`}
+              className="h-8 w-8 p-0"
             >
               {dataLogger.isDebugEnabled() ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              Data Debug {dataLogger.isDebugEnabled() ? 'ON' : 'OFF'}
             </Button>
+            
             <Button
               size="sm"
-              variant="outline"
+              variant={authLogger.isDebugEnabled() ? "default" : "outline"}
               onClick={toggleAuthDebug}
-              className="gap-2"
+              title={`Auth Debug ${authLogger.isDebugEnabled() ? 'ON' : 'OFF'}`}
+              className="h-8 w-8 p-0"
             >
-              {authLogger.isDebugEnabled() ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              Auth Debug {authLogger.isDebugEnabled() ? 'ON' : 'OFF'}
+              {authLogger.isDebugEnabled() ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
             </Button>
-            <Button size="sm" variant="outline" onClick={refreshLogs} className="gap-2">
+            
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={refreshLogs} 
+              title="Refresh Logs"
+              className="h-8 w-8 p-0"
+            >
               <RotateCcw className="h-4 w-4" />
-              Refresh
             </Button>
-            <Button size="sm" variant="outline" onClick={exportLogs} className="gap-2">
+            
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={clearDebugEvents} 
+              title="Clear Events"
+              className="h-8 w-8 p-0"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+            
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={exportLogs} 
+              title="Export Logs"
+              className="h-8 w-8 p-0"
+            >
               <Download className="h-4 w-4" />
-              Export
             </Button>
-            <Button size="sm" variant="outline" onClick={onClose}>
+            
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={onClose} 
+              title="Close"
+              className="h-8 w-8 p-0"
+            >
               <X className="h-4 w-4" />
             </Button>
           </div>
