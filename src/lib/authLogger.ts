@@ -55,8 +55,8 @@ class AuthLogger {
   }
 
   async log(entry: Partial<AuthLogEntry>) {
-    const user = (await supabase.auth.getUser()).data.user;
     const session = (await supabase.auth.getSession()).data.session;
+    const user = session?.user;
 
     const logEntry: AuthLogEntry = {
       event: entry.event || 'UNKNOWN',
@@ -138,8 +138,9 @@ class AuthLogger {
     // First try localStorage for immediate access
     const localLogs = JSON.parse(localStorage.getItem('auth_debug_logs') || '[]');
     
-    const user = (await supabase.auth.getUser()).data.user;
-    if (!user) {
+    const session = (await supabase.auth.getSession()).data.session;
+    const user = session?.user;
+    if (!user || !session?.access_token) {
       return localLogs.slice(0, limit);
     }
 

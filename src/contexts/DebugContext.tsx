@@ -96,14 +96,18 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
     }
   }, [debugMode, isSessionReady, session?.access_token]);
 
-  // Auto-refresh logs when debug mode is enabled
+  // Auto-refresh logs - only start polling if we have a valid session in full mode
   useEffect(() => {
-    if (isDebugMode) {
-      refreshLogs();
-      const interval = setInterval(refreshLogs, 5000); // Refresh every 5 seconds
+    if (!isDebugMode) return;
+    
+    refreshLogs(); // Initial load
+    
+    // Only start interval polling in full mode with valid session
+    if (debugMode === 'full' && isSessionReady && session?.access_token) {
+      const interval = setInterval(refreshLogs, 5000);
       return () => clearInterval(interval);
     }
-  }, [isDebugMode, refreshLogs]);
+  }, [isDebugMode, debugMode, isSessionReady, session?.access_token, refreshLogs]);
 
   // Listen for debug hotkey (Ctrl/Cmd + Shift + D)
   useEffect(() => {
