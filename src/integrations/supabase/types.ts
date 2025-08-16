@@ -6460,6 +6460,7 @@ export type Database = {
       }
       current_user_has_role: {
         Args:
+          | Record<PropertyKey, never>
           | { _role: Database["public"]["Enums"]["app_role"] }
           | { _role: string }
         Returns: boolean
