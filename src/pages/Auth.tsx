@@ -84,7 +84,20 @@ const Auth = () => {
           to_path: '/',
           details: { reason: 'already_authenticated' }
         });
-        navigate('/', { replace: true });
+        
+        // Reliable redirect with fallback for preview environments
+        try {
+          navigate('/', { replace: true });
+          // Fallback for environments where navigate might fail
+          setTimeout(() => {
+            if (window.location.pathname === '/auth') {
+              window.location.replace('/');
+            }
+          }, 100);
+        } catch (error) {
+          // Final fallback
+          window.location.replace('/');
+        }
         return;
       }
 

@@ -94,12 +94,17 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
               Trace: {authLogger.getTraceId().slice(-8)}
             </Badge>
             {useLocalOnly ? (
-              <Badge className="text-xs bg-orange-100 text-orange-800">
-                AUTH-ONLY
+              <Badge className="text-xs bg-orange-100 text-orange-800 border-orange-300">
+                🔒 AUTH-ONLY MODE
               </Badge>
             ) : (
-              <Badge className="text-xs bg-green-100 text-green-800">
-                FULL MODE
+              <Badge className="text-xs bg-green-100 text-green-800 border-green-300">
+                🌐 FULL MODE
+              </Badge>
+            )}
+            {session?.expires_at && (
+              <Badge variant="outline" className="text-xs text-blue-600">
+                Token expires: {Math.max(0, Math.ceil((new Date(session.expires_at).getTime() - Date.now()) / (1000 * 60)))}m
               </Badge>
             )}
           </div>
