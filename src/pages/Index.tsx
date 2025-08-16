@@ -11,6 +11,7 @@ import { useBootstrap } from "@/hooks/useBootstrap";
 import { useMemo } from "react";
 import { BootstrapController } from "@/components/BootstrapController";
 import { DebugBadge } from "@/components/DebugBadge";
+import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { MealList } from "@/components/MealList";
 
 import { QuickWeightInput } from "@/components/QuickWeightInput";
@@ -955,6 +956,12 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
   return (
     <>
+      {/* Show onboarding banner for new users without profile data */}
+      {!userProfile && !profileLoading && !profileError && (
+        <div className="container mx-auto px-4 max-w-4xl mb-6">
+          <OnboardingBanner userName={user?.user_metadata?.full_name || user?.email?.split('@')[0]} />
+        </div>
+      )}
       
       {/* Sticky Date Navigation */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm">

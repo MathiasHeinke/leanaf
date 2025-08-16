@@ -17,7 +17,7 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
   className = ''
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { profile, shouldShowCheckUp, isStale, missingRequired, refreshProfile, isLoading, error, isFirstAppStart } = useUserProfile();
+  const { profile, needsCheckUp, isProfileStale, hasMissingRequiredFields, refreshProfile, isLoading, error, isFirstAppStart } = useUserProfile();
 
   // Auto-show modal DEAKTIVIERT - Kein automatisches Onboarding
   // useEffect(() => {
@@ -88,7 +88,7 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
   }
 
   // Show different UI states based on profile status
-  if (missingRequired) {
+  if (hasMissingRequiredFields) {
     return (
       <>
         <div className={`rounded-lg border border-orange-200 bg-orange-50 p-4 ${className}`}>
@@ -113,7 +113,7 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
         <CheckUpModal
           open={isModalOpen}
           onClose={handleCloseModal}
-          defaultValues={profile}
+          defaultValues={profile as any}
           coachAvatar={coachAvatar}
           coachName={coachName}
         />
@@ -121,7 +121,7 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
     );
   }
 
-  if (isStale) {
+  if (isProfileStale) {
     return (
       <>
         <div className={`rounded-lg border border-blue-200 bg-blue-50 p-3 ${className}`}>
@@ -142,7 +142,7 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
         <CheckUpModal
           open={isModalOpen}
           onClose={handleCloseModal}
-          defaultValues={profile}
+          defaultValues={profile as any}
           coachAvatar={coachAvatar}
           coachName={coachName}
         />
@@ -166,7 +166,7 @@ export const WorkoutCheckUpTrigger: React.FC<WorkoutCheckUpTriggerProps> = ({
       <CheckUpModal
         open={isModalOpen}
         onClose={handleCloseModal}
-        defaultValues={profile}
+        defaultValues={profile as any}
         coachAvatar={coachAvatar}
         coachName={coachName}
       />
