@@ -48,7 +48,7 @@ export const BootstrapController: React.FC<BootstrapControllerProps> = ({
 
   // Monitor profile loading
   useEffect(() => {
-    const profileLoaded = !profileLoading && (!profileError || profileData !== null);
+    const profileLoaded = !profileLoading && !profileError;
     const hasProfileError = !!profileError;
 
     setState(prev => ({
@@ -73,7 +73,7 @@ export const BootstrapController: React.FC<BootstrapControllerProps> = ({
   }, [bootstrapState]);
 
   // Check if we're ready to show the app
-  const isReady = state.authReady && state.profileLoaded && state.bootstrapComplete;
+  const isReady = state.authReady && state.profileLoaded;
   const showLoading = !isReady && !state.hasErrors;
 
   // Debug logging
