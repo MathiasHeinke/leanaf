@@ -48,6 +48,8 @@ import ConcentricStatCard from "@/components/ConcentricStatCard";
 import { DashboardFourBarsWithTrend } from "@/components/DashboardFourBarsWithTrend";
 import { DashboardHaloPair } from "@/components/DashboardHaloPair";
 import { AuthDebugPanel } from "@/components/AuthDebugPanel";
+import { DebugStatusBadge } from "@/components/DebugStatusBadge";
+import { DashboardErrorBoundary } from "@/components/DashboardErrorBoundary";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -96,8 +98,17 @@ const Index = () => {
     );
   }
 
-  // Render the authenticated dashboard
-  return <AuthenticatedDashboard user={user} />;
+  // Render the authenticated dashboard with error boundary
+  console.log('🎯 Index: Rendering AuthenticatedDashboard', { 
+    userId: user?.id, 
+    timestamp: new Date().toISOString() 
+  });
+  
+  return (
+    <DashboardErrorBoundary>
+      <AuthenticatedDashboard user={user} />
+    </DashboardErrorBoundary>
+  );
 };
 
 // Authenticated dashboard component with all hooks
@@ -116,12 +127,24 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   } = useUserProfile();
   
   // All auth-dependent hooks - AFTER authentication is confirmed
-  const { status: creditsStatus } = useCredits();
+  const { status: creditsStatus, error: creditsError } = useCredits();
   const mealInputHook = useGlobalMealInput();
   const { checkBadges } = useBadgeChecker();
   const { awardPoints, updateStreak, evaluateWorkout, evaluateSleep, getPointsForActivity, getStreakMultiplier } = usePointsSystem();
   const { isTrackingEnabled } = useTrackingPreferences();
   const plusData = usePlusData();
+  
+  // Debug error tracking
+  const [errorFlags, setErrorFlags] = useState<string[]>([]);
+  
+  // Track errors for debugging
+  useEffect(() => {
+    const flags: string[] = [];
+    if (creditsError) flags.push('credits');
+    if (plusData.error) flags.push('plusData');
+    if (profileError) flags.push('profile');
+    setErrorFlags(flags);
+  }, [creditsError, plusData.error, profileError]);
   
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
@@ -157,15 +180,28 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
   // SIMPLIFIED DATA LOADING - Single effect triggered by bootstrap completion
   useEffect(() => {
+    console.log('🔍 Dashboard render effect:', {
+      bootstrapComplete: bootstrapState.bootstrapComplete,
+      hasUser: !!user,
+      userId: user?.id,
+      date: currentDate.toDateString(),
+      timestamp: new Date().toISOString()
+    });
+    
     if (bootstrapState.bootstrapComplete && user) {
       console.log('🚀 Bootstrap complete, loading date-specific data...', {
         date: currentDate.toDateString(),
         duration: bootstrapState.bootstrapDuration
       });
       
-      // Load meals and today's data for current date
-      fetchMealsForDate(currentDate);
-      loadTodaysData(currentDate);
+      // FAIL-SAFE: Wrap data loading in try-catch to prevent render blocking
+      try {
+        fetchMealsForDate(currentDate);
+        loadTodaysData(currentDate);
+      } catch (error) {
+        console.error('❌ Data loading failed:', error);
+        setErrorFlags(prev => [...prev, 'dataLoading']);
+      }
     }
   }, [bootstrapState.bootstrapComplete, user?.id, currentDate]);
 
@@ -518,65 +554,50 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   };
 
   const fetchMealsForDate = async (date: Date) => {
-    setLoading(true);
+    if (!user?.id) return;
+    
     try {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
+      setLoading(true);
+      const formattedDate = date.toISOString().split('T')[0];
       
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
-
-      // Fetch meals for the specified date
-      const { data: mealsData, error: mealsError } = await supabase
-        .from('meals')
-        .select('*')
-        .eq('user_id', user?.id)
-        .gte('created_at', startOfDay.toISOString())
-        .lte('created_at', endOfDay.toISOString())
-        .order('created_at', { ascending: false });
-
-      if (mealsError) throw mealsError;
+      console.log('📅 Fetching meals for date:', formattedDate);
       
-      // If no meals for today and it's today, try to load from recent days
-      if ((!mealsData || mealsData.length === 0) && date.toDateString() === new Date().toDateString()) {
-        await loadMealsWithFallback(date);
+      // FAIL-SAFE: Handle potential meal_images table issues
+      try {
+        const { data, error } = await supabase
+          .from('meals')
+          .select(`
+            *,
+            meal_images (
+              image_url,
+              alt_text
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('date', formattedDate)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        console.log('✅ Meals loaded:', data?.length || 0);
+        setMeals(data || []);
         return;
+      } catch (joinError: any) {
+        console.warn('⚠️ Meals join failed, trying without images:', joinError.message);
+        
+        // Fallback: Load meals without images
+        const { data, error } = await supabase
+          .from('meals')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('date', formattedDate)
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        console.log('✅ Meals loaded (no images):', data?.length || 0);
+        setMeals(data || []);
       }
-      
-      if (!mealsData || mealsData.length === 0) {
-        setMeals([]);
-        updateCalorieSummary([]);
-        return;
-      }
-
-      // Fetch images for all meals
-      const mealIds = mealsData.map(meal => meal.id);
-      const { data: imagesData, error: imagesError } = await supabase
-        .from('meal_images')
-        .select('meal_id, image_url')
-        .in('meal_id', mealIds);
-
-      if (imagesError) {
-        console.error('Error fetching meal images:', imagesError);
-      }
-
-      // Group images by meal_id
-      const imagesByMeal = (imagesData || []).reduce((acc, img) => {
-        if (!acc[img.meal_id]) {
-          acc[img.meal_id] = [];
-        }
-        acc[img.meal_id].push(img.image_url);
-        return acc;
-      }, {} as Record<string, string[]>);
-
-      // Combine meals with their images
-      const mealsWithImages = mealsData.map(meal => ({
-        ...meal,
-        images: imagesByMeal[meal.id] || []
-      }));
-      
-      setMeals(mealsWithImages);
-      updateCalorieSummary(mealsWithImages);
     } catch (error) {
       console.error('Error fetching meals:', error);
       setMeals([]);
@@ -1072,8 +1093,20 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         </div>
         */}
         
-        {/* Unterer Abstand für DashboardMealComposer */}
+         {/* Unterer Abstand für DashboardMealComposer */}
         <div className="pb-28"></div>
+        
+        {/* Debug Status Badge */}
+        <DebugStatusBadge
+          visible={true}
+          user={user}
+          bootstrapComplete={bootstrapState.bootstrapComplete}
+          mealCount={meals.length}
+          errorFlags={errorFlags}
+          route="/"
+          creditsError={!!creditsError}
+          plusDataError={!!plusData.error}
+        />
       </div>
 
       {/* Floating Meal Input (hidden, kept for compatibility) */}

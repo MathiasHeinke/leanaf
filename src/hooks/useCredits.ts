@@ -36,26 +36,59 @@ export const useCredits = () => {
   const { user } = useAuth();
   const [status, setStatus] = useState<CreditsStatus | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const isAuthenticated = !!user?.id;
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) {
       setStatus(null);
+      setError(null);
       return null;
     }
     setLoading(true);
-    try {
-      const { data, error } = await supabase.rpc('get_credits_status');
-      if (error) throw error;
-      setStatus(data as unknown as CreditsStatus);
-      return data as unknown as CreditsStatus;
-    } catch (e) {
-      console.error('Failed to fetch credits status', e);
-      return null;
-    } finally {
-      setLoading(false);
+    setError(null);
+    
+    // FAIL-SAFE: Multiple retry attempts with exponential backoff
+    let lastError: any = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        console.log(`🔄 Credits attempt ${attempt}/3`);
+        const { data, error } = await supabase.rpc('get_credits_status');
+        if (error) throw error;
+        
+        setStatus(data as unknown as CreditsStatus);
+        setError(null);
+        console.log('✅ Credits loaded successfully');
+        return data as unknown as CreditsStatus;
+      } catch (e: any) {
+        lastError = e;
+        console.warn(`⚠️ Credits attempt ${attempt} failed:`, e.message);
+        
+        // Don't retry on authentication errors
+        if (e.code === 'PGRST202' || e.message?.includes('schema cache')) {
+          console.warn('🚫 Credits RPC not available - using defaults');
+          break;
+        }
+        
+        if (attempt < 3) {
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        }
+      }
     }
-  }, [isAuthenticated]);
+    
+    // FAIL-SAFE: Set safe defaults and log error
+    console.error('❌ All credits attempts failed, using defaults:', lastError);
+    setError(lastError?.message || 'Credits unavailable');
+    setStatus({
+      user_id: user?.id || '',
+      credits_remaining: 999999,
+      monthly_quota: 999999,
+      tester: false,
+      last_reset_month: new Date().toISOString().slice(0, 7),
+      current_month: new Date().toISOString().slice(0, 7)
+    });
+    return null;
+  }, [isAuthenticated, user?.id]);
 
   const check = useCallback(
     async (feature: FeatureType) => {
@@ -108,6 +141,7 @@ export const useCredits = () => {
   return {
     status,
     loading,
+    error,
     refresh,
     check,
     consume,

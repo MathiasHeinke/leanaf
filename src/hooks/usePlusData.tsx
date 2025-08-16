@@ -56,7 +56,11 @@ export const usePlusData = (): UsePlusDataResult => {
       const { data: auth } = await supabase.auth.getUser();
       const userId = auth.user?.id;
       if (!userId) {
+        console.warn('⚠️ PlusData: No user authentication');
         setError('Nicht angemeldet');
+        // FAIL-SAFE: Set defaults instead of blocking
+        setGoals({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
+        setLast7([]);
         setLoading(false);
         return;
       }
@@ -114,7 +118,25 @@ export const usePlusData = (): UsePlusDataResult => {
 
       setSupplementsLoggedToday(!!(suppsRes.data && (suppsRes.data as any[]).length > 0));
     } catch (e: any) {
+      console.error('❌ PlusData fetch failed:', e);
       setError(e?.message ?? 'Fehler beim Laden');
+      
+      // FAIL-SAFE: Set safe defaults to prevent render blocking
+      console.log('🛡️ PlusData: Setting safe defaults due to error');
+      setGoals({ calories: 2000, protein: 150, carbs: 250, fats: 65 });
+      setLast7([{
+        date: new Date().toISOString().slice(0, 10),
+        total_calories: 0,
+        total_protein: 0,
+        total_carbs: 0,
+        total_fats: 0
+      }]);
+      setHydrationMlToday(0);
+      setSleepDurationToday(0);
+      setSleepLoggedToday(false);
+      setStepsToday(0);
+      setWorkoutLoggedToday(false);
+      setSupplementsLoggedToday(false);
     } finally {
       setLoading(false);
     }
