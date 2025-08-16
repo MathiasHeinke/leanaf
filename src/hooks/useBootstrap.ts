@@ -13,6 +13,7 @@ interface BootstrapState {
 }
 
 export const useBootstrap = () => {
+  console.log('🔍 useBootstrap mounted');
   const { isSessionReady, user } = useAuth();
   const { addDebugEvent } = useDebug();
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>({
