@@ -44,6 +44,34 @@ export const useUserProfile = () => {
   // AbortController for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const createDefaultProfile = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const defaultProfile = {
+        user_id: user.id,
+        display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
+        // Leave other fields null for now - user will fill them in onboarding
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(defaultProfile)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error creating default profile:', error);
+        return;
+      }
+
+      console.log('✅ Default profile created:', data);
+      setProfileData(data as ProfilesData);
+    } catch (err) {
+      console.error('❌ Exception creating default profile:', err);
+    }
+  }, [user?.id]);
+
   const fetchProfile = useCallback(async () => {
     if (!user?.id || !session?.access_token) {
       console.log('❌ Cannot fetch profile: missing user or session');
@@ -151,7 +179,7 @@ export const useUserProfile = () => {
         setIsLoading(false);
       }
     }
-  }, [user?.id, session?.access_token]);
+  }, [user?.id, session?.access_token, createDefaultProfile]);
 
   // STABLE SESSION-READY CHECK
   useEffect(() => {
@@ -213,35 +241,6 @@ export const useUserProfile = () => {
       supabase.removeChannel(channel);
     };
   }, [user?.id]);
-
-
-  const createDefaultProfile = async () => {
-    if (!user?.id) return;
-
-    try {
-      const defaultProfile = {
-        user_id: user.id,
-        display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
-        // Leave other fields null for now - user will fill them in onboarding
-      };
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert(defaultProfile)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Error creating default profile:', error);
-        return;
-      }
-
-      console.log('✅ Default profile created:', data);
-      setProfileData(data as ProfilesData);
-    } catch (err) {
-      console.error('❌ Exception creating default profile:', err);
-    }
-  };
 
   const convertToUserProfile = (profilesData?: ProfilesData): UserProfile | null => {
     if (!profilesData) return null;
