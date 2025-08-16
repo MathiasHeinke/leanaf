@@ -10,7 +10,7 @@ import { useCredits } from "@/hooks/useCredits";
 import { useBootstrap } from "@/hooks/useBootstrap";
 import { useMemo } from "react";
 import { BootstrapController } from "@/components/BootstrapController";
-import { DebugBadge } from "@/components/DebugBadge";
+// import { DebugBadge } from "@/components/DebugBadge"; // Removed for production
 import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { MealList } from "@/components/MealList";
 
@@ -163,7 +163,7 @@ const Index = () => {
       <DashboardErrorBoundary>
         <AuthenticatedDashboard user={user} />
       </DashboardErrorBoundary>
-      <DebugBadge show={true} compact={true} />
+      {/* <DebugBadge show={true} compact={true} /> */} {/* Removed for production */}
     </BootstrapController>
   );
 };
