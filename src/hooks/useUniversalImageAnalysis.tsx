@@ -49,6 +49,9 @@ export const useUniversalImageAnalysis = () => {
       let analysisData = null;
       let suggestedModal = null;
 
+      // Get session once at the top
+      const session = await supabase.auth.getSession();
+
       switch (classification.category) {
         case 'exercise':
           console.log('🏋️ Analyzing exercise data...');
@@ -58,6 +61,9 @@ export const useUniversalImageAnalysis = () => {
               mediaUrls: [imageUrl], 
               userMessage: userMessage || classification.description,
               shouldSave: false // Preview mode
+            },
+            headers: {
+              Authorization: `Bearer ${session.data.session?.access_token}`,
             }
           });
           
@@ -76,6 +82,9 @@ export const useUniversalImageAnalysis = () => {
               text: userMessage || classification.description,
               images: [imageUrl],
               userId: user.id
+            },
+            headers: {
+              Authorization: `Bearer ${session.data.session?.access_token}`,
             }
           });
           
@@ -94,6 +103,9 @@ export const useUniversalImageAnalysis = () => {
               imageUrl,
               userId: user.id,
               userQuestion: userMessage || classification.description
+            },
+            headers: {
+              Authorization: `Bearer ${session.data.session?.access_token}`,
             }
           });
           
@@ -119,6 +131,9 @@ export const useUniversalImageAnalysis = () => {
               imageUrl,
               userId: user.id,
               userMessage: userMessage || classification.description
+            },
+            headers: {
+              Authorization: `Bearer ${session.data.session?.access_token}`,
             }
           });
           

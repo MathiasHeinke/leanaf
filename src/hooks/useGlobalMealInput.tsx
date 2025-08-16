@@ -181,10 +181,18 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     setIsAnalyzing(true);
     
     try {
+      // Get current session for authorization
+      const session = await supabase.auth.getSession();
+      console.log('🔍 Trigger analyze-meal with text:', text, 'and images:', images);
+      console.log('📋 Request payload:', JSON.stringify({ text: text.trim() || null, images: images.length > 0 ? images : null }, null, 2));
+      
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
           text: text.trim() || null,
           images: images.length > 0 ? images : null
+        },
+        headers: {
+          Authorization: `Bearer ${session.data.session?.access_token}`,
         }
       });
 

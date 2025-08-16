@@ -105,11 +105,15 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
 
     setIsAnalyzingLeftovers(true);
     try {
+      const session = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('analyze-meal-leftovers', {
         body: {
           originalImages: editingMeal.images,
           leftoverImages: leftoverImages,
           mealDescription: editingMeal.text
+        },
+        headers: {
+          Authorization: `Bearer ${session.data.session?.access_token}`,
         }
       });
 
@@ -174,8 +178,12 @@ export const MealEditDialog = ({ meal, open, onClose, onUpdate }: MealEditDialog
       
       console.log('Sending request to verify-meal:', requestBody);
       
+      const session = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('verify-meal', {
-        body: requestBody
+        body: requestBody,
+        headers: {
+          Authorization: `Bearer ${session.data.session?.access_token}`,
+        }
       });
 
       console.log('Verify-meal response:', { data, error });
