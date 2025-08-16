@@ -375,6 +375,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
     if (!user || files.length === 0) return [];
     
+    console.log('📤 Starting upload for', files.length, 'files');
     setIsUploading(true);
     setUploadProgress([]);
 
@@ -387,12 +388,17 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
         result.errors.forEach(error => toast.error(error));
       }
 
-      if (result.success) {
-        // UI zeigt bereits visuelles Feedback
+      if (result.success && result.urls.length > 0) {
+        console.log('✅ Upload completed successfully:', result.urls);
+        toast.success(`${result.urls.length} Bild${result.urls.length > 1 ? 'er' : ''} erfolgreich hochgeladen`);
+      } else if (result.urls.length === 0) {
+        console.log('❌ Upload completed but no URLs returned');
+        toast.error('Keine Bilder hochgeladen');
       }
 
       return result.urls;
     } catch (error: any) {
+      console.error('❌ Upload error:', error);
       toast.error(ERROR_MESSAGES.UPLOAD_FAILED + ': ' + (error.message || 'Unbekannter Fehler'));
       return [];
     } finally {
@@ -493,11 +499,15 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   const openQuickMealSheet = useCallback((tab?: "text" | "photo" | "voice") => {
+    console.log('📋 Opening QuickMealSheet in mode:', tab);
     setQuickMealSheetOpen(true);
   }, []);
 
   const closeQuickMealSheet = useCallback(() => {
+    console.log('📋 Closing QuickMealSheet');
     setQuickMealSheetOpen(false);
+    // Clear uploaded images when closing the sheet to reset state
+    setUploadedImages([]);
     if (isEditingMode) {
       exitEditMode();
     }

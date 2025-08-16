@@ -51,6 +51,8 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
   const files = e.target.files ? Array.from(e.target.files) : [];
   if (!files.length) return;
 
+  console.log('📸 Image upload started:', files.length, 'files');
+
   // Enforce max files on selection
   let selected = files;
   if (files.length > maxImages) {
@@ -67,121 +69,62 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     e.currentTarget.value = "";
   }
 
-  if (!urls || urls.length === 0) return;
+  if (!urls || urls.length === 0) {
+    console.log('❌ Upload failed, no URLs returned');
+    toast.error('Upload fehlgeschlagen');
+    return;
+  }
 
+  console.log('✅ Images uploaded successfully:', urls);
   appendUploadedImages(urls);
   setActiveTab("photo");
+
+  // SIMPLIFIED FLOW: Always open QuickMealSheet for image preview and analysis
   openQuickMealSheet("photo");
 
-  // Route to multi-image-intake if enabled and at least one image
-  if (multiImageEnabled && user?.id && urls.length >= 1) {
+  // Only use multi-image flow for multiple images (2+)
+  if (multiImageEnabled && user?.id && urls.length >= 2) {
+    console.log('🔄 Starting multi-image analysis for', urls.length, 'images');
     const groupTraceId = crypto.randomUUID();
-    const headers: Record<string, string> = {
-      'x-trace-id': groupTraceId,
-      'x-chat-mode': 'nutrition',
-      'x-source': 'dashboard',
-    };
-
-    // FE-side cap as a fallback
-    let images = urls;
-    if (images.length > maxImages) {
-      toast.info(`Sende nur die ersten ${maxImages} Bilder.`);
-      images = images.slice(0, maxImages);
-    }
-
+    
     try {
-      // Telemetry: client ack
-      try {
-        await supabase.rpc('log_trace_event', {
-          p_trace_id: groupTraceId,
-          p_stage: 'client_ack',
-          p_data: { source: 'dashboard', nImages: images.length }
-        });
-      } catch (_) { /* non-fatal */ }
-
-      setEphemeral('Ich schaue mir deine Bilder kurz an …');
+      setEphemeral('Analysiere mehrere Bilder …');
       const { data, error } = await supabase.functions.invoke('multi-image-intake', {
-        body: { userId: user.id, images, message: '' },
-        headers,
+        body: { userId: user.id, images: urls, message: '' },
+        headers: {
+          'x-trace-id': groupTraceId,
+          'x-chat-mode': 'nutrition',
+          'x-source': 'dashboard',
+        },
       });
+      
       setEphemeral(null);
-
-      if (error) {
-        if (typeof error.message === 'string' && error.message.includes('too_many_images')) {
-          toast.info(`Maximal ${maxImages} Bilder. Bitte erneut auswählen.`);
-          return;
-        }
-        toast.error('Dauert länger als üblich – bitte erneut senden.');
-        return;
-      }
-      if (!data?.ok) {
-        toast.error('Analyse fehlgeschlagen – bitte erneut senden.');
+      
+      if (error || !data?.ok) {
+        console.log('❌ Multi-image analysis failed, falling back to QuickMealSheet');
+        toast.info('Bilder erfolgreich hochgeladen – bitte manuell eingeben');
         return;
       }
 
-      if (typeof data.max === 'number') setMaxImages(data.max);
-
+      console.log('✅ Multi-image analysis successful');
       const preview = data.preview ?? {};
       const consolidated = data.consolidated ?? {};
       const items = consolidated.items ?? [];
       const topPickIdx = consolidated.topPickIdx ?? 0;
 
       setMultiPreview({ preview, items, topPickIdx, traceId: data.traceId });
-
-      // Telemetry: UI preview shown
-      try {
-        await supabase.rpc('log_trace_event', {
-          p_trace_id: data.traceId ?? groupTraceId,
-          p_stage: 'ui_preview_shown',
-          p_data: { nImages: images.length }
-        });
-      } catch (_) { /* non-fatal */ }
-
-      return; // Skip legacy per-image orchestration
+      return;
     } catch (err: any) {
+      console.log('❌ Multi-image analysis error:', err);
       setEphemeral(null);
-      if (err?.message?.includes('too_many_images')) {
-        toast.info(`Maximal ${maxImages} Bilder. Bitte erneut auswählen.`);
-      } else {
-        toast.error('Analyse fehlgeschlagen – bitte erneut versuchen.');
-      }
+      toast.info('Bilder erfolgreich hochgeladen – bitte manuell eingeben');
       return;
     }
   }
 
-  // Existing per-image orchestrator flow (unchanged)
-  if (orchestrationEnabled && user?.id) {
-    const groupTraceId = crypto.randomUUID();
-    for (const url of urls) {
-      try {
-        const reply = await sendEvent(
-          user.id,
-          {
-            type: 'IMAGE',
-            url,
-            clientEventId: crypto.randomUUID(),
-            context: { source: 'momentum', coachMode: 'nutrition', image_type: 'food', coachId: 'lucy' }
-          },
-          groupTraceId
-        );
-        if (reply.kind === 'message') {
-          toast.message(reply.text);
-          setClarify(null);
-        } else if (reply.kind === 'clarify') {
-          setClarify({ prompt: reply.prompt, options: reply.options, traceId: reply.traceId });
-        } else if (reply.kind === 'confirm_save_meal') {
-          setPendingConfirm({ kind: 'meal', prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
-          setClarify(null);
-        } else if (reply.kind === 'confirm_save_supplement') {
-          setPendingConfirm({ kind: 'supplement', prompt: reply.prompt, proposal: reply.proposal, traceId: reply.traceId });
-          setClarify(null);
-        }
-      } catch (e) {
-        console.debug('Orchestrator IMAGE sendEvent failed (non-blocking)', e);
-      }
-    }
-  }
-}, [uploadImages, appendUploadedImages, multiImageEnabled, orchestrationEnabled, user?.id, sendEvent, openQuickMealSheet]);
+  // For single images or when multi-image is disabled: let QuickMealSheet handle analysis
+  console.log('📝 Single image uploaded, QuickMealSheet will handle analysis');
+}, [uploadImages, appendUploadedImages, multiImageEnabled, user?.id, openQuickMealSheet]);
 
   const handleVoiceTap = useCallback(async () => {
     await handleVoiceRecord();
