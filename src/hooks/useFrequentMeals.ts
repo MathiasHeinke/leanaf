@@ -27,7 +27,7 @@ export function useFrequentMeals(userId?: string, lookbackDays = 45) {
 
         const { data: meals, error } = await supabase
           .from("meals")
-          .select("id,title,name,text,created_at")
+          .select("id,title,text,created_at")
           .eq("user_id", userId)
           .gte("created_at", since.toISOString())
           .order("created_at", { ascending: false })
