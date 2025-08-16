@@ -53,16 +53,15 @@ const Index = () => {
   const { user, loading: authLoading, isSessionReady } = useAuth();
   const navigate = useNavigate();
 
-  // Debug authentication state
   useEffect(() => {
-    console.log('🔍 Auth Debug:', {
-      authLoading,
-      hasUser: !!user,
+    console.log('🔍 Index Auth State:', { 
+      isSessionReady, 
+      hasUser: !!user, 
       userId: user?.id,
-      isSessionReady,
-      userEmail: user?.email
+      userEmail: user?.email,
+      timestamp: new Date().toISOString()
     });
-  }, [authLoading, user, isSessionReady]);
+  }, [isSessionReady, user]);
 
   // Check authentication and redirect if needed
   useEffect(() => {
