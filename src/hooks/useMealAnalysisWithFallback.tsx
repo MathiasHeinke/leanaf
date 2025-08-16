@@ -36,9 +36,23 @@ export const useMealAnalysisWithFallback = () => {
       });
 
       if (error) {
-        console.error('[analyzeMealWithFallback] Analysis failed:', error);
+        console.error('❌ [analyzeMealWithFallback] Analysis failed:', error);
         
-        // Fallback: Create meal entry with user's text and zero values
+        // Check if response contains fallback data from Edge Function
+        if (data?.fallback) {
+          console.log('🔄 [analyzeMealWithFallback] Using fallback from error response');
+          toast.warning('Analyse fehlgeschlagen. Bitte Werte manuell anpassen.');
+          return {
+            text: data.fallback.title || text.trim() || 'Mahlzeit',
+            calories: data.fallback.total?.calories || 0,
+            protein: data.fallback.total?.protein || 0,
+            carbs: data.fallback.total?.carbs || 0,
+            fats: data.fallback.total?.fats || 0,
+            meal_type: 'other'
+          };
+        }
+        
+        // No fallback from server - create local fallback
         toast.warning('Analyse fehlgeschlagen. Mahlzeit wird mit Standardwerten gespeichert.');
         return {
           text: text.trim() || 'Mahlzeit',
@@ -76,7 +90,7 @@ export const useMealAnalysisWithFallback = () => {
       };
 
     } catch (error: any) {
-      console.error('[analyzeMealWithFallback] Exception:', error);
+      console.error('💥 [analyzeMealWithFallback] Exception:', error);
       
       // Always provide fallback - never block the user
       toast.warning('Analyse nicht verfügbar. Mahlzeit wird mit Standardwerten gespeichert.');

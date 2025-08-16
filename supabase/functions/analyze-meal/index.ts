@@ -15,7 +15,7 @@ const corsHeaders = {
 
 serve(async (req) => {
   const requestStartTime = Date.now();
-  console.log('🚀 [ANALYZE-MEAL] Request started at:', new Date().toISOString());
+    console.log('🚀 [ANALYZE-MEAL] Request started at:', new Date().toISOString());
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -23,7 +23,13 @@ serve(async (req) => {
   }
 
   try {
+    console.log('📥 [ANALYZE-MEAL] Reading request body...');
     const requestBody = await req.json();
+    console.log('✅ [ANALYZE-MEAL] Request body parsed successfully:', {
+      hasText: !!requestBody.text,
+      hasImages: !!requestBody.images,
+      imageCount: requestBody.images?.length || 0
+    });
 
     const traceId = req.headers.get('x-trace-id') ?? crypto.randomUUID();
     const authHeader = req.headers.get('Authorization') ?? '';
@@ -184,7 +190,19 @@ serve(async (req) => {
     // Validate input - allow either text OR images OR both
     if (!text && (!images || images.length === 0)) {
       console.log('❌ [ANALYZE-MEAL] No input provided');
-      throw new Error('Bitte geben Sie Text ein oder laden Sie ein Bild hoch');
+      return new Response(JSON.stringify({ 
+        error: 'Bitte geben Sie Text ein oder laden Sie ein Bild hoch',
+        code: 'NO_INPUT',
+        fallback: {
+          title: 'Mahlzeit',
+          total: { calories: 0, protein: 0, carbs: 0, fats: 0 },
+          confidence: 'low',
+          notes: 'Keine Eingabe verfügbar'
+        }
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
     }
 
     // Extract user-provided nutritional values from text
@@ -604,8 +622,16 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       });
     } catch (_) { /* ignore */ }
     
+    // Always provide fallback data to prevent blocking user
+    console.log('🔄 [ANALYZE-MEAL] Providing fallback response due to error');
     return new Response(JSON.stringify({ 
-      error: (error as any).message || 'Ein unerwarteter Fehler ist aufgetreten'
+      error: (error as any).message || 'Ein unerwarteter Fehler ist aufgetreten',
+      fallback: {
+        title: 'Mahlzeit',
+        total: { calories: 0, protein: 0, carbs: 0, fats: 0 },
+        confidence: 'low',
+        notes: 'Analyse fehlgeschlagen - Bitte Werte manuell eingeben'
+      }
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

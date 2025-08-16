@@ -200,9 +200,32 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
       });
 
       if (error) {
-        console.error('[analyzeMealText] Supabase error:', error);
-        toast.error(`Analyse fehlgeschlagen: ${error.message || 'Unbekannter Fehler'}`);
-        return null;
+        console.error('❌ [analyzeMealText] Edge Function error:', error);
+        
+        // Check if response contains fallback data
+        if (data?.fallback) {
+          console.log('🔄 [analyzeMealText] Using fallback from error response');
+          toast.warning('Analyse fehlgeschlagen. Bitte Werte manuell anpassen.');
+          return {
+            text: data.fallback.title || text.trim() || 'Mahlzeit',
+            calories: data.fallback.total?.calories || 0,
+            protein: data.fallback.total?.protein || 0,
+            carbs: data.fallback.total?.carbs || 0,
+            fats: data.fallback.total?.fats || 0,
+            meal_type: 'other'
+          } as MealData;
+        }
+        
+        // No fallback - provide manual entry mode
+        toast.warning('Analyse nicht verfügbar. Bitte Nährwerte manuell eingeben.');
+        return {
+          text: text.trim() || 'Mahlzeit',
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fats: 0,
+          meal_type: 'other'
+        } as MealData;
       }
 
       console.log('✅ [analyzeMealText] Raw response:', data);
@@ -224,14 +247,18 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
       console.log('✅ [analyzeMealText] Analysis successful:', parsedMealData);
       return parsedMealData;
     } catch (error: any) {
-      if (error.message?.includes('Weder Text noch Bild')) {
-        toast.error(ERROR_MESSAGES.NO_INPUT);
-      } else if (error.message?.includes('timeout')) {
-        toast.error(ERROR_MESSAGES.TIMEOUT);
-      } else {
-        toast.error(ERROR_MESSAGES.ANALYSIS_FAILED + ': ' + (error.message || 'Unbekannter Fehler'));
-      }
-      return null;
+      console.error('💥 [analyzeMealText] Exception:', error);
+      
+      // Always provide fallback - never block the user completely
+      toast.warning('Analyse nicht verfügbar. Bitte Nährwerte manuell eingeben.');
+      return {
+        text: text.trim() || 'Mahlzeit',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fats: 0,
+        meal_type: 'other'
+      } as MealData;
     } finally {
       setIsAnalyzing(false);
     }
