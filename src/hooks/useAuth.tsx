@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { secureLogger } from '@/utils/secureLogger';
 import { authLogger } from '@/lib/authLogger';
+import { dataLogger } from '@/utils/dataLogger';
 
 interface AuthContextType {
   user: User | null;
@@ -156,6 +157,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             hasAccessToken: !!session.access_token,
             tokenLength: session.access_token?.length || 0
           });
+          
+          // Validate session for debugging RLS issues
+          if (dataLogger.isDebugEnabled()) {
+            console.log('✅ Auth Session OK - RLS queries should work', {
+              userId: session.user.id,
+              accessToken: session.access_token?.substring(0, 20) + '...'
+            });
+          }
+        } else if (dataLogger.isDebugEnabled()) {
+          console.warn('❌ No Auth Session - RLS will block all queries');
         }
         
         // Handle different auth events

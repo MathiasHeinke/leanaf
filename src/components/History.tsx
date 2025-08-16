@@ -127,8 +127,8 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         .from('meals')
         .select('*')
         .eq('user_id', user.id)
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: false });
+        .gte('date', startDate.toISOString().split('T')[0])
+        .order('date', { ascending: false });
 
       if (error) throw error;
 
@@ -193,7 +193,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
         // Group meals by calendar week
         mealsData?.forEach(meal => {
-          const mealDate = new Date(meal.created_at);
+          const mealDate = new Date(meal.date); // Use date field instead of created_at
           const weekNum = getGermanWeekNumber(mealDate);
           const weekKey = `${mealDate.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
           
@@ -271,7 +271,7 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
         }
 
         mealsData?.forEach(meal => {
-          const date = new Date(meal.created_at).toISOString().split('T')[0];
+          const date = meal.date; // Use date field instead of created_at
           const day = groupedData.get(date);
           if (day) {
             const mealWithImages = {

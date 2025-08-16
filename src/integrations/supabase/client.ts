@@ -45,25 +45,61 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       const timezone = getUserTimezone();
       const currentDate = getCurrentDateInTimezone(timezone);
       
+      // Fix: Preserve Authorization header by spreading it first
+      const incomingHeaders = (options as RequestInit).headers || {};
+      const hasAuth = incomingHeaders && 
+        (typeof incomingHeaders === 'object' && 'Authorization' in incomingHeaders);
+
+      if (dataLogger.isDebugEnabled()) {
+        console.log(`🔐 Request Auth: ${hasAuth ? '✅ present' : '❌ missing'}`, {
+          url: new URL(url).pathname,
+          method: (options as RequestInit)?.method || 'GET'
+        });
+      }
+
       const enhancedOptions = {
         ...options,
         signal: controller.signal,
         headers: {
-          'apikey': SUPABASE_PUBLISHABLE_KEY,
+          // CRITICAL: Spread incoming headers FIRST to preserve Authorization
           ...(options as RequestInit).headers,
+          // Then add our custom headers
+          'apikey': SUPABASE_PUBLISHABLE_KEY,
           'X-User-Timezone': timezone,
           'X-Current-Date': currentDate
         }
       };
       
       return fetch(url, enhancedOptions)
-        .then(response => {
+        .then(async (response) => {
           if (operationId && dataLogger.isDebugEnabled()) {
+            // Log query result count for debugging RLS issues
+            let resultCount = null;
+            try {
+              const clonedResponse = response.clone();
+              const responseText = await clonedResponse.text();
+              if (responseText) {
+                const parsed = JSON.parse(responseText);
+                if (Array.isArray(parsed)) {
+                  resultCount = parsed.length;
+                } else if (parsed && typeof parsed === 'object' && Array.isArray(parsed.data)) {
+                  resultCount = parsed.data.length;
+                }
+              }
+            } catch (e) {
+              // Ignore parsing errors
+            }
+
             dataLogger.completeOperation(operationId, {
               status: response.status,
               statusText: response.statusText,
-              ok: response.ok
+              ok: response.ok,
+              result_count: resultCount
             });
+
+            if (resultCount === 0 && response.ok) {
+              console.log(`⚠️ Empty result (RLS blocked?) for ${new URL(url).pathname}`);
+            }
           }
           return response;
         })
