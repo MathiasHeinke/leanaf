@@ -17,13 +17,13 @@ interface DataDebugOverlayProps {
 }
 
 export function DataDebugOverlay({ isVisible, onClose }: DataDebugOverlayProps) {
-  const {
-    debugEvents,
-    lastRequest,
-    lastResponse,
-    clearDebugEvents,
-    refreshLogs,
-    debugMode
+  const { 
+    debugEvents, 
+    lastRequest, 
+    lastResponse, 
+    clearDebugEvents, 
+    refreshLogs, 
+    debugMode 
   } = useDebug();
   
   const { session, isSessionReady, authDebugInfo } = useAuth();

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { authLogger } from '@/lib/authLogger';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AuthDebugOverlayProps {
   isVisible: boolean;
@@ -13,17 +14,28 @@ interface AuthDebugOverlayProps {
 export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) {
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const { isSessionReady, session } = useAuth();
+  
+  // Check if we should use local-only mode
+  const useLocalOnly = !isSessionReady || !session?.access_token;
 
   const fetchLogs = async () => {
     setIsLoading(true);
     try {
-      const recentLogs = await authLogger.getRecentLogs(100);
-      setLogs(recentLogs);
+      if (useLocalOnly) {
+        // Auth-only mode: only read from localStorage, no network requests
+        const localLogs = authLogger.getLocalLogs(100);
+        setLogs(localLogs);
+      } else {
+        // Full mode: fetch from server and merge with local
+        const recentLogs = await authLogger.getRecentLogs(100);
+        setLogs(recentLogs);
+      }
     } catch (error) {
       console.error('Failed to fetch logs:', error);
       // Fallback to localStorage only
-      const localLogs = JSON.parse(localStorage.getItem('auth_debug_logs') || '[]');
-      setLogs(localLogs.slice(0, 50));
+      const localLogs = authLogger.getLocalLogs(50);
+      setLogs(localLogs);
     }
     setIsLoading(false);
   };
@@ -81,9 +93,15 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
             <Badge variant="outline" className="text-xs">
               Trace: {authLogger.getTraceId().slice(-8)}
             </Badge>
-            <Badge className="text-xs bg-green-100 text-green-800">
-              ACTIVE
-            </Badge>
+            {useLocalOnly ? (
+              <Badge className="text-xs bg-orange-100 text-orange-800">
+                AUTH-ONLY
+              </Badge>
+            ) : (
+              <Badge className="text-xs bg-green-100 text-green-800">
+                FULL MODE
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -183,6 +201,12 @@ export function AuthDebugOverlay({ isVisible, onClose }: AuthDebugOverlayProps) 
 
         {/* Footer */}
         <div className="p-4 border-t bg-gray-50 text-xs text-gray-500 space-y-1">
+          {useLocalOnly && (
+            <div className="mb-2 p-2 bg-orange-50 border border-orange-200 rounded text-orange-700">
+              <strong>Auth-only mode:</strong> Showing only local auth logs (no server requests). 
+              Full debug mode will activate after successful authentication.
+            </div>
+          )}
           <div>Debug mode: Add ?authDebug=1 to URL or run:</div>
           <code className="bg-gray-100 px-2 py-1 rounded">localStorage.setItem('auth_debug', 'true')</code>
           <div>Console logs: Look for 🔐 Auth Debug messages</div>

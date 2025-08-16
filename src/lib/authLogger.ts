@@ -123,6 +123,17 @@ class AuthLogger {
     }
   }
 
+  getLocalLogs(limit: number = 50) {
+    // Only read from localStorage - no network requests
+    try {
+      const localLogs = JSON.parse(localStorage.getItem('auth_debug_logs') || '[]');
+      return localLogs.slice(0, limit);
+    } catch (error) {
+      console.error('Failed to read local auth logs:', error);
+      return [];
+    }
+  }
+
   async getRecentLogs(limit: number = 50) {
     // First try localStorage for immediate access
     const localLogs = JSON.parse(localStorage.getItem('auth_debug_logs') || '[]');

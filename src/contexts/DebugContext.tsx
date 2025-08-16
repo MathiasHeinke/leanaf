@@ -57,9 +57,9 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
 
   const refreshLogs = useCallback(async () => {
     try {
-      if (debugMode === 'auth-only') {
-        // Only fetch auth logs when in auth-only mode
-        const authLogs = await authLogger.getRecentLogs(50);
+      if (debugMode === 'auth-only' || !isSessionReady || !session?.access_token) {
+        // Only fetch local auth logs when in auth-only mode or no valid session
+        const authLogs = authLogger.getLocalLogs(50);
         const authEvents = authLogs.map(log => ({
           ts: new Date(log.client_ts || log.event_time).getTime(),
           level: 'info' as const,
@@ -68,7 +68,7 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
         }));
         setDebugEvents(authEvents.slice(0, 100));
       } else {
-        // Full mode: merge auth and data logs
+        // Full mode: merge auth and data logs (with network requests)
         const [authLogs, dataLogs] = await Promise.all([
           authLogger.getRecentLogs(50),
           dataLogger.getRecentLogs(50)
@@ -94,7 +94,7 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Failed to refresh debug logs:', error);
     }
-  }, [debugMode]);
+  }, [debugMode, isSessionReady, session?.access_token]);
 
   // Auto-refresh logs when debug mode is enabled
   useEffect(() => {
