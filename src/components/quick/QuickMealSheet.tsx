@@ -191,6 +191,16 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.id]);
 
+  // Auto-trigger analysis when images are present
+  useEffect(() => {
+    if (open && uploadedImages.length > 0 && !inputText.trim() && !isAnalyzing) {
+      console.log('🤖 [QuickMealSheet] Auto-triggering analysis for uploaded images');
+      setTimeout(() => {
+        handleSubmitMeal();
+      }, 800); // Small delay to ensure sheet is fully rendered
+    }
+  }, [open, uploadedImages.length, inputText, isAnalyzing, handleSubmitMeal]);
+
   const getSmartPlaceholder = () => {
     const hour = new Date().getHours();
     if (hour < 10) return 'Was gab es zum Frühstück?';

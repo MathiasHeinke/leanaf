@@ -415,6 +415,26 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Event handlers
   const handleSubmitMeal = useCallback(async () => {
+    console.log('🚀 [handleSubmitMeal] Starting submission with:', {
+      textLength: inputText.length,
+      imageCount: uploadedImages.length,
+      isAnalyzing,
+      isUploading
+    });
+
+    if (isAnalyzing || isUploading) {
+      console.log('⏳ [handleSubmitMeal] Already processing, skipping');
+      return;
+    }
+
+    // Auto-analyze if we have images but no text
+    if (uploadedImages.length > 0 && !inputText.trim()) {
+      console.log('🖼️ [handleSubmitMeal] Auto-analyzing images without text');
+      await analyzeMealText('', uploadedImages);
+      return;
+    }
+
+    // Check for input
     if (!inputText.trim() && uploadedImages.length === 0) {
       toast.error(ERROR_MESSAGES.NO_INPUT);
       return;
@@ -441,7 +461,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     } catch (error) {
       toast.error('Fehler beim Analysieren der Mahlzeit');
     }
-  }, [inputText, uploadedImages, analyzeMealText, updateDialogState]);
+  }, [inputText, uploadedImages, isAnalyzing, isUploading, analyzeMealText, updateDialogState]);
 
   const handlePhotoUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -473,6 +493,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   const resetForm = useCallback(() => {
+    console.log('🔄 Resetting form and clearing images');
     setInputText('');
     setUploadedImages([]);
     setShowConfirmationDialog(false);
@@ -482,8 +503,12 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   const closeDialog = useCallback(() => {
+    console.log('❌ Closing confirmation dialog');
     setShowConfirmationDialog(false);
-  }, []);
+    setAnalyzedMealData(null);
+    setSelectedMealType('other');
+    resetForm();
+  }, [resetForm]);
 
   // Edit mode functions
   const enterEditMode = useCallback((mealData: AnalyzedMealData) => {
@@ -506,12 +531,15 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   const closeQuickMealSheet = useCallback(() => {
     console.log('📋 Closing QuickMealSheet');
     setQuickMealSheetOpen(false);
-    // Clear uploaded images when closing the sheet to reset state
-    setUploadedImages([]);
+    // Only clear images if we're not in editing mode and there's no confirmation dialog
+    if (!isEditingMode && !showConfirmationDialog) {
+      console.log('🧹 Clearing uploaded images on close');
+      setUploadedImages([]);
+    }
     if (isEditingMode) {
       exitEditMode();
     }
-  }, [isEditingMode, exitEditMode]);
+  }, [isEditingMode, exitEditMode, showConfirmationDialog]);
 
   const value = {
     // Core API functions
