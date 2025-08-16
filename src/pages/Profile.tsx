@@ -24,6 +24,7 @@ import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import { ProfileFieldIndicator } from '@/components/ProfileFieldIndicator';
 import { MedicalScreening } from '@/components/MedicalScreening';
 import { AvatarSelector } from '@/components/AvatarSelector';
+import { ProfileLoadingGuard } from '@/components/ProfileLoadingGuard';
 import { cn } from '@/lib/utils';
 
 
@@ -71,6 +72,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const navigate = useNavigate();
   
   const { completionStatus, isProfileComplete: profileComplete, refreshCompletion } = useProfileCompletion();
+  
+  // Enhanced loading state management
+  const [profileLoadingState, setProfileLoadingState] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
 
   // State for profile completion validation and success dialog
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -155,13 +159,26 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   ]);
 
   useEffect(() => {
-    if (user) {
-      loadProfile();
-      loadDailyGoals();
-      loadCurrentWeight(); // Load current weight from weight_history
-      calculateIntelligentCalories();
+    if (user?.id) {
+      console.log('🔄 Profile page loading data for user:', user.email);
+      setProfileLoadingState('loading');
+      
+      Promise.all([
+        loadProfile(),
+        loadDailyGoals(),
+        loadCurrentWeight(),
+        calculateIntelligentCalories()
+      ]).then(() => {
+        setProfileLoadingState('loaded');
+        console.log('✅ Profile page data loading complete');
+      }).catch((error) => {
+        console.error('❌ Profile page data loading failed:', error);
+        setProfileLoadingState('error');
+      });
+    } else {
+      setProfileLoadingState('idle');
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Recalculate when relevant data changes
   useEffect(() => {
@@ -171,13 +188,18 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   }, [weight, height, age, gender, activityLevel, goal, dailyGoals.calorieDeficit]);
 
   const loadProfile = async () => {
+    if (!user?.id) {
+      console.log('⏳ Skipping profile load - no user ID available');
+      return;
+    }
+    
     try {
       console.log('🔄 Loading profile for user:', user?.id);
       
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .maybeSingle();
 
       console.log('📋 Profile data loaded:', { data, error });

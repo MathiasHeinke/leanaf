@@ -9,6 +9,8 @@ import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { useCredits } from "@/hooks/useCredits";
 import { useBootstrap } from "@/hooks/useBootstrap";
 import { useMemo } from "react";
+import { BootstrapController } from "@/components/BootstrapController";
+import { DebugBadge } from "@/components/DebugBadge";
 import { MealList } from "@/components/MealList";
 
 import { QuickWeightInput } from "@/components/QuickWeightInput";
@@ -105,16 +107,19 @@ const Index = () => {
     );
   }
 
-  // Render the authenticated dashboard with error boundary
+  // Render the authenticated dashboard with error boundary and bootstrap controller
   console.log('🎯 Index: Rendering AuthenticatedDashboard', { 
     userId: user?.id, 
     timestamp: new Date().toISOString() 
   });
   
   return (
-    <DashboardErrorBoundary>
-      <AuthenticatedDashboard user={user} />
-    </DashboardErrorBoundary>
+    <BootstrapController>
+      <DashboardErrorBoundary>
+        <AuthenticatedDashboard user={user} />
+      </DashboardErrorBoundary>
+      <DebugBadge show={true} compact={true} />
+    </BootstrapController>
   );
 };
 

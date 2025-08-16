@@ -43,75 +43,119 @@ export const useUserProfile = () => {
       return;
     }
 
-    // Session context OK - direct profile loading
+    // Session context OK - direct profile loading with retry logic
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      console.log('🎯 Profile loading starting...', {
-        userId: user.id,
-        email: user.email
-      });
-      
-      const operationId = dataLogger.startOperation('FETCH_USER_PROFILE', 'profiles', {
-        user_id: user.id
-      });
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (error) {
-        console.error('❌ Profile load failed:', error);
-        dataLogger.errorOperation(operationId, error);
-        setError(error.message);
-        setProfileData(null);
-        return;
-      }
-      
-      if (!data) {
-        setIsFirstAppStart(true);
-        console.log('🚀 First app start detected - no profile exists for user:', user.email);
-        dataLogger.completeOperation(operationId, { first_app_start: true });
-        setProfileData(null);
-      } else {
-        setIsFirstAppStart(false);
-        console.log('✅ Profile loaded successfully for user:', user.email, { 
-          profile_id: data.id,
-          display_name: data.display_name,
-          weight: data.weight, 
-          height: data.height, 
-          age: data.age, 
-          gender: data.gender,
-          goal: data.goal
+    while (retryCount <= maxRetries) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        console.log(`🎯 Profile loading starting (attempt ${retryCount + 1}/${maxRetries + 1})...`, {
+          userId: user.id,
+          email: user.email
         });
-        dataLogger.completeOperation(operationId, data);
-        setProfileData(data as ProfilesData);
+        
+        const operationId = dataLogger.startOperation('FETCH_USER_PROFILE', 'profiles', {
+          user_id: user.id,
+          attempt: retryCount + 1
+        });
+        
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error(`❌ Profile load failed (attempt ${retryCount + 1}):`, error);
+          dataLogger.errorOperation(operationId, error);
+          
+          // Retry on network errors, but not on permission errors
+          if (retryCount < maxRetries && error.code !== 'PGRST301' && error.code !== 'PGRST116') {
+            retryCount++;
+            console.log(`🔄 Retrying profile load in ${retryCount * 1000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, retryCount * 1000));
+            continue;
+          }
+          
+          setError(error.message);
+          setProfileData(null);
+          return;
+        }
+        
+        if (!data) {
+          setIsFirstAppStart(true);
+          console.log('🚀 First app start detected - no profile exists for user:', user.email);
+          dataLogger.completeOperation(operationId, { first_app_start: true });
+          setProfileData(null);
+        } else {
+          setIsFirstAppStart(false);
+          console.log('✅ Profile loaded successfully for user:', user.email, { 
+            profile_id: data.id,
+            display_name: data.display_name,
+            weight: data.weight, 
+            height: data.height, 
+            age: data.age, 
+            gender: data.gender,
+            goal: data.goal
+          });
+          dataLogger.completeOperation(operationId, data);
+          setProfileData(data as ProfilesData);
+        }
+        
+        // Success - break out of retry loop
+        break;
+        
+      } catch (err) {
+        console.error(`🚨 Unexpected Profile Loading Error (attempt ${retryCount + 1}):`, err);
+        
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`🔄 Retrying profile load in ${retryCount * 1000}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryCount * 1000));
+          continue;
+        }
+        
+        const errorMessage = err instanceof Error ? err.message : 'Unexpected error occurred';
+        setError(`❌ Unexpected error after ${maxRetries + 1} attempts: ${errorMessage}`);
+        setProfileData(null);
+      } finally {
+        if (retryCount >= maxRetries) {
+          setIsLoading(false);
+        }
       }
-    } catch (err) {
-      console.error('🚨 Unexpected Profile Loading Error:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Unexpected error occurred';
-      setError(`❌ Unexpected error: ${errorMessage}`);
-      setProfileData(null);
-    } finally {
-      setIsLoading(false);
     }
+    
+    setIsLoading(false);
   };
 
-  // PHASE 6: Session-Synchronized Profile Loading
+  // PHASE 6: Session-Synchronized Profile Loading with stabilization
   useEffect(() => {
-    if (user && session && isSessionReady) {
-      console.log('🚀 Profile loading triggered by complete session');
+    // Only trigger when we have a stable, complete auth state
+    if (user?.id && session?.access_token && isSessionReady) {
+      console.log('🚀 Profile loading triggered by stable auth session', {
+        userId: user.id,
+        email: user.email,
+        hasAccessToken: !!session.access_token
+      });
       fetchProfile();
     } else {
-      console.log('⏳ Waiting for complete auth session...', {
+      console.log('⏳ Waiting for stable auth session...', {
         hasUser: !!user,
+        hasUserId: !!user?.id,
         hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
         isSessionReady
       });
+      
+      // Clear profile data if we lose auth
+      if (!user?.id && profileData) {
+        console.log('🧹 Clearing profile data due to lost auth');
+        setProfileData(null);
+        setIsFirstAppStart(false);
+      }
     }
   }, [user?.id, session?.access_token, isSessionReady]);
 
