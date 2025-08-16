@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { AresProfileLoader } from '@/utils/aresProfileLoader';
 
 export interface ProfilesData {
   id?: string;
@@ -76,7 +78,16 @@ export const useUserProfile = () => {
     setIsLoading(true);
     setError(null);
 
+    // 1) DB-side identity sanity check via RPC (helps diagnose RLS/auth context)
     try {
+      const { data: myUid, error: rpcError } = await supabase.rpc('get_my_uid');
+      console.log('🧪 DB auth.uid() via RPC:', { myUid, matchesClientUser: myUid === user.id, rpcError });
+    } catch (e) {
+      console.warn('⚠️ RPC get_my_uid failed (non-critical):', e);
+    }
+
+    try {
+      // 2) Primary path: direct table access under user token
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -84,21 +95,55 @@ export const useUserProfile = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('❌ Profile fetch error:', error);
+        console.error('❌ Profile fetch error (direct):', error);
+
+        // 2a) Fallback: ARES Edge Function bypass if RLS/timing issues suspected
+        if (session?.access_token) {
+          console.log('🚀 Trying ARES fallback after direct error...');
+          const result = await AresProfileLoader.loadUserProfile(user.id, session.access_token, 1);
+          if (result.data) {
+            console.log('✅ ARES fallback succeeded (profile found):', {
+              profile_id: result.data.id,
+              display_name: result.data.display_name
+            });
+            setProfileData(result.data as ProfilesData);
+            setIsFirstAppStart(false);
+            setIsLoading(false);
+            return;
+          }
+          if (result.error) {
+            console.error('❌ ARES fallback failed:', result.error);
+          }
+        }
+
         setError(error.message);
         return;
       }
 
-      console.log('✅ Profile fetch result:', { found: !!data, data });
-      setProfileData(data as ProfilesData);
-      
-      // Auto-create profile for new users
-      if (!data) {
-        console.log('🆕 No profile found, creating default profile...');
+      console.log('✅ Profile fetch result (direct):', { found: !!data, data });
+      if (data) {
+        setProfileData(data as ProfilesData);
+        setIsFirstAppStart(false);
+      } else {
+        // 2b) If no data (could be first-time user or eventual consistency), try ARES fallback before creating
+        if (session?.access_token) {
+          console.log('ℹ️ No direct profile found. Trying ARES fallback before creating default profile...');
+          const result = await AresProfileLoader.loadUserProfile(user.id, session.access_token, 1);
+          if (result.data) {
+            console.log('✅ ARES fallback found existing profile:', {
+              profile_id: result.data.id,
+              display_name: result.data.display_name
+            });
+            setProfileData(result.data as ProfilesData);
+            setIsFirstAppStart(false);
+            return;
+          }
+        }
+
+        console.log('🆕 No profile found anywhere, creating default profile...');
         await createDefaultProfile();
+        setIsFirstAppStart(true);
       }
-      
-      setIsFirstAppStart(!data);
     } catch (err: any) {
       console.error('❌ Profile fetch exception:', err);
       setError(err.message || 'Failed to load profile');
@@ -157,24 +202,18 @@ export const useUserProfile = () => {
 
   const missingRequired = (profilesData?: ProfilesData): boolean => {
     if (!profilesData) return true;
-    
-    // Only consider truly essential fields as "missing"
-    // Let user gradually fill in their profile
     return !profilesData.user_id;
   };
 
   const isStale = (updatedAt?: string): boolean => {
     if (!updatedAt) return false;
-    
     const lastUpdate = new Date(updatedAt);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
     return lastUpdate < thirtyDaysAgo;
   };
 
   const shouldShowCheckUp = (): boolean => {
-    // For now, return false - user can update profile manually
     return false;
   };
 

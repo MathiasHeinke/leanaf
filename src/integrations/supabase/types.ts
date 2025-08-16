@@ -6510,6 +6510,10 @@ export type Database = {
         Args: { p_day: string; p_timezone?: string; p_user: string }
         Returns: Json
       }
+      get_my_uid: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_next_entry_sequence: {
         Args: { p_date: string; p_user_id: string }
         Returns: number
