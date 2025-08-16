@@ -82,8 +82,9 @@ const Index = () => {
             {authLoading ? 'Checking authentication...' : 'No user found - please log in'}
           </div>
           
-          {/* Show auth debug panel - temporarily disabled due to require() error */}
-          {/* {!user && <AuthDebugPanel />} */}
+          {/* Show auth debug panel */}
+          {!user && <AuthDebugPanel />}
+
         </div>
         
         <div className="space-y-6 animate-pulse">
