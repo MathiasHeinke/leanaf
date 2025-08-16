@@ -879,7 +879,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       
       // Fluids data
       fluidsMl: todaysFluids.reduce((sum, fluid) => sum + fluid.amount_ml, 0),
-      targetFluidsMl: dailyGoals?.fluids || 2000,
+      targetFluidsMl: dailyGoalsFresh?.fluids || 2000,
       
       // Mindset data
       journalEntries: todaysMindset?.length || 0,
@@ -1041,7 +1041,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         {/* New 4 Bars with Integrated Halos */}
         <DashboardFourBarsWithTrend 
           meals={meals}
-          dailyGoals={dailyGoals}
+          dailyGoals={dailyGoalsFresh}
           todaysFluids={todaysFluids}
           todaysWorkout={todaysWorkout}
           currentDate={currentDate}
@@ -1053,16 +1053,16 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
             date={currentDate}
             totals={{
               caloriesUsed: calorieSummary.consumed,
-              caloriesTarget: dailyGoals?.calories || 2000,
+              caloriesTarget: dailyGoalsFresh?.calories || 2000,
               protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0) +
                        todaysFluids.reduce((sum, fluid) => sum + ((fluid.protein_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
               carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0) +
                      todaysFluids.reduce((sum, fluid) => sum + ((fluid.carbs_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
               fat: meals.reduce((sum, meal) => sum + (meal.fats || meal.fat || 0), 0) +
                    todaysFluids.reduce((sum, fluid) => sum + ((fluid.fats_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
-              targetProtein: dailyGoals?.protein || 150,
-              targetCarbs: dailyGoals?.carbs || 250,
-              targetFat: dailyGoals?.fats || 65,
+              targetProtein: dailyGoalsFresh?.protein || 150,
+              targetCarbs: dailyGoalsFresh?.carbs || 250,
+              targetFat: dailyGoalsFresh?.fats || 65,
             }}
             meals={meals}
             frequent={frequentMeals}
