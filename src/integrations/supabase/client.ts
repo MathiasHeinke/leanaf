@@ -44,30 +44,36 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       // Add timezone headers to all requests
       const timezone = getUserTimezone();
       const currentDate = getCurrentDateInTimezone(timezone);
-      
-      // Fix: Preserve Authorization header by spreading it first
-      const incomingHeaders = (options as RequestInit).headers || {};
-      const hasAuth = incomingHeaders && 
-        (typeof incomingHeaders === 'object' && 'Authorization' in incomingHeaders);
 
+      // Properly preserve and merge headers (Headers instance safe)
+      const incoming = (options as RequestInit).headers;
+      const mergedHeaders = new Headers(incoming as HeadersInit);
+
+      // Ensure JSON headers for write operations
+      const method = ((options as RequestInit)?.method || 'GET').toUpperCase();
+      const hasBody = !!(options as RequestInit)?.body;
+      if (!mergedHeaders.has('Accept')) mergedHeaders.set('Accept', 'application/json');
+      if (hasBody && !mergedHeaders.has('Content-Type')) {
+        mergedHeaders.set('Content-Type', 'application/json');
+      }
+
+      // Add our custom headers
+      mergedHeaders.set('apikey', SUPABASE_PUBLISHABLE_KEY);
+      mergedHeaders.set('X-User-Timezone', timezone);
+      mergedHeaders.set('X-Current-Date', currentDate);
+
+      const hasAuth = mergedHeaders.has('Authorization');
       if (dataLogger.isDebugEnabled()) {
         console.log(`🔐 Request Auth: ${hasAuth ? '✅ present' : '❌ missing'}`, {
           url: new URL(url).pathname,
-          method: (options as RequestInit)?.method || 'GET'
+          method
         });
       }
 
       const enhancedOptions = {
         ...options,
         signal: controller.signal,
-        headers: {
-          // CRITICAL: Spread incoming headers FIRST to preserve Authorization
-          ...(options as RequestInit).headers,
-          // Then add our custom headers
-          'apikey': SUPABASE_PUBLISHABLE_KEY,
-          'X-User-Timezone': timezone,
-          'X-Current-Date': currentDate
-        }
+        headers: mergedHeaders
       };
       
       return fetch(url, enhancedOptions)
