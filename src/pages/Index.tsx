@@ -257,11 +257,16 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       
       // FAIL-SAFE: Wrap data loading in try-catch to prevent render blocking
       try {
-        fetchMealsForDate(currentDate);
-        loadTodaysData(currentDate);
+        const loadData = async () => {
+          await fetchMealsForDate(currentDate);
+          await loadTodaysData(currentDate);
+          setDataLoading(false); // FIX: Set dataLoading to false after loading
+        };
+        loadData();
       } catch (error) {
         console.error('❌ Data loading failed:', error);
         setErrorFlags(prev => [...prev, 'dataLoading']);
+        setDataLoading(false); // Even on error, stop showing skeleton
       }
     }
   }, [bootstrapState.bootstrapComplete, user?.id, currentDate]);
