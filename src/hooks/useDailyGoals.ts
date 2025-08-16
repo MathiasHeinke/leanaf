@@ -22,13 +22,16 @@ export function useDailyGoals(userId?: string) {
         const res = await withWatchdog(query, 6000);
         if (ac.signal.aborted) return;
         if (res.error) { 
+          console.error('[useDailyGoals] Query error:', res.error.message);
           setError(res.error.message); 
           setData(null); 
         } else { 
+          console.log('[useDailyGoals] Successfully loaded daily goals:', res.data);
           setData(res.data ?? null); 
         }
       } catch (e: any) {
         if (!ac.signal.aborted) { 
+          console.error('[useDailyGoals] Exception:', e);
           setError(e.message || String(e)); 
           setData(null); 
         }

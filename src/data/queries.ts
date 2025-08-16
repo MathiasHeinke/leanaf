@@ -26,12 +26,27 @@ export async function loadTodaysWorkout(userId: string) {
 
 export async function loadDailyGoals(userId: string) {
   const today = new Date().toISOString().slice(0,10);
-  return sb
+  
+  // First try to get existing goals for today
+  const { data: existingGoals, error } = await sb
     .from("daily_goals")
     .select("*")
     .eq("user_id", userId)
     .eq("goal_date", today)
     .maybeSingle();
+  
+  // If no goals exist for today, create default ones
+  if (!existingGoals && !error) {
+    const { data: createdGoals } = await sb.rpc('ensure_daily_goals', {
+      user_id_param: userId
+    });
+    
+    if (createdGoals) {
+      return { data: createdGoals, error: null };
+    }
+  }
+  
+  return { data: existingGoals, error };
 }
 
 export async function loadTodaysMeals(userId: string) {

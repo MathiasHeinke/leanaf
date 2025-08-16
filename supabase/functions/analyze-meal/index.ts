@@ -43,7 +43,12 @@ serve(async (req) => {
       if (!Array.isArray(images)) return [];
       return images
         .slice(0, 5) // Limit to 5 images max
-        .filter(url => typeof url === 'string' && url.startsWith('http'))
+        .filter(url => {
+          if (typeof url !== 'string') return false;
+          // Accept both http and https URLs, plus public Supabase storage URLs
+          return url.startsWith('http') && 
+                 (url.includes('supabase') || url.startsWith('https://'));
+        })
         .map(url => url.slice(0, 2000)); // Limit URL length
     };
     
@@ -307,10 +312,13 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       console.log(`🖼️ [ANALYZE-MEAL] Adding ${images.length} image(s) to request (complex: ${isComplexInput})`);
       // Add each image to the content array
       images.forEach((imageUrl: string, index: number) => {
-        console.log(`📷 [ANALYZE-MEAL] Image ${index + 1}:`, imageUrl.substring(0, 80) + '...');
+        console.log(`📷 [ANALYZE-MEAL] Image ${index + 1}:`, imageUrl.substring(0, 100));
         userContent.push({
           type: 'image_url',
-          image_url: { url: imageUrl }
+          image_url: { 
+            url: imageUrl,
+            detail: 'high' // Ensure high quality image analysis
+          }
         });
       });
     }

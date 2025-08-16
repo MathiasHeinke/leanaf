@@ -183,8 +183,11 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     try {
       // Get current session for authorization
       const session = await supabase.auth.getSession();
-      console.log('🔍 Trigger analyze-meal with text:', text, 'and images:', images);
-      console.log('📋 Request payload:', JSON.stringify({ text: text.trim() || null, images: images.length > 0 ? images : null }, null, 2));
+      console.log('🔍 [analyzeMealText] Starting analysis with:', {
+        text: text.trim(),
+        imageCount: images.length,
+        imageUrls: images.map(url => url.substring(0, 60) + '...')
+      });
       
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
         body: { 
@@ -196,12 +199,18 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[analyzeMealText] Supabase error:', error);
+        toast.error(`Analyse fehlgeschlagen: ${error.message || 'Unbekannter Fehler'}`);
+        return null;
+      }
 
+      console.log('✅ [analyzeMealText] Raw response:', data);
       const parsedMealData = parseAnalyzeResponse(data);
+      
       if (!parsedMealData && data) {
+        console.warn('[analyzeMealText] Could not parse response, using fallback:', data);
         // Fallback: open dialog with editable zeros so the user isn't blocked
-        console.debug('analyze-meal: unrecognized payload, using fallback', data);
         return {
           text: data?.title || data?.text || 'Analysierte Mahlzeit',
           calories: 0,
@@ -211,6 +220,8 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
           meal_type: 'other'
         } as MealData;
       }
+      
+      console.log('✅ [analyzeMealText] Analysis successful:', parsedMealData);
       return parsedMealData;
     } catch (error: any) {
       if (error.message?.includes('Weder Text noch Bild')) {

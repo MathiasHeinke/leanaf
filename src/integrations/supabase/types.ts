@@ -1408,6 +1408,8 @@ export type Database = {
           created_at: string
           fats: number | null
           fats_percentage: number | null
+          fluids: number | null
+          goal_date: string | null
           id: string
           protein: number | null
           protein_percentage: number | null
@@ -1424,6 +1426,8 @@ export type Database = {
           created_at?: string
           fats?: number | null
           fats_percentage?: number | null
+          fluids?: number | null
+          goal_date?: string | null
           id?: string
           protein?: number | null
           protein_percentage?: number | null
@@ -1440,6 +1444,8 @@ export type Database = {
           created_at?: string
           fats?: number | null
           fats_percentage?: number | null
+          fluids?: number | null
+          goal_date?: string | null
           id?: string
           protein?: number | null
           protein_percentage?: number | null
@@ -6475,6 +6481,10 @@ export type Database = {
       }
       detect_suspicious_activity: {
         Args: { p_identifier: string; p_time_window_minutes?: number }
+        Returns: Json
+      }
+      ensure_daily_goals: {
+        Args: { user_id_param: string }
         Returns: Json
       }
       fast_fluid_totals: {

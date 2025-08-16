@@ -122,20 +122,14 @@ const uploadSingleFileWithProgress = async (
 
   onProgress(90);
 
-  // Prefer a signed URL to ensure accessibility even if bucket is private
-  const { data: signedData, error: signedErr } = await supabase.storage
-    .from(bucketName)
-    .createSignedUrl(fileName, 60 * 60 * 24 * 7); // 7 days
-
   onProgress(100);
-  if (!signedErr && signedData?.signedUrl) {
-    return signedData.signedUrl;
-  }
-
-  // Fallback to public URL
+  
+  // Use public URL directly since meal-images bucket is public
+  // This ensures the analyze-meal Edge Function can access images
   const { data: urlData } = supabase.storage
     .from(bucketName)
     .getPublicUrl(fileName);
+  
   return urlData.publicUrl;
 };
 
