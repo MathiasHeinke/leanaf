@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { newTraceId } from '@/utils/trace';
+import { pingAuth } from '@/utils/authDiagnostics';
 import type { CoachEvent, OrchestratorReply, CoachEventContext } from '@/hooks/useOrchestrator';
 import type { DebugStep } from '@/components/debug/UserChatDebugger';
 
@@ -64,6 +65,15 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
     if (!ev.clientEventId) {
       ev.clientEventId = clientEventId;
     }
+
+    console.log(`🔧 ARES-Debug: Starting request`, {
+      traceId: trace,
+      userId: userId.slice(0, 8) + '...',
+      eventType: ev.type,
+      hasText: ev.type === 'TEXT' && !!ev.text,
+      textPreview: ev.type === 'TEXT' ? ev.text?.slice(0, 30) + '...' : undefined,
+      coachId: ev.context?.coachId || 'default'
+    });
     
     // Debug steps
     let messageStep: string | undefined;
@@ -130,6 +140,12 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
       }
 
       try {
+        console.log(`🔧 ARES-Debug: Calling edge function`, {
+          traceId: trace,
+          payload: { ...payload, userId: payload.userId.slice(0, 8) + '...' },
+          headers
+        });
+
         const response = await withTimeout(
           supabase.functions.invoke('coach-orchestrator-enhanced', {
             body: payload,
@@ -137,6 +153,13 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
           }),
           15000
         );
+
+        console.log(`🔧 ARES-Debug: Edge function response`, {
+          traceId: trace,
+          hasData: !!response.data,
+          hasError: !!response.error,
+          errorMessage: response.error?.message || 'none'
+        });
         
         if (response.data?.reason === 'in_progress') {
           if (toolStep && debugCallbacks) {
@@ -176,6 +199,14 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
         return result;
 
       } catch (e1) {
+        console.error(`🔧 ARES-Debug: First attempt failed`, {
+          traceId: trace,
+          error: e1 instanceof Error ? e1.message : String(e1),
+          isTimeout: e1 instanceof Error && e1.message === 'timeout',
+          isCORS: e1 instanceof Error && e1.message.includes('cors'),
+          isNetwork: e1 instanceof Error && e1.message.includes('network')
+        });
+
         if (e1 instanceof Error && e1.message === 'timeout') {
           console.warn('orchestrator TIMEOUT', { cutoffMs: 15000 });
           
@@ -233,18 +264,39 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
         }
       }
     } catch (e) {
+      console.error(`🔧 ARES-Debug: Critical error`, {
+        traceId: trace,
+        error: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? e.stack?.slice(0, 200) : undefined
+      });
+
+      // Run auth diagnostics on error
+      try {
+        console.log(`🔧 ARES-Debug: Running auth diagnostics...`);
+        const authResult = await pingAuth();
+        console.log(`🔧 ARES-Debug: Auth diagnostic result:`, authResult);
+      } catch (authError) {
+        console.error(`🔧 ARES-Debug: Auth diagnostics failed:`, authError);
+      }
+
       // Error all pending steps
       if (debugCallbacks) {
         let errorMsg = `Fehler: ${e instanceof Error ? e.message : 'Unbekannter Fehler'}`;
         
-        // Handle 401 authentication errors specifically
-        if (e instanceof Error && (
-          e.message?.includes('authentication') || 
-          e.message?.includes('Unauthorized') ||
-          e.message?.includes('Bearer token') ||
-          e.message?.includes('not authenticated')
-        )) {
-          errorMsg = 'Authentication fehler - Bitte neu einloggen';
+        // Classify error types for better debugging
+        if (e instanceof Error) {
+          if (e.message?.includes('cors') || e.message?.includes('CORS')) {
+            errorMsg = 'CORS-Fehler - Header-Konfiguration prüfen';
+          } else if (e.message?.includes('timeout') || e.message?.includes('aborted')) {
+            errorMsg = 'Timeout-Fehler - Server antwortet nicht rechtzeitig';
+          } else if (e.message?.includes('authentication') || 
+                    e.message?.includes('Unauthorized') ||
+                    e.message?.includes('Bearer token') ||
+                    e.message?.includes('not authenticated')) {
+            errorMsg = 'Authentication fehler - Bitte neu einloggen';
+          } else if (e.message?.includes('network') || e.message?.includes('fetch')) {
+            errorMsg = 'Netzwerk-Fehler - Verbindung prüfen';
+          }
         }
         
         if (messageStep) debugCallbacks.errorStep(messageStep, errorMsg);

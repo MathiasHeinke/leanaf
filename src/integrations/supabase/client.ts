@@ -23,8 +23,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'apikey': SUPABASE_PUBLISHABLE_KEY
     },
     fetch: (url, options = {}) => {
+      const isEdgeFunction = url.includes('/functions/v1/');
+      const timeout = isEdgeFunction ? 45000 : 10000; // 45s for edge functions, 10s for others
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
       
       // Debug logging for all Supabase requests
       let operationId: string | undefined;
@@ -59,8 +61,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 
       // Add our custom headers
       mergedHeaders.set('apikey', SUPABASE_PUBLISHABLE_KEY);
-      mergedHeaders.set('X-User-Timezone', timezone);
-      mergedHeaders.set('X-Current-Date', currentDate);
+      
+      // Don't add timezone headers to edge functions to avoid CORS issues
+      if (!isEdgeFunction) {
+        mergedHeaders.set('X-User-Timezone', timezone);
+        mergedHeaders.set('X-Current-Date', currentDate);
+      }
 
       const hasAuth = mergedHeaders.has('Authorization');
       if (dataLogger.isDebugEnabled()) {

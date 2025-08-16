@@ -8,7 +8,7 @@ import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries } from ".
 // CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-chat-mode, x-trace-id, x-source",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-chat-mode, x-trace-id, x-source, x-client-event-id, x-retry, prefer",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -129,8 +129,13 @@ serve(async (req) => {
 
   const traceId = getTraceId(req);
   const authorization = req.headers.get("Authorization") ?? "";
+  const origin = req.headers.get("origin") || "unknown";
+  const userAgent = req.headers.get("user-agent") || "unknown";
   
-  console.log(`[ARES-PHASE1-${traceId}] Request received`);
+  console.log(`[ARES-ENHANCED-${traceId}] Request received from ${origin}`, {
+    hasAuth: !!authorization,
+    userAgent: userAgent.slice(0, 50)
+  });
 
   // Create Supabase client
   const supabase = createClient(
