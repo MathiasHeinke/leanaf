@@ -80,14 +80,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const startPremiumTrialForNewUser = (userId: string) => {
-    // Defer trial creation to not block auth flow
+  const startPremiumTrialForNewUser = (user: User) => {
+    // Defer trial creation to not block auth flow and prevent deadlocks
     setTimeout(async () => {
       try {
         const { data: existingTrial } = await supabase
           .from('user_trials')
           .select('id')
-          .eq('user_id', userId)
+          .eq('user_id', user.id)
           .eq('trial_type', 'premium')
           .maybeSingle();
 
@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await supabase
           .from('user_trials')
           .insert({
-            user_id: userId,
+            user_id: user.id,
             trial_type: 'premium',
             is_active: true,
             expires_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
@@ -105,6 +105,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error('Error starting premium trial:', error);
       }
     }, 1000);
+  };
+
+  const cleanupLocalAuth = () => {
+    try {
+      // Only cleanup Supabase auth related items
+      const authKeys = ['sb-gzczjscctgyxjyodhnhk-auth-token'];
+      authKeys.forEach(key => {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      });
+    } catch (error) {
+      console.error('Error cleaning up local auth:', error);
+    }
   };
 
   const signOut = async () => {
@@ -129,108 +142,112 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('🔐 Auth state change:', event, session?.user?.id);
         
-        // Update state synchronously
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        // Mark session as ready when we have user - don't wait for JWT validation
-        const sessionIsReady = !!(session?.user);
-        setIsSessionReady(sessionIsReady);
-        
-        // Log auth state changes (non-blocking)
+        // Validate session before using it
+        const isValidSession = session && 
+          session.access_token && 
+          session.expires_at && 
+          (session.expires_at * 1000) > Date.now();
+
         authLogger.log({ 
           event: 'AUTH_STATE_CHANGE', 
           stage: 'onAuthStateChange',
           auth_event: event,
           session_user_id: session?.user?.id,
-          details: { event, hasSession: !!session }
+          details: { 
+            event, 
+            hasSession: !!session,
+            isValid: isValidSession,
+            expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null
+          }
         });
         
+        // Update state synchronously - only set valid sessions
+        setSession(isValidSession ? session : null);
+        setUser(isValidSession && session?.user ? session.user : null);
+        setLoading(false);
+        
+        // Mark session as ready based on valid session
+        const sessionIsReady = isValidSession && !!session?.user;
+        setIsSessionReady(sessionIsReady);
+        
         if (sessionIsReady) {
-          console.log('🔐 Session fully ready - JWT available:', {
+          console.log('✅ Valid session ready - RLS queries should work:', {
             userId: session.user.id,
             email: session.user.email,
             hasAccessToken: !!session.access_token,
-            tokenLength: session.access_token?.length || 0
+            expiresIn: Math.floor(((session.expires_at * 1000) - Date.now()) / 1000)
           });
-          
-          // Validate session for debugging RLS issues
-          if (dataLogger.isDebugEnabled()) {
-            console.log('✅ Auth Session OK - RLS queries should work', {
-              userId: session.user.id,
-              accessToken: session.access_token?.substring(0, 20) + '...'
-            });
-          }
         } else if (dataLogger.isDebugEnabled()) {
-          console.warn('❌ No Auth Session - RLS will block all queries');
+          console.warn('❌ No valid session - RLS will block all queries');
         }
         
         // Handle different auth events
-        if (event === 'SIGNED_IN' && session?.user) {
+        if (event === 'SIGNED_IN' && sessionIsReady) {
           console.log('✅ User signed in successfully:', session.user.email);
           authLogger.log({ 
-            event: 'SIGNED_IN', 
-            stage: 'onAuthStateChange',
-            from_path: window.location.pathname,
-            details: { willRedirect: window.location.pathname === '/auth' }
+            event: 'SIGNIN_SUCCESS', 
+            auth_event: event,
+            details: { email: session.user.email }
           });
           
-          // Defer navigation to prevent deadlocks and allow Auth.tsx to handle first
-          timeoutId = setTimeout(() => {
-            // Only redirect if user isn't already being redirected by Auth.tsx
-            if (window.location.pathname === '/auth') {
-              console.log('useAuth: Redirecting from /auth to home after sign in');
+          // Defer heavy operations to prevent deadlock
+          setTimeout(() => {
+            startPremiumTrialForNewUser(session.user);
+          }, 0);
+          
+          // Handle redirect carefully
+          if (window.location.pathname === '/auth') {
+            timeoutId = setTimeout(() => {
               authLogger.log({ 
                 event: 'REDIRECT_DECISION', 
-                stage: 'postSignIn',
                 from_path: '/auth',
                 to_path: '/',
-                details: { reason: 'signed_in_redirect_useauth' }
+                details: { reason: 'signed_in_redirect' }
               });
               redirectToHome(session.user);
-            } else {
-              console.log('useAuth: Already navigated away from /auth, skipping redirect');
-            }
-          }, 100); // Reduced timeout - Auth.tsx should handle immediate redirect
+            }, 100);
+          }
         }
         
         if (event === 'SIGNED_OUT') {
           console.log('🚪 User signed out');
-          setSession(null);
-          setUser(null);
-          authLogger.log({ 
-            event: 'SIGNED_OUT', 
-            stage: 'onAuthStateChange',
-            details: { sessionCleared: true }
-          });
+          authLogger.log({ event: 'SIGNED_OUT', auth_event: event });
+          cleanupLocalAuth();
           if (!isPreviewMode && window.location.pathname !== '/auth') {
-            navigate('/auth', { replace: true });
+            setTimeout(() => {
+              navigate('/auth', { replace: true });
+            }, 100);
           }
         }
 
         if (event === 'TOKEN_REFRESHED') {
           console.log('🔄 Token refreshed');
-          setSession(session);
-          setUser(session?.user ?? null);
           authLogger.log({ 
             event: 'TOKEN_REFRESHED', 
-            stage: 'onAuthStateChange',
-            session_user_id: session?.user?.id
+            auth_event: event,
+            details: { 
+              isValid: isValidSession,
+              userId: session?.user?.id
+            }
           });
+          
+          // If refreshed token is still invalid, sign out
+          if (!isValidSession && session) {
+            authLogger.log({ event: 'INVALID_REFRESHED_TOKEN' });
+            setTimeout(() => signOut(), 0);
+          }
         }
       }
     );
 
-    // Check for existing session AFTER setting up listener
+    // THEN check for existing session
     const initAuth = async () => {
       try {
         authLogger.log({ 
           event: 'INIT', 
-          stage: 'initAuth', 
           details: { pathname: window.location.pathname } 
         });
         
@@ -239,50 +256,85 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           console.error('❌ Session fetch error:', error.message);
           authLogger.log({ 
-            event: 'ERROR', 
-            stage: 'initAuth',
+            event: 'SESSION_ERROR',
             details: { error: error.message }
           });
           setSession(null);
           setUser(null);
-          cleanupAuthState();
+          cleanupLocalAuth();
         } else {
-          console.log('🔍 Initial session check:', session?.user?.id || 'No session');
-          setSession(session);
-          setUser(session?.user ?? null);
-          
-          authLogger.log({ 
-            event: 'SESSION_CHECK', 
-            stage: 'initAuth',
-            session_user_id: session?.user?.id,
-            details: { hasSession: !!session, sessionChecked: true }
+          // Validate initial session
+          const isValidSession = session && 
+            session.access_token && 
+            session.expires_at && 
+            (session.expires_at * 1000) > Date.now();
+
+          console.log('🔍 Initial session check:', {
+            hasSession: !!session,
+            isValid: isValidSession,
+            userId: session?.user?.id || 'No user',
+            expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null
           });
           
-          // Handle redirect for existing session - only if on auth page
-          if (session?.user && window.location.pathname === '/auth') {
-            console.log('🔄 User already logged in, redirecting...', session.user.email);
-            authLogger.log({ 
-              event: 'REDIRECT_DECISION', 
-              stage: 'initAuth',
-              from_path: '/auth',
-              to_path: '/',
-              details: { reason: 'existing_session_redirect' }
-            });
-            setTimeout(() => {
-              redirectToHome(session.user);
-            }, 50); // Quick redirect for existing sessions
+          authLogger.log({ 
+            event: 'INITIAL_SESSION',
+            session_user_id: session?.user?.id,
+            details: { 
+              hasSession: !!session, 
+              hasUser: !!session?.user,
+              isValid: isValidSession,
+              expiresAt: session?.expires_at ? new Date(session.expires_at * 1000).toISOString() : null
+            }
+          });
+          
+          if (isValidSession) {
+            setSession(session);
+            setUser(session.user ?? null);
+            setIsSessionReady(true);
+            
+            // Check if token expires soon and refresh preventively
+            const expiresIn = (session.expires_at * 1000) - Date.now();
+            if (expiresIn < 5 * 60 * 1000) { // Less than 5 minutes
+              authLogger.log({ event: 'TOKEN_EXPIRES_SOON', details: { expiresIn } });
+              setTimeout(() => {
+                supabase.auth.refreshSession().catch(console.error);
+              }, 0);
+            }
+            
+            // Handle redirect for existing valid session
+            if (window.location.pathname === '/auth') {
+              console.log('🔄 Valid session exists, redirecting from auth...');
+              authLogger.log({ 
+                event: 'REDIRECT_DECISION',
+                from_path: '/auth',
+                to_path: '/',
+                details: { reason: 'existing_valid_session' }
+              });
+              setTimeout(() => {
+                redirectToHome(session.user);
+              }, 50);
+            }
+          } else {
+            authLogger.log({ event: 'INVALID_INITIAL_SESSION' });
+            setSession(null);
+            setUser(null);
+            setIsSessionReady(true); // Ready but no valid session
+            if (session) {
+              // Clean up invalid session
+              cleanupLocalAuth();
+            }
           }
         }
       } catch (error) {
         console.error('❌ Auth initialization error:', error);
         authLogger.log({ 
-          event: 'ERROR', 
-          stage: 'initAuth',
+          event: 'INIT_ERROR',
           details: { error: error instanceof Error ? error.message : 'Unknown error' }
         });
         setSession(null);
         setUser(null);
-        cleanupAuthState();
+        setIsSessionReady(true);
+        cleanupLocalAuth();
       } finally {
         setLoading(false);
       }

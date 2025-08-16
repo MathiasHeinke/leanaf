@@ -1,10 +1,14 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { dataLogger } from '@/utils/dataLogger';
 import { authLogger } from '@/lib/authLogger';
+import { useAuth } from '@/hooks/useAuth';
 import type { DebugEvent } from '@/components/debug/DebugConsole';
+
+type DebugMode = 'auth-only' | 'full';
 
 interface DebugContextType {
   isDebugMode: boolean;
+  debugMode: DebugMode;
   debugEvents: DebugEvent[];
   lastRequest: any;
   lastResponse: any;
@@ -25,7 +29,16 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
   const [lastResponse, setLastResponse] = useState<any>(null);
   const [isOverlayVisible, setIsOverlayVisible] = useState(false);
   
+  const { isSessionReady, session } = useAuth();
   const isDebugMode = dataLogger.isDebugEnabled() || authLogger.isDebugEnabled();
+  
+  // Determine debug mode: auth-only until session is ready, then full
+  const debugMode: DebugMode = (() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('authDebugOnly') === '1') return 'auth-only';
+    if (!isSessionReady || !session?.access_token) return 'auth-only';
+    return 'full';
+  })();
 
   const addDebugEvent = useCallback((level: DebugEvent['level'], message: string, data?: any) => {
     const event: DebugEvent = {
@@ -44,32 +57,44 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
 
   const refreshLogs = useCallback(async () => {
     try {
-      // Merge auth and data logs
-      const [authLogs, dataLogs] = await Promise.all([
-        authLogger.getRecentLogs(50),
-        dataLogger.getRecentLogs(50)
-      ]);
-
-      const combinedLogs = [
-        ...authLogs.map(log => ({
+      if (debugMode === 'auth-only') {
+        // Only fetch auth logs when in auth-only mode
+        const authLogs = await authLogger.getRecentLogs(50);
+        const authEvents = authLogs.map(log => ({
           ts: new Date(log.client_ts || log.event_time).getTime(),
           level: 'info' as const,
           message: `Auth: ${log.event}`,
           data: log
-        })),
-        ...dataLogs.map(log => ({
-          ts: new Date(log.client_ts).getTime(),
-          level: log.stage === 'error' ? 'error' as const : 'info' as const,
-          message: `Data: ${log.operation} (${log.stage})`,
-          data: log
-        }))
-      ].sort((a, b) => b.ts - a.ts);
+        }));
+        setDebugEvents(authEvents.slice(0, 100));
+      } else {
+        // Full mode: merge auth and data logs
+        const [authLogs, dataLogs] = await Promise.all([
+          authLogger.getRecentLogs(50),
+          dataLogger.getRecentLogs(50)
+        ]);
 
-      setDebugEvents(combinedLogs.slice(0, 100));
+        const combinedLogs = [
+          ...authLogs.map(log => ({
+            ts: new Date(log.client_ts || log.event_time).getTime(),
+            level: 'info' as const,
+            message: `Auth: ${log.event}`,
+            data: log
+          })),
+          ...dataLogs.map(log => ({
+            ts: new Date(log.client_ts).getTime(),
+            level: log.stage === 'error' ? 'error' as const : 'info' as const,
+            message: `Data: ${log.operation} (${log.stage})`,
+            data: log
+          }))
+        ].sort((a, b) => b.ts - a.ts);
+
+        setDebugEvents(combinedLogs.slice(0, 100));
+      }
     } catch (error) {
       console.error('Failed to refresh debug logs:', error);
     }
-  }, []);
+  }, [debugMode]);
 
   // Auto-refresh logs when debug mode is enabled
   useEffect(() => {
@@ -96,6 +121,7 @@ export function DebugProvider({ children }: { children: React.ReactNode }) {
   return (
     <DebugContext.Provider value={{
       isDebugMode,
+      debugMode,
       debugEvents,
       lastRequest,
       lastResponse,
