@@ -58,6 +58,30 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
       throw new Error('User is not authenticated');
     }
 
+    // Auth diagnostics helper
+    const pingAuth = async () => {
+      try {
+        const result = await supabase.functions.invoke('diag-auth', {
+          body: { check: 'basic' }
+        });
+        return {
+          success: !result.error,
+          session: !!session,
+          userId: session?.user?.id,
+          error: result.error?.message,
+          data: result.data
+        };
+      } catch (error) {
+        return {
+          success: false,
+          session: false,
+          userId: null,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          data: null
+        };
+      }
+    };
+
     const trace = traceId || newTraceId();
     const clientEventId = currentClientEventId.current || beginUserAction();
     
@@ -65,6 +89,20 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
     if (!ev.clientEventId) {
       ev.clientEventId = clientEventId;
     }
+
+    // Header Check Step
+    const hasSession = !!session;
+    const tokenPresent = !!session?.access_token;
+    const tokenStart = tokenPresent ? session.access_token.substring(0, 10) + "..." : "none";
+    
+    console.log(`🔧 ARES-Debug: Header Check`, {
+      hasSession,
+      userId: userId.slice(0, 8) + '...',
+      tokenPresent,
+      tokenStart,
+      plannedHeaders: ['x-trace-id', 'x-source', 'x-client-event-id', 'x-chat-mode'],
+      functionPath: 'coach-orchestrator-enhanced'
+    });
 
     console.log(`🔧 ARES-Debug: Starting request`, {
       traceId: trace,
@@ -151,7 +189,7 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
             body: payload,
             headers,
           }),
-          15000
+          25000 // 25 second timeout
         );
 
         console.log(`🔧 ARES-Debug: Edge function response`, {
@@ -208,17 +246,17 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
         });
 
         if (e1 instanceof Error && e1.message === 'timeout') {
-          console.warn('orchestrator TIMEOUT', { cutoffMs: 15000 });
+          console.warn('orchestrator TIMEOUT', { cutoffMs: 25000 });
           
           if (toolStep && debugCallbacks) {
-            debugCallbacks.errorStep(toolStep, 'Timeout nach 15 Sekunden');
+            debugCallbacks.errorStep(toolStep, 'Timeout nach 25 Sekunden');
           }
           
           try {
             await supabase.rpc('log_trace_event', {
               p_trace_id: headers['x-trace-id'],
               p_stage: 'client_timeout',
-              p_data: { cutoffMs: 15000 }
+              p_data: { cutoffMs: 25000 }
             });
           } catch (_) { /* non-fatal */ }
         }
@@ -275,6 +313,15 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
         console.log(`🔧 ARES-Debug: Running auth diagnostics...`);
         const authResult = await pingAuth();
         console.log(`🔧 ARES-Debug: Auth diagnostic result:`, authResult);
+        
+        // Log detailed error info with auth context
+        console.error(`🔧 ARES-Debug: Error with auth context:`, {
+          error: e instanceof Error ? e.message : String(e),
+          authSuccess: authResult.success,
+          hasSession: authResult.session,
+          userId: authResult.userId,
+          authError: authResult.error
+        });
       } catch (authError) {
         console.error(`🔧 ARES-Debug: Auth diagnostics failed:`, authError);
       }

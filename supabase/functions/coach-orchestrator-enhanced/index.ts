@@ -8,7 +8,7 @@ import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries } from ".
 // CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-chat-mode, x-trace-id, x-source, x-client-event-id, x-retry, prefer",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-chat-mode, x-trace-id, x-source, x-client-event-id, x-retry, prefer, x-user-timezone, x-current-date",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -125,7 +125,11 @@ async function generateAresResponse(prompt: string, traceId: string) {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    const requestHeaders = req.headers.get("access-control-request-headers") || "";
+    console.log(`[ARES-PREFLIGHT] Origin: ${req.headers.get("origin")}, Request-Headers: ${requestHeaders}`);
+    return new Response(null, { headers: corsHeaders });
+  }
 
   const traceId = getTraceId(req);
   const authorization = req.headers.get("Authorization") ?? "";

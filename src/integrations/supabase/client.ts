@@ -68,6 +68,26 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         mergedHeaders.set('X-Current-Date', currentDate);
       }
 
+      // Debug logging for edge functions
+      if (isEdgeFunction) {
+        const hasAuth = mergedHeaders.has('Authorization');
+        const tokenStart = hasAuth ? mergedHeaders.get('Authorization')?.substring(0, 17) + "..." : "none";
+        const headerNames = Array.from(mergedHeaders.keys()).join(", ");
+        
+        console.log(`[EDGE-REQUEST] ${new URL(url).pathname} - Auth: ${hasAuth} (${tokenStart}), Headers: [${headerNames}]`);
+        
+        // Log to dataLogger if available
+        if (dataLogger.isDebugEnabled()) {
+          const edgeOpId = dataLogger.startOperation('EDGE_FUNCTION_REQUEST', undefined, {
+            url: new URL(url).pathname,
+            hasAuth,
+            tokenStart,
+            headerNames: headerNames.split(", "),
+            timestamp: new Date().toISOString()
+          });
+        }
+      }
+
       const hasAuth = mergedHeaders.has('Authorization');
       if (dataLogger.isDebugEnabled()) {
         console.log(`🔐 Request Auth: ${hasAuth ? '✅ present' : '❌ missing'}`, {
