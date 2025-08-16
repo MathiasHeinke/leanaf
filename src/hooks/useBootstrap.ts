@@ -85,25 +85,10 @@ export const useBootstrap = () => {
               return data;
             }),
 
-          // 3. Load today's meals
+          // 3. Load today's meals (simplified - meal_foods relation doesn't exist)
           supabase
             .from('meals')
-            .select(`
-              *,
-              meal_foods (
-                id,
-                food_id,
-                quantity,
-                food_database (
-                  id,
-                  name,
-                  calories_per_100g,
-                  protein_per_100g,
-                  carbs_per_100g,
-                  fats_per_100g
-                )
-              )
-            `)
+            .select('*')
             .eq('user_id', user.id)
             .eq('date', new Date().toISOString().split('T')[0])
             .order('ts', { ascending: false })
