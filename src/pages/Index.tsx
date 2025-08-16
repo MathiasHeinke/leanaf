@@ -98,6 +98,36 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // Admin one-off utility: trigger delete via URL param ?deleteUser=email
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const email = params.get('deleteUser');
+      if (!email) return;
+      // Prevent multiple triggers in hot reloads
+      if ((window as any).__del_user_ran) return;
+      (window as any).__del_user_ran = true;
+      (async () => {
+        toast.info(`Attempting to delete ${email}...`);
+        const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+          body: { email, purge: true },
+        });
+        if (error) {
+          console.error('Delete failed:', error);
+          toast.error(`Delete failed: ${error.message}`);
+          return;
+        }
+        if ((data as any)?.ok) {
+          toast.success(`Deleted ${email}`);
+        } else {
+          toast.error(`Delete failed: ${(data as any)?.why || 'unknown error'}`);
+        }
+      })();
+    } catch (e) {
+      console.error('Delete trigger error:', e);
+    }
+  }, []);
+
   // STABLE LOADING STATE - Don't hide dashboard during auth transitions
   if (!isUserConfirmed) {
     return (
