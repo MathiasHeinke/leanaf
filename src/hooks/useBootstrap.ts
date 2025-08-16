@@ -188,9 +188,10 @@ export const useBootstrap = () => {
         
         console.error('❌ Bootstrap failed:', errorMessage);
         
+        // FAIL-SAFE: Always set bootstrapComplete=true, even on errors
         setBootstrapState({
           isBootstrapping: false,
-          bootstrapComplete: false,
+          bootstrapComplete: true, // <- CHANGED: never block UI
           bootstrapStartTime: startTime,
           bootstrapDuration: duration,
           error: errorMessage

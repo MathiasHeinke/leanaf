@@ -8,6 +8,13 @@ export function todayRangeISO(tzOffsetMin = new Date().getTimezoneOffset()) {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
+export function todayRange() {
+  const n = new Date();
+  const s = new Date(n); s.setHours(0,0,0,0);
+  const e = new Date(n); e.setHours(23,59,59,999);
+  return { start: s.toISOString(), end: e.toISOString() };
+}
+
 export function withWatchdog<T>(p: Promise<T>, ms = 5000) {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error("watchdog-timeout")), ms);

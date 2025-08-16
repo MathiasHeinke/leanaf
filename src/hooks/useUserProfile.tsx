@@ -44,33 +44,35 @@ export const useUserProfile = () => {
   // AbortController for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const ensureDefaultProfile = useCallback(async (uid: string, email?: string | null) => {
+    const display = email?.split("@")[0] ?? "";
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert({ user_id: uid, display_name: display }, { onConflict: "user_id" })
+      .select()
+      .single();
+    
+    if (error) {
+      console.warn("ensureDefaultProfile error", error);
+      return null;
+    }
+    
+    console.log('✅ Profile ensured (upsert):', data);
+    return data;
+  }, []);
+
   const createDefaultProfile = useCallback(async () => {
     if (!user?.id) return;
 
     try {
-      const defaultProfile = {
-        user_id: user.id,
-        display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || '',
-        // Leave other fields null for now - user will fill them in onboarding
-      };
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert(defaultProfile)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('❌ Error creating default profile:', error);
-        return;
+      const profile = await ensureDefaultProfile(user.id, user.email);
+      if (profile) {
+        setProfileData(profile as ProfilesData);
       }
-
-      console.log('✅ Default profile created:', data);
-      setProfileData(data as ProfilesData);
     } catch (err) {
       console.error('❌ Exception creating default profile:', err);
     }
-  }, [user?.id]);
+  }, [user?.id, user?.email, ensureDefaultProfile]);
 
   const fetchProfile = useCallback(async () => {
     if (!user?.id || !session?.access_token) {
@@ -164,14 +166,22 @@ export const useUserProfile = () => {
         }
 
         if (!abortController.signal.aborted) {
-          console.log('🆕 No profile found anywhere, creating default profile...');
-          await createDefaultProfile();
+          console.log('🆕 No profile found anywhere, ensuring default profile...');
+          const profile = await ensureDefaultProfile(user.id, user.email);
+          if (profile) {
+            setProfileData(profile as ProfilesData);
+          }
           setIsFirstAppStart(true);
         }
       }
     } catch (err: any) {
       if (!abortController.signal.aborted) {
         console.error('❌ Profile fetch exception:', err);
+        // FAIL-SAFE: Create a fallback profile even on error
+        const fallbackProfile = await ensureDefaultProfile(user.id, user.email);
+        if (fallbackProfile) {
+          setProfileData(fallbackProfile as ProfilesData);
+        }
         setError(err.message || 'Failed to load profile');
       }
     } finally {
