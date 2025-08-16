@@ -8,6 +8,7 @@ import { useTranslation } from "@/hooks/useTranslation";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { useCredits } from "@/hooks/useCredits";
 import { useBootstrap } from "@/hooks/useBootstrap";
+import { useMemo } from "react";
 import { MealList } from "@/components/MealList";
 
 import { QuickWeightInput } from "@/components/QuickWeightInput";
@@ -56,15 +57,21 @@ const Index = () => {
   const { user, loading: authLoading, isSessionReady } = useAuth();
   const navigate = useNavigate();
 
+  // STABILIZED AUTH CHECK - Prevent render flickering
+  const isUserConfirmed = useMemo(() => {
+    return !authLoading && !!user && isSessionReady;
+  }, [authLoading, user, isSessionReady]);
+
   useEffect(() => {
     console.log('🔍 Index Auth State:', { 
       isSessionReady, 
       hasUser: !!user, 
       userId: user?.id,
       userEmail: user?.email,
+      isUserConfirmed,
       timestamp: new Date().toISOString()
     });
-  }, [isSessionReady, user]);
+  }, [isSessionReady, user, isUserConfirmed]);
 
   // Check authentication and redirect if needed
   useEffect(() => {
@@ -75,8 +82,8 @@ const Index = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Show dashboard immediately when user is available - don't wait for isSessionReady
-  if (authLoading || !user) {
+  // STABLE LOADING STATE - Don't hide dashboard during auth transitions
+  if (!isUserConfirmed) {
     return (
       <div className="space-y-6">
         <div className="text-center space-y-4">

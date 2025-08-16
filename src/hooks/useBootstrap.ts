@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,7 @@ export const useBootstrap = () => {
   console.log('🔍 useBootstrap mounted');
   const { isSessionReady, user } = useAuth();
   const { addDebugEvent } = useDebug();
+  const hasBootstrappedRef = useRef(false);
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>({
     isBootstrapping: false,
     bootstrapComplete: false,
@@ -32,7 +33,8 @@ export const useBootstrap = () => {
       userId: user?.id,
       email: user?.email,
       isBootstrapping: bootstrapState.isBootstrapping,
-      bootstrapComplete: bootstrapState.bootstrapComplete
+      bootstrapComplete: bootstrapState.bootstrapComplete,
+      hasBootstrapped: hasBootstrappedRef.current
     });
     
     if (!isSessionReady || !user?.id) {
@@ -40,7 +42,14 @@ export const useBootstrap = () => {
       return;
     }
 
+    // PREVENT MULTIPLE BOOTSTRAP RUNS
+    if (hasBootstrappedRef.current) {
+      console.log('🔒 Bootstrap already completed, skipping...');
+      return;
+    }
+
     const performBootstrap = async () => {
+      hasBootstrappedRef.current = true; // Mark as started
       const startTime = performance.now();
       
       setBootstrapState({

@@ -6,12 +6,15 @@ import { secureLogger } from '@/utils/secureLogger';
 import { authLogger } from '@/lib/authLogger';
 import { dataLogger } from '@/utils/dataLogger';
 
-interface AuthContextType {
+interface AuthState {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signOut: () => Promise<void>;
   isSessionReady: boolean;
+}
+
+interface AuthContextType extends AuthState {
+  signOut: () => Promise<void>;
   authDebugInfo: {
     hasUser: boolean;
     hasSession: boolean;
@@ -31,10 +34,12 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isSessionReady, setIsSessionReady] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    session: null,
+    loading: true,
+    isSessionReady: false,
+  });
   const navigate = useNavigate();
   
   // Detect if running in Lovable Preview mode
@@ -122,15 +127,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      setSession(null);
-      setUser(null);
+      setAuthState(prev => ({ ...prev, session: null, user: null }));
       await supabase.auth.signOut({ scope: 'global' });
       cleanupAuthState();
       navigate('/auth', { replace: true });
     } catch (error) {
       // Force cleanup even if signOut fails
-      setSession(null);
-      setUser(null);
+      setAuthState(prev => ({ ...prev, session: null, user: null }));
       cleanupAuthState();
       console.error('Sign out error occurred');
       navigate('/auth', { replace: true });
@@ -164,14 +167,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
         });
         
-        // Update state synchronously - only set valid sessions
-        setSession(isValidSession ? session : null);
-        setUser(isValidSession && session?.user ? session.user : null);
-        setLoading(false);
-        
-        // Mark session as ready IMMEDIATELY for valid sessions - no waiting for profile
+        // BATCHED STATE UPDATE - Prevent auth flickering
         const sessionIsReady = isValidSession && !!session?.user;
-        setIsSessionReady(sessionIsReady);
+        setAuthState({
+          session: isValidSession ? session : null,
+          user: isValidSession && session?.user ? session.user : null,
+          loading: false,
+          isSessionReady: sessionIsReady,
+        });
         
         if (sessionIsReady) {
           console.log('✅ Valid session ready - RLS queries should work:', {
@@ -259,8 +262,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             event: 'SESSION_ERROR',
             details: { error: error.message }
           });
-          setSession(null);
-          setUser(null);
+          setAuthState(prev => ({ ...prev, session: null, user: null }));
           cleanupLocalAuth();
         } else {
           // Validate initial session
@@ -288,9 +290,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           });
           
           if (isValidSession) {
-            setSession(session);
-            setUser(session.user ?? null);
-            setIsSessionReady(true);
+            setAuthState({
+              session,
+              user: session.user ?? null,
+              loading: false,
+              isSessionReady: true,
+            });
             
             // Check if token expires soon and refresh preventively
             const expiresIn = (session.expires_at * 1000) - Date.now();
@@ -316,9 +321,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
           } else {
             authLogger.log({ event: 'INVALID_INITIAL_SESSION' });
-            setSession(null);
-            setUser(null);
-            setIsSessionReady(true); // Ready but no valid session
+            setAuthState({
+              session: null,
+              user: null,
+              loading: false,
+              isSessionReady: true, // Ready but no valid session
+            });
             if (session) {
               // Clean up invalid session
               cleanupLocalAuth();
@@ -331,12 +339,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           event: 'INIT_ERROR',
           details: { error: error instanceof Error ? error.message : 'Unknown error' }
         });
-        setSession(null);
-        setUser(null);
-        setIsSessionReady(true);
+        setAuthState({
+          session: null,
+          user: null,
+          loading: false,
+          isSessionReady: true,
+        });
         cleanupLocalAuth();
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -349,18 +358,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [navigate, isPreviewMode]);
 
   const authDebugInfo = {
-    hasUser: !!user,
-    hasSession: !!session,
-    hasAccessToken: !!session?.access_token,
-    sessionUserId: session?.user?.id,
+    hasUser: !!authState.user,
+    hasSession: !!authState.session,
+    hasAccessToken: !!authState.session?.access_token,
+    sessionUserId: authState.session?.user?.id,
   };
 
   const value = {
-    user,
-    session,
-    loading,
+    ...authState,
     signOut,
-    isSessionReady,
     authDebugInfo,
   };
 
