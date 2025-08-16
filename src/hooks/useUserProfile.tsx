@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { AresProfileLoader } from '@/utils/aresProfileLoader';
@@ -28,7 +28,7 @@ export interface UserProfile {
   availableMinutes?: number;
   weeklySessions?: number;
   injuries?: string[];
-  preferences?: Record<string, any>;
+  preferences?: Record<string, unknown>;
 }
 
 export const useUserProfile = () => {
@@ -40,6 +40,9 @@ export const useUserProfile = () => {
   
   // Refresh counter to force re-fetch when needed
   const [refreshCounter, setRefreshCounter] = useState(0);
+  
+  // AbortController for request cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // STABLE SESSION-READY CHECK
   useEffect(() => {
@@ -66,13 +69,55 @@ export const useUserProfile = () => {
         setIsFirstAppStart(false);
       }
     }
-  }, [user?.id, session?.access_token, isSessionReady, refreshCounter]);
+    
+    // Cleanup abort controller on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchProfile, isSessionReady, refreshCounter]);
 
-  const fetchProfile = async () => {
+  // Realtime subscription for profile changes
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const channel = supabase
+      .channel('profiles-self')
+      .on('postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'profiles', 
+          filter: `user_id=eq.${user.id}` 
+        },
+        (payload) => {
+          console.log('🔄 Profile realtime update:', payload);
+          if (payload.new && typeof payload.new === 'object') {
+            setProfileData(payload.new as ProfilesData);
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  const fetchProfile = useCallback(async () => {
     if (!user?.id || !session?.access_token) {
       console.log('❌ Cannot fetch profile: missing user or session');
       return;
     }
+
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     console.log('🔍 Fetching profile for user:', user.id);
     setIsLoading(true);
@@ -87,6 +132,9 @@ export const useUserProfile = () => {
     }
 
     try {
+      // Check if request was aborted
+      if (abortController.signal.aborted) return;
+
       // 2) Primary path: direct table access under user token
       const { data, error } = await supabase
         .from('profiles')
@@ -98,7 +146,7 @@ export const useUserProfile = () => {
         console.error('❌ Profile fetch error (direct):', error);
 
         // 2a) Fallback: ARES Edge Function bypass if RLS/timing issues suspected
-        if (session?.access_token) {
+        if (session?.access_token && !abortController.signal.aborted) {
           console.log('🚀 Trying ARES fallback after direct error...');
           const result = await AresProfileLoader.loadUserProfile(user.id, session.access_token, 1);
           if (result.data) {
@@ -106,9 +154,11 @@ export const useUserProfile = () => {
               profile_id: result.data.id,
               display_name: result.data.display_name
             });
-            setProfileData(result.data as ProfilesData);
-            setIsFirstAppStart(false);
-            setIsLoading(false);
+            if (!abortController.signal.aborted) {
+              setProfileData(result.data as ProfilesData);
+              setIsFirstAppStart(false);
+              setIsLoading(false);
+            }
             return;
           }
           if (result.error) {
@@ -116,17 +166,21 @@ export const useUserProfile = () => {
           }
         }
 
-        setError(error.message);
+        if (!abortController.signal.aborted) {
+          setError(error.message);
+        }
         return;
       }
 
       console.log('✅ Profile fetch result (direct):', { found: !!data, data });
       if (data) {
-        setProfileData(data as ProfilesData);
-        setIsFirstAppStart(false);
+        if (!abortController.signal.aborted) {
+          setProfileData(data as ProfilesData);
+          setIsFirstAppStart(false);
+        }
       } else {
         // 2b) If no data (could be first-time user or eventual consistency), try ARES fallback before creating
-        if (session?.access_token) {
+        if (session?.access_token && !abortController.signal.aborted) {
           console.log('ℹ️ No direct profile found. Trying ARES fallback before creating default profile...');
           const result = await AresProfileLoader.loadUserProfile(user.id, session.access_token, 1);
           if (result.data) {
@@ -134,23 +188,31 @@ export const useUserProfile = () => {
               profile_id: result.data.id,
               display_name: result.data.display_name
             });
-            setProfileData(result.data as ProfilesData);
-            setIsFirstAppStart(false);
+            if (!abortController.signal.aborted) {
+              setProfileData(result.data as ProfilesData);
+              setIsFirstAppStart(false);
+            }
             return;
           }
         }
 
-        console.log('🆕 No profile found anywhere, creating default profile...');
-        await createDefaultProfile();
-        setIsFirstAppStart(true);
+        if (!abortController.signal.aborted) {
+          console.log('🆕 No profile found anywhere, creating default profile...');
+          await createDefaultProfile();
+          setIsFirstAppStart(true);
+        }
       }
     } catch (err: any) {
-      console.error('❌ Profile fetch exception:', err);
-      setError(err.message || 'Failed to load profile');
+      if (!abortController.signal.aborted) {
+        console.error('❌ Profile fetch exception:', err);
+        setError(err.message || 'Failed to load profile');
+      }
     } finally {
-      setIsLoading(false);
+      if (!abortController.signal.aborted) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [user?.id, session?.access_token]);
 
   const createDefaultProfile = async () => {
     if (!user?.id) return;

@@ -58,15 +58,24 @@ export class AresProfileLoader {
     console.log('🚀 ARES: Using Edge Function fallback');
     
     try {
-      const { data, error } = await supabase.functions.invoke('get-profile', {
-        body: { user_id: userId }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        return { data: null, error: { message: 'No access token available for edge function' } };
+      }
+
+      const { data, error } = await supabase.functions.invoke('ares-profile-loader', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: { userId }
       });
       
       if (error) {
+        console.warn('ARES profile loader failed:', error);
         return { data: null, error };
       }
       
-      return { data: data?.profile || null, error: null };
+      return { data: data?.data || null, error: null };
     } catch (err) {
       return { 
         data: null, 
