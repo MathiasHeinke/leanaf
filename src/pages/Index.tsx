@@ -53,7 +53,7 @@ import { DashboardFourBarsWithTrend } from "@/components/DashboardFourBarsWithTr
 import { DashboardHaloPair } from "@/components/DashboardHaloPair";
 // DEVELOPMENT DEBUG PANELS - Deactivated for production
 // import { AuthDebugPanel } from "@/components/AuthDebugPanel";
-import { DebugStatusBadge } from "@/components/DebugStatusBadge";
+// import { DebugStatusBadge } from "@/components/DebugStatusBadge"; // Removed for production
 import { DashboardErrorBoundary } from "@/components/DashboardErrorBoundary";
 import { useTodaysFluids } from "@/hooks/useTodaysFluids";
 import { useTodaysWorkout } from "@/hooks/useTodaysWorkout";
@@ -1169,40 +1169,8 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
          {/* Unterer Abstand für DashboardMealComposer */}
         <div className="pb-28"></div>
         
-        {/* Debug Status Badge */}
-        <DebugStatusBadge
-          visible={true}
-          user={user}
-          bootstrapComplete={bootstrapState.bootstrapComplete}
-          mealCount={meals.length}
-          errorFlags={errorFlags}
-          route="/"
-          creditsError={!!creditsError}
-          plusDataError={!!plusData.error}
-        />
       </div>
 
-      {/* Floating Meal Input (hidden, kept for compatibility) */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-transparent hidden" data-testid="mealinput_lean-container">
-        <div className="max-w-md mx-auto px-4 pb-3 pt-2 bg-transparent">
-          <div className="relative">
-            <MealInputLean 
-              inputText={mealInputHook.inputText}
-              setInputText={mealInputHook.setInputText}
-              onSubmitMeal={mealInputHook.handleSubmitMeal}
-              onPhotoUpload={mealInputHook.handlePhotoUpload}
-              onVoiceRecord={mealInputHook.handleVoiceRecord}
-              isAnalyzing={mealInputHook.isAnalyzing}
-              isRecording={mealInputHook.isRecording}
-              isProcessing={mealInputHook.isProcessing}
-              uploadedImages={mealInputHook.uploadedImages}
-              onRemoveImage={mealInputHook.removeImage}
-              uploadProgress={mealInputHook.uploadProgress}
-              isUploading={mealInputHook.isUploading}
-            />
-          </div>
-        </div>
-      </div>
 
       {/* Dashboard Meal Composer (visible) */}
       <DashboardMealComposer />
