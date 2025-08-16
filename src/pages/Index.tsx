@@ -224,9 +224,9 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const [todaysMindset, setTodaysMindset] = useState<any[]>([]);
   
   // Real-time dashboard data with watchdog
-  const { data: todaysFluidsFresh, loading: fluidsLoading, error: fluidsError } = useTodaysFluids(user?.id);
-  const { data: todaysWorkoutFresh, loading: workoutLoading, error: workoutError } = useTodaysWorkout(user?.id);
-  const { data: dailyGoalsFresh, loading: goalsLoading, error: goalsError } = useDailyGoals(user?.id);
+  const { data: todaysFluidsFresh, loading: fluidsLoading, error: fluidsError } = useTodaysFluids();
+  const { data: todaysWorkoutFresh, loading: workoutLoading, error: workoutError } = useTodaysWorkout();
+  const { data: dailyGoalsFresh, loading: goalsLoading, error: goalsError } = useDailyGoals();
 
   // XP state for Momentum bar on Index
   const [pointsLoading, setPointsLoading] = useState(true);

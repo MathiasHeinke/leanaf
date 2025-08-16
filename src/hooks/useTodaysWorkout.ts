@@ -1,15 +1,17 @@
 import { useEffect, useState, useRef } from "react";
 import { loadTodaysWorkout } from "@/data/queries";
 import { withWatchdog } from "@/utils/timeRange";
+import { useAuth } from "@/hooks/useAuth";
 
-export function useTodaysWorkout(userId?: string) {
+export function useTodaysWorkout() {
   const [data, setData] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const acRef = useRef<AbortController | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
-    if (!userId) return;
+    if (!user?.id) return;
     if (acRef.current) acRef.current.abort();
     const ac = new AbortController(); 
     acRef.current = ac;
@@ -18,7 +20,7 @@ export function useTodaysWorkout(userId?: string) {
       setLoading(true); 
       setError(null);
       try {
-        const query = loadTodaysWorkout(userId);
+        const query = loadTodaysWorkout(user.id);
         const res = await withWatchdog(query, 6000);
         if (ac.signal.aborted) return;
         if (res.error) { 
@@ -38,7 +40,7 @@ export function useTodaysWorkout(userId?: string) {
     })();
 
     return () => ac.abort();
-  }, [userId]);
+  }, [user?.id]);
 
   return { data, error, loading };
 }
