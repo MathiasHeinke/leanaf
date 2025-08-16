@@ -107,36 +107,6 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
   console.log('✅ Images uploaded successfully:', urls);
   setUploadedImages(prev => [...prev, ...urls]);
   setActiveTab("photo");
-
-  // Automatically trigger analysis for uploaded images
-  if (urls.length > 0) {
-    console.log('🔍 Auto-triggering analysis for uploaded images');
-    try {
-      const result = await analyzeImages(urls, inputText.trim() || undefined);
-      
-      if (result) {
-        setConfirmMeal({
-          open: true,
-          prompt: 'Mahlzeit analysiert - bitte überprüfen:',
-          proposal: {
-            title: result.title,
-            calories: result.calories,
-            protein: result.protein,
-            carbs: result.carbs,
-            fats: result.fats,
-            meal_type: result.meal_type,
-            confidence: result.confidence,
-            analysis_notes: result.analysis_notes
-          },
-          traceId: undefined
-        });
-      }
-    } catch (error) {
-      console.error('❌ Auto-analysis failed:', error);
-      // Still allow manual input via QuickMealSheet
-      openQuickMealSheet("photo");
-    }
-  }
 }, [uploadImages, maxImages, analyzeImages, inputText]);
 
   const handleVoiceTap = useCallback(async () => {
@@ -285,6 +255,45 @@ const handleSubmit = useCallback(async () => {
                 className="w-full h-10 px-4 bg-muted/50 border border-border rounded-full text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
               />
             </div>
+
+            {/* Analyze Images Button - only show when images are uploaded */}
+            {uploadedImages.length > 0 && (
+              <Button
+                size="icon"
+                onClick={async () => {
+                  console.log('🔍 Manual analysis triggered for images:', uploadedImages);
+                  try {
+                    const result = await analyzeImages(uploadedImages, inputText.trim() || undefined);
+                    
+                    if (result) {
+                      setConfirmMeal({
+                        open: true,
+                        prompt: 'Mahlzeit analysiert - bitte überprüfen:',
+                        proposal: {
+                          title: result.title,
+                          calories: result.calories,
+                          protein: result.protein,
+                          carbs: result.carbs,
+                          fats: result.fats,
+                          meal_type: result.meal_type,
+                          confidence: result.confidence,
+                          analysis_notes: result.analysis_notes
+                        },
+                        traceId: undefined
+                      });
+                    }
+                  } catch (error) {
+                    console.error('❌ Manual analysis failed:', error);
+                    toast.error('Analyse fehlgeschlagen');
+                  }
+                }}
+                disabled={isAnalyzing}
+                className="flex-shrink-0 h-10 w-10 rounded-full"
+                aria-label="Bilder analysieren"
+              >
+                🔍
+              </Button>
+            )}
 
             {/* Submit Button */}
             <Button
