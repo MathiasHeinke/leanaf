@@ -53,9 +53,21 @@ const Index = () => {
   const { user, loading: authLoading, isSessionReady } = useAuth();
   const navigate = useNavigate();
 
+  // Debug authentication state
+  useEffect(() => {
+    console.log('🔍 Auth Debug:', {
+      authLoading,
+      hasUser: !!user,
+      userId: user?.id,
+      isSessionReady,
+      userEmail: user?.email
+    });
+  }, [authLoading, user, isSessionReady]);
+
   // Check authentication and redirect if needed
   useEffect(() => {
     if (!authLoading && !user) {
+      console.log('❌ No authenticated user, redirecting to /auth');
       navigate('/auth');
       return;
     }
@@ -64,12 +76,23 @@ const Index = () => {
   // Show dashboard immediately when user is available - don't wait for isSessionReady
   if (authLoading || !user) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-64 w-full" />
-        <div className="text-sm text-muted-foreground text-center">
-          {authLoading ? 'Checking authentication...' : 'No user found...'}
+      <div className="space-y-6">
+        <div className="text-center space-y-4">
+          <div className="text-sm text-muted-foreground">
+            {authLoading ? 'Checking authentication...' : 'No user found - please log in'}
+          </div>
+          
+          {/* Import and show auth debug panel */}
+          {!user && (() => {
+            const { AuthDebugPanel } = require('@/components/AuthDebugPanel');
+            return <AuthDebugPanel />;
+          })()}
+        </div>
+        
+        <div className="space-y-6 animate-pulse">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-64 w-full" />
         </div>
       </div>
     );

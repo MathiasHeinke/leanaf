@@ -25,6 +25,15 @@ export const useBootstrap = () => {
 
   // Single effect that triggers all data loading in parallel
   useEffect(() => {
+    console.log('🔍 Bootstrap Check:', { 
+      isSessionReady, 
+      hasUser: !!user, 
+      userId: user?.id,
+      email: user?.email,
+      isBootstrapping: bootstrapState.isBootstrapping,
+      bootstrapComplete: bootstrapState.bootstrapComplete
+    });
+    
     if (!isSessionReady || !user?.id) {
       console.log('⏳ Bootstrap waiting for session...', { isSessionReady, hasUser: !!user });
       return;
