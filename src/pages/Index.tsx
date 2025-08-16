@@ -54,6 +54,19 @@ import { DashboardHaloPair } from "@/components/DashboardHaloPair";
 import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import { DebugStatusBadge } from "@/components/DebugStatusBadge";
 import { DashboardErrorBoundary } from "@/components/DashboardErrorBoundary";
+import { useTodaysFluids } from "@/hooks/useTodaysFluids";
+import { useTodaysWorkout } from "@/hooks/useTodaysWorkout";
+import { useDailyGoals } from "@/hooks/useDailyGoals";
+import { EmptyCard } from "@/components/EmptyCard";
+import { pingAuth, debugAuthStatus } from "@/utils/authDiagnostics";
+
+// Global diagnostics for browser console
+if (typeof window !== "undefined") {
+  // @ts-ignore
+  window.pingAuth = pingAuth;
+  // @ts-ignore  
+  window.debugAuthStatus = debugAuthStatus;
+}
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -179,6 +192,11 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
   const [todaysFluids, setTodaysFluids] = useState<any[]>([]);
   const [todaysMindset, setTodaysMindset] = useState<any[]>([]);
+  
+  // Real-time dashboard data with watchdog
+  const { data: todaysFluidsFresh, loading: fluidsLoading, error: fluidsError } = useTodaysFluids(user?.id);
+  const { data: todaysWorkoutFresh, loading: workoutLoading, error: workoutError } = useTodaysWorkout(user?.id);
+  const { data: dailyGoalsFresh, loading: goalsLoading, error: goalsError } = useDailyGoals(user?.id);
 
   // XP state for Momentum bar on Index
   const [pointsLoading, setPointsLoading] = useState(true);
