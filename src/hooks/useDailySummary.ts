@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeQueryMany } from "@/utils/safeQuery";
 import { useAuth } from "./useAuth";
 
+const DEBUG_SUMMARY = true;
+
 interface DailySummaryData {
   id: string;
   user_id: string;
@@ -45,11 +47,19 @@ export function useDailySummary(days = 30) {
       setIsLoading(true);
       setError(null);
 
+      if (DEBUG_SUMMARY) {
+        console.log("📊 Fetching daily summaries for user:", user.id);
+      }
+
       try {
         if (abortController.signal.aborted) return;
 
         const since = new Date();
         since.setDate(since.getDate() - days);
+        
+        if (DEBUG_SUMMARY) {
+          console.log("📊 Date range:", since.toISOString().slice(0, 10), "to", new Date().toISOString().slice(0, 10));
+        }
         
         const queryPromise = supabase
           .from("daily_summaries")
@@ -73,18 +83,27 @@ export function useDailySummary(days = 30) {
           
         const { data: summaries, error } = await safeQueryMany<DailySummaryData>(queryPromise);
 
+        if (DEBUG_SUMMARY) {
+          console.log("📊 Query result:", { summariesCount: summaries?.length || 0, error });
+        }
+
         if (!abortController.signal.aborted) {
           if (error) {
+            console.error("📊 Summaries query error:", error);
             setError(error);
             setData([]);
           } else {
-            setData((summaries as DailySummaryData[]) || []);
+            const summariesData = (summaries as DailySummaryData[]) || [];
+            if (DEBUG_SUMMARY) {
+              console.log("📊 Setting summaries data:", summariesData.length, "items");
+            }
+            setData(summariesData);
           }
           setIsLoading(false);
         }
       } catch (err: any) {
         if (!abortController.signal.aborted) {
-          console.error('Daily summary fetch error:', err);
+          console.error('📊 Daily summary fetch error:', err);
           setError(err.message || 'Failed to load daily summaries');
           setData([]);
           setIsLoading(false);

@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeQueryMany } from "@/utils/safeQuery";
 import { useAuth } from "./useAuth";
 
+const DEBUG_WORKOUTS = true;
+
 interface WorkoutData {
   id: string;
   user_id: string;
@@ -46,11 +48,19 @@ export function useRecentWorkouts(days = 14) {
       setIsLoading(true);
       setError(null);
 
+      if (DEBUG_WORKOUTS) {
+        console.log("💪 Fetching recent workouts for user:", user.id);
+      }
+
       try {
         if (abortController.signal.aborted) return;
 
         const since = new Date();
         since.setDate(since.getDate() - days);
+        
+        if (DEBUG_WORKOUTS) {
+          console.log("💪 Date range:", since.toISOString().slice(0, 10), "to", new Date().toISOString().slice(0, 10));
+        }
         
         const queryPromise = supabase
           .from("workouts")
@@ -75,18 +85,27 @@ export function useRecentWorkouts(days = 14) {
           
         const { data: workouts, error } = await safeQueryMany<WorkoutData>(queryPromise);
 
+        if (DEBUG_WORKOUTS) {
+          console.log("💪 Query result:", { workoutsCount: workouts?.length || 0, error });
+        }
+
         if (!abortController.signal.aborted) {
           if (error) {
+            console.error("💪 Workouts query error:", error);
             setError(error);
             setData([]);
           } else {
-            setData((workouts as WorkoutData[]) || []);
+            const workoutsData = (workouts as WorkoutData[]) || [];
+            if (DEBUG_WORKOUTS) {
+              console.log("💪 Setting workouts data:", workoutsData.length, "items");
+            }
+            setData(workoutsData);
           }
           setIsLoading(false);
         }
       } catch (err: any) {
         if (!abortController.signal.aborted) {
-          console.error('Recent workouts fetch error:', err);
+          console.error('💪 Recent workouts fetch error:', err);
           setError(err.message || 'Failed to load recent workouts');
           setData([]);
           setIsLoading(false);

@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeQueryMany } from "@/utils/safeQuery";
 import { useAuth } from "./useAuth";
 
+const DEBUG_MEALS = true;
+
 interface MealData {
   id: string;
   user_id: string;
@@ -45,11 +47,19 @@ export function useRecentMeals(days = 7) {
       setIsLoading(true);
       setError(null);
 
+      if (DEBUG_MEALS) {
+        console.log("🍽️ Fetching recent meals for user:", user.id);
+      }
+
       try {
         if (abortController.signal.aborted) return;
 
         const since = new Date();
         since.setDate(since.getDate() - days);
+        
+        if (DEBUG_MEALS) {
+          console.log("🍽️ Date range:", since.toISOString().slice(0, 10), "to", new Date().toISOString().slice(0, 10));
+        }
         
         const queryPromise = supabase
           .from("meals")
@@ -74,18 +84,27 @@ export function useRecentMeals(days = 7) {
           
         const { data: meals, error } = await safeQueryMany<MealData>(queryPromise);
 
+        if (DEBUG_MEALS) {
+          console.log("🍽️ Query result:", { mealsCount: meals?.length || 0, error });
+        }
+
         if (!abortController.signal.aborted) {
           if (error) {
+            console.error("🍽️ Meals query error:", error);
             setError(error);
             setData([]);
           } else {
-            setData((meals as MealData[]) || []);
+            const mealsData = (meals as MealData[]) || [];
+            if (DEBUG_MEALS) {
+              console.log("🍽️ Setting meals data:", mealsData.length, "items");
+            }
+            setData(mealsData);
           }
           setIsLoading(false);
         }
       } catch (err: any) {
         if (!abortController.signal.aborted) {
-          console.error('Recent meals fetch error:', err);
+          console.error('🍽️ Recent meals fetch error:', err);
           setError(err.message || 'Failed to load recent meals');
           setData([]);
           setIsLoading(false);
