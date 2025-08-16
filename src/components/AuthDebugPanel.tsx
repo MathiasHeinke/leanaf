@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,31 @@ export const AuthDebugPanel = () => {
   const [password, setPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Super admin deletion helpers
+  const [delEmail, setDelEmail] = useState('heinkemathias@icloud.com');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!user) { setIsSuperAdmin(null); return; }
+      try {
+        const { data, error } = await supabase.rpc('is_super_admin', { user_uuid: user.id });
+        if (!mounted) return;
+        if (error) {
+          console.warn('is_super_admin RPC error:', error);
+          setIsSuperAdmin(false);
+        } else {
+          setIsSuperAdmin(!!data);
+        }
+      } catch (e) {
+        if (mounted) setIsSuperAdmin(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user?.id]);
+
   const handleQuickLogin = async () => {
     if (!password) {
       toast.error('Please enter password');
@@ -21,29 +46,15 @@ export const AuthDebugPanel = () => {
     setIsLoggingIn(true);
     try {
       console.log('🔑 Attempting login for:', email);
-      
-      // Clean up any existing auth state first
-      try {
-        await supabase.auth.signOut({ scope: 'global' });
-      } catch (e) {
-        console.log('Previous signout failed (expected if not logged in)');
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
+      try { await supabase.auth.signOut({ scope: 'global' }); } catch {}
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         console.error('❌ Login error:', error);
         toast.error(`Login failed: ${error.message}`);
       } else {
         console.log('✅ Login successful:', data);
         toast.success('Logged in successfully');
-        // Force page reload to ensure clean state
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 1000);
+        setTimeout(() => { window.location.href = '/'; }, 600);
       }
     } catch (error) {
       console.error('❌ Login exception:', error);
@@ -57,19 +68,36 @@ export const AuthDebugPanel = () => {
     try {
       console.log('🚪 Signing out...');
       await supabase.auth.signOut({ scope: 'global' });
-      
-      // Clean up local storage
       Object.keys(localStorage).forEach((key) => {
-        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
-          localStorage.removeItem(key);
-        }
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) localStorage.removeItem(key);
       });
-      
       toast.success('Signed out');
       window.location.href = '/auth';
     } catch (error) {
       console.error('❌ Sign out error:', error);
       toast.error('Sign out failed');
+    }
+  };
+
+  const handleDeleteByEmail = async () => {
+    if (!delEmail) { toast.error('Please enter an email to delete'); return; }
+    if (!confirm(`Delete user ${delEmail}? This cannot be undone.`)) return;
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+        body: { email: delEmail, purge: true },
+      });
+      if (error) throw error as any;
+      if ((data as any)?.ok) {
+        toast.success(`Deleted ${delEmail}`);
+      } else {
+        toast.error(`Failed: ${(data as any)?.why || 'unknown error'}`);
+      }
+    } catch (e: any) {
+      console.error('❌ Delete failed:', e);
+      toast.error(`Delete failed: ${e?.message || String(e)}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -93,24 +121,9 @@ export const AuthDebugPanel = () => {
         {/* Quick Login */}
         {!user && (
           <div className="space-y-2">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <Input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleQuickLogin()}
-            />
-            <Button 
-              onClick={handleQuickLogin} 
-              disabled={isLoggingIn}
-              className="w-full"
-            >
+            <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleQuickLogin()} />
+            <Button onClick={handleQuickLogin} disabled={isLoggingIn} className="w-full">
               {isLoggingIn ? 'Logging in...' : 'Quick Login'}
             </Button>
           </div>
@@ -121,6 +134,19 @@ export const AuthDebugPanel = () => {
           <Button onClick={handleSignOut} variant="outline" className="w-full">
             Sign Out
           </Button>
+        )}
+
+        {/* Super Admin Tools */}
+        {user && (
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Super Admin Tools {isSuperAdmin === null ? '(checking...)' : isSuperAdmin ? '✅' : '❌'}</div>
+            <div className="flex gap-2">
+              <Input type="email" placeholder="Email to delete" value={delEmail} onChange={(e) => setDelEmail(e.target.value)} />
+              <Button onClick={handleDeleteByEmail} disabled={!isSuperAdmin || isDeleting} variant="destructive">
+                {isDeleting ? 'Deleting...' : 'Delete user'}
+              </Button>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
