@@ -191,14 +191,9 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.id]);
 
-  // Auto-trigger analysis when images are present
-  useEffect(() => {
-    if (open && uploadedImages.length > 0 && !inputText.trim() && !isAnalyzing) {
-      setTimeout(() => {
-        handleSubmitMeal();
-      }, 800);
-    }
-  }, [open, uploadedImages.length, inputText, isAnalyzing, handleSubmitMeal]);
+  // Auto-trigger DISABLED to prevent infinite loops
+  // Removed auto-trigger useEffect that was causing analysis loops
+  // Users now manually trigger analysis via Submit button
 
   const getSmartPlaceholder = () => {
     const hour = new Date().getHours();

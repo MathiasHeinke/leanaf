@@ -1,250 +1,197 @@
-
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Camera, Mic, Send, StopCircle, ImagePlus, X, Paperclip } from "lucide-react";
-import { useTranslation } from "@/hooks/useTranslation";
-import { UploadProgress } from "@/components/UploadProgress";
-import { UploadProgress as UploadProgressType } from "@/utils/uploadHelpers";
-import { sanitizeInput } from "@/utils/securityHelpers";
-import { secureLogger } from "@/utils/secureLogger";
+import React, { useState, useRef, useCallback } from 'react';
+import { Camera, Send, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent } from '@/components/ui/card';
+import { useMealVisionAnalysis } from '@/hooks/useMealVisionAnalysis';
+import { uploadFilesWithProgress } from '@/utils/uploadHelpers';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import ConfirmMealModal from '@/components/ConfirmMealModal';
 
 interface MealInputProps {
-  inputText: string;
-  setInputText: (text: string) => void;
-  onSubmitMeal: () => void;
-  onPhotoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onVoiceRecord: () => void;
-  isAnalyzing: boolean;
-  isRecording: boolean;
-  isProcessing: boolean;
-  uploadedImages: string[];
-  onRemoveImage: (index: number) => void;
-  isEditing?: boolean;
-  onCancelEdit?: () => void;
-  uploadProgress?: UploadProgressType[];
-  isUploading?: boolean;
+  onMealSaved?: () => void;
 }
 
-export const MealInput = ({
-  inputText,
-  setInputText,
-  onSubmitMeal,
-  onPhotoUpload,
-  onVoiceRecord,
-  isAnalyzing,
-  isRecording,
-  isProcessing,
-  uploadedImages,
-  onRemoveImage,
-  isEditing = false,
-  onCancelEdit,
-  uploadProgress = [],
-  isUploading = false
-}: MealInputProps) => {
-  const { t } = useTranslation();
+export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
+  const [text, setText] = useState('');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [analyzedData, setAnalyzedData] = useState<any>(null);
   
-  // Local state for button interaction feedback
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Button disabled states - Clear separation of concerns
-  const isSubmitDisabled = (!inputText.trim() && uploadedImages.length === 0) || isAnalyzing || isUploading;
-  const isUploadDisabled = isUploading || isAnalyzing;
-  const isVoiceDisabled = isProcessing; // Only disabled when voice is actually processing
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { analyzeImages, isAnalyzing } = useMealVisionAnalysis();
+  const { user } = useAuth();
 
-  // Handle submit with local state management
-  const handleSubmit = async () => {
-    if (isSubmitDisabled) return;
+  const handleFileUpload = useCallback(async (files: File[]) => {
+    if (files.length === 0 || !user?.id) return;
     
-    secureLogger.debug('Submit button clicked');
-    setIsSubmitting(true);
-    
+    setIsUploading(true);
     try {
-      await onSubmitMeal();
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Handle photo upload with event isolation
-  const handlePhotoUploadClick = (event: React.MouseEvent) => {
-    secureLogger.debug('Photo upload button clicked');
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (isUploadDisabled) return;
-    
-    const fileInput = document.getElementById('gallery-upload') as HTMLInputElement;
-    if (fileInput) {
-      fileInput.click();
-    }
-  };
-
-  // Handle voice recording with event isolation
-  const handleVoiceClick = (event: React.MouseEvent) => {
-    secureLogger.debug('Voice button clicked');
-    event.preventDefault();
-    event.stopPropagation();
-    
-    if (isVoiceDisabled) return;
-    
-    onVoiceRecord();
-  };
-
-  // Handle key press for submit - fix space bug properly
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.shiftKey) {
-      e.preventDefault();
-      if (!isSubmitDisabled && inputText.trim().length > 0) {
-        handleSubmit();
+      const result = await uploadFilesWithProgress(files, user.id, () => {});
+      if (result.success && result.urls.length > 0) {
+        setUploadedImages(prev => [...prev, ...result.urls]);
+        toast.success(`${result.urls.length} Bild(er) hochgeladen`);
       }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Upload fehlgeschlagen');
+    } finally {
+      setIsUploading(false);
     }
-    // Don't prevent space at beginning - let user type normally
-  };
-  
-  return (
-    <div className="w-full">
-      <div className="w-full">
-        {/* Upload Progress - Above everything */}
-        <UploadProgress 
-          progress={uploadProgress} 
-          isVisible={isUploading && uploadProgress.length > 0} 
-        />
+  }, [user?.id]);
 
-        {/* Image Thumbnails - Above input */}
-        {uploadedImages && uploadedImages.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2 animate-fade-in">
-            {uploadedImages.map((imageUrl, index) => (
-              <div key={index} className="relative group animate-scale-in">
-                <img
-                  src={imageUrl}
-                  alt={`Uploaded ${index + 1}`}
-                  className="w-14 h-14 object-cover rounded-xl border-2 border-border/20 shadow-md hover:scale-105 transition-all duration-300 backdrop-blur-sm hover:shadow-lg"
-                />
-                <button
-                  onClick={() => onRemoveImage(index)}
-                  className="absolute -top-2 -right-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-lg hover:scale-110 z-10"
-                  disabled={isAnalyzing || isUploading}
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-        
-        {/* Recording/Processing Indicator - Above input - Clear state messaging */}
-        {(isRecording || isProcessing || isAnalyzing) && (
-          <div className="mb-4 flex items-center gap-3 text-sm bg-card/95 backdrop-blur-md px-4 py-3 rounded-xl border border-border/50 shadow-lg animate-fade-in">
-            <div className="flex gap-1">
-              <div className="w-1.5 h-3 bg-destructive animate-pulse rounded-full"></div>
-              <div className="w-1.5 h-4 bg-destructive animate-pulse rounded-full" style={{ animationDelay: '0.1s' }}></div>
-              <div className="w-1.5 h-3 bg-destructive animate-pulse rounded-full" style={{ animationDelay: '0.2s' }}></div>
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length > 0) {
+      handleFileUpload(files);
+    }
+    // Reset input
+    if (e.currentTarget) {
+      e.currentTarget.value = '';
+    }
+  }, [handleFileUpload]);
+
+  const removeImage = useCallback((index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleSubmit = useCallback(async () => {
+    if (uploadedImages.length === 0 && !text.trim()) {
+      toast.error('Bitte Text eingeben oder Bild hochladen');
+      return;
+    }
+
+    try {
+      let result;
+      
+      if (uploadedImages.length > 0) {
+        // Use GPT-4o vision analysis
+        result = await analyzeImages(uploadedImages, text);
+      } else {
+        // Text-only fallback
+        result = {
+          title: text.trim(),
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fats: 0,
+          confidence: 0,
+          meal_type: 'other',
+          analysis_notes: 'Nur Textbeschreibung - bitte Nährwerte manuell eingeben'
+        };
+      }
+
+      setAnalyzedData(result);
+      setShowConfirmModal(true);
+    } catch (error) {
+      console.error('Analysis error:', error);
+      toast.error('Analyse fehlgeschlagen');
+    }
+  }, [uploadedImages, text, analyzeImages]);
+
+  const handleConfirm = useCallback(() => {
+    setShowConfirmModal(false);
+    setAnalyzedData(null);
+    setText('');
+    setUploadedImages([]);
+    onMealSaved?.();
+    toast.success('Mahlzeit gespeichert');
+  }, [onMealSaved]);
+
+  const handleClose = useCallback(() => {
+    setShowConfirmModal(false);
+    setAnalyzedData(null);
+  }, []);
+
+  return (
+    <>
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="p-4 space-y-4">
+          {/* Image thumbnails */}
+          {uploadedImages.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {uploadedImages.map((url, index) => (
+                <div key={url + index} className="relative">
+                  <img
+                    src={url}
+                    alt={`Mahlzeit ${index + 1}`}
+                    className="h-16 w-16 rounded-lg object-cover border border-border"
+                  />
+                  <button
+                    onClick={() => removeImage(index)}
+                    className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition"
+                    aria-label="Bild entfernen"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
             </div>
-            <span className="font-medium text-foreground">
-              {isRecording ? t('input.recording') : 
-               isProcessing ? t('input.processing') : 
-               isAnalyzing ? 'Analysiere Mahlzeit...' : 
-               'Verarbeitung...'}
-            </span>
-          </div>
-        )}
-        
-        {/* Main Input Container */}
-        <div className="relative bg-card/70 backdrop-blur-md border border-border/60 rounded-2xl shadow-xl hover:bg-card/80 focus-within:border-primary/70 focus-within:shadow-2xl focus-within:bg-card/80 transition-all duration-300 group meal-input focus-within:[&::after]:hidden"
-             style={{ animationPlayState: inputText.trim() ? 'paused' : 'running' }}>
-          {/* Text Input */}
-          <div className="relative">
-            <Textarea
-              value={inputText}
-              onChange={(e) => {
-                // Fix space bug: bypass sanitizeInput to allow leading spaces
-                setInputText(e.target.value.slice(0, 2000));
-              }}
-              placeholder={t('input.placeholder')}
-              className="min-h-[60px] max-h-[140px] resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent text-base placeholder:text-muted-foreground/70 pl-4 pr-20 pb-6 pt-4 leading-relaxed"
-              onKeyDown={handleKeyDown}
-              disabled={isAnalyzing || isUploading}
-            />
-            
-            {/* Left Action Button - Photo Upload */}
-            <div className="absolute left-4 bottom-2 flex items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                type="button"
-                className={`h-9 w-9 p-0 rounded-xl hover:bg-muted/90 transition-all duration-200 hover:scale-105 ${
-                  isUploadDisabled ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
-                }`}
-                onClick={handlePhotoUploadClick}
-                disabled={isUploadDisabled}
-              >
-                {isUploading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                ) : (
-                  <Paperclip className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
-                )}
-              </Button>
-              
-              {/* Hidden file inputs */}
-              <input
-                id="gallery-upload"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={onPhotoUpload}
-                multiple
-                disabled={isUploadDisabled}
-              />
-            </div>
-            
-            {/* Right Action Buttons - Voice + Send */}
-            <div className="absolute right-4 bottom-2 flex items-center gap-2">
-              {/* Voice Recording Button - Only shows loading when voice is processing */}
-              <Button
-                variant="ghost"
-                size="sm"
-                type="button"
-                className={`h-9 w-9 p-0 rounded-xl transition-all duration-200 ${
-                  isRecording
-                    ? 'bg-destructive/20 hover:bg-destructive/30 text-destructive border border-destructive/30' 
-                    : 'hover:bg-muted/90 hover:scale-105'
-                } ${isVoiceDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                onClick={handleVoiceClick}
-                disabled={isVoiceDisabled}
-              >
-                {isRecording ? (
-                  <StopCircle className="h-5 w-5" />
-                ) : isProcessing ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                ) : (
-                  <Mic className="h-5 w-5 text-muted-foreground group-focus-within:text-foreground transition-colors" />
-                )}
-              </Button>
-              
-              {/* Send Button - Only shows loading when analyzing */}
+          )}
+
+          {/* Text input */}
+          <Textarea
+            placeholder="Beschreibe deine Mahlzeit (optional mit Bildern)..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={3}
+            className="resize-none"
+          />
+
+          {/* Action buttons */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                type="button"
-                className={`h-9 w-9 p-0 rounded-xl transition-all duration-300 font-medium ${
-                  isSubmitDisabled
-                    ? 'opacity-50 cursor-not-allowed bg-muted/80 text-muted-foreground hover:bg-muted/80'
-                    : 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
-                }`}
-                onClick={handleSubmit}
-                disabled={isSubmitDisabled}
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex items-center gap-2"
               >
-                {isAnalyzing ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                ) : (
-                  <Send className="h-5 w-5" />
-                )}
+                <Camera className="h-4 w-4" />
+                {isUploading ? 'Lade hoch...' : 'Foto'}
               </Button>
+              <span className="text-xs text-muted-foreground">
+                {uploadedImages.length}/5 Bilder
+              </span>
             </div>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={isAnalyzing || (uploadedImages.length === 0 && !text.trim())}
+              className="flex items-center gap-2"
+            >
+              <Send className="h-4 w-4" />
+              {isAnalyzing ? 'Analysiere...' : 'Analysieren'}
+            </Button>
           </div>
-        </div>
-      </div>
-    </div>
+        </CardContent>
+      </Card>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && analyzedData && (
+        <ConfirmMealModal
+          open={showConfirmModal}
+          prompt="Mahlzeit speichern?"
+          proposal={analyzedData}
+          onConfirm={handleConfirm}
+          onClose={handleClose}
+          uploadedImages={uploadedImages}
+        />
+      )}
+    </>
   );
 };
+
+export default MealInput;

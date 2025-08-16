@@ -7,9 +7,10 @@ interface ConfirmMealModalProps {
   proposal: MealProposal | null;
   onConfirm: () => void;
   onClose: () => void;
+  uploadedImages?: string[];
 }
 
-export default function ConfirmMealModal({ open, prompt, proposal, onConfirm, onClose }: ConfirmMealModalProps) {
+export default function ConfirmMealModal({ open, prompt, proposal, onConfirm, onClose, uploadedImages = [] }: ConfirmMealModalProps) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -18,6 +19,22 @@ export default function ConfirmMealModal({ open, prompt, proposal, onConfirm, on
         <div className="p-4 sm:p-6">
           <h3 className="text-base font-semibold mb-1">Vorschlag speichern?</h3>
           <p className="text-sm text-muted-foreground mb-4">{prompt}</p>
+
+          {/* Image previews */}
+          {uploadedImages.length > 0 && (
+            <div className="mb-4">
+              <div className="flex gap-2 overflow-x-auto">
+                {uploadedImages.map((url, idx) => (
+                  <img
+                    key={url + idx}
+                    src={url}
+                    alt={`Mahlzeit ${idx + 1}`}
+                    className="h-12 w-12 rounded object-cover border border-border flex-shrink-0"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {proposal && (
             <div className="mb-4 text-sm space-y-2">
@@ -30,6 +47,11 @@ export default function ConfirmMealModal({ open, prompt, proposal, onConfirm, on
                   {proposal.protein ? `P ${Math.round(proposal.protein)}g` : ''}
                   {proposal.carbs ? ` · C ${Math.round(proposal.carbs)}g` : ''}
                   {proposal.fats ? ` · F ${Math.round(proposal.fats)}g` : ''}
+                </div>
+              )}
+              {proposal.confidence !== undefined && proposal.confidence < 0.7 && (
+                <div className="text-amber-600 text-xs">
+                  ⚠️ Analyse unsicher - bitte Werte überprüfen
                 </div>
               )}
             </div>

@@ -13,6 +13,9 @@ export type MealProposal = {
   fats?: number;
   imageUrl?: string;
   notes?: string;
+  confidence?: number;
+  meal_type?: string;
+  analysis_notes?: string;
 };
 
 export type SupplementItem = {
