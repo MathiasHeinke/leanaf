@@ -194,10 +194,9 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
   // Auto-trigger analysis when images are present
   useEffect(() => {
     if (open && uploadedImages.length > 0 && !inputText.trim() && !isAnalyzing) {
-      console.log('🤖 [QuickMealSheet] Auto-triggering analysis for uploaded images');
       setTimeout(() => {
         handleSubmitMeal();
-      }, 800); // Small delay to ensure sheet is fully rendered
+      }, 800);
     }
   }, [open, uploadedImages.length, inputText, isAnalyzing, handleSubmitMeal]);
 

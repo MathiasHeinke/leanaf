@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Play, Database, MessageSquare } from 'lucide-react';
-import { EdgeFunctionDebugger } from './EdgeFunctionDebugger';
+// DEVELOPMENT COMPONENTS - Deactivated for cleaner admin interface
+// import { EdgeFunctionDebugger } from './EdgeFunctionDebugger';
 import { TraceMonitor } from './TraceMonitor';
 
 export const CoachTestPanel: React.FC = () => {
@@ -90,10 +91,10 @@ export const CoachTestPanel: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Advanced Diagnostics */}
-      <EdgeFunctionDebugger />
+      {/* DEVELOPMENT DIAGNOSTICS - Temporarily deactivated for cleaner interface */}
+      {/* <EdgeFunctionDebugger /> */}
       
-      {/* Live Trace Monitoring */}
+      {/* Live Trace Monitoring - Keep for admin monitoring */}
       <TraceMonitor />
       
       {/* Simple Test Panel */}

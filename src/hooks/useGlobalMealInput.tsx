@@ -415,21 +415,10 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Event handlers
   const handleSubmitMeal = useCallback(async () => {
-    console.log('🚀 [handleSubmitMeal] Starting submission with:', {
-      textLength: inputText.length,
-      imageCount: uploadedImages.length,
-      isAnalyzing,
-      isUploading
-    });
-
-    if (isAnalyzing || isUploading) {
-      console.log('⏳ [handleSubmitMeal] Already processing, skipping');
-      return;
-    }
+    if (isAnalyzing || isUploading) return;
 
     // Auto-analyze if we have images but no text
     if (uploadedImages.length > 0 && !inputText.trim()) {
-      console.log('🖼️ [handleSubmitMeal] Auto-analyzing images without text');
       await analyzeMealText('', uploadedImages);
       return;
     }
@@ -503,7 +492,6 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   const closeDialog = useCallback(() => {
-    console.log('❌ Closing confirmation dialog');
     setShowConfirmationDialog(false);
     setAnalyzedMealData(null);
     setSelectedMealType('other');
@@ -529,11 +517,9 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   }, []);
 
   const closeQuickMealSheet = useCallback(() => {
-    console.log('📋 Closing QuickMealSheet');
     setQuickMealSheetOpen(false);
     // Only clear images if we're not in editing mode and there's no confirmation dialog
     if (!isEditingMode && !showConfirmationDialog) {
-      console.log('🧹 Clearing uploaded images on close');
       setUploadedImages([]);
     }
     if (isEditingMode) {

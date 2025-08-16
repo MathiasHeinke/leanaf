@@ -51,7 +51,8 @@ import { usePlusData } from "@/hooks/usePlusData";
 import ConcentricStatCard from "@/components/ConcentricStatCard";
 import { DashboardFourBarsWithTrend } from "@/components/DashboardFourBarsWithTrend";
 import { DashboardHaloPair } from "@/components/DashboardHaloPair";
-import { AuthDebugPanel } from "@/components/AuthDebugPanel";
+// DEVELOPMENT DEBUG PANELS - Deactivated for production
+// import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import { DebugStatusBadge } from "@/components/DebugStatusBadge";
 import { DashboardErrorBoundary } from "@/components/DashboardErrorBoundary";
 import { useTodaysFluids } from "@/hooks/useTodaysFluids";
@@ -137,8 +138,8 @@ const Index = () => {
             {authLoading ? 'Checking authentication...' : 'No user found - please log in'}
           </div>
           
-          {/* Show auth debug panel */}
-          {!user && <AuthDebugPanel />}
+          {/* DEVELOPMENT PANEL - Deactivated for cleaner production UI */}
+          {/* {!user && <AuthDebugPanel />} */}
 
         </div>
         

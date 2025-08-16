@@ -123,19 +123,7 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
   }
 
   // For single images or when multi-image is disabled: let QuickMealSheet handle analysis
-  console.log('📝 Single image uploaded, QuickMealSheet will handle analysis');
-  
-  // Auto-trigger analysis if we have images
-  if (urls.length > 0) {
-    console.log('🔄 Auto-triggering analysis for uploaded images');
-    setTimeout(() => {
-      // Small delay to ensure sheet is open and state is updated
-      if (urls.length > 0) {
-        console.log('🤖 Starting auto-analysis for images:', urls.length);
-        // The QuickMealSheet will trigger analysis when it sees images
-      }
-    }, 500);
-  }
+  // Auto-trigger analysis - QuickMealSheet handles the process
 }, [uploadImages, appendUploadedImages, multiImageEnabled, user?.id, openQuickMealSheet]);
 
   const handleVoiceTap = useCallback(async () => {
