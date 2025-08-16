@@ -1,7 +1,7 @@
 import React, { useState, useCallback, Suspense, lazy, useRef, useEffect } from "react";
 import { Camera, Mic, ArrowRight, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
+import { useMealVisionAnalysis } from "@/hooks/useMealVisionAnalysis";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrchestrator } from "@/hooks/useOrchestrator";
@@ -18,7 +18,11 @@ const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").th
 
 export const DashboardMealComposer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const { inputText, setInputText, uploadImages, appendUploadedImages, handleVoiceRecord, isRecording, quickMealSheetOpen, openQuickMealSheet, closeQuickMealSheet, uploadedImages, removeImage } = useGlobalMealInput();
+  const [inputText, setInputText] = useState('');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [quickMealSheetOpen, setQuickMealSheetOpen] = useState(false);
+  const { analyzeImages, isAnalyzing } = useMealVisionAnalysis();
   const { isEnabled } = useFeatureFlags();
   const orchestrationEnabled = isEnabled('auto_tool_orchestration');
   const { user } = useAuth();
@@ -30,22 +34,48 @@ export const DashboardMealComposer: React.FC = () => {
   const [pendingConfirm, setPendingConfirm] = useState<{ kind: 'meal' | 'supplement'; prompt: string; proposal: any; traceId?: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-const multiImageEnabled = isEnabled('multiImageIntake');
-const [maxImages, setMaxImages] = useState<number>(IMAGE_UPLOAD_MAX_DEFAULT);
-const [lastDropIgnored, setLastDropIgnored] = useState<boolean>(false);
-const [ephemeral, setEphemeral] = useState<string | null>(null);
-const [multiPreview, setMultiPreview] = useState<{
-  preview?: { title?: string; description?: string; bullets?: string[] };
-  items?: any[];
-  topPickIdx?: number;
-  traceId?: string;
-} | null>(null);
+  const [maxImages, setMaxImages] = useState<number>(IMAGE_UPLOAD_MAX_DEFAULT);
+  const [lastDropIgnored, setLastDropIgnored] = useState<boolean>(false);
 
 const { addRecognizedSupplementsToStack } = useSupplementRecognition();
 
   const handlePhotoTap = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
+
+const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
+  if (!user || files.length === 0) return [];
+  
+  console.log('📤 Starting upload for', files.length, 'files');
+  
+  try {
+    const uploadPromises = files.map(async (file) => {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('meal-images')
+        .upload(fileName, file);
+        
+      if (error) throw error;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('meal-images')
+        .getPublicUrl(fileName);
+        
+      return publicUrl;
+    });
+    
+    const urls = await Promise.all(uploadPromises);
+    console.log('✅ Upload completed successfully:', urls);
+    toast.success(`${urls.length} Bild${urls.length > 1 ? 'er' : ''} erfolgreich hochgeladen`);
+    return urls;
+  } catch (error: any) {
+    console.error('❌ Upload error:', error);
+    toast.error('Upload fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
+    return [];
+  }
+}, [user]);
 
 const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
   const files = e.target.files ? Array.from(e.target.files) : [];
@@ -71,71 +101,68 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
 
   if (!urls || urls.length === 0) {
     console.log('❌ Upload failed, no URLs returned');
-    toast.error('Upload fehlgeschlagen');
     return;
   }
 
   console.log('✅ Images uploaded successfully:', urls);
-  appendUploadedImages(urls);
+  setUploadedImages(prev => [...prev, ...urls]);
   setActiveTab("photo");
 
-  // SIMPLIFIED FLOW: Always open QuickMealSheet for image preview and analysis
-  openQuickMealSheet("photo");
-
-  // Only use multi-image flow for multiple images (2+)
-  if (multiImageEnabled && user?.id && urls.length >= 2) {
-    console.log('🔄 Starting multi-image analysis for', urls.length, 'images');
-    const groupTraceId = crypto.randomUUID();
-    
+  // Automatically trigger analysis for uploaded images
+  if (urls.length > 0) {
+    console.log('🔍 Auto-triggering analysis for uploaded images');
     try {
-      setEphemeral('Analysiere mehrere Bilder …');
-      const { data, error } = await supabase.functions.invoke('multi-image-intake', {
-        body: { userId: user.id, images: urls, message: '' },
-        headers: {
-          'x-trace-id': groupTraceId,
-          'x-chat-mode': 'nutrition',
-          'x-source': 'dashboard',
-        },
-      });
+      const result = await analyzeImages(urls, inputText.trim() || undefined);
       
-      setEphemeral(null);
-      
-      if (error || !data?.ok) {
-        console.log('❌ Multi-image analysis failed, falling back to QuickMealSheet');
-        toast.info('Bilder erfolgreich hochgeladen – bitte manuell eingeben');
-        return;
+      if (result) {
+        setConfirmMeal({
+          open: true,
+          prompt: 'Mahlzeit analysiert - bitte überprüfen:',
+          proposal: {
+            title: result.title,
+            calories: result.calories,
+            protein: result.protein,
+            carbs: result.carbs,
+            fats: result.fats,
+            meal_type: result.meal_type,
+            confidence: result.confidence,
+            analysis_notes: result.analysis_notes
+          },
+          traceId: undefined
+        });
       }
-
-      console.log('✅ Multi-image analysis successful');
-      const preview = data.preview ?? {};
-      const consolidated = data.consolidated ?? {};
-      const items = consolidated.items ?? [];
-      const topPickIdx = consolidated.topPickIdx ?? 0;
-
-      setMultiPreview({ preview, items, topPickIdx, traceId: data.traceId });
-      return;
-    } catch (err: any) {
-      console.log('❌ Multi-image analysis error:', err);
-      setEphemeral(null);
-      toast.info('Bilder erfolgreich hochgeladen – bitte manuell eingeben');
-      return;
+    } catch (error) {
+      console.error('❌ Auto-analysis failed:', error);
+      // Still allow manual input via QuickMealSheet
+      openQuickMealSheet("photo");
     }
   }
-
-  // For single images or when multi-image is disabled: let QuickMealSheet handle analysis
-  // Auto-trigger analysis - QuickMealSheet handles the process
-}, [uploadImages, appendUploadedImages, multiImageEnabled, user?.id, openQuickMealSheet]);
+}, [uploadImages, maxImages, analyzeImages, inputText]);
 
   const handleVoiceTap = useCallback(async () => {
-    await handleVoiceRecord();
+    // Simple toggle for recording state
+    setIsRecording(!isRecording);
     setActiveTab("voice");
     openQuickMealSheet("voice");
-  }, [handleVoiceRecord, openQuickMealSheet]);
+  }, [isRecording]);
 
   const handleTextTap = useCallback(() => {
     setActiveTab("text");
-    openQuickMealSheet("text");
-  }, [openQuickMealSheet]);
+    setQuickMealSheetOpen(true);
+  }, []);
+
+  const openQuickMealSheet = useCallback((tab?: string) => {
+    if (tab) setActiveTab(tab as any);
+    setQuickMealSheetOpen(true);
+  }, []);
+
+  const closeQuickMealSheet = useCallback(() => {
+    setQuickMealSheetOpen(false);
+  }, []);
+
+  const removeImage = useCallback((index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  }, []);
 
 const handleSubmit = useCallback(async () => {
   if (!inputText.trim()) return;
@@ -273,47 +300,11 @@ const handleSubmit = useCallback(async () => {
         </div>
       </div>
 
-      {/* Ephemeral status bubble */}
-      {ephemeral && (
+      {/* Analysis Loading Status */}
+      {isAnalyzing && (
         <div className="container mx-auto px-4 mt-2 max-w-5xl">
           <Card>
-            <CardContent className="py-3 text-sm">{ephemeral}</CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Multi-image preview card */}
-      {multiPreview && (
-        <div className="container mx-auto px-4 mt-2 max-w-5xl">
-          <Card>
-            <CardContent className="py-4">
-              <div className="flex flex-col gap-2">
-                <h3 className="text-base font-medium">{multiPreview.preview?.title ?? 'Vorschau'}</h3>
-                {multiPreview.preview?.description && (
-                  <p className="text-sm text-muted-foreground">{multiPreview.preview.description}</p>
-                )}
-                {Array.isArray(multiPreview.preview?.bullets) && (
-                  <ul className="list-disc pl-5 text-sm">
-                    {(multiPreview.preview?.bullets ?? []).slice(0, 5).map((b, i) => (
-                      <li key={i}>{b}</li>
-                    ))}
-                  </ul>
-                )}
-                <div className="flex gap-2 pt-2">
-                  <Button onClick={() => {
-                    const items = multiPreview.items ?? [];
-                    const topPickIdx = multiPreview.topPickIdx ?? 0;
-                    setConfirmSupplement({ open: true, prompt: 'Speichern?', proposal: { items, topPickIdx }, traceId: multiPreview.traceId });
-                    setMultiPreview(null);
-                  }}>Speichern</Button>
-                  <Button variant="outline" onClick={() => {
-                    const items = multiPreview.items ?? [];
-                    const topPickIdx = multiPreview.topPickIdx ?? 0;
-                    setConfirmSupplement({ open: true, prompt: 'Dosis/Timing anpassen', proposal: { items, topPickIdx }, traceId: multiPreview.traceId });
-                  }}>Dosis/Timing anpassen</Button>
-                </div>
-              </div>
-            </CardContent>
+            <CardContent className="py-3 text-sm">🔍 Analysiere Bilder mit GPT-4o Vision...</CardContent>
           </Card>
         </div>
       )}
@@ -382,9 +373,13 @@ const handleSubmit = useCallback(async () => {
         open={confirmMeal.open}
         prompt={confirmMeal.prompt}
         proposal={confirmMeal.proposal}
+        uploadedImages={uploadedImages}
         onConfirm={() => {
           // Handle meal confirmation
           setConfirmMeal({ open: false, prompt: '', proposal: null, traceId: undefined });
+          // Reset form after confirmation
+          setInputText('');
+          setUploadedImages([]);
         }}
         onClose={() => setConfirmMeal({ open: false, prompt: '', proposal: null, traceId: undefined })}
       />

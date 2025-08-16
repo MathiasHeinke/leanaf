@@ -59,7 +59,7 @@ serve(async (req) => {
       image_url: { url: imageUrl }
     }));
 
-    const systemPrompt = `You are a precise nutritional analysis AI. Analyze the food in the image(s) and return ONLY a JSON object with this exact structure:
+    const systemPrompt = `You are a precise nutritional analysis AI specialized in portion size estimation. Analyze the food in the image(s) and return ONLY a JSON object with this exact structure:
 
 {
   "title": "Descriptive name of the meal/food",
@@ -69,16 +69,29 @@ serve(async (req) => {
   "fats": number (grams),
   "confidence": number (0-1, where 1 is very confident),
   "meal_type": "breakfast|lunch|dinner|snack|other",
-  "analysis_notes": "Brief explanation of analysis"
+  "analysis_notes": "Brief explanation including portion size assessment"
 }
 
-Rules:
-- Be precise with nutritional values
+CRITICAL PORTION SIZE DETECTION RULES:
+- Carefully estimate plate/bowl size (small/medium/large)
+- Assess food volume relative to serving dish
+- Consider typical portion sizes vs. what's actually shown
+- Adjust nutritional values based on actual portion size
+- Note portion assessment in analysis_notes
+
+Examples:
+- Small plate (≈20cm): Reduce standard portions by 20-30%
+- Large plate (≈30cm): May represent 1.5x standard portions
+- Bowl portions: Estimate volume (200ml small, 300ml medium, 400ml+ large)
+- Stacked foods: Account for depth/height not visible
+
+Standard Rules:
+- Be precise with nutritional values based on actual portions shown
 - If multiple foods, sum up the totals
-- Estimate portion sizes carefully
 - Use standard nutritional databases as reference
-- If unsure, be conservative with confidence score
-- German food names are preferred for title`;
+- If unsure about portion, be conservative with confidence score
+- German food names are preferred for title
+- Always include portion assessment in analysis_notes (e.g., "Mittelgroßer Teller, normale Portion" or "Große Schüssel, ca. 1.5x Standardportion")`;
 
     const userPrompt = text.trim() 
       ? `Analyze the food in these images. Additional context: "${text}"`
