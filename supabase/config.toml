@@ -1,5 +1,8 @@
 project_id = "gzczjscctgyxjyodhnhk"
 
+[functions.edge-echo]
+verify_jwt = false
+
 [functions.coach-orchestrator-enhanced]
 verify_jwt = true
 

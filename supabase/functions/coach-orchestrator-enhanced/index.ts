@@ -8,7 +8,7 @@ import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries } from ".
 // CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-chat-mode, x-trace-id, x-source, x-client-event-id, x-retry, prefer, x-user-timezone, x-current-date",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-trace-id, x-source, x-client-event-id, x-retry, x-chat-mode, x-user-timezone, x-current-date, prefer, accept, x-supabase-api-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -127,7 +127,9 @@ async function generateAresResponse(prompt: string, traceId: string) {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     const requestHeaders = req.headers.get("access-control-request-headers") || "";
-    console.log(`[ARES-PREFLIGHT] Origin: ${req.headers.get("origin")}, Request-Headers: ${requestHeaders}`);
+    const origin = req.headers.get("origin") || "unknown";
+    const userAgent = req.headers.get("user-agent") || "unknown";
+    console.log(`[ARES-PREFLIGHT] Origin: ${origin}, Request-Headers: ${requestHeaders}, UA: ${userAgent.substring(0, 50)}`);
     return new Response(null, { headers: corsHeaders });
   }
 
@@ -150,6 +152,21 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+    
+    // Health check for debugging
+    if (req.headers.get('x-health-check') === '1' || body?.action === 'health') {
+      console.log(`[ARES-HEALTH-${traceId}] Health check requested`);
+      return new Response(JSON.stringify({
+        ok: true,
+        traceId,
+        timestamp: new Date().toISOString(),
+        status: 'healthy'
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+    
     const event = body?.event as CoachEvent | undefined;
     const providedUserId = body?.userId as string | undefined;
 

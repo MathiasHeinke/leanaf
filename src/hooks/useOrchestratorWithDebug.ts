@@ -42,323 +42,149 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
     currentClientEventId.current = null;
   }
 
-  async function sendEvent(
-    userId: string,
-    ev: CoachEvent,
-    traceId?: string,
-    context?: CoachEventContext
-  ): Promise<OrchestratorReply> {
-    if (!userId) {
-      throw new Error('User ID is required');
-    }
-
-    // Check authentication before sending
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) {
-      throw new Error('User is not authenticated');
-    }
-
-    // Auth diagnostics helper
-    const pingAuth = async () => {
-      try {
-        const result = await supabase.functions.invoke('diag-auth', {
-          body: { check: 'basic' }
-        });
-        return {
-          success: !result.error,
-          session: !!session,
-          userId: session?.user?.id,
-          error: result.error?.message,
-          data: result.data
-        };
-      } catch (error) {
-        return {
-          success: false,
-          session: false,
-          userId: null,
-          error: error instanceof Error ? error.message : 'Unknown error',
-          data: null
-        };
-      }
-    };
-
-    const trace = traceId || newTraceId();
-    const clientEventId = currentClientEventId.current || beginUserAction();
-    
-    // Ensure clientEventId is in the event
-    if (!ev.clientEventId) {
-      ev.clientEventId = clientEventId;
-    }
-
-    // Header Check Step
-    const hasSession = !!session;
-    const tokenPresent = !!session?.access_token;
-    const tokenStart = tokenPresent ? session.access_token.substring(0, 10) + "..." : "none";
-    
-    console.log(`🔧 ARES-Debug: Header Check`, {
-      hasSession,
-      userId: userId.slice(0, 8) + '...',
-      tokenPresent,
-      tokenStart,
-      plannedHeaders: ['x-trace-id', 'x-source', 'x-client-event-id', 'x-chat-mode'],
-      functionPath: 'coach-orchestrator-enhanced'
-    });
-
-    console.log(`🔧 ARES-Debug: Starting request`, {
-      traceId: trace,
-      userId: userId.slice(0, 8) + '...',
-      eventType: ev.type,
-      hasText: ev.type === 'TEXT' && !!ev.text,
-      textPreview: ev.type === 'TEXT' ? ev.text?.slice(0, 30) + '...' : undefined,
-      coachId: ev.context?.coachId || 'default'
-    });
-    
-    // Debug steps
-    let messageStep: string | undefined;
-    let routeStep: string | undefined;
-    let toolStep: string | undefined;
-    let replyStep: string | undefined;
+  const sendEvent = async (userId: string, ev: CoachEvent, traceId?: string, context?: CoachEventContext): Promise<OrchestratorReply> => {
+    const currentTraceId = traceId || newTraceId();
+    const orchestratorFunction = 'coach-orchestrator-enhanced';
+    let currentStepId: string | undefined;
 
     try {
-      // Step 1: Message received
-      if (debugCallbacks) {
-        messageStep = debugCallbacks.addStep(
-          '📨 Nachricht empfangen',
-          `Nachricht: "${ev.type === 'TEXT' ? ev.text?.slice(0, 50) : ev.type}..."`
-        );
+      currentStepId = debugCallbacks?.addStep("Auth Check", "Verifying authentication...");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        debugCallbacks?.errorStep(currentStepId!, "No active session");
+        throw new Error("No active session");
       }
+      
+      debugCallbacks?.completeStep(currentStepId!, `Session valid (expires: ${new Date(session.expires_at! * 1000).toLocaleTimeString()})`);
 
-      // Merge context from event and parameter
-      const finalContext = { ...ev.context, ...context };
-
-      const payload = {
-        userId,
-        event: ev,
-        traceId: trace,
-        context: finalContext || {},
-      };
-
-      const headers: Record<string, string> = {
-        'x-trace-id': trace,
-        'x-source': ev.context?.source || 'chat',
-        'x-client-event-id': clientEventId,
-      };
-
-      if (ev.context?.coachMode) {
-        headers['x-chat-mode'] = ev.context.coachMode;
-      }
-
-      if (messageStep && debugCallbacks) {
-        debugCallbacks.completeStep(messageStep, 'Payload erstellt und bereit für Verarbeitung');
-      }
-
-      // Step 2: Route decision
-      if (debugCallbacks) {
-        routeStep = debugCallbacks.addStep(
-          '🧠 Intent & Route',
-          'ARES analysiert die Nachricht und wählt den besten Verarbeitungsweg'
-        );
-      }
-
-      // Emit early client ack
+      // Echo test for header debugging
+      currentStepId = debugCallbacks?.addStep("Reachability Test", "Testing edge function headers...");
       try {
-        await supabase.rpc('log_trace_event', {
-          p_trace_id: headers['x-trace-id'],
-          p_stage: 'client_ack',
-          p_data: { source: headers['x-source'] }
+        const echoResult = await supabase.functions.invoke('edge-echo', {
+          body: { test: 'headers', traceId: currentTraceId }
         });
-      } catch (_) { /* non-fatal */ }
-
-      // Step 3: Tool execution (if needed)
-      if (debugCallbacks) {
-        toolStep = debugCallbacks.addStep(
-          '🛠️ Tool Verarbeitung',
-          'ARES führt die notwendigen Tools und Datenabfragen aus'
-        );
-      }
-
-      try {
-        console.log(`🔧 ARES-Debug: Calling edge function`, {
-          traceId: trace,
-          payload: { ...payload, userId: payload.userId.slice(0, 8) + '...' },
-          headers
-        });
-
-        const response = await withTimeout(
-          supabase.functions.invoke('coach-orchestrator-enhanced', {
-            body: payload,
-            headers,
-          }),
-          25000 // 25 second timeout
-        );
-
-        console.log(`🔧 ARES-Debug: Edge function response`, {
-          traceId: trace,
-          hasData: !!response.data,
-          hasError: !!response.error,
-          errorMessage: response.error?.message || 'none'
-        });
-        
-        if (response.data?.reason === 'in_progress') {
-          if (toolStep && debugCallbacks) {
-            debugCallbacks.completeStep(toolStep, 'Verarbeitung läuft noch...');
-          }
-          return { kind: 'message', text: '...' };
-        }
-        
-        if (response.error) throw response.error;
-
-        if (routeStep && debugCallbacks) {
-          debugCallbacks.completeStep(routeStep, 'Intent erkannt und Route gewählt');
-        }
-        if (toolStep && debugCallbacks) {
-          debugCallbacks.completeStep(toolStep, 'Tools erfolgreich ausgeführt');
-        }
-
-        // Step 4: Reply generation
-        if (debugCallbacks) {
-          replyStep = debugCallbacks.addStep(
-            '🚀 Antwort generieren',
-            'ARES formuliert die finale Antwort basierend auf den Ergebnissen'
-          );
-        }
-
-        const result = normalizeReply(response.data);
-        
-        if (replyStep && debugCallbacks) {
-          const responseText = result.kind === 'message' ? result.text : 'Antwort generiert';
-          debugCallbacks.completeStep(
-            replyStep, 
-            `${responseText.slice(0, 100)}${responseText.length > 100 ? '...' : ''}`
-          );
-        }
-
-        endUserAction();
-        return result;
-
-      } catch (e1) {
-        console.error(`🔧 ARES-Debug: First attempt failed`, {
-          traceId: trace,
-          error: e1 instanceof Error ? e1.message : String(e1),
-          isTimeout: e1 instanceof Error && e1.message === 'timeout',
-          isCORS: e1 instanceof Error && e1.message.includes('cors'),
-          isNetwork: e1 instanceof Error && e1.message.includes('network')
-        });
-
-        if (e1 instanceof Error && e1.message === 'timeout') {
-          console.warn('orchestrator TIMEOUT', { cutoffMs: 25000 });
-          
-          if (toolStep && debugCallbacks) {
-            debugCallbacks.errorStep(toolStep, 'Timeout nach 25 Sekunden');
-          }
-          
-          try {
-            await supabase.rpc('log_trace_event', {
-              p_trace_id: headers['x-trace-id'],
-              p_stage: 'client_timeout',
-              p_data: { cutoffMs: 25000 }
-            });
-          } catch (_) { /* non-fatal */ }
-        }
-        
-        // Retry once
-        headers['x-retry'] = '1';
-        
-        if (debugCallbacks) {
-          const retryStep = debugCallbacks.addStep(
-            '🔄 Wiederholung',
-            'Erster Versuch fehlgeschlagen, versuche erneut...'
-          );
-          
-          try {
-            const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-              body: payload,
-              headers,
-            });
-            
-            if (error) throw error;
-            
-            debugCallbacks.completeStep(retryStep, 'Wiederholung erfolgreich');
-            
-            if (replyStep) {
-              debugCallbacks.completeStep(replyStep, 'Antwort nach Wiederholung generiert');
-            }
-            
-            endUserAction();
-            return normalizeReply(data);
-            
-          } catch (retryError) {
-            debugCallbacks.errorStep(retryStep, `Wiederholung fehlgeschlagen: ${retryError}`);
-            throw retryError;
-          }
+        if (echoResult.data?.echo === 'success') {
+          debugCallbacks?.completeStep(currentStepId!, `Headers OK - Auth: ${echoResult.data.headers.authorization ? 'present' : 'missing'}`);
         } else {
-          const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-            body: payload,
-            headers,
+          debugCallbacks?.errorStep(currentStepId!, `Echo failed: ${echoResult.error?.message || 'unknown'}`);
+        }
+      } catch (echoError: any) {
+        debugCallbacks?.errorStep(currentStepId!, `Echo error: ${echoError.message}`);
+      }
+
+      // Health check
+      currentStepId = debugCallbacks?.addStep("Route Test", "Testing orchestrator route...");
+      try {
+        const healthResult = await withTimeout(
+          supabase.functions.invoke(orchestratorFunction, {
+            body: { userId, action: 'health', traceId: currentTraceId }
+          }),
+          5000
+        );
+        if (healthResult.data?.ok) {
+          debugCallbacks?.completeStep(currentStepId!, `Route OK - ${healthResult.data.status}`);
+        } else {
+          debugCallbacks?.errorStep(currentStepId!, `Health check failed: ${healthResult.error?.message || 'unknown'}`);
+        }
+      } catch (healthError: any) {
+        debugCallbacks?.errorStep(currentStepId!, `Route error: ${healthError.message}`);
+      }
+
+      currentStepId = debugCallbacks?.addStep("Send Request", `Calling ${orchestratorFunction}...`);
+
+      const result = await withTimeout(
+        supabase.functions.invoke(orchestratorFunction, {
+          body: { userId, ...ev, traceId: currentTraceId, context }
+        }),
+        25000
+      );
+
+      if (result.error) {
+        throw new Error(result.error.message || 'Unknown orchestrator error');
+      }
+
+      debugCallbacks?.completeStep(currentStepId!, "Request completed successfully");
+
+      return normalizeReply(result.data);
+
+    } catch (error: any) {
+      console.error("🔧 Orchestrator error:", error);
+      
+      // Classify error type for better debugging
+      let errorType = "Unknown";
+      let fallbackResponse: OrchestratorReply | null = null;
+      
+      if (error.message.includes("Failed to send a request")) {
+        if (error.message.includes("400") || error.message.includes("700")) {
+          errorType = "CORS/Gateway Block";
+        } else {
+          errorType = "Network/Gateway";
+        }
+      } else if (error.message.includes("timeout") || error.message.includes("timed out")) {
+        errorType = "Timeout";
+      } else if (error.message.includes("401") || error.message.includes("403")) {
+        errorType = "Auth Error";
+      }
+      
+      if (currentStepId) {
+        debugCallbacks?.errorStep(currentStepId, `${errorType}: ${error.message}`);
+      }
+      
+      // Try fallback to greeting function for demo
+      if (ev.type === 'TEXT' && ev.text && (errorType.includes("CORS") || errorType.includes("Gateway"))) {
+        try {
+          const fallbackStepId = debugCallbacks?.addStep("Fallback", "Using greeting function...");
+          const greetingResult = await supabase.functions.invoke('generate-intelligent-greeting', {
+            body: { 
+              userId, 
+              coachId: 'ares', 
+              firstName: 'User',
+              isFirstConversation: false,
+              alreadyGreeted: true,
+              contextData: {}
+            }
           });
-          if (error) throw error;
-          endUserAction();
-          return normalizeReply(data);
+          
+          if (greetingResult.data?.greeting) {
+            fallbackResponse = {
+              kind: 'message',
+              text: greetingResult.data.greeting,
+              meta: { fallback: true, originalError: error.message }
+            };
+            debugCallbacks?.completeStep(fallbackStepId!, "Fallback successful");
+          } else {
+            debugCallbacks?.errorStep(fallbackStepId!, "Fallback failed");
+          }
+        } catch (fallbackError: any) {
+          console.error("🔧 Fallback error:", fallbackError);
         }
       }
-    } catch (e) {
-      console.error(`🔧 ARES-Debug: Critical error`, {
-        traceId: trace,
-        error: e instanceof Error ? e.message : String(e),
-        stack: e instanceof Error ? e.stack?.slice(0, 200) : undefined
-      });
-
-      // Run auth diagnostics on error
+      
+      // Auto-run auth diagnostics on errors
       try {
-        console.log(`🔧 ARES-Debug: Running auth diagnostics...`);
-        const authResult = await pingAuth();
-        console.log(`🔧 ARES-Debug: Auth diagnostic result:`, authResult);
+        const diagResult = await pingAuth();
+        console.log("🔧 Auto-diag result:", diagResult);
         
-        // Log detailed error info with auth context
-        console.error(`🔧 ARES-Debug: Error with auth context:`, {
-          error: e instanceof Error ? e.message : String(e),
-          authSuccess: authResult.success,
-          hasSession: authResult.session,
-          userId: authResult.userId,
-          authError: authResult.error
-        });
-      } catch (authError) {
-        console.error(`🔧 ARES-Debug: Auth diagnostics failed:`, authError);
-      }
-
-      // Error all pending steps
-      if (debugCallbacks) {
-        let errorMsg = `Fehler: ${e instanceof Error ? e.message : 'Unbekannter Fehler'}`;
-        
-        // Classify error types for better debugging
-        if (e instanceof Error) {
-          if (e.message?.includes('cors') || e.message?.includes('CORS')) {
-            errorMsg = 'CORS-Fehler - Header-Konfiguration prüfen';
-          } else if (e.message?.includes('timeout') || e.message?.includes('aborted')) {
-            errorMsg = 'Timeout-Fehler - Server antwortet nicht rechtzeitig';
-          } else if (e.message?.includes('authentication') || 
-                    e.message?.includes('Unauthorized') ||
-                    e.message?.includes('Bearer token') ||
-                    e.message?.includes('not authenticated')) {
-            errorMsg = 'Authentication fehler - Bitte neu einloggen';
-          } else if (e.message?.includes('network') || e.message?.includes('fetch')) {
-            errorMsg = 'Netzwerk-Fehler - Verbindung prüfen';
+        if (diagResult.data) {
+          const diagStepId = debugCallbacks?.addStep("Auth Diagnostics", "Running diagnostics...");
+          if (diagResult.data.ok) {
+            debugCallbacks?.completeStep(diagStepId!, `Auth OK - UID: ${diagResult.data.uid}`);
+          } else {
+            debugCallbacks?.errorStep(diagStepId!, `Auth issue: ${diagResult.data.why}`);
           }
         }
-        
-        if (messageStep) debugCallbacks.errorStep(messageStep, errorMsg);
-        if (routeStep) debugCallbacks.errorStep(routeStep, errorMsg);
-        if (toolStep) debugCallbacks.errorStep(toolStep, errorMsg);
-        if (replyStep) debugCallbacks.errorStep(replyStep, errorMsg);
+      } catch (diagError) {
+        console.error("🔧 Diag error:", diagError);
       }
 
-      const coachId = ev.context?.coachId || 'unknown';
-      return { 
-        kind: 'message', 
-        text: `Hey! Ich bin kurz beschäftigt – versuch\'s bitte nochmal. (${coachId === 'ares' ? 'ARES System wird geladen...' : 'Netzwerk/Timeout'})` 
-      };
+      if (fallbackResponse) {
+        return fallbackResponse;
+      }
+
+      throw error;
     }
-  }
+  };
 
   return { sendEvent, beginUserAction, endUserAction };
 }
