@@ -44,67 +44,6 @@ export const useUserProfile = () => {
   // AbortController for request cancellation
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // STABLE SESSION-READY CHECK
-  useEffect(() => {
-    if (isSessionReady && user?.id && session?.access_token) {
-      console.log('🔄 Starting profile fetch for verified user session:', {
-        userId: user.id,
-        email: user.email,
-        hasAccessToken: !!session.access_token
-      });
-      fetchProfile();
-    } else {
-      console.log('⏳ Waiting for stable auth session...', {
-        hasUser: !!user,
-        hasUserId: !!user?.id,
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token,
-        isSessionReady
-      });
-      
-      // Clear profile data if we lose auth
-      if (!user?.id && profileData) {
-        console.log('🧹 Clearing profile data due to lost auth');
-        setProfileData(null);
-        setIsFirstAppStart(false);
-      }
-    }
-    
-    // Cleanup abort controller on unmount
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [fetchProfile, isSessionReady, refreshCounter]);
-
-  // Realtime subscription for profile changes
-  useEffect(() => {
-    if (!user?.id) return;
-    
-    const channel = supabase
-      .channel('profiles-self')
-      .on('postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'profiles', 
-          filter: `user_id=eq.${user.id}` 
-        },
-        (payload) => {
-          console.log('🔄 Profile realtime update:', payload);
-          if (payload.new && typeof payload.new === 'object') {
-            setProfileData(payload.new as ProfilesData);
-          }
-        }
-      )
-      .subscribe();
-      
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id]);
-
   const fetchProfile = useCallback(async () => {
     if (!user?.id || !session?.access_token) {
       console.log('❌ Cannot fetch profile: missing user or session');
@@ -213,6 +152,68 @@ export const useUserProfile = () => {
       }
     }
   }, [user?.id, session?.access_token]);
+
+  // STABLE SESSION-READY CHECK
+  useEffect(() => {
+    if (isSessionReady && user?.id && session?.access_token) {
+      console.log('🔄 Starting profile fetch for verified user session:', {
+        userId: user.id,
+        email: user.email,
+        hasAccessToken: !!session.access_token
+      });
+      fetchProfile();
+    } else {
+      console.log('⏳ Waiting for stable auth session...', {
+        hasUser: !!user,
+        hasUserId: !!user?.id,
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        isSessionReady
+      });
+      
+      // Clear profile data if we lose auth
+      if (!user?.id && profileData) {
+        console.log('🧹 Clearing profile data due to lost auth');
+        setProfileData(null);
+        setIsFirstAppStart(false);
+      }
+    }
+    
+    // Cleanup abort controller on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchProfile, isSessionReady, refreshCounter]);
+
+  // Realtime subscription for profile changes
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const channel = supabase
+      .channel('profiles-self')
+      .on('postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'profiles', 
+          filter: `user_id=eq.${user.id}` 
+        },
+        (payload) => {
+          console.log('🔄 Profile realtime update:', payload);
+          if (payload.new && typeof payload.new === 'object') {
+            setProfileData(payload.new as ProfilesData);
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
 
   const createDefaultProfile = async () => {
     if (!user?.id) return;
