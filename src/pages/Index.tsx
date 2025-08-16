@@ -47,6 +47,7 @@ import { usePlusData } from "@/hooks/usePlusData";
 import ConcentricStatCard from "@/components/ConcentricStatCard";
 import { DashboardFourBarsWithTrend } from "@/components/DashboardFourBarsWithTrend";
 import { DashboardHaloPair } from "@/components/DashboardHaloPair";
+import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 
 // Main wrapper component to handle authentication state
 const Index = () => {
@@ -81,11 +82,8 @@ const Index = () => {
             {authLoading ? 'Checking authentication...' : 'No user found - please log in'}
           </div>
           
-          {/* Import and show auth debug panel */}
-          {!user && (() => {
-            const { AuthDebugPanel } = require('@/components/AuthDebugPanel');
-            return <AuthDebugPanel />;
-          })()}
+          {/* Show auth debug panel */}
+          {!user && <AuthDebugPanel />}
         </div>
         
         <div className="space-y-6 animate-pulse">
