@@ -8,10 +8,10 @@ import { TrainingPlanCard } from '@/components/TrainingPlanCard';
 import { EnhancedTrainingPlanCard } from '@/components/EnhancedTrainingPlanCard';
 import { SimpleMessageItem } from '@/components/SimpleMessageItem';
 import { ToolActionButton } from '@/components/ToolActionButton';
-import { AresMetaCoachCard } from '@/components/coach/cards/AresMetaCoachCard';
-import { AresTotalAssessmentCard } from '@/components/coach/cards/AresTotalAssessmentCard';
-import { AresUltimateWorkoutCard } from '@/components/coach/cards/AresUltimateWorkoutCard';
-import { AresSuperNutritionCard } from '@/components/coach/cards/AresSuperNutritionCard';
+import AresMetaCoachCard from '@/components/coach/cards/AresMetaCoachCard';
+import AresTotalAssessmentCard from '@/components/coach/cards/AresTotalAssessmentCard';
+import AresUltimateWorkoutCard from '@/components/coach/cards/AresUltimateWorkoutCard';
+import AresSuperNutritionCard from '@/components/coach/cards/AresSuperNutritionCard';
 
 export interface CardMessage {
   id: string;

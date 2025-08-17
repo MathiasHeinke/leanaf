@@ -20,7 +20,7 @@ interface AresMetaCoachCardProps {
   ares_signature: string;
 }
 
-export function AresMetaCoachCard({ analysis, query, ares_signature }: AresMetaCoachCardProps) {
+export default function AresMetaCoachCard({ analysis, query, ares_signature }: AresMetaCoachCardProps) {
   const scoreColor = (score: number) => {
     if (score >= 90) return 'text-emerald-400';
     if (score >= 80) return 'text-yellow-400';

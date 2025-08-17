@@ -46,7 +46,7 @@ interface AresSuperNutritionCardProps {
   ares_nutrition_seal: string;
 }
 
-export function AresSuperNutritionCard({ plan, ares_nutrition_seal }: AresSuperNutritionCardProps) {
+export default function AresSuperNutritionCard({ plan, ares_nutrition_seal }: AresSuperNutritionCardProps) {
   const macroPercentages = {
     protein: Math.round((plan.macro_strategy.protein_grams * 4 / plan.macro_strategy.total_calories) * 100),
     carbs: Math.round((plan.macro_strategy.carb_grams * 4 / plan.macro_strategy.total_calories) * 100),

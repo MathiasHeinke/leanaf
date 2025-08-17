@@ -39,7 +39,7 @@ interface AresTotalAssessmentCardProps {
   ares_authority: string;
 }
 
-export function AresTotalAssessmentCard({ assessment, ares_authority }: AresTotalAssessmentCardProps) {
+export default function AresTotalAssessmentCard({ assessment, ares_authority }: AresTotalAssessmentCardProps) {
   const getScoreColor = (score: number) => {
     if (score >= 95) return 'text-emerald-400';
     if (score >= 90) return 'text-green-400';

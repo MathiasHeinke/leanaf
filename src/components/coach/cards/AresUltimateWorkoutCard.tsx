@@ -22,7 +22,7 @@ interface AresUltimateWorkoutCardProps {
   ares_seal: string;
 }
 
-export function AresUltimateWorkoutCard({ plan, ares_seal }: AresUltimateWorkoutCardProps) {
+export default function AresUltimateWorkoutCard({ plan, ares_seal }: AresUltimateWorkoutCardProps) {
   const getIntensityColor = (intensity: string) => {
     switch (intensity.toLowerCase()) {
       case 'extreme': return 'bg-red-600';
