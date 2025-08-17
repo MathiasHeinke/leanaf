@@ -668,45 +668,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   return (
     <>
-      {/* Display basic profile info at the top if available */}
-      {(weight || height || age || gender) && (
-        <div className="p-4 max-w-lg mx-auto">
-          <Card className="mb-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3 mb-3">
-                <User className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-blue-900">Dein Profil</h3>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                {weight && (
-                  <div>
-                    <span className="text-blue-700 font-medium">Gewicht:</span>
-                    <span className="ml-1 text-blue-900">{weight} kg</span>
-                  </div>
-                )}
-                {height && (
-                  <div>
-                    <span className="text-blue-700 font-medium">Größe:</span>
-                    <span className="ml-1 text-blue-900">{height} cm</span>
-                  </div>
-                )}
-                {age && (
-                  <div>
-                    <span className="text-blue-700 font-medium">Alter:</span>
-                    <span className="ml-1 text-blue-900">{age} Jahre</span>
-                  </div>
-                )}
-                {gender && (
-                  <div>
-                    <span className="text-blue-700 font-medium">Geschlecht:</span>
-                    <span className="ml-1 text-blue-900">{gender === 'male' ? 'Männlich' : 'Weiblich'}</span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       <div className="p-4 max-w-lg mx-auto">
         <div className="space-y-6 pb-20">
