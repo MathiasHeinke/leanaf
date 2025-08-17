@@ -25,28 +25,38 @@ export async function loadTodaysWorkout(userId: string) {
 }
 
 export async function loadDailyGoals(userId: string) {
-  const today = new Date().toISOString().slice(0,10);
-  
-  // First try to get existing goals for today
-  const { data: existingGoals, error } = await sb
-    .from("daily_goals")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("goal_date", today)
-    .maybeSingle();
-  
-  // If no goals exist for today, create default ones
-  if (!existingGoals && !error) {
-    const { data: createdGoals } = await sb.rpc('ensure_daily_goals', {
+  try {
+    // Always try ensure_daily_goals first - creates if missing, returns if exists
+    const { data: goals, error: rpcError } = await sb.rpc('ensure_daily_goals', {
       user_id_param: userId
     });
     
-    if (createdGoals) {
-      return { data: createdGoals, error: null };
+    if (goals && !rpcError) {
+      console.log('[loadDailyGoals] ✅ RPC success:', goals);
+      return { data: goals, error: null };
     }
+    
+    console.warn('[loadDailyGoals] RPC failed, fallback to defaults:', rpcError);
+    
+    // Fallback: return sensible defaults if RPC fails
+    const fallbackGoals = {
+      id: null,
+      user_id: userId,
+      goal_date: new Date().toISOString().slice(0,10),
+      calories: 2000,
+      protein: 150,
+      carbs: 250,
+      fats: 65,
+      fluids: 2000,
+      fluid_goal_ml: 2000,
+      steps_goal: 10000
+    };
+    
+    return { data: fallbackGoals, error: null };
+  } catch (e) {
+    console.error('[loadDailyGoals] Exception:', e);
+    return { data: null, error: e };
   }
-  
-  return { data: existingGoals, error };
 }
 
 export async function loadTodaysMeals(userId: string) {
