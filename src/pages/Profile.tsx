@@ -459,6 +459,37 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     const targetCalories = calculateTargetCalories();
     const macroGrams = calculateMacroGrams();
 
+    // Debug logging for calculated values
+    console.log('🔍 Profile Save Debug:', {
+      weight: weight,
+      height: height,
+      age: age,
+      gender: gender,
+      bmr: bmr,
+      tdee: tdee,
+      targetCalories: targetCalories,
+      macroGrams: macroGrams
+    });
+
+    // Validation der berechneten Werte
+    if (!targetCalories || isNaN(targetCalories) || targetCalories <= 0) {
+      throw new Error(`Ungültige Kalorienziel-Berechnung: ${targetCalories}. Bitte überprüfe Gewicht (${weight}kg), Größe (${height}cm), Alter (${age}) und Geschlecht (${gender}).`);
+    }
+
+    if (!macroGrams.protein || isNaN(macroGrams.protein) || macroGrams.protein <= 0) {
+      throw new Error(`Ungültige Protein-Berechnung: ${macroGrams.protein}g. Basierend auf Kalorienziel: ${targetCalories}`);
+    }
+
+    if (!macroGrams.carbs || isNaN(macroGrams.carbs) || macroGrams.carbs < 0) {
+      throw new Error(`Ungültige Kohlenhydrat-Berechnung: ${macroGrams.carbs}g. Basierend auf Kalorienziel: ${targetCalories}`);
+    }
+
+    if (!macroGrams.fats || isNaN(macroGrams.fats) || macroGrams.fats <= 0) {
+      throw new Error(`Ungültige Fett-Berechnung: ${macroGrams.fats}g. Basierend auf Kalorienziel: ${targetCalories}`);
+    }
+
+    console.log('✅ Alle berechneten Werte sind gültig, speichere Profil...');
+
     const profileData = {
       user_id: user.id,
       preferred_name: preferredName,
