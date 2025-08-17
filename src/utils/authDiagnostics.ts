@@ -34,14 +34,44 @@ export async function pingAuth(): Promise<{ data: AuthDiagResult | null; error: 
     }
 
     console.log("🔧 Session exists, token:", !!session.access_token, session.access_token?.slice(0, 12));
-    
-    const { data, error } = await supabase.functions.invoke("diag-auth", { 
-      body: {} 
-    });
-    
-    console.log("🔧 Diag-auth result:", { data, error });
-    
-    return { data, error };
+
+    // Bypass edge function: perform direct client-side checks with RLS
+    const uid = session.user?.id;
+    if (!uid) {
+      console.log("🔧 No user id in session");
+      return {
+        data: { ok: false, why: "no-user", timestamp: new Date().toISOString() },
+        error: null,
+      };
+    }
+
+    const [profileRes, dailyRes, mealsRes, workoutsRes, fluidsRes] = await Promise.all([
+      supabase.from("profiles").select("id").eq("user_id", uid).maybeSingle(),
+      supabase.from("daily_summaries").select("id", { count: "exact", head: true }).eq("user_id", uid),
+      supabase.from("meals").select("id", { count: "exact", head: true }).eq("user_id", uid),
+      supabase.from("workouts").select("id", { count: "exact", head: true }).eq("user_id", uid),
+      supabase.from("user_fluids").select("id", { count: "exact", head: true }).eq("user_id", uid),
+    ] as const);
+
+    const result: AuthDiagResult = {
+      ok: true,
+      uid,
+      profile: {
+        exists: !!profileRes.data,
+        id: profileRes.data?.id ?? null,
+        error: profileRes.error?.message ?? null,
+      },
+      data_access: {
+        daily_summaries: { count: dailyRes.count ?? 0, error: (dailyRes as any).error?.message ?? null },
+        meals: { count: mealsRes.count ?? 0, error: (mealsRes as any).error?.message ?? null },
+        workouts: { count: workoutsRes.count ?? 0, error: (workoutsRes as any).error?.message ?? null },
+        fluids: { count: fluidsRes.count ?? 0, error: (fluidsRes as any).error?.message ?? null },
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log("🔧 Direct auth diag result:", result);
+    return { data: result, error: null };
   } catch (err) {
     console.error("🔧 Ping auth failed:", err);
     return { data: null, error: err };
