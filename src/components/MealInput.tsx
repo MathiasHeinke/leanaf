@@ -8,6 +8,7 @@ import { uploadFilesWithProgress } from '@/utils/uploadHelpers';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
+import { SmartCardOverlay } from '@/components/SmartCardOverlay';
 
 interface MealInputProps {
   onMealSaved?: () => void;
@@ -19,6 +20,7 @@ export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [analyzedData, setAnalyzedData] = useState<any>(null);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { analyzeImages, isAnalyzing } = useMealVisionAnalysis();
@@ -119,11 +121,12 @@ export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
                     alt={`Mahlzeit ${index + 1}`}
                     loading="lazy"
                     onError={(e) => { e.currentTarget.src = '/placeholder.svg'; console.warn('Thumbnail failed to load, replaced with placeholder:', url); }}
-                    className="h-16 w-16 rounded-lg object-cover border border-border"
+                    onClick={() => setSelectedImageUrl(url)}
+                    className="h-16 w-16 rounded-lg object-cover border border-border cursor-pointer hover:opacity-75 transition-opacity"
                   />
                   <button
                     onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition"
+                    className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition z-10"
                     aria-label="Bild entfernen"
                   >
                     <X className="h-3 w-3" />
@@ -192,6 +195,24 @@ export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
           uploadedImages={uploadedImages}
         />
       )}
+
+      {/* Image Fullscreen Overlay */}
+      <SmartCardOverlay
+        isOpen={!!selectedImageUrl}
+        onClose={() => setSelectedImageUrl(null)}
+        title="Bild anzeigen"
+        icon="📷"
+      >
+        {selectedImageUrl && (
+          <div className="flex items-center justify-center h-full">
+            <img
+              src={selectedImageUrl}
+              alt="Vollbild"
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+          </div>
+        )}
+      </SmartCardOverlay>
     </>
   );
 };

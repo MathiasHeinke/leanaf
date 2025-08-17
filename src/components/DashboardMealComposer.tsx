@@ -12,6 +12,7 @@ import { useSupplementRecognition } from "@/hooks/useSupplementRecognition";
 import { Card, CardContent } from "@/components/ui/card";
 import { IMAGE_UPLOAD_MAX_DEFAULT } from "@/lib/constants";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
+import { SmartCardOverlay } from "@/components/SmartCardOverlay";
 
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
@@ -33,6 +34,7 @@ export const DashboardMealComposer: React.FC = () => {
   const orchestrationEnabled = isEnabled('auto_tool_orchestration');
   const { user } = useAuth();
   const { sendEvent } = useOrchestrator();
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
   const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
   const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
@@ -139,13 +141,14 @@ const handleSubmit = useCallback(async () => {
                       alt={`Hochgeladene Mahlzeit ${idx + 1}`}
                       loading="lazy"
                       onError={(e) => { e.currentTarget.src = '/placeholder.svg'; console.warn('Composer thumbnail failed, placeholder used:', url); }}
-                      className="h-10 w-10 rounded-md object-cover border border-border"
+                      onClick={() => setSelectedImageUrl(url)}
+                      className="h-10 w-10 rounded-md object-cover border border-border cursor-pointer hover:opacity-75 transition-opacity"
                     />
                     <button
                       type="button"
                       aria-label="Entfernen"
                       onClick={() => removeImage(idx)}
-                      className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition"
+                      className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition z-10"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -322,6 +325,24 @@ const handleSubmit = useCallback(async () => {
         }}
         onClose={() => setConfirmSupplement({ open: false, prompt: '', proposal: null, traceId: undefined })}
       />
+
+      {/* Image Fullscreen Overlay */}
+      <SmartCardOverlay
+        isOpen={!!selectedImageUrl}
+        onClose={() => setSelectedImageUrl(null)}
+        title="Bild anzeigen"
+        icon="📷"
+      >
+        {selectedImageUrl && (
+          <div className="flex items-center justify-center h-full">
+            <img
+              src={selectedImageUrl}
+              alt="Vollbild"
+              className="max-w-full max-h-full object-contain rounded-lg"
+            />
+          </div>
+        )}
+      </SmartCardOverlay>
     </>
   );
 };
