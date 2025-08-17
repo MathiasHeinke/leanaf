@@ -93,9 +93,23 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
 
       currentStepId = debugCallbacks?.addStep("Send Request", `Calling ${orchestratorFunction}...`);
 
+      // Send with both event structure and direct fields for compatibility
+      const payload = {
+        userId,
+        event: ev,
+        traceId: currentTraceId,
+        context,
+        // Also send as direct fields for fallback compatibility
+        text: ev.type === 'TEXT' ? ev.text : undefined,
+        message: ev.type === 'TEXT' ? ev.text : undefined,
+        clientEventId: ev.clientEventId
+      };
+      
+      console.log("🔧 Sending payload:", JSON.stringify(payload, null, 2));
+      
       const result = await withTimeout(
         supabase.functions.invoke(orchestratorFunction, {
-          body: { userId, ...ev, traceId: currentTraceId, context }
+          body: payload
         }),
         25000
       );

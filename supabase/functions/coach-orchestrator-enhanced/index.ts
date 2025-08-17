@@ -152,8 +152,9 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+    console.log(`[ARES-BODY-${traceId}] Parsed body:`, JSON.stringify(body, null, 2));
     
-    // Health check for debugging
+    // Health check for debugging - simplified check
     if (req.headers.get('x-health-check') === '1' || body?.action === 'health') {
       console.log(`[ARES-HEALTH-${traceId}] Health check requested`);
       return new Response(JSON.stringify({
@@ -170,11 +171,37 @@ serve(async (req) => {
     const event = body?.event as CoachEvent | undefined;
     const providedUserId = body?.userId as string | undefined;
 
-    if (!event?.type) {
-      console.log(`[ARES-PHASE1-${traceId}] Missing event`);
-      return new Response(JSON.stringify({ error: "Missing event" }), { 
+    // More flexible event handling
+    if (!event?.type && !body?.text && !body?.message) {
+      console.log(`[ARES-VALIDATION-${traceId}] Missing event structure. Body keys: ${Object.keys(body)}`);
+      return new Response(JSON.stringify({ error: "Missing event or text/message field" }), { 
         status: 400, 
         headers: { ...corsHeaders, "Content-Type": "application/json" } 
+      });
+    }
+
+    // If we have direct text/message, create a TEXT event
+    if (!event && (body?.text || body?.message)) {
+      console.log(`[ARES-COMPAT-${traceId}] Creating TEXT event from direct message`);
+      const userText = body.text || body.message;
+      const syntheticEvent: CoachEvent = {
+        type: "TEXT",
+        text: userText,
+        clientEventId: body.clientEventId || crypto.randomUUID()
+      };
+      // Process the synthetic event
+      const coachId = body.coachId || 'ares';
+      console.log(`[ARES-SYNTHETIC-${traceId}] Processing synthetic event: "${userText}"`);
+      
+      const prompt = await buildAresPrompt(supabase, providedUserId || 'anonymous', coachId, userText);
+      const responseText = await generateAresResponse(prompt, traceId);
+      
+      return new Response(JSON.stringify({
+        kind: "message",
+        text: responseText,
+        traceId
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
