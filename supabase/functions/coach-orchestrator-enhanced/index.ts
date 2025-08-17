@@ -3,8 +3,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { loadCoachPersona } from "./persona.ts";
-import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries } from "./memory.ts";
-
+import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries, loadCoachAnalytics7d } from "./memory.ts";
+import { loadUserMoodContext, decideAresDial, getRitualContext } from "./aresDial.ts";
 // CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,14 +30,36 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
     const persona = await loadCoachPersona(supabase, coachId);
     console.log(`[ARES-PROMPT] Persona loaded: ${persona?.name || 'fallback'}`);
     
-    // Load memory contexts
-    const [memoryHint, userProfile, recentSummaries] = await Promise.all([
+    // Load memory + context in parallel
+    const [
+      memoryHint,
+      userProfile,
+      recentSummaries,
+      moodCtx,
+      analytics7d,
+      workoutRows,
+      dailyGoals
+    ] = await Promise.all([
       loadRollingSummary(supabase, userId, coachId).catch(() => ''),
       loadUserProfile(supabase, userId).catch(() => ({})),
-      loadRecentDailySummaries(supabase, userId, 3).catch(() => [])
+      loadRecentDailySummaries(supabase, userId, 3).catch(() => []),
+      loadUserMoodContext(supabase, userId).catch(() => ({})),
+      loadCoachAnalytics7d(supabase, userId).catch(() => ({})),
+      supabase
+        .from('daily_summaries')
+        .select('date, workout_volume')
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .limit(7)
+        .then((r: any) => r.data || [])
+        .catch(() => []),
+      supabase
+        .rpc('ensure_daily_goals', { user_id_param: userId })
+        .then((r: any) => r?.data || null)
+        .catch(() => null)
     ]);
     
-    console.log(`[ARES-PROMPT] Memory loaded: profile=${!!userProfile.goal}, summaries=${recentSummaries.length}`);
+    console.log(`[ARES-PROMPT] Memory loaded: profile=${!!userProfile.goal}, summaries=${recentSummaries.length}, workoutsRows=${Array.isArray(workoutRows) ? workoutRows.length : 0}`);
     
     // Phase 1: Name fallback logic
     const userName = userProfile.preferred_name || userProfile.display_name || userProfile.first_name || null;
@@ -48,11 +70,19 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
     const shouldRecallGoals = isGoalRelevant(userText, userProfile, recentSummaries);
     console.log(`[ARES-GOALS] Goal recall gate: ${shouldRecallGoals ? 'TRIGGERED' : 'SUPPRESSED'}`);
     
+    // ARES Dial + Ritual
+    const ritualCtx = getRitualContext();
+    const dial = decideAresDial(moodCtx || {}, userText);
+    
     // Build facts for context
     const facts = [];
     facts.push(`Du bist ${persona.name || 'ARES'} - ein direkter, mentaler Coach`);
     facts.push(`Dein Stil: ${persona.voice || 'klar, strukturiert, motivierend'}`);
     facts.push(greetName);
+    facts.push(`ARES-Dial: ${dial.dial} – Archetyp: ${dial.archetype} (${dial.reason})`);
+    if (ritualCtx?.ritual) {
+      facts.push(`Ritual aktiv: ${ritualCtx.ritual.type} – Prompt: ${ritualCtx.ritual.prompt_key}`);
+    }
     
     // Only add goals if goal-gate is triggered
     if (shouldRecallGoals && userProfile.goal) {
@@ -63,11 +93,38 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
     if (userProfile.target_weight) facts.push(`Zielgewicht: ${userProfile.target_weight}kg`);
     if (userProfile.tdee) facts.push(`Kalorienbedarf: ${userProfile.tdee} kcal/Tag`);
     
+    // Daily goals (if available and goal gate open)
+    const textLower = userText.toLowerCase();
+    const includeAnalytics = ['review','plan','planung','analyse','zusammenfassung','wochenbericht','bericht','report'].some(k => textLower.includes(k));
+    if (shouldRecallGoals && dailyGoals) {
+      const g = dailyGoals as any;
+      const cal = g.calories ?? g.daily_calorie_target ?? null;
+      const protein = g.protein ?? g.protein_g ?? userProfile.protein_target_g ?? null;
+      const steps = g.steps_goal ?? null;
+      const fluids = g.fluid_goal_ml ?? g.fluids ?? null;
+      const parts: string[] = [];
+      if (cal) parts.push(`Kalorien ${cal}`);
+      if (protein) parts.push(`Protein ${protein}g`);
+      if (steps) parts.push(`Schritte ${steps}`);
+      if (fluids) parts.push(`Flüssigkeit ${fluids}ml`);
+      if (parts.length) facts.push(`Tagesziele: ${parts.join(', ')}`);
+    }
+    
     if (memoryHint) facts.push(`Gesprächskontext: ${memoryHint}`);
     
-    // Training context from summaries
-    const trainingDays = recentSummaries.filter(s => s.workout_volume > 0).length;
+    // Training context from last 7 days (fixed)
+    const trainingDays = Array.isArray(workoutRows) ? workoutRows.filter((d: any) => (d.workout_volume || 0) > 0).length : 0;
     if (trainingDays > 0) facts.push(`Training: ${trainingDays}/7 Tage aktiv`);
+    
+    // Include analytics if requested by text intent
+    if (includeAnalytics && analytics7d) {
+      const tr = (analytics7d as any).training || {};
+      const nu = (analytics7d as any).nutrition || {};
+      const sl = (analytics7d as any).sleep || {};
+      if (tr) facts.push(`7d Training: Volumen ${Math.round(tr.total_volume_kg || 0)}kg, Tage ${tr.workout_days || 0}`);
+      if (nu) facts.push(`7d Ernährung: Ø Kalorien ${Math.round(nu.avg_calories || 0)}, Ø Protein ${Math.round(nu.avg_protein || 0)}g`);
+      if (sl?.avg_score) facts.push(`7d Schlaf: Ø Score ${Math.round(sl.avg_score)}`);
+    }
     
     // Build final prompt
     const prompt = [
