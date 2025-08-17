@@ -2,6 +2,17 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+interface FoodItem {
+  name: string;
+  estimated_weight_g: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  confidence: number;
+  reference?: string;
+}
+
 interface MealAnalysisResult {
   title: string;
   calories: number;
@@ -11,8 +22,8 @@ interface MealAnalysisResult {
   confidence: number;
   meal_type: string;
   analysis_notes?: string;
+  items?: FoodItem[];
 }
-
 export const useMealVisionAnalysis = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
