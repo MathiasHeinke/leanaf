@@ -35,7 +35,11 @@ const convertHEICToWebP = async (file: File): Promise<File> => {
       quality: 0.8
     }) as Blob;
     
-    const webpFile = new File([convertedBlob], file.name.replace(/\.(heic|heif)$/i, '.webp'), {
+    // Force correct MIME type regardless of converter output
+    const forcedBlob = new Blob([convertedBlob], { type: 'image/webp' });
+    console.log(`🛡️ [CONVERT] HEIC blob types: orig=${(convertedBlob as any)?.type || 'undefined'} → forced=${forcedBlob.type}`);
+    const webpName = file.name.replace(/\.(heic|heif)$/i, '.webp');
+    const webpFile = new File([forcedBlob], webpName, {
       type: 'image/webp',
       lastModified: Date.now()
     });
@@ -71,10 +75,14 @@ const convertToWebP = async (file: File, quality = 0.8): Promise<File> => {
       // Convert to WebP
       canvas.toBlob((blob) => {
         if (blob) {
-          const webpFile = new File([blob], file.name.replace(/\.(jpg|jpeg|png|gif)$/i, '.webp'), {
+          const beforeType = (blob as any)?.type;
+          const forcedBlob = new Blob([blob], { type: 'image/webp' });
+          const name = file.name.replace(/\.(jpg|jpeg|png|gif)$/i, '.webp');
+          const webpFile = new File([forcedBlob], name, {
             type: 'image/webp',
             lastModified: Date.now()
           });
+          console.log(`🛡️ [CONVERT] Canvas blob.type: ${beforeType || 'undefined'} → File.type: ${webpFile.type}`);
           console.log(`✅ [CONVERT] → WebP: ${file.name} → ${webpFile.name} (${(file.size / 1024).toFixed(1)}KB → ${(webpFile.size / 1024).toFixed(1)}KB)`);
           resolve(webpFile);
         } else {
@@ -125,10 +133,13 @@ export const compressImage = async (file: File, maxWidth = 1024, maxHeight = 102
       canvas.toBlob((blob) => {
         if (blob) {
           // Always output as WebP for optimal compatibility and size
-          const compressedFile = new File([blob], file.name.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '.webp'), {
+          const beforeType = (blob as any)?.type;
+          const forcedBlob = new Blob([blob], { type: 'image/webp' });
+          const compressedFile = new File([forcedBlob], file.name.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '.webp'), {
             type: 'image/webp',
             lastModified: Date.now()
           });
+          console.log(`🛡️ [COMPRESS] Canvas blob.type: ${beforeType || 'undefined'} → File.type: ${compressedFile.type}`);
           console.log(`✅ Image compressed: ${file.name} from ${(file.size / 1024).toFixed(1)}KB to ${(compressedFile.size / 1024).toFixed(1)}KB (WebP)`);
           resolve(compressedFile);
         } else {
