@@ -115,9 +115,9 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
       }
 
       // Upload the cropped image
-      const uploadedUrls = await uploadFiles([croppedFile]);
-      if (uploadedUrls.length > 0) {
-        onCropComplete(uploadedUrls[0]);
+      const result = await uploadFiles([croppedFile]);
+      if (result.urls.length > 0) {
+        onCropComplete(result.urls[0]);
         toast.success('Avatar erfolgreich hochgeladen');
       } else {
         throw new Error('Upload fehlgeschlagen');

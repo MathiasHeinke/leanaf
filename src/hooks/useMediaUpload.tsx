@@ -8,7 +8,7 @@ export const useMediaUpload = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
 
-  const uploadFiles = async (files: File[]): Promise<string[]> => {
+  const uploadFiles = async (files: File[]): Promise<{ urls: string[]; thumbnailUrls: string[] }> => {
     if (!user?.id) {
       toast.error('Bitte melden Sie sich an, um Dateien hochzuladen');
       throw new Error('User nicht angemeldet');
@@ -38,7 +38,7 @@ export const useMediaUpload = () => {
         }
       }
 
-      return result.urls;
+      return { urls: result.urls, thumbnailUrls: result.thumbnailUrls };
     } catch (error: any) {
       console.error('Upload failed:', error);
       toast.error(error.message || 'Upload fehlgeschlagen');
@@ -64,8 +64,15 @@ export const useMediaUpload = () => {
     return 'unknown';
   };
 
+  // Legacy function for backward compatibility
+  const uploadFilesLegacy = async (files: File[]): Promise<string[]> => {
+    const result = await uploadFiles(files);
+    return result.urls;
+  };
+
   return {
     uploadFiles,
+    uploadFilesLegacy,
     uploading,
     uploadProgress,
     getMediaType

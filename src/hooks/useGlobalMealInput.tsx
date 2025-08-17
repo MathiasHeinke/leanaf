@@ -45,6 +45,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [inputText, setInputText] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [thumbnailImages, setThumbnailImages] = useState<string[]>([]);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [analyzedMealData, setAnalyzedMealData] = useState<AnalyzedMealData | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>('other');
@@ -396,6 +397,11 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
         toast.error('Keine Bilder hochgeladen');
       }
 
+      // Store both full URLs and thumbnail URLs
+      if (result.thumbnailUrls && result.thumbnailUrls.length > 0) {
+        setThumbnailImages(prev => [...prev, ...result.thumbnailUrls]);
+      }
+      
       return result.urls;
     } catch (error: any) {
       console.error('❌ Upload error:', error);
@@ -476,6 +482,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const removeImage = useCallback((index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    setThumbnailImages(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const appendUploadedImages = useCallback((urls: string[]) => {
@@ -487,6 +494,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     console.log('🔄 Resetting form and clearing images');
     setInputText('');
     setUploadedImages([]);
+    setThumbnailImages([]);
     setShowConfirmationDialog(false);
     setAnalyzedMealData(null);
     setSelectedMealType('other');
@@ -545,6 +553,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     inputText,
     setInputText,
     uploadedImages,
+    thumbnailImages,
     showConfirmationDialog,
     analyzedMealData,
     selectedMealType,

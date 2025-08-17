@@ -44,9 +44,9 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
     const files = e.target.files ? Array.from(e.target.files) : [];
     if (!files.length) return;
     try {
-      const urls = await uploadFiles(files);
-      if (urls?.length) {
-        setAttachments(prev => [...prev, ...urls]);
+      const result = await uploadFiles(files);
+      if (result.urls?.length) {
+        setAttachments(prev => [...prev, ...result.urls]);
       }
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';

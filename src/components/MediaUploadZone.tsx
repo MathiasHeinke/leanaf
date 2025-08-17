@@ -41,7 +41,7 @@ export const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
     setUploadedMedia(prev => [...prev, ...instantPreviews]);
 
     try {
-      const urls = await uploadFiles(acceptedFiles);
+      const result = await uploadFiles(acceptedFiles);
       
       // Replace previews with real URLs
       setUploadedMedia(prev => {
@@ -49,14 +49,14 @@ export const MediaUploadZone: React.FC<MediaUploadZoneProps> = ({
         // Remove preview items
         const filtered = newMedia.filter(item => !item.isPreview);
         // Add real uploaded items
-        const realItems = urls.map(url => ({
+        const realItems = result.urls.map(url => ({
           url,
           type: getMediaType(url) as 'image' | 'video'
         }));
         return [...filtered, ...realItems];
       });
       
-      onMediaUploaded(urls);
+      onMediaUploaded(result.urls);
       
       // Cleanup preview URLs
       instantPreviews.forEach(preview => {

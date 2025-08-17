@@ -12,8 +12,14 @@ export interface UploadProgress {
 export interface UploadResult {
   success: boolean;
   urls: string[];
+  thumbnailUrls: string[];
   errors: string[];
   progress: UploadProgress[];
+}
+
+export interface ImageUploadResult {
+  fullImageUrl: string;
+  thumbnailUrl: string;
 }
 
 // Detect if file is HEIC format
@@ -157,12 +163,68 @@ export const compressImage = async (file: File, maxWidth = 1024, maxHeight = 102
   });
 };
 
+// Create thumbnail version of an image (200x200px max, 0.7 quality)
+const createThumbnail = async (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calculate thumbnail dimensions (max 200x200, maintain aspect ratio)
+      const maxSize = 200;
+      let { width, height } = img;
+      
+      if (width > height) {
+        if (width > maxSize) {
+          height = (height * maxSize) / width;
+          width = maxSize;
+        }
+      } else {
+        if (height > maxSize) {
+          width = (width * maxSize) / height;
+          height = maxSize;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw and convert to WebP
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const forcedBlob = new Blob([blob], { type: 'image/webp' });
+          const thumbName = file.name.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '_thumb.webp');
+          const thumbnailFile = new File([forcedBlob], thumbName, {
+            type: 'image/webp',
+            lastModified: Date.now()
+          });
+          console.log(`✅ [THUMBNAIL] Created: ${thumbName} (${(thumbnailFile.size / 1024).toFixed(1)}KB)`);
+          resolve(thumbnailFile);
+        } else {
+          console.warn('⚠️ [THUMBNAIL] Creation failed, using original');
+          resolve(file);
+        }
+      }, 'image/webp', 0.7); // Lower quality for smaller thumbnails
+    };
+    
+    img.onerror = () => {
+      console.warn('⚠️ [THUMBNAIL] Image load failed');
+      resolve(file);
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 // Single file upload with real-time progress using FormData and fetch
 const uploadSingleFileWithProgress = async (
   file: File,
   userId: string,
   onProgress: (progress: number) => void
-): Promise<string> => {
+): Promise<ImageUploadResult | string> => {
   // Check authentication first
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
@@ -184,6 +246,8 @@ const uploadSingleFileWithProgress = async (
 
   // Process images: HEIC → WebP conversion and compression
   let processedFile = file;
+  let thumbnailFile: File | null = null;
+  
   if (isImage) {
     onProgress(10);
     
@@ -206,8 +270,13 @@ const uploadSingleFileWithProgress = async (
       console.log(`🗜️ [UPLOAD] Compressing large WebP: ${processedFile.name}`);
       const quality = processedFile.size > 10 * 1024 * 1024 ? 0.6 : 0.8;
       processedFile = await compressImage(processedFile, 1024, 1024, quality);
-      onProgress(25);
+      onProgress(22);
     }
+    
+    // Step 4: Create thumbnail for images
+    console.log(`🖼️ [UPLOAD] Creating thumbnail: ${processedFile.name}`);
+    thumbnailFile = await createThumbnail(processedFile);
+    onProgress(25);
     
     console.log(`✅ [UPLOAD] Final image: ${processedFile.name} (${processedFile.type}, ${(processedFile.size / 1024).toFixed(1)}KB)`);
     // SAFEGUARD: ensure a proper File object with correct MIME type for images
@@ -222,8 +291,10 @@ const uploadSingleFileWithProgress = async (
   }
 
   // Ensure WebP extension for processed images
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(2);
   const fileExt = isVideo ? (processedFile.name.split('.').pop()?.toLowerCase() || 'mp4') : 'webp';
-  const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  const fileName = `${userId}/${timestamp}-${randomId}.${fileExt}`;
   const bucketName = isVideo ? 'coach-media' : 'nutrition-images';
   const contentType = isVideo ? 'video/mp4' : 'image/webp';
   console.log(`🗂️ [UPLOAD] Target -> bucket: ${bucketName}, path: ${fileName}, contentType param: ${contentType}, file.type: ${processedFile.type}`);
@@ -231,6 +302,7 @@ const uploadSingleFileWithProgress = async (
   // Use Supabase's upload with progress tracking simulation
   onProgress(30);
   
+  // Upload main file
   const { data: uploadData, error: uploadError } = await supabase.storage
     .from(bucketName)
     .upload(fileName, processedFile, {
@@ -243,16 +315,50 @@ const uploadSingleFileWithProgress = async (
     throw new Error(`Upload fehlgeschlagen: ${uploadError.message}`);
   }
 
+  onProgress(60);
+
+  // Upload thumbnail for images
+  let thumbnailUrl = '';
+  if (isImage && thumbnailFile) {
+    const thumbnailFileName = `${userId}/thumbs/${timestamp}-${randomId}_thumb.webp`;
+    console.log(`🗂️ [UPLOAD] Thumbnail -> bucket: ${bucketName}, path: ${thumbnailFileName}`);
+    
+    const { error: thumbError } = await supabase.storage
+      .from(bucketName)
+      .upload(thumbnailFileName, thumbnailFile, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'image/webp'
+      });
+
+    if (thumbError) {
+      console.warn('⚠️ [UPLOAD] Thumbnail upload failed, continuing without thumbnail:', thumbError.message);
+    } else {
+      const { data: thumbUrlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(thumbnailFileName);
+      thumbnailUrl = thumbUrlData.publicUrl;
+      console.log('🔗 [UPLOAD] Thumbnail URL:', thumbnailUrl);
+    }
+  }
+
   onProgress(90);
 
-  onProgress(100);
-  
-  // Use public URL directly since meal-images bucket is public
-  // This ensures the analyze-meal Edge Function can access images
+  // Get public URLs
   const { data: urlData } = supabase.storage
     .from(bucketName)
     .getPublicUrl(fileName);
   console.log('🔗 [UPLOAD] Public URL:', urlData.publicUrl);
+  
+  onProgress(100);
+  
+  // Return appropriate format based on file type
+  if (isImage && thumbnailUrl) {
+    return {
+      fullImageUrl: urlData.publicUrl,
+      thumbnailUrl: thumbnailUrl
+    };
+  }
   
   return urlData.publicUrl;
 };
@@ -296,6 +402,7 @@ export const uploadFilesWithProgress = async (
   // Process all files in parallel with concurrency limit
   const concurrencyLimit = 3;
   const uploadedUrls: string[] = [];
+  const thumbnailUrls: string[] = [];
   const errors: string[] = [];
 
   // Create upload promises for all files
@@ -303,12 +410,18 @@ export const uploadFilesWithProgress = async (
     try {
       updateProgress(index, { status: 'uploading' });
       
-      const url = await uploadSingleFileWithProgress(file, userId, (progress) => {
+      const result = await uploadSingleFileWithProgress(file, userId, (progress) => {
         updateProgress(index, { progress });
       });
 
       updateProgress(index, { status: 'completed', progress: 100 });
-      return { index, url, error: null };
+      
+      // Handle both string (video) and ImageUploadResult (image) returns
+      if (typeof result === 'string') {
+        return { index, url: result, thumbnailUrl: '', error: null };
+      } else {
+        return { index, url: result.fullImageUrl, thumbnailUrl: result.thumbnailUrl, error: null };
+      }
     } catch (error: any) {
       const errorMessage = error.message || 'Upload fehlgeschlagen';
       updateProgress(index, { 
@@ -316,7 +429,7 @@ export const uploadFilesWithProgress = async (
         error: errorMessage,
         progress: 0 
       });
-      return { index, url: null, error: errorMessage };
+      return { index, url: null, thumbnailUrl: '', error: errorMessage };
     }
   });
 
@@ -337,6 +450,9 @@ export const uploadFilesWithProgress = async (
   results.forEach(result => {
     if (result.url) {
       uploadedUrls.push(result.url);
+      if (result.thumbnailUrl) {
+        thumbnailUrls.push(result.thumbnailUrl);
+      }
     } else if (result.error) {
       errors.push(`${files[result.index].name}: ${result.error}`);
     }
@@ -345,6 +461,7 @@ export const uploadFilesWithProgress = async (
   const finalResult: UploadResult = {
     success: uploadedUrls.length > 0,
     urls: uploadedUrls,
+    thumbnailUrls: thumbnailUrls,
     errors,
     progress: uploadProgress
   };

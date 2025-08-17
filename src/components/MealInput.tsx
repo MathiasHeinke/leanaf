@@ -17,6 +17,7 @@ interface MealInputProps {
 export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
   const [text, setText] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [thumbnailImages, setThumbnailImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [analyzedData, setAnalyzedData] = useState<any>(null);
@@ -34,6 +35,9 @@ export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
       const result = await uploadFilesWithProgress(files, user.id, () => {});
       if (result.success && result.urls.length > 0) {
         setUploadedImages(prev => [...prev, ...result.urls]);
+        if (result.thumbnailUrls && result.thumbnailUrls.length > 0) {
+          setThumbnailImages(prev => [...prev, ...result.thumbnailUrls]);
+        }
         toast.success(`${result.urls.length} Bild(er) hochgeladen`);
       }
     } catch (error) {
@@ -57,6 +61,7 @@ export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
 
   const removeImage = useCallback((index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    setThumbnailImages(prev => prev.filter((_, i) => i !== index));
   }, []);
 
   const handleSubmit = useCallback(async () => {
@@ -98,6 +103,7 @@ export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
     setAnalyzedData(null);
     setText('');
     setUploadedImages([]);
+    setThumbnailImages([]);
     onMealSaved?.();
     toast.success('Mahlzeit gespeichert');
   }, [onMealSaved]);
@@ -114,25 +120,37 @@ export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
           {/* Image thumbnails */}
           {uploadedImages.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {uploadedImages.map((url, index) => (
-                <div key={url + index} className="relative">
-                  <img
-                    src={url}
-                    alt={`Mahlzeit ${index + 1}`}
-                    loading="lazy"
-                    onError={(e) => { e.currentTarget.src = '/placeholder.svg'; console.warn('Thumbnail failed to load, replaced with placeholder:', url); }}
-                    onClick={() => setSelectedImageUrl(url)}
-                    className="h-16 w-16 rounded-lg object-cover border border-border cursor-pointer hover:opacity-75 transition-opacity"
-                  />
-                  <button
-                    onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition z-10"
-                    aria-label="Bild entfernen"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
+              {uploadedImages.map((url, index) => {
+                // Use thumbnail if available, otherwise fall back to full image
+                const displayUrl = thumbnailImages[index] || url;
+                return (
+                  <div key={url + index} className="relative">
+                    <img
+                      src={displayUrl}
+                      alt={`Mahlzeit ${index + 1}`}
+                      loading="lazy"
+                      onError={(e) => { 
+                        // Try full image if thumbnail fails
+                        if (displayUrl !== url && thumbnailImages[index]) {
+                          e.currentTarget.src = url;
+                        } else {
+                          e.currentTarget.src = '/placeholder.svg';
+                        }
+                        console.warn('Image failed to load, trying fallback:', displayUrl); 
+                      }}
+                      onClick={() => setSelectedImageUrl(url)} // Always use full image for modal
+                      className="h-16 w-16 rounded-lg object-cover border border-border cursor-pointer hover:opacity-75 transition-opacity"
+                    />
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition z-10"
+                      aria-label="Bild entfernen"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
 
