@@ -206,6 +206,7 @@ const uploadSingleFileWithProgress = async (
   const fileExt = isVideo ? (processedFile.name.split('.').pop()?.toLowerCase() || 'mp4') : 'webp';
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
   const bucketName = isVideo ? 'coach-media' : 'meal-images';
+  console.log(`🗂️ [UPLOAD] Target -> bucket: ${bucketName}, path: ${fileName}, contentType: ${processedFile.type}`);
 
   // Use Supabase's upload with progress tracking simulation
   onProgress(30);
@@ -214,7 +215,8 @@ const uploadSingleFileWithProgress = async (
     .from(bucketName)
     .upload(fileName, processedFile, {
       cacheControl: '3600',
-      upsert: false
+      upsert: false,
+      contentType: processedFile.type || (isVideo ? 'video/mp4' : 'image/webp')
     });
 
   if (uploadError) {
@@ -230,6 +232,7 @@ const uploadSingleFileWithProgress = async (
   const { data: urlData } = supabase.storage
     .from(bucketName)
     .getPublicUrl(fileName);
+  console.log('🔗 [UPLOAD] Public URL:', urlData.publicUrl);
   
   return urlData.publicUrl;
 };
