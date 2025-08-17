@@ -101,7 +101,6 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
         context,
         // Also send as direct fields for fallback compatibility
         text: ev.type === 'TEXT' ? ev.text : undefined,
-        message: ev.type === 'TEXT' ? ev.text : undefined,
         clientEventId: ev.clientEventId
       };
       

@@ -361,7 +361,7 @@ function showChoices(reply: OrchestratorReply) {
 
   const handleClarifyPick = useCallback(async (value: string) => {
     if (!user?.id) return;
-    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', followup: true } });
+    const reply = await sendEvent(user.id, { type: 'TEXT', text: value, clientEventId: uuidv4(), context: { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'ares', followup: true } });
     renderOrchestratorReply(reply);
   }, [user?.id, mode, sendEvent, renderOrchestratorReply, coach?.id]);
 
@@ -397,7 +397,7 @@ const onChipClick = useCallback(async (label: string) => {
   if (!text) return;
 
   const clientEventId = uuidv4();
-  const ctx: any = { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), followup: true, coachId: coach?.id || 'lucy' };
+  const ctx: any = { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), followup: true, coachId: coach?.id || 'ares' };
   if (pendingSupplement) ctx.last_proposal = { kind: 'supplement', data: pendingSupplement.proposal };
   if (pendingMeal) ctx.last_proposal = { kind: 'meal', data: pendingMeal.proposal };
   if (lastProposal) ctx.last_proposal = lastProposal;
@@ -993,7 +993,7 @@ const handleChipClick = useCallback(async (label: string) => {
       context: {
         source: "chat",
         coachMode: (mode === "specialized" ? "general" : mode),
-        coachId: coach?.id || "lucy",
+        coachId: coach?.id || "ares",
         followup: true,
         shadowTraceId,
         last_proposal: lastProposal ?? undefined
@@ -1078,7 +1078,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
       user.id,
       { ...event, clientEventId },
       undefined,
-      { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'lucy', followup: messages.some(m => m.role === 'assistant'), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) }
+      { source: 'chat', coachMode: (mode === 'specialized' ? 'general' : mode), coachId: coach?.id || 'ares', followup: messages.some(m => m.role === 'assistant'), ...(pendingSupplement ? { last_proposal: { kind: 'supplement', data: pendingSupplement.proposal } } : {}) }
     );
 
     // Client metric: server_ack_ms
