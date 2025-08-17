@@ -86,6 +86,7 @@ export const Overview = ({ todaysTotals, dailyGoals, averages, weightHistory, sh
         .from('daily_goals')
         .select('*')
         .eq('user_id', user?.id)
+        .eq('goal_date', new Date().toISOString().split('T')[0])
         .maybeSingle();
 
       if (error) throw error;

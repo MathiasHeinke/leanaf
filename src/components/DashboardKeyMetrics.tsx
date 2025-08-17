@@ -100,8 +100,8 @@ export const DashboardKeyMetrics: React.FC<Props> = ({
   const stepsGoal = dailyGoals?.steps_goal || 10000;
   const stepsProgress = Math.min(todaysSteps / stepsGoal, 1);
 
-  // Get calorie goal
-  const calorieGoal = dailyGoals?.calories || 2000;
+  // Get calorie goal with profile fallback
+  const calorieGoal = dailyGoals?.calories || 2500;
 
   // Enhanced formatting functions
   const formatCalories = (calories: number) => {

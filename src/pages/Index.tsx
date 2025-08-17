@@ -307,15 +307,23 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
       if (goalsError) {
         console.error('Error loading daily goals:', goalsError);
-        setDailyGoals({
-          calories: 2000,
-          protein: 150,
-          carbs: 250,
-          fats: 65
-        });
+        // Try profile fallback before hardcoded values
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('daily_calorie_target, protein_target_g, carbs_target_g, fats_target_g')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        const fallbackGoals = {
+          calories: profileData?.daily_calorie_target || 2500,
+          protein: profileData?.protein_target_g || 150,
+          carbs: profileData?.carbs_target_g || 250,
+          fats: profileData?.fats_target_g || 65
+        };
+        setDailyGoals(fallbackGoals);
       } else {
         const goals = goalsData || {
-          calories: 2000,
+          calories: 2500,
           protein: 150,
           carbs: 250,
           fats: 65
@@ -325,12 +333,18 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       }
     } catch (error) {
       console.error('Error loading daily goals:', error);
-      // Fallback goals
+      // Fallback goals with profile attempt
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('daily_calorie_target, protein_target_g, carbs_target_g, fats_target_g')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
       setDailyGoals({
-        calories: 2000,
-        protein: 150,
-        carbs: 250,
-        fats: 65
+        calories: profileData?.daily_calorie_target || 2500,
+        protein: profileData?.protein_target_g || 150,
+        carbs: profileData?.carbs_target_g || 250,
+        fats: profileData?.fats_target_g || 65
       });
     } finally {
       setDataLoading(false);
