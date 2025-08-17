@@ -516,6 +516,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       protein_target_g: macroGrams.protein,
       carbs_target_g: macroGrams.carbs,
       fats_target_g: macroGrams.fats,
+      // Add BMR, TDEE and other calculated values
+      bmr: bmr ? Math.round(bmr) : null,
+      tdee: tdee ? Math.round(tdee) : null,
+      calorie_deficit: calculateRequiredCalorieDeficit()?.daily || null,
+      protein_percentage: dailyGoals.protein,
+      carbs_percentage: dailyGoals.carbs,
+      fats_percentage: dailyGoals.fats,
     };
 
     if (profileExists) {
@@ -538,6 +545,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       .from('daily_goals')
       .upsert({
         user_id: user.id,
+        goal_date: new Date().toISOString().slice(0, 10), // Add goal_date for correct conflict resolution
         calories: targetCalories,
         protein: macroGrams.protein,
         carbs: macroGrams.carbs,
@@ -549,7 +557,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         bmr: bmr ? Math.round(bmr) : null,
         tdee: tdee,
       }, {
-        onConflict: 'user_id'
+        onConflict: 'user_id,goal_date' // Fix conflict resolution to match DB constraint
       });
 
     if (goalsError) {
