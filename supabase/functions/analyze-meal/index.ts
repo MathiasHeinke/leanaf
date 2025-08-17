@@ -52,8 +52,14 @@ serve(async (req) => {
         .filter(url => {
           if (typeof url !== 'string') return false;
           // Accept both http and https URLs, plus public Supabase storage URLs
-          return url.startsWith('http') && 
+          const isValidUrl = url.startsWith('http') && 
                  (url.includes('supabase') || url.startsWith('https://'));
+          
+          // Log image format for debugging
+          const hasImageExtension = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
+          console.log(`🔍 [ANALYZE-MEAL] Image validation: ${url.substring(0, 80)}... - Valid: ${isValidUrl}, Has extension: ${hasImageExtension}`);
+          
+          return isValidUrl;
         })
         .map(url => url.slice(0, 2000)); // Limit URL length
     };
@@ -328,9 +334,16 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     
     if (images && images.length > 0) {
       console.log(`🖼️ [ANALYZE-MEAL] Adding ${images.length} image(s) to request (complex: ${isComplexInput})`);
-      // Add each image to the content array
+      // Add each image to the content array with format validation
       images.forEach((imageUrl: string, index: number) => {
         console.log(`📷 [ANALYZE-MEAL] Image ${index + 1}:`, imageUrl.substring(0, 100));
+        
+        // Validate image format before sending to OpenAI
+        const supportedFormats = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i;
+        if (!supportedFormats.test(imageUrl)) {
+          console.warn(`⚠️ [ANALYZE-MEAL] Image ${index + 1} may have unsupported format: ${imageUrl}`);
+        }
+        
         userContent.push({
           type: 'image_url',
           image_url: { 

@@ -23,14 +23,20 @@ export default function ConfirmMealModal({ open, prompt, proposal, onConfirm, on
           {/* Image previews */}
           {uploadedImages.length > 0 && (
             <div className="mb-4">
-              <div className="flex gap-2 overflow-x-auto">
+              <p className="text-xs text-muted-foreground mb-2">Bilder ({uploadedImages.length})</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {uploadedImages.map((url, idx) => (
-                  <img
-                    key={url + idx}
-                    src={url}
-                    alt={`Mahlzeit ${idx + 1}`}
-                    className="h-12 w-12 rounded object-cover border border-border flex-shrink-0"
-                  />
+                  <div key={url + idx} className="flex-shrink-0">
+                    <img
+                      src={url}
+                      alt={`Mahlzeit ${idx + 1}`}
+                      className="h-16 w-16 rounded-lg object-cover border border-border shadow-sm"
+                      onError={(e) => {
+                        console.warn('⚠️ Failed to load image:', url);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
             </div>

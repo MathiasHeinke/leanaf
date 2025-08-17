@@ -47,16 +47,19 @@ export const compressImage = async (file: File, maxWidth = 1024, maxHeight = 102
       
       canvas.toBlob((blob) => {
         if (blob) {
+          // Keep original format if possible, fallback to JPEG
+          const targetType = file.type.includes('png') ? 'image/png' : 'image/jpeg';
           const compressedFile = new File([blob], file.name, {
-            type: 'image/jpeg',
+            type: targetType,
             lastModified: Date.now()
           });
-          console.log(`✅ Image compressed: ${file.name} from ${(file.size / 1024).toFixed(1)}KB to ${(compressedFile.size / 1024).toFixed(1)}KB`);
+          console.log(`✅ Image compressed: ${file.name} from ${(file.size / 1024).toFixed(1)}KB to ${(compressedFile.size / 1024).toFixed(1)}KB (${targetType})`);
           resolve(compressedFile);
         } else {
+          console.warn('⚠️ Compression failed, using original file');
           resolve(file);
         }
-      }, 'image/jpeg', quality);
+      }, file.type.includes('png') ? 'image/png' : 'image/jpeg', quality);
     };
     
     img.onerror = () => {
@@ -98,7 +101,14 @@ const uploadSingleFileWithProgress = async (
   if (isImage && file.size > 2 * 1024 * 1024) { // Compress anything over 2MB
     onProgress(10);
     const quality = file.size > 10 * 1024 * 1024 ? 0.6 : 0.8; // Lower quality for very large files
+    
+    // Preserve original format for better compatibility with OpenAI
+    const originalFormat = file.type || 'image/jpeg';
+    const isJpeg = originalFormat.includes('jpeg') || originalFormat.includes('jpg');
+    const targetFormat = isJpeg ? 'image/jpeg' : 'image/png';
+    
     processedFile = await compressImage(file, 1024, 1024, quality);
+    console.log(`🔧 [UPLOAD] Image processed: ${file.name} (${originalFormat} → ${targetFormat})`);
     onProgress(20);
   }
 
