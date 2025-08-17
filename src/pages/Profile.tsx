@@ -480,6 +480,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       profile_avatar_url: profileAvatarUrl || null,
       avatar_type: avatarType,
       avatar_preset_id: avatarPresetId || null,
+      // Save calculated target values to profiles table
+      daily_calorie_target: targetCalories,
+      protein_target_g: macroGrams.protein,
+      carbs_target_g: macroGrams.carbs,
+      fats_target_g: macroGrams.fats,
     };
 
     if (profileExists) {
@@ -531,6 +536,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       
       // Refresh current weight after saving
       await loadCurrentWeight();
+      
+      // Trigger dashboard refresh by calling ensure_daily_goals with updated profile values
+      try {
+        await supabase.rpc('ensure_daily_goals', { user_id_param: user.id });
+        console.log('✅ Dashboard goals refreshed with new profile values');
+      } catch (refreshError) {
+        console.warn('⚠️ Dashboard refresh failed:', refreshError);
+      }
       
       toast.success('Profil erfolgreich gespeichert');
       setLastSaved(new Date());
