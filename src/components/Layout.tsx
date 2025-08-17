@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { DebugFloatingButton } from "@/components/debug/DebugFloatingButton";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 
 
@@ -49,32 +50,32 @@ export const Layout = ({ children }: LayoutProps) => {
 
 
   return (
-    <div 
-      className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full"
-    >
-      {/* Background Geometric Shapes for Glass Effect - Animated */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-primary/20 to-primary-glow/10 rounded-full blur-2xl animate-float-1"></div>
-        <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-br from-carbs/25 to-carbs/10 rounded-full blur-xl animate-float-2"></div>
-        <div className="absolute bottom-40 left-20 w-28 h-28 bg-gradient-to-br from-fats/20 to-fats/5 rounded-full blur-2xl animate-float-3"></div>
-        <div className="absolute bottom-60 right-10 w-20 h-20 bg-gradient-to-br from-protein/30 to-protein/10 rounded-full blur-xl animate-float-4"></div>
-        <div className="absolute top-1/3 left-1/2 w-40 h-20 bg-gradient-to-r from-primary/10 to-transparent rounded-full blur-3xl transform -translate-x-1/2 rotate-45 animate-float-5"></div>
+    <SidebarProvider defaultOpen={true}>
+      <div className="min-h-screen bg-gradient-to-br from-background to-accent/20 relative overflow-hidden flex w-full">
+        {/* Background Geometric Shapes for Glass Effect - Animated */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-20 left-10 w-32 h-32 bg-gradient-to-br from-primary/20 to-primary-glow/10 rounded-full blur-2xl animate-float-1"></div>
+          <div className="absolute top-40 right-20 w-24 h-24 bg-gradient-to-br from-carbs/25 to-carbs/10 rounded-full blur-xl animate-float-2"></div>
+          <div className="absolute bottom-40 left-20 w-28 h-28 bg-gradient-to-br from-fats/20 to-fats/5 rounded-full blur-2xl animate-float-3"></div>
+          <div className="absolute bottom-60 right-10 w-20 h-20 bg-gradient-to-br from-protein/30 to-protein/10 rounded-full blur-xl animate-float-4"></div>
+          <div className="absolute top-1/3 left-1/2 w-40 h-20 bg-gradient-to-r from-primary/10 to-transparent rounded-full blur-3xl transform -translate-x-1/2 rotate-45 animate-float-5"></div>
+        </div>
+        
+        {/* Sidebar */}
+        <AppSidebar />
+        
+        {/* Main Content with proper SidebarInset */}
+        <SidebarInset className="flex-1 flex flex-col min-w-0">
+          <GlobalHeader 
+            onRefresh={() => setShowSubscriptionDebug(true)}
+          />
+          <main className={`container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1 ${shouldSlideIn ? 'animate-slide-in-right' : ''}`}>
+            {children}
+          </main>
+          <Footer />
+          <DebugFloatingButton />
+        </SidebarInset>
       </div>
-      
-      {/* Sidebar */}
-      <AppSidebar />
-      
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <GlobalHeader 
-          onRefresh={() => setShowSubscriptionDebug(true)}
-        />
-        <main className={`container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1 ${shouldSlideIn ? 'animate-slide-in-right' : ''}`}>
-          {children}
-        </main>
-        <Footer />
-        <DebugFloatingButton />
-      </div>
-    </div>
+    </SidebarProvider>
   );
 };
