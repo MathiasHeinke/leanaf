@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useMealVisionAnalysis } from "@/hooks/useMealVisionAnalysis";
 import { Camera, Mic, SendHorizontal, X } from "lucide-react";
 import { toast } from "@/components/ui/sonner";
 import { safeToast } from "@/lib/safeToast";
@@ -9,51 +8,43 @@ import { useAuth } from "@/hooks/useAuth";
 import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { getMealBasePoints } from "@/utils/mealPointsHelper";
+import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 interface QuickMealSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChange }) => {
-  // Modern state management
-  const [inputText, setInputText] = useState('');
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
-  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
-  const [analyzedMealData, setAnalyzedMealData] = useState<any>(null);
-  const [isEditingMode, setIsEditingMode] = useState(false);
-
-  // Modern vision analysis hook
-  const { analyzeImages, isAnalyzing } = useMealVisionAnalysis();
+  // Use global meal input state
+  const {
+    inputText,
+    setInputText,
+    uploadedImages,
+    removeImage,
+    isAnalyzing,
+    isRecording,
+    handleVoiceRecord,
+    handlePhotoUpload,
+    handleSubmitMeal,
+    showConfirmationDialog,
+    analyzedMealData,
+    closeDialog,
+    resetForm
+  } = useGlobalMealInput();
+  
   const { user } = useAuth();
   const { awardPoints, updateStreak } = usePointsSystem();
-  const resetForm = useCallback(() => {
-    setInputText('');
-    setUploadedImages([]);
-    setShowConfirmationDialog(false);
-    setAnalyzedMealData(null);
-    setIsEditingMode(false);
-  }, []);
-
+  const [isEditingMode, setIsEditingMode] = useState(false);
   const onCloseAll = () => {
     resetForm();
+    setIsEditingMode(false);
     onOpenChange(false);
   };
 
   const enterEditMode = useCallback((data: any) => {
     setIsEditingMode(true);
     setInputText(data.title || '');
-    setAnalyzedMealData(data);
-  }, []);
-
-  const closeDialog = useCallback(() => {
-    setShowConfirmationDialog(false);
-    setAnalyzedMealData(null);
-  }, []);
-
-  const removeImage = useCallback((index: number) => {
-    setUploadedImages(prev => prev.filter((_, i) => i !== index));
-  }, []);
+  }, [setInputText]);
 
   const persistAnalyzedMeal = async () => {
     try {
@@ -216,79 +207,8 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     if (hour < 18) return 'Was gab es als Snack?';
     return 'Was gab es zum Abendessen?';
   };
-  const handlePhotoUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-    
-    event.target.value = '';
-    
-    // Simple upload to storage
-    try {
-      const uploadPromises = files.map(async (file) => {
-        const fileName = `meal-images/${user?.id}/${Date.now()}-${file.name}`;
-        const { data, error } = await supabase.storage
-          .from('meal-images')
-          .upload(fileName, file);
-        
-        if (error) throw error;
-        
-        const { data: publicUrl } = supabase.storage
-          .from('meal-images')
-          .getPublicUrl(fileName);
-        
-        return publicUrl.publicUrl;
-      });
-      
-      const urls = await Promise.all(uploadPromises);
-      setUploadedImages(prev => [...prev, ...urls]);
-      toast.success(`${files.length} Bild${files.length > 1 ? 'er' : ''} hochgeladen`);
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error('Upload fehlgeschlagen');
-    }
-  }, [user]);
-
-  const handleVoiceRecord = useCallback(async () => {
-    // Simple voice recording placeholder
-    if (isRecording) {
-      setIsRecording(false);
-      toast.info('Sprachaufnahme gestoppt');
-    } else {
-      setIsRecording(true);
-      toast.info('Sprachaufnahme gestartet');
-      // Auto-stop after 10 seconds
-      setTimeout(() => setIsRecording(false), 10000);
-    }
-  }, [isRecording]);
-
   const onSubmit = async () => {
-    try {
-      // Check if we have images to analyze
-      if (uploadedImages.length > 0) {
-        const result = await analyzeImages(uploadedImages, inputText.trim());
-        if (result) {
-          setAnalyzedMealData(result);
-          setShowConfirmationDialog(true);
-        }
-      } else if (inputText.trim()) {
-        // Manual entry without images
-        setAnalyzedMealData({
-          title: inputText.trim(),
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fats: 0,
-          confidence: 0,
-          meal_type: 'other'
-        });
-        setShowConfirmationDialog(true);
-      } else {
-        toast.error('Bitte Text eingeben oder Bild hochladen');
-      }
-    } catch (error) {
-      console.error('Submit error:', error);
-      toast.error('Fehler beim Analysieren');
-    }
+    await handleSubmitMeal();
   };
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

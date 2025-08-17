@@ -1,7 +1,6 @@
-import React, { useState, useCallback, Suspense, lazy, useRef, useEffect } from "react";
+import React, { useState, useCallback, Suspense, lazy, useRef } from "react";
 import { Camera, Mic, ArrowRight, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useMealVisionAnalysis } from "@/hooks/useMealVisionAnalysis";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrchestrator } from "@/hooks/useOrchestrator";
@@ -9,20 +8,27 @@ import ChoiceBar from "@/components/ChoiceBar";
 import ConfirmMealModal from "@/components/ConfirmMealModal";
 import ConfirmSupplementModal from "@/components/ConfirmSupplementModal";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useSupplementRecognition } from "@/hooks/useSupplementRecognition";
 import { Card, CardContent } from "@/components/ui/card";
 import { IMAGE_UPLOAD_MAX_DEFAULT } from "@/lib/constants";
+import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const DashboardMealComposer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
-  const [inputText, setInputText] = useState('');
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [isRecording, setIsRecording] = useState(false);
+  const {
+    inputText,
+    setInputText,
+    uploadedImages,
+    isRecording,
+    handleVoiceRecord,
+    handlePhotoUpload,
+    removeImage,
+    resetForm,
+    isAnalyzing
+  } = useGlobalMealInput();
   const [quickMealSheetOpen, setQuickMealSheetOpen] = useState(false);
-  const { analyzeImages, isAnalyzing } = useMealVisionAnalysis();
   const { isEnabled } = useFeatureFlags();
   const orchestrationEnabled = isEnabled('auto_tool_orchestration');
   const { user } = useAuth();
@@ -43,40 +49,6 @@ const { addRecognizedSupplementsToStack } = useSupplementRecognition();
     fileInputRef.current?.click();
   }, []);
 
-const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
-  if (!user || files.length === 0) return [];
-  
-  console.log('📤 Starting upload for', files.length, 'files');
-  
-  try {
-    const uploadPromises = files.map(async (file) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
-      
-      const { data, error } = await supabase.storage
-        .from('meal-images')
-        .upload(fileName, file);
-        
-      if (error) throw error;
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('meal-images')
-        .getPublicUrl(fileName);
-        
-      return publicUrl;
-    });
-    
-    const urls = await Promise.all(uploadPromises);
-    console.log('✅ Upload completed successfully:', urls);
-    toast.success(`${urls.length} Bild${urls.length > 1 ? 'er' : ''} erfolgreich hochgeladen`);
-    return urls;
-  } catch (error: any) {
-    console.error('❌ Upload error:', error);
-    toast.error('Upload fehlgeschlagen: ' + (error.message || 'Unbekannter Fehler'));
-    return [];
-  }
-}, [user]);
-
 const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
   const files = e.target.files ? Array.from(e.target.files) : [];
   if (!files.length) return;
@@ -94,27 +66,15 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     setLastDropIgnored(false);
   }
 
-  const urls = await uploadImages(selected);
-  if (e.currentTarget) {
-    e.currentTarget.value = "";
-  }
-
-  if (!urls || urls.length === 0) {
-    console.log('❌ Upload failed, no URLs returned');
-    return;
-  }
-
-  console.log('✅ Images uploaded successfully:', urls);
-  setUploadedImages(prev => [...prev, ...urls]);
+  await handlePhotoUpload(e);
   setActiveTab("photo");
-}, [uploadImages, maxImages, analyzeImages, inputText]);
+}, [handlePhotoUpload, maxImages]);
 
   const handleVoiceTap = useCallback(async () => {
-    // Simple toggle for recording state
-    setIsRecording(!isRecording);
+    await handleVoiceRecord();
     setActiveTab("voice");
     openQuickMealSheet("voice");
-  }, [isRecording]);
+  }, [handleVoiceRecord]);
 
   const handleTextTap = useCallback(() => {
     setActiveTab("text");
@@ -130,9 +90,6 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     setQuickMealSheetOpen(false);
   }, []);
 
-  const removeImage = useCallback((index: number) => {
-    setUploadedImages(prev => prev.filter((_, i) => i !== index));
-  }, []);
 
 const handleSubmit = useCallback(async () => {
   if (!inputText.trim()) return;
@@ -349,8 +306,7 @@ const handleSubmit = useCallback(async () => {
           // Handle meal confirmation
           setConfirmMeal({ open: false, prompt: '', proposal: null, traceId: undefined });
           // Reset form after confirmation
-          setInputText('');
-          setUploadedImages([]);
+          resetForm();
         }}
         onClose={() => setConfirmMeal({ open: false, prompt: '', proposal: null, traceId: undefined })}
       />

@@ -489,14 +489,14 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     setAnalyzedMealData(null);
     setSelectedMealType('other');
     setUploadProgress([]);
+    setIsEditingMode(false);
   }, []);
 
   const closeDialog = useCallback(() => {
     setShowConfirmationDialog(false);
     setAnalyzedMealData(null);
     setSelectedMealType('other');
-    resetForm();
-  }, [resetForm]);
+  }, []);
 
   // Edit mode functions
   const enterEditMode = useCallback((mealData: AnalyzedMealData) => {
