@@ -24,6 +24,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     },
     fetch: (url, options = {}) => {
       const isEdgeFunction = url.includes('/functions/v1/');
+      const isStorageApi = url.includes('/storage/v1/');
       const timeout = isEdgeFunction ? 45000 : 10000; // 45s for edge functions, 10s for others
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -55,7 +56,13 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       const method = ((options as RequestInit)?.method || 'GET').toUpperCase();
       const hasBody = !!(options as RequestInit)?.body;
       if (!mergedHeaders.has('Accept')) mergedHeaders.set('Accept', 'application/json');
-      if (hasBody && !mergedHeaders.has('Content-Type')) {
+      // Only set Content-Type for JSON requests; never override for Storage API or binary bodies
+      const body = (options as RequestInit)?.body as any;
+      const isBinaryBody = (typeof FormData !== 'undefined' && body instanceof FormData) ||
+        (typeof Blob !== 'undefined' && body instanceof Blob) ||
+        (typeof ArrayBuffer !== 'undefined' && body instanceof ArrayBuffer) ||
+        (typeof ReadableStream !== 'undefined' && body instanceof ReadableStream);
+      if (hasBody && !mergedHeaders.has('Content-Type') && !isBinaryBody && !isStorageApi) {
         mergedHeaders.set('Content-Type', 'application/json');
       }
 
