@@ -1406,16 +1406,27 @@ export type Database = {
           carbs: number | null
           carbs_percentage: number | null
           created_at: string
+          days_to_goal: number | null
           fats: number | null
           fats_percentage: number | null
           fluids: number | null
           goal_date: string | null
+          goal_type: string | null
           id: string
+          is_gaining_weight: boolean | null
+          is_realistic_goal: boolean | null
           protein: number | null
           protein_percentage: number | null
+          target_date: string | null
           tdee: number | null
+          total_calories_needed: number | null
           updated_at: string
           user_id: string
+          warning_message: string | null
+          weekly_calorie_deficit: number | null
+          weekly_fat_loss_g: number | null
+          weeks_to_goal: number | null
+          weight_difference_kg: number | null
         }
         Insert: {
           bmr?: number | null
@@ -1424,16 +1435,27 @@ export type Database = {
           carbs?: number | null
           carbs_percentage?: number | null
           created_at?: string
+          days_to_goal?: number | null
           fats?: number | null
           fats_percentage?: number | null
           fluids?: number | null
           goal_date?: string | null
+          goal_type?: string | null
           id?: string
+          is_gaining_weight?: boolean | null
+          is_realistic_goal?: boolean | null
           protein?: number | null
           protein_percentage?: number | null
+          target_date?: string | null
           tdee?: number | null
+          total_calories_needed?: number | null
           updated_at?: string
           user_id: string
+          warning_message?: string | null
+          weekly_calorie_deficit?: number | null
+          weekly_fat_loss_g?: number | null
+          weeks_to_goal?: number | null
+          weight_difference_kg?: number | null
         }
         Update: {
           bmr?: number | null
@@ -1442,16 +1464,27 @@ export type Database = {
           carbs?: number | null
           carbs_percentage?: number | null
           created_at?: string
+          days_to_goal?: number | null
           fats?: number | null
           fats_percentage?: number | null
           fluids?: number | null
           goal_date?: string | null
+          goal_type?: string | null
           id?: string
+          is_gaining_weight?: boolean | null
+          is_realistic_goal?: boolean | null
           protein?: number | null
           protein_percentage?: number | null
+          target_date?: string | null
           tdee?: number | null
+          total_calories_needed?: number | null
           updated_at?: string
           user_id?: string
+          warning_message?: string | null
+          weekly_calorie_deficit?: number | null
+          weekly_fat_loss_g?: number | null
+          weeks_to_goal?: number | null
+          weight_difference_kg?: number | null
         }
         Relationships: []
       }

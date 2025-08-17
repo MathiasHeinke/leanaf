@@ -541,23 +541,49 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       setProfileExists(true);
     }
 
+    // Calculate additional values for daily goals
+    const deficitData = calculateRequiredCalorieDeficit();
+    const weightDifference = targetWeight && weight 
+      ? Number(targetWeight) - Number(weight) 
+      : null;
+    const isGainingWeight = weightDifference ? weightDifference > 0 : false;
+    const currentGoalType = !weightDifference ? 'maintain' : (isGainingWeight ? 'gain' : 'lose');
+    
+    // Calculate additional metrics
+    const daysToGoal = targetDate && deficitData ? 
+      Math.max(0, Math.ceil((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : null;
+    const weeksToGoal = daysToGoal ? Math.ceil(daysToGoal / 7) : null;
+    const weeklyFatLossGrams = deficitData?.weekly ? Math.round(deficitData.weekly / 7700 * 1000) : null;
+    
     const { error: goalsError } = await supabase
       .from('daily_goals')
       .upsert({
         user_id: user.id,
-        goal_date: new Date().toISOString().slice(0, 10), // Add goal_date for correct conflict resolution
+        goal_date: new Date().toISOString().slice(0, 10),
         calories: targetCalories,
         protein: macroGrams.protein,
         carbs: macroGrams.carbs,
         fats: macroGrams.fats,
-        calorie_deficit: calculateRequiredCalorieDeficit()?.daily || dailyGoals.calorieDeficit,
+        calorie_deficit: deficitData?.daily || dailyGoals.calorieDeficit,
         protein_percentage: dailyGoals.protein,
         carbs_percentage: dailyGoals.carbs,
         fats_percentage: dailyGoals.fats,
         bmr: bmr ? Math.round(bmr) : null,
         tdee: tdee,
+        // Add all calculated tracking values
+        weight_difference_kg: weightDifference,
+        weeks_to_goal: weeksToGoal,
+        days_to_goal: daysToGoal,
+        weekly_calorie_deficit: deficitData?.weekly || null,
+        total_calories_needed: deficitData?.total || null,
+        weekly_fat_loss_g: weeklyFatLossGrams,
+        target_date: targetDate || null,
+        is_gaining_weight: isGainingWeight,
+        goal_type: currentGoalType,
+        is_realistic_goal: realismScore >= 6,
+        warning_message: realismScore < 6 ? getRealismLabel(realismScore) : null,
       }, {
-        onConflict: 'user_id,goal_date' // Fix conflict resolution to match DB constraint
+        onConflict: 'user_id,goal_date'
       });
 
     if (goalsError) {
