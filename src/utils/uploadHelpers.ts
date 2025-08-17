@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import heic2any from "heic2any";
@@ -225,7 +224,7 @@ const uploadSingleFileWithProgress = async (
   // Ensure WebP extension for processed images
   const fileExt = isVideo ? (processedFile.name.split('.').pop()?.toLowerCase() || 'mp4') : 'webp';
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-  const bucketName = isVideo ? 'coach-media' : 'meal-images';
+  const bucketName = isVideo ? 'coach-media' : 'nutrition-images';
   const contentType = isVideo ? 'video/mp4' : 'image/webp';
   console.log(`🗂️ [UPLOAD] Target -> bucket: ${bucketName}, path: ${fileName}, contentType param: ${contentType}, file.type: ${processedFile.type}`);
 
