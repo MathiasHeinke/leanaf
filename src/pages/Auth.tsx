@@ -432,13 +432,8 @@ const Auth = () => {
               });
 
               toast.success(t('auth.signInSuccess'));
-              // Force hard reload for clean session state ONLY in preview environments
-              const isPreviewDomain = window.location.hostname.includes('preview--');
-              if (isPreviewDomain) {
-                window.location.href = '/';
-              } else {
-                navigate('/', { replace: true });
-              }
+              // Force full reload for clean session state in all environments
+              window.location.href = '/';
             }
             break;
           }

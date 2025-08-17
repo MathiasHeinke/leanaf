@@ -130,13 +130,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setAuthState(prev => ({ ...prev, session: null, user: null }));
       await supabase.auth.signOut({ scope: 'global' });
       cleanupAuthState();
-      navigate('/auth', { replace: true });
+      // Force full reload to avoid limbo states
+      window.location.href = '/auth';
     } catch (error) {
       // Force cleanup even if signOut fails
       setAuthState(prev => ({ ...prev, session: null, user: null }));
       cleanupAuthState();
       console.error('Sign out error occurred');
-      navigate('/auth', { replace: true });
+      window.location.href = '/auth';
     }
   };
 
