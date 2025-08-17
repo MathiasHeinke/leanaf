@@ -338,10 +338,13 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
       images.forEach((imageUrl: string, index: number) => {
         console.log(`📷 [ANALYZE-MEAL] Image ${index + 1}:`, imageUrl.substring(0, 100));
         
-        // Validate image format before sending to OpenAI
+        // Validate image format before sending to OpenAI (now expecting WebP)
         const supportedFormats = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i;
+        const isWebP = /\.webp(\?|$)/i.test(imageUrl);
         if (!supportedFormats.test(imageUrl)) {
           console.warn(`⚠️ [ANALYZE-MEAL] Image ${index + 1} may have unsupported format: ${imageUrl}`);
+        } else if (isWebP) {
+          console.log(`✅ [ANALYZE-MEAL] Image ${index + 1} is WebP format (optimal): ${imageUrl.substring(0, 80)}`);
         }
         
         userContent.push({

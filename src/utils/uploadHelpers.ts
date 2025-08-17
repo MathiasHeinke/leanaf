@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import heic2any from "heic2any";
 
 export interface UploadProgress {
   fileName: string;
@@ -16,7 +17,83 @@ export interface UploadResult {
   progress: UploadProgress[];
 }
 
-// Image compression utility
+// Detect if file is HEIC format
+const isHEICFormat = (file: File): boolean => {
+  const fileName = file.name.toLowerCase();
+  const fileType = file.type.toLowerCase();
+  return fileName.endsWith('.heic') || fileName.endsWith('.heif') || 
+         fileType.includes('heic') || fileType.includes('heif');
+};
+
+// Convert HEIC/HEIF files to WebP
+const convertHEICToWebP = async (file: File): Promise<File> => {
+  try {
+    console.log(`🔄 [CONVERT] Converting HEIC file: ${file.name}`);
+    const convertedBlob = await heic2any({
+      blob: file,
+      toType: "image/webp",
+      quality: 0.8
+    }) as Blob;
+    
+    const webpFile = new File([convertedBlob], file.name.replace(/\.(heic|heif)$/i, '.webp'), {
+      type: 'image/webp',
+      lastModified: Date.now()
+    });
+    
+    console.log(`✅ [CONVERT] HEIC converted: ${file.name} → ${webpFile.name} (${(file.size / 1024).toFixed(1)}KB → ${(webpFile.size / 1024).toFixed(1)}KB)`);
+    return webpFile;
+  } catch (error) {
+    console.error('❌ [CONVERT] HEIC conversion failed:', error);
+    throw new Error(`HEIC-Konvertierung fehlgeschlagen: ${error.message}`);
+  }
+};
+
+// Convert any image to WebP format for optimal compatibility and size
+const convertToWebP = async (file: File, quality = 0.8): Promise<File> => {
+  // If already WebP, return as-is
+  if (file.type === 'image/webp') {
+    console.log(`✅ [CONVERT] Already WebP: ${file.name}`);
+    return file;
+  }
+
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // Draw image to canvas
+      ctx?.drawImage(img, 0, 0);
+      
+      // Convert to WebP
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const webpFile = new File([blob], file.name.replace(/\.(jpg|jpeg|png|gif)$/i, '.webp'), {
+            type: 'image/webp',
+            lastModified: Date.now()
+          });
+          console.log(`✅ [CONVERT] → WebP: ${file.name} → ${webpFile.name} (${(file.size / 1024).toFixed(1)}KB → ${(webpFile.size / 1024).toFixed(1)}KB)`);
+          resolve(webpFile);
+        } else {
+          console.warn('⚠️ [CONVERT] WebP conversion failed, using original');
+          resolve(file);
+        }
+      }, 'image/webp', quality);
+    };
+    
+    img.onerror = () => {
+      console.warn('⚠️ [CONVERT] Image load failed for WebP conversion');
+      resolve(file);
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+};
+
+// Image compression utility (now works with WebP)
 export const compressImage = async (file: File, maxWidth = 1024, maxHeight = 1024, quality = 0.8): Promise<File> => {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
@@ -47,19 +124,18 @@ export const compressImage = async (file: File, maxWidth = 1024, maxHeight = 102
       
       canvas.toBlob((blob) => {
         if (blob) {
-          // Keep original format if possible, fallback to JPEG
-          const targetType = file.type.includes('png') ? 'image/png' : 'image/jpeg';
-          const compressedFile = new File([blob], file.name, {
-            type: targetType,
+          // Always output as WebP for optimal compatibility and size
+          const compressedFile = new File([blob], file.name.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '.webp'), {
+            type: 'image/webp',
             lastModified: Date.now()
           });
-          console.log(`✅ Image compressed: ${file.name} from ${(file.size / 1024).toFixed(1)}KB to ${(compressedFile.size / 1024).toFixed(1)}KB (${targetType})`);
+          console.log(`✅ Image compressed: ${file.name} from ${(file.size / 1024).toFixed(1)}KB to ${(compressedFile.size / 1024).toFixed(1)}KB (WebP)`);
           resolve(compressedFile);
         } else {
           console.warn('⚠️ Compression failed, using original file');
           resolve(file);
         }
-      }, file.type.includes('png') ? 'image/png' : 'image/jpeg', quality);
+      }, 'image/webp', quality);
     };
     
     img.onerror = () => {
@@ -83,10 +159,10 @@ const uploadSingleFileWithProgress = async (
     throw new Error('Bitte logge dich ein, um Dateien hochzuladen');
   }
   const isVideo = file.type.startsWith('video/');
-  const isImage = file.type.startsWith('image/');
+  const isImage = file.type.startsWith('image/') || isHEICFormat(file);
   
   if (!isImage && !isVideo) {
-    throw new Error('Datei muss ein Bild oder Video sein');
+    throw new Error('Datei muss ein Bild oder Video sein (unterstützt: JPG, PNG, WebP, HEIC, MP4)');
   }
 
   // Validate file size (increased limits)
@@ -96,23 +172,38 @@ const uploadSingleFileWithProgress = async (
     throw new Error(`Datei ist zu groß (max. ${maxSizeText})`);
   }
 
-  // Compress image if needed (more aggressive compression for large files)
+  // Process images: HEIC → WebP conversion and compression
   let processedFile = file;
-  if (isImage && file.size > 2 * 1024 * 1024) { // Compress anything over 2MB
+  if (isImage) {
     onProgress(10);
-    const quality = file.size > 10 * 1024 * 1024 ? 0.6 : 0.8; // Lower quality for very large files
     
-    // Preserve original format for better compatibility with OpenAI
-    const originalFormat = file.type || 'image/jpeg';
-    const isJpeg = originalFormat.includes('jpeg') || originalFormat.includes('jpg');
-    const targetFormat = isJpeg ? 'image/jpeg' : 'image/png';
+    // Step 1: Convert HEIC files to WebP
+    if (isHEICFormat(file)) {
+      console.log(`🔄 [UPLOAD] Converting HEIC file: ${file.name}`);
+      processedFile = await convertHEICToWebP(file);
+      onProgress(15);
+    }
     
-    processedFile = await compressImage(file, 1024, 1024, quality);
-    console.log(`🔧 [UPLOAD] Image processed: ${file.name} (${originalFormat} → ${targetFormat})`);
-    onProgress(20);
+    // Step 2: Convert all images to WebP for consistency and OpenAI compatibility
+    if (processedFile.type !== 'image/webp') {
+      console.log(`🔄 [UPLOAD] Converting to WebP: ${processedFile.name}`);
+      processedFile = await convertToWebP(processedFile, 0.9);
+      onProgress(20);
+    }
+    
+    // Step 3: Compress if still large (WebP is already efficient)
+    if (processedFile.size > 3 * 1024 * 1024) { // Compress WebP over 3MB
+      console.log(`🗜️ [UPLOAD] Compressing large WebP: ${processedFile.name}`);
+      const quality = processedFile.size > 10 * 1024 * 1024 ? 0.6 : 0.8;
+      processedFile = await compressImage(processedFile, 1024, 1024, quality);
+      onProgress(25);
+    }
+    
+    console.log(`✅ [UPLOAD] Final image: ${processedFile.name} (${processedFile.type}, ${(processedFile.size / 1024).toFixed(1)}KB)`);
   }
 
-  const fileExt = processedFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+  // Ensure WebP extension for processed images
+  const fileExt = isVideo ? (processedFile.name.split('.').pop()?.toLowerCase() || 'mp4') : 'webp';
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
   const bucketName = isVideo ? 'coach-media' : 'meal-images';
 
