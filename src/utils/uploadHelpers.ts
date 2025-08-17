@@ -200,13 +200,23 @@ const uploadSingleFileWithProgress = async (
     }
     
     console.log(`✅ [UPLOAD] Final image: ${processedFile.name} (${processedFile.type}, ${(processedFile.size / 1024).toFixed(1)}KB)`);
+    // SAFEGUARD: ensure a proper File object with correct MIME type for images
+    const beforeType = (processedFile as any)?.type;
+    if (!isVideo && (!(processedFile instanceof File) || beforeType !== 'image/webp')) {
+      const webpBlob = processedFile instanceof Blob ? processedFile : new Blob([processedFile], { type: 'image/webp' });
+      const forcedName = processedFile.name?.replace(/\.[^.]+$/, '.webp') || `${Date.now()}.webp`;
+      const webpFile = new File([webpBlob], forcedName, { type: 'image/webp', lastModified: Date.now() });
+      console.log(`🛠️ [UPLOAD] Forcing File with correct MIME. beforeType=${beforeType} → image/webp (${webpFile.name})`);
+      processedFile = webpFile as File;
+    }
   }
 
   // Ensure WebP extension for processed images
   const fileExt = isVideo ? (processedFile.name.split('.').pop()?.toLowerCase() || 'mp4') : 'webp';
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
   const bucketName = isVideo ? 'coach-media' : 'meal-images';
-  console.log(`🗂️ [UPLOAD] Target -> bucket: ${bucketName}, path: ${fileName}, contentType: ${processedFile.type}`);
+  const contentType = isVideo ? 'video/mp4' : 'image/webp';
+  console.log(`🗂️ [UPLOAD] Target -> bucket: ${bucketName}, path: ${fileName}, contentType param: ${contentType}, file.type: ${processedFile.type}`);
 
   // Use Supabase's upload with progress tracking simulation
   onProgress(30);
@@ -216,7 +226,7 @@ const uploadSingleFileWithProgress = async (
     .upload(fileName, processedFile, {
       cacheControl: '3600',
       upsert: false,
-      contentType: isVideo ? 'video/mp4' : 'image/webp'
+      contentType
     });
 
   if (uploadError) {
