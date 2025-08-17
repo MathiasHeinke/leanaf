@@ -49,6 +49,14 @@ export const MealConfirmationDialog = ({
   uploadedImages = [],
   selectedDate = new Date() // Default to today if not provided
 }: MealConfirmationDialogProps) => {
+  // Debug uploaded images when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      console.log('🖼️ MealConfirmationDialog opened with uploadedImages:', uploadedImages);
+      console.log('🖼️ uploadedImages length:', uploadedImages.length);
+      console.log('🖼️ uploadedImages type:', typeof uploadedImages);
+    }
+  }, [isOpen, uploadedImages]);
   const { user } = useAuth();
   const { t } = useTranslation();
   const { evaluateMeal } = usePointsSystem();
@@ -381,14 +389,26 @@ export const MealConfirmationDialog = ({
                 📸 Bilder werden mit der Mahlzeit gespeichert ({uploadedImages.length})
               </div>
               <div className="flex flex-wrap gap-2">
-                {uploadedImages.map((imageUrl, index) => (
-                  <img
-                    key={index}
-                    src={imageUrl}
-                    alt={`Mahlzeit ${index + 1}`}
-                    className="w-12 h-12 object-cover rounded border"
-                  />
-                ))}
+                {uploadedImages.map((imageUrl, index) => {
+                  console.log('🖼️ Rendering thumbnail:', { index, imageUrl, type: typeof imageUrl });
+                  return (
+                    <img
+                      key={index}
+                      src={imageUrl}
+                      alt={`Mahlzeit ${index + 1}`}
+                      className="w-12 h-12 object-cover rounded border"
+                      onLoad={() => console.log('✅ Image loaded:', imageUrl)}
+                      onError={(e) => {
+                        console.error('❌ Image failed to load:', imageUrl, e);
+                        e.currentTarget.style.backgroundColor = '#f3f4f6';
+                        e.currentTarget.style.display = 'flex';
+                        e.currentTarget.style.alignItems = 'center';
+                        e.currentTarget.style.justifyContent = 'center';
+                        e.currentTarget.innerHTML = '🖼️';
+                      }}
+                    />
+                  );
+                })}
               </div>
             </div>
           )}

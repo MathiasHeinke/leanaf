@@ -408,10 +408,12 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Simplified state update function
   const updateDialogState = useCallback((mealData: AnalyzedMealData, mealType: string) => {
+    console.log('📷 updateDialogState - Current uploadedImages:', uploadedImages);
+    console.log('🔧 updateDialogState - MealData:', mealData);
     setAnalyzedMealData(mealData);
     setSelectedMealType(mealType);
     setTimeout(() => setShowConfirmationDialog(true), 50);
-  }, []);
+  }, [uploadedImages]);
 
   // Event handlers
   const handleSubmitMeal = useCallback(async () => {
