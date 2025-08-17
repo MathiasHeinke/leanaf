@@ -18,13 +18,19 @@ type CoachEvent =
   | { type: "IMAGE"; url: string; clientEventId: string; context?: any }
   | { type: "END"; clientEventId: string; context?: any };
 
-type OrchestratorReply = { kind: "message"; text: string; end?: boolean; traceId?: string };
+type OrchestratorReply = { kind: "message"; text: string; end?: boolean; traceId?: string; meta?: any };
 
 // Helpers
 const getTraceId = (req: Request) => req.headers.get("x-trace-id") || crypto.randomUUID();
 
+// Centralized keyword gates
+const KEYWORDS = {
+  goal: ['ziel','goal','deadline','plan','blockiert','stuck','fortschritt','progress'],
+  review: ['heute','morgen','woche','tag','review','bilanz','zusammenfassung','analyse','planung','report','bericht']
+};
+
 // Phase 1 & 2: Name-Context + Goal-Recall-Gate
-async function buildAresPrompt(supabase: any, userId: string, coachId: string, userText: string) {
+async function buildAresPrompt(supabase: any, userId: string, coachId: string, userText: string): Promise<{ prompt: string; debug: any }> {
   try {
     // Load persona with fallback
     const persona = await loadCoachPersona(supabase, coachId);
@@ -59,12 +65,43 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
         .catch(() => null)
     ]);
     
-    console.log(`[ARES-PROMPT] Memory loaded: profile=${!!userProfile.goal}, summaries=${recentSummaries.length}, workoutsRows=${Array.isArray(workoutRows) ? workoutRows.length : 0}`);
+    console.log(`[ARES-PROMPT] Memory loaded: profile=${!!(userProfile && Object.keys(userProfile).length)}, summaries=${Array.isArray(recentSummaries) ? recentSummaries.length : 0}, workoutsRows=${Array.isArray(workoutRows) ? workoutRows.length : 0}`);
     
-    // Phase 1: Name fallback logic
-    const userName = userProfile.preferred_name || userProfile.display_name || userProfile.first_name || null;
+    // Phase 1: Name fallback logic (profile -> memory -> summaries)
+    let userName: string | null = userProfile.preferred_name || userProfile.display_name || userProfile.first_name || userProfile.full_name || null;
+    let nameSource: 'profile' | 'memory' | 'summary' | 'unknown' = userName ? 'profile' : 'unknown';
+
+    function extractNameFromText(text: string): string | null {
+      if (!text) return null;
+      const t = String(text);
+      // Common German/English self-intro patterns
+      const patterns = [
+        /\bich heiße\s+([A-ZÄÖÜ][a-zäöüß-]+)/i,
+        /\bmein name ist\s+([A-ZÄÖÜ][a-zäöüß-]+)/i,
+        /\bi am\s+([A-Z][a-z'-]+)/i,
+        /\bi'm\s+([A-Z][a-z'-]+)/i,
+        /\bname\s*:\s*([A-ZÄÖÜ][a-zäöüß-]+)/i,
+        /\bhallo[,!\s]+([A-ZÄÖÜ][a-zäöüß-]+)/i
+      ];
+      for (const p of patterns) {
+        const m = t.match(p);
+        if (m && m[1]) return m[1];
+      }
+      return null;
+    }
+
+    if (!userName) {
+      const fromMemory = extractNameFromText(memoryHint as string);
+      if (fromMemory) { userName = fromMemory; nameSource = 'memory'; }
+    }
+    if (!userName && Array.isArray(recentSummaries) && recentSummaries.length) {
+      const joined = recentSummaries.slice(0, 2).join('\n');
+      const fromSummary = extractNameFromText(joined);
+      if (fromSummary) { userName = fromSummary; nameSource = 'summary'; }
+    }
+
     const greetName = userName ? `User heißt: ${userName}` : "Name unbekannt - einmal freundlich erfragen";
-    console.log(`[ARES-NAME] User name resolved: ${userName || 'NONE'}`);
+    console.log(`[ARES-NAME] User name resolved: ${userName || 'NONE'} (source=${nameSource})`);
     
     // Phase 2: Goal-Recall-Gate (context-triggered goals)
     const shouldRecallGoals = isGoalRelevant(userText, userProfile, recentSummaries);
@@ -75,7 +112,7 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
     const dial = decideAresDial(moodCtx || {}, userText);
     
     // Build facts for context
-    const facts = [];
+    const facts: string[] = [];
     facts.push(`Du bist ${persona.name || 'ARES'} - ein direkter, mentaler Coach`);
     facts.push(`Dein Stil: ${persona.voice || 'klar, strukturiert, motivierend'}`);
     facts.push(greetName);
@@ -141,46 +178,43 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
       ``,
       `Antworte als ARES - direkt, präzise, motivierend.`
     ].join('\n');
+
+    const debug = {
+      facts,
+      gates: { shouldRecallGoals, includeAnalytics },
+      name: { resolved: userName, source: nameSource },
+      persona: { name: persona?.name, voice: persona?.voice },
+      dial,
+      ritual: ritualCtx?.ritual || null
+    };
     
-    return prompt;
+    return { prompt, debug };
     
   } catch (error) {
     console.error('[ARES-PROMPT] Error building prompt:', error);
     
     // Emergency fallback prompt
-    return [
+    const prompt = [
       `Du bist ARES - ein direkter Coach.`,
       `Antworte klar und strukturiert auf: "${userText}"`,
       `Sei motivierend aber ehrlich.`
     ].join('\n');
+
+    return { prompt, debug: { error: String(error) } };
   }
 }
 
 // Phase 2: Goal-Recall-Gate - only mention goals when contextually relevant
-function isGoalRelevant(userText: string, userProfile: any, recentSummaries: any[]): boolean {
-  const text = userText.toLowerCase();
-  
-  // Explicit goal triggers
-  const goalKeywords = ['ziel', 'goal', 'deadline', 'plan', 'blockiert', 'stuck', 'fortschritt', 'progress'];
-  if (goalKeywords.some(keyword => text.includes(keyword))) {
+function isGoalRelevant(userText: string, _userProfile: any, _recentSummaries: any[]): boolean {
+  const text = (userText || '').toLowerCase();
+  if (KEYWORDS.goal.some(k => text.includes(k))) {
     console.log('[ARES-GOALS] Explicit goal mention detected');
     return true;
   }
-  
-  // Daily review triggers
-  const reviewKeywords = ['heute', 'morgen', 'woche', 'tag', 'review', 'bilanz', 'zusammenfassung'];
-  if (reviewKeywords.some(keyword => text.includes(keyword))) {
-    console.log('[ARES-GOALS] Daily review context detected');
+  if (KEYWORDS.review.some(k => text.includes(k))) {
+    console.log('[ARES-GOALS] Daily/weekly review context detected');
     return true;
   }
-  
-  // Performance deviation triggers
-  const recentMissedDays = recentSummaries.filter(s => s.workout_volume === 0).length;
-  if (recentMissedDays >= 2) {
-    console.log('[ARES-GOALS] Performance deviation detected');
-    return true;
-  }
-  
   // Default: suppress goals
   return false;
 }
@@ -279,6 +313,10 @@ serve(async (req) => {
     }
     console.log(`[ARES-BODY-${traceId}] Parsed body:`, JSON.stringify(body, null, 2));
     
+    // Debug mode flag (header or body)
+    const debugMode = (req.headers.get('x-debug') === '1' || req.headers.get('x-debug') === 'true' || body?.debug === true);
+
+    
     // Health check for debugging - simplified check
     if (req.headers.get('x-health-check') === '1' || body?.action === 'health') {
       console.log(`[ARES-HEALTH-${traceId}] Health check requested`);
@@ -318,13 +356,22 @@ serve(async (req) => {
       const coachId = body.coachId || 'ares';
       console.log(`[ARES-SYNTHETIC-${traceId}] Processing synthetic event: "${userText}"`);
       
-      const prompt = await buildAresPrompt(supabase, providedUserId || 'anonymous', coachId, userText);
+      const built = await buildAresPrompt(supabase, providedUserId || 'anonymous', coachId, userText);
+      const prompt = built.prompt;
+      const debugInfo = built.debug;
+      if (debugMode) {
+        console.log(`[ARES-DEBUG-${traceId}] Prompt Built (synthetic):\n${prompt}`);
+        console.log(`[ARES-DEBUG-${traceId}] Facts:`, debugInfo.facts);
+        console.log(`[ARES-DEBUG-${traceId}] Gates:`, debugInfo.gates);
+        console.log(`[ARES-DEBUG-${traceId}] Name:`, debugInfo.name);
+      }
       const responseText = await generateAresResponse(prompt, traceId);
       
       return new Response(JSON.stringify({
         kind: "message",
         text: responseText,
-        traceId
+        traceId,
+        meta: debugMode ? { debug: { prompt, ...debugInfo } } : undefined
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -360,8 +407,16 @@ serve(async (req) => {
     console.log(`[ARES-PHASE1-${traceId}] Processing: user=${userId}, coach=${coachId}, text="${userText}"`);
 
     // Build prompt with persona + memory
-    const prompt = await buildAresPrompt(supabase, userId, coachId, userText);
+    const built = await buildAresPrompt(supabase, userId, coachId, userText);
+    const prompt = built.prompt;
+    const debugInfo = built.debug;
     console.log(`[ARES-PHASE1-${traceId}] Prompt built, length: ${prompt.length}`);
+    if (debugMode) {
+      console.log(`[ARES-DEBUG-${traceId}] Prompt Built:\n${prompt}`);
+      console.log(`[ARES-DEBUG-${traceId}] Facts:`, debugInfo.facts);
+      console.log(`[ARES-DEBUG-${traceId}] Gates:`, debugInfo.gates);
+      console.log(`[ARES-DEBUG-${traceId}] Name:`, debugInfo.name);
+    }
 
     // Generate response
     const responseText = await generateAresResponse(prompt, traceId);
@@ -369,7 +424,8 @@ serve(async (req) => {
     const reply: OrchestratorReply = {
       kind: "message",
       text: responseText,
-      traceId
+      traceId,
+      meta: debugMode ? { debug: { prompt, ...debugInfo } } : undefined
     };
 
     console.log(`[ARES-PHASE1-${traceId}] Response generated successfully`);
