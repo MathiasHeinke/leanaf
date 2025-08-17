@@ -138,6 +138,7 @@ const handleSubmit = useCallback(async () => {
                       src={url}
                       alt={`Hochgeladene Mahlzeit ${idx + 1}`}
                       loading="lazy"
+                      onError={(e) => { e.currentTarget.src = '/placeholder.svg'; console.warn('Composer thumbnail failed, placeholder used:', url); }}
                       className="h-10 w-10 rounded-md object-cover border border-border"
                     />
                     <button

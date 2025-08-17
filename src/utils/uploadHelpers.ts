@@ -216,7 +216,7 @@ const uploadSingleFileWithProgress = async (
     .upload(fileName, processedFile, {
       cacheControl: '3600',
       upsert: false,
-      contentType: processedFile.type || (isVideo ? 'video/mp4' : 'image/webp')
+      contentType: isVideo ? 'video/mp4' : 'image/webp'
     });
 
   if (uploadError) {

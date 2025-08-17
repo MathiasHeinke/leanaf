@@ -117,6 +117,8 @@ export const MealInput: React.FC<MealInputProps> = ({ onMealSaved }) => {
                   <img
                     src={url}
                     alt={`Mahlzeit ${index + 1}`}
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.src = '/placeholder.svg'; console.warn('Thumbnail failed to load, replaced with placeholder:', url); }}
                     className="h-16 w-16 rounded-lg object-cover border border-border"
                   />
                   <button
