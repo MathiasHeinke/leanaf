@@ -8,13 +8,17 @@ import { TrainingPlanCard } from '@/components/TrainingPlanCard';
 import { EnhancedTrainingPlanCard } from '@/components/EnhancedTrainingPlanCard';
 import { SimpleMessageItem } from '@/components/SimpleMessageItem';
 import { ToolActionButton } from '@/components/ToolActionButton';
+import { AresMetaCoachCard } from '@/components/coach/cards/AresMetaCoachCard';
+import { AresTotalAssessmentCard } from '@/components/coach/cards/AresTotalAssessmentCard';
+import { AresUltimateWorkoutCard } from '@/components/coach/cards/AresUltimateWorkoutCard';
+import { AresSuperNutritionCard } from '@/components/coach/cards/AresSuperNutritionCard';
 
 export interface CardMessage {
   id: string;
   role: 'assistant';
   type: 'card';
-  tool: 'supplement' | 'meal' | 'exercise' | 'mindset' | 'plan' | 'workout_plan' | 'trainingsplan';
-  card?: 'enhanced_training_plan' | 'workout_plan' | 'trainingsplan';
+  tool: 'supplement' | 'meal' | 'exercise' | 'mindset' | 'plan' | 'workout_plan' | 'trainingsplan' | 'aresMetaCoach' | 'aresTotalAssessment' | 'aresUltimateWorkoutPlan' | 'aresSuperNutrition';
+  card?: 'enhanced_training_plan' | 'workout_plan' | 'trainingsplan' | 'aresMetaCoach' | 'aresTotalAssessment' | 'aresUltimateWorkoutPlan' | 'aresSuperNutrition';
   payload: any;
   created_at: string;
   coach_personality: string;
@@ -106,6 +110,51 @@ export function renderMessage(
           />
         );
       
+      // ARES Tool Cards
+      case 'aresMetaCoach':
+        return (
+          <AresMetaCoachCard
+            key={cardMessage.id}
+            analysis={cardMessage.payload.analysis}
+            query={cardMessage.payload.query}
+            timestamp={cardMessage.payload.timestamp}
+            ares_signature={cardMessage.payload.ares_signature}
+          />
+        );
+      
+      case 'aresTotalAssessment':
+        return (
+          <AresTotalAssessmentCard
+            key={cardMessage.id}
+            assessment={cardMessage.payload.assessment}
+            user_query={cardMessage.payload.user_query}
+            generated_at={cardMessage.payload.generated_at}
+            ares_authority={cardMessage.payload.ares_authority}
+          />
+        );
+      
+      case 'aresUltimateWorkoutPlan':
+        return (
+          <AresUltimateWorkoutCard
+            key={cardMessage.id}
+            plan={cardMessage.payload.plan}
+            user_input={cardMessage.payload.user_input}
+            created_at={cardMessage.payload.created_at}
+            ares_seal={cardMessage.payload.ares_seal}
+          />
+        );
+      
+      case 'aresSuperNutrition':
+        return (
+          <AresSuperNutritionCard
+            key={cardMessage.id}
+            plan={cardMessage.payload.plan}
+            user_context={cardMessage.payload.user_context}
+            created_at={cardMessage.payload.created_at}
+            ares_nutrition_seal={cardMessage.payload.ares_nutrition_seal}
+          />
+        );
+
       case 'plan':
       case 'workout_plan':
       case 'trainingsplan':

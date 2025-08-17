@@ -23,7 +23,7 @@ type OrchestratorReply = { kind: "message"; text: string; end?: boolean; traceId
 // Helpers
 const getTraceId = (req: Request) => req.headers.get("x-trace-id") || crypto.randomUUID();
 
-// Build ARES Phase 1 prompt with persona + memory
+// Phase 1 & 2: Name-Context + Goal-Recall-Gate
 async function buildAresPrompt(supabase: any, userId: string, coachId: string, userText: string) {
   try {
     // Load persona with fallback
@@ -39,12 +39,26 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
     
     console.log(`[ARES-PROMPT] Memory loaded: profile=${!!userProfile.goal}, summaries=${recentSummaries.length}`);
     
+    // Phase 1: Name fallback logic
+    const userName = userProfile.preferred_name || userProfile.display_name || userProfile.first_name || null;
+    const greetName = userName ? `User heißt: ${userName}` : "Name unbekannt - einmal freundlich erfragen";
+    console.log(`[ARES-NAME] User name resolved: ${userName || 'NONE'}`);
+    
+    // Phase 2: Goal-Recall-Gate (context-triggered goals)
+    const shouldRecallGoals = isGoalRelevant(userText, userProfile, recentSummaries);
+    console.log(`[ARES-GOALS] Goal recall gate: ${shouldRecallGoals ? 'TRIGGERED' : 'SUPPRESSED'}`);
+    
     // Build facts for context
     const facts = [];
     facts.push(`Du bist ${persona.name || 'ARES'} - ein direkter, mentaler Coach`);
     facts.push(`Dein Stil: ${persona.voice || 'klar, strukturiert, motivierend'}`);
+    facts.push(greetName);
     
-    if (userProfile.goal) facts.push(`User-Ziel: ${userProfile.goal}`);
+    // Only add goals if goal-gate is triggered
+    if (shouldRecallGoals && userProfile.goal) {
+      facts.push(`User-Ziel: ${userProfile.goal}`);
+    }
+    
     if (userProfile.weight) facts.push(`Gewicht: ${userProfile.weight}kg`);
     if (userProfile.target_weight) facts.push(`Zielgewicht: ${userProfile.target_weight}kg`);
     if (userProfile.tdee) facts.push(`Kalorienbedarf: ${userProfile.tdee} kcal/Tag`);
@@ -61,6 +75,7 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
       `Dein Stil: klar, strukturiert, leicht fordernd aber unterstützend.`,
       `Sprich wie ein Bruder, der fordert aber auch beschützt.`,
       `Nutze kurze, prägnante Sätze. Sei authentisch, nie künstlich.`,
+      userName ? `Sprich ${userName} mit Namen an wenn passend.` : `Frage einmal freundlich nach dem Namen.`,
       ``,
       `KONTEXT:`,
       ...facts,
@@ -82,6 +97,35 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
       `Sei motivierend aber ehrlich.`
     ].join('\n');
   }
+}
+
+// Phase 2: Goal-Recall-Gate - only mention goals when contextually relevant
+function isGoalRelevant(userText: string, userProfile: any, recentSummaries: any[]): boolean {
+  const text = userText.toLowerCase();
+  
+  // Explicit goal triggers
+  const goalKeywords = ['ziel', 'goal', 'deadline', 'plan', 'blockiert', 'stuck', 'fortschritt', 'progress'];
+  if (goalKeywords.some(keyword => text.includes(keyword))) {
+    console.log('[ARES-GOALS] Explicit goal mention detected');
+    return true;
+  }
+  
+  // Daily review triggers
+  const reviewKeywords = ['heute', 'morgen', 'woche', 'tag', 'review', 'bilanz', 'zusammenfassung'];
+  if (reviewKeywords.some(keyword => text.includes(keyword))) {
+    console.log('[ARES-GOALS] Daily review context detected');
+    return true;
+  }
+  
+  // Performance deviation triggers
+  const recentMissedDays = recentSummaries.filter(s => s.workout_volume === 0).length;
+  if (recentMissedDays >= 2) {
+    console.log('[ARES-GOALS] Performance deviation detected');
+    return true;
+  }
+  
+  // Default: suppress goals
+  return false;
 }
 
 // Generate ARES response using OpenAI
@@ -151,7 +195,31 @@ serve(async (req) => {
   );
 
   try {
-    const body = await req.json().catch(() => ({}));
+    // Phase 4: Edge Function Stabilization - robust body parsing
+    let body: any = {};
+    try {
+      const rawBody = await req.text();
+      if (rawBody.trim()) {
+        body = JSON.parse(rawBody);
+      }
+    } catch (parseError) {
+      console.error(`[ARES-BODY-PARSE-${traceId}] JSON parse failed:`, parseError);
+      // Try to recover from malformed JSON
+      try {
+        const rawBody = await req.text();
+        console.log(`[ARES-BODY-RAW-${traceId}] Raw body:`, rawBody);
+        if (rawBody.includes('"text"') || rawBody.includes('"message"')) {
+          // Attempt basic text extraction
+          const textMatch = rawBody.match(/"(?:text|message)"\s*:\s*"([^"]+)"/);
+          if (textMatch) {
+            body = { text: textMatch[1] };
+            console.log(`[ARES-BODY-RECOVERY-${traceId}] Recovered text: ${textMatch[1]}`);
+          }
+        }
+      } catch (recoveryError) {
+        console.error(`[ARES-BODY-RECOVERY-${traceId}] Recovery failed:`, recoveryError);
+      }
+    }
     console.log(`[ARES-BODY-${traceId}] Parsed body:`, JSON.stringify(body, null, 2));
     
     // Health check for debugging - simplified check
