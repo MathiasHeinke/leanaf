@@ -18,7 +18,7 @@ import { Textarea } from './ui/textarea';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { getCurrentDateString } from "@/utils/dateHelpers";
-import { triggerDataRefresh } from '@/hooks/useDataRefresh';
+
 import { de } from 'date-fns/locale';
 import { useFrequentFluids } from '@/hooks/useFrequentFluids';
 import { ChevronUp } from 'lucide-react';
@@ -257,6 +257,30 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
 
     setLoading(true);
 
+    // Build optimistic temp entry
+    const selectedFluidObj = selectedFluid ? fluids.find(f => f.id === selectedFluid) : undefined;
+    const tempFluid: UserFluid = {
+      id: `temp-${Date.now()}`,
+      fluid_id: selectedFluid || null,
+      custom_name: selectedFluid ? null : customName,
+      amount_ml: amountValue,
+      consumed_at: new Date().toISOString(),
+      notes: notes || null,
+      fluid_name: selectedFluid ? (selectedFluidObj?.name || 'Getränk') : (customName || 'Getränk'),
+      fluid_category: selectedFluid ? selectedFluidObj?.category : undefined,
+      has_alcohol: selectedFluid ? (selectedFluidObj?.has_alcohol || false) : false,
+      calories_per_100ml: selectedFluid ? (selectedFluidObj?.calories_per_100ml || 0) : 0,
+      fluid_database: selectedFluid ? {
+        name: selectedFluidObj?.name || '',
+        category: selectedFluidObj?.category || '',
+        has_alcohol: selectedFluidObj?.has_alcohol || false,
+        calories_per_100ml: selectedFluidObj?.calories_per_100ml || 0
+      } : undefined
+    };
+
+    // Optimistic update
+    setTodaysFluids(prev => [tempFluid, ...prev]);
+
     try {
       const fluidData = {
         user_id: user.id,
@@ -281,13 +305,12 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setNotes('');
       setShowAddForm(false);
       
-      // Add optimistic update to immediate UI refresh
-      await loadTodaysFluids();
-      
-      // Only trigger parent update for mission updates
+      // Optional mission/header update
       onFluidUpdate?.();
     } catch (error) {
       console.error('Error adding fluid:', error);
+      // Rollback optimistic update on error
+      setTodaysFluids(prev => prev.filter(f => f.id !== tempFluid.id));
       toast.error('Fehler beim Hinzufügen des Getränks');
     } finally {
       setLoading(false);
@@ -432,13 +455,24 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
   const handleDuplicateFluid = async (fluid: UserFluid) => {
     if (!user) return;
 
+    // Create optimistic duplicate
+    const tempDuplicate: UserFluid = {
+      ...fluid,
+      id: `temp-${Date.now()}`,
+      consumed_at: new Date().toISOString(),
+      notes: fluid.notes ? `${fluid.notes} (Kopie)` : 'Kopie'
+    };
+
+    // Optimistic update - immediately reflect in UI
+    setTodaysFluids(prev => [tempDuplicate, ...prev]);
+
     try {
       const duplicateData = {
         user_id: user.id,
         fluid_id: fluid.fluid_id,
         custom_name: fluid.custom_name,
         amount_ml: fluid.amount_ml,
-        notes: fluid.notes ? `${fluid.notes} (Kopie)` : 'Kopie'
+        notes: tempDuplicate.notes
       };
 
       const { error } = await supabase
@@ -448,10 +482,12 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       if (error) throw error;
 
       toast.success('Getränk dupliziert');
-      await loadTodaysFluids();
+      // Optional mission/header update
       onFluidUpdate?.();
     } catch (error) {
       console.error('Error duplicating fluid:', error);
+      // Rollback optimistic update on error
+      setTodaysFluids(prev => prev.filter(f => f.id !== tempDuplicate.id));
       toast.error('Fehler beim Duplizieren des Getränks');
     }
   };
