@@ -1425,6 +1425,7 @@ export type Database = {
           updated_at: string
           user_id: string
           warning_message: string | null
+          water_goal_ml: number | null
           weekly_calorie_deficit: number | null
           weekly_fat_loss_g: number | null
           weeks_to_goal: number | null
@@ -1456,6 +1457,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           warning_message?: string | null
+          water_goal_ml?: number | null
           weekly_calorie_deficit?: number | null
           weekly_fat_loss_g?: number | null
           weeks_to_goal?: number | null
@@ -1487,6 +1489,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           warning_message?: string | null
+          water_goal_ml?: number | null
           weekly_calorie_deficit?: number | null
           weekly_fat_loss_g?: number | null
           weeks_to_goal?: number | null
