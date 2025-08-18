@@ -51,12 +51,7 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
   const [bedtimeInput, setBedtimeInput] = useState("");
   const [waketimeInput, setWaketimeInput] = useState("");
   
-  // Individual tracking states for optional fields
-  const [trackInterruptions, setTrackInterruptions] = useState(false);
-  const [trackScreenTime, setTrackScreenTime] = useState(false);
-  const [trackLibido, setTrackLibido] = useState(false);
-  const [trackMotivation, setTrackMotivation] = useState(false);
-  const [trackLastMeal, setTrackLastMeal] = useState(false);
+  // Removed tracking states - all optional fields are always active when expanded
   const timelineRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -254,11 +249,11 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
         sleep_quality: sleepQuality[0],
         bedtime: formatTime(bedtime[0]),
         wake_time: formatTime(wakeTime[0]),
-        sleep_interruptions: trackInterruptions ? sleepInterruptions[0] : null,
-        screen_time_evening: trackScreenTime ? screenTimeEvening[0] : null,
-        morning_libido: trackLibido ? morningLibido[0] : null,
-        motivation_level: trackMotivation ? motivationLevel[0] : null,
-        last_meal_time: trackLastMeal ? formatTime(lastMealTime[0]) : null,
+        sleep_interruptions: sleepInterruptions[0],
+        screen_time_evening: screenTimeEvening[0],
+        morning_libido: morningLibido[0],
+        motivation_level: motivationLevel[0],
+        last_meal_time: formatTime(lastMealTime[0]),
         date: currentDate.toISOString().split('T')[0]
       };
 
@@ -779,17 +774,9 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
               
               <CollapsibleContent className="space-y-4 mt-3">
                 {/* Sleep Interruptions */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <SmartChip
-                      variant={trackInterruptions ? "primary" : "secondary"}
-                      size="sm"
-                      icon={<Moon className="h-3 w-3" />}
-                      onClick={() => setTrackInterruptions(!trackInterruptions)}
-                    >
-                      {trackInterruptions ? "Tracking aktiv" : "Tracking deaktiviert"}
-                    </SmartChip>
-                    <span className="text-sm font-medium">Schlafunterbrechungen</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Schlafunterbrechungen: {sleepInterruptions[0]}x</span>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
@@ -801,36 +788,20 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  {trackInterruptions && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Anzahl</span>
-                        <span className="text-sm font-medium">{sleepInterruptions[0]}x</span>
-                      </div>
-                      <Slider
-                        value={sleepInterruptions}
-                        onValueChange={setSleepInterruptions}
-                        max={10}
-                        min={0}
-                        step={1}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
+                  <Slider
+                    value={sleepInterruptions}
+                    onValueChange={setSleepInterruptions}
+                    max={10}
+                    min={0}
+                    step={1}
+                    className="w-full"
+                  />
                 </div>
 
                 {/* Screen Time Evening */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <SmartChip
-                      variant={trackScreenTime ? "primary" : "secondary"}
-                      size="sm"
-                      icon={<Smartphone className="h-3 w-3" />}
-                      onClick={() => setTrackScreenTime(!trackScreenTime)}
-                    >
-                      {trackScreenTime ? "Tracking aktiv" : "Tracking deaktiviert"}
-                    </SmartChip>
-                    <span className="text-sm font-medium">Bildschirmzeit am Abend</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Bildschirmzeit am Abend: {screenTimeEvening[0]} Min</span>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
@@ -842,36 +813,20 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  {trackScreenTime && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Minuten</span>
-                        <span className="text-sm font-medium">{screenTimeEvening[0]} Min</span>
-                      </div>
-                      <Slider
-                        value={screenTimeEvening}
-                        onValueChange={setScreenTimeEvening}
-                        max={300}
-                        min={0}
-                        step={15}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
+                  <Slider
+                    value={screenTimeEvening}
+                    onValueChange={setScreenTimeEvening}
+                    max={300}
+                    min={0}
+                    step={15}
+                    className="w-full"
+                  />
                 </div>
 
                 {/* Morning Libido */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <SmartChip
-                      variant={trackLibido ? "primary" : "secondary"}
-                      size="sm"
-                      icon={<Heart className="h-3 w-3" />}
-                      onClick={() => setTrackLibido(!trackLibido)}
-                    >
-                      {trackLibido ? "Tracking aktiv" : "Tracking deaktiviert"}
-                    </SmartChip>
-                    <span className="text-sm font-medium">Morgen-Libido</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Morgen-Libido: {morningLibido[0]}/10</span>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
@@ -883,36 +838,20 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  {trackLibido && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Level</span>
-                        <span className="text-sm font-medium">{morningLibido[0]}/10</span>
-                      </div>
-                      <Slider
-                        value={morningLibido}
-                        onValueChange={setMorningLibido}
-                        max={10}
-                        min={1}
-                        step={1}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
+                  <Slider
+                    value={morningLibido}
+                    onValueChange={setMorningLibido}
+                    max={10}
+                    min={1}
+                    step={1}
+                    className="w-full"
+                  />
                 </div>
 
                 {/* Motivation Level */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <SmartChip
-                      variant={trackMotivation ? "primary" : "secondary"}
-                      size="sm"
-                      icon={<Zap className="h-3 w-3" />}
-                      onClick={() => setTrackMotivation(!trackMotivation)}
-                    >
-                      {trackMotivation ? "Tracking aktiv" : "Tracking deaktiviert"}
-                    </SmartChip>
-                    <span className="text-sm font-medium">Motivationslevel</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Motivationslevel: {motivationLevel[0]}/10</span>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
@@ -924,36 +863,20 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  {trackMotivation && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Level</span>
-                        <span className="text-sm font-medium">{motivationLevel[0]}/10</span>
-                      </div>
-                      <Slider
-                        value={motivationLevel}
-                        onValueChange={setMotivationLevel}
-                        max={10}
-                        min={1}
-                        step={1}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
+                  <Slider
+                    value={motivationLevel}
+                    onValueChange={setMotivationLevel}
+                    max={10}
+                    min={1}
+                    step={1}
+                    className="w-full"
+                  />
                 </div>
 
                 {/* Last Meal Time */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <SmartChip
-                      variant={trackLastMeal ? "primary" : "secondary"}
-                      size="sm"
-                      icon={<Utensils className="h-3 w-3" />}
-                      onClick={() => setTrackLastMeal(!trackLastMeal)}
-                    >
-                      {trackLastMeal ? "Tracking aktiv" : "Tracking deaktiviert"}
-                    </SmartChip>
-                    <span className="text-sm font-medium">Letzte Mahlzeit</span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Letzte Mahlzeit: {formatTime(lastMealTime[0])}</span>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger>
@@ -965,39 +888,14 @@ export const QuickSleepInput = ({ onSleepAdded, todaysSleep, currentDate = new D
                       </Tooltip>
                     </TooltipProvider>
                   </div>
-                  {trackLastMeal && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Uhrzeit</span>
-                        <span className="text-sm font-medium">{formatTime(lastMealTime[0])}</span>
-                      </div>
-                      <div 
-                        ref={timelineRef}
-                        className="relative h-10 bg-secondary rounded-lg cursor-pointer select-none"
-                        onClick={handleTimelineClick}
-                      >
-                        {/* Timeline background with hour markers */}
-                        <div className="absolute inset-0 flex">
-                          {Array.from({ length: 24 }, (_, i) => (
-                            <div key={i} className="flex-1 border-r border-secondary-foreground/10 last:border-r-0" />
-                          ))}
-                        </div>
-                        
-                        {/* Last meal time thumb */}
-                        <div
-                          className="absolute top-1/2 w-4 h-4 bg-orange-500 rounded-full border-2 border-white cursor-grab active:cursor-grabbing transform -translate-y-1/2 -translate-x-1/2 shadow-lg transition-all hover:scale-110"
-                          style={{ left: `${(lastMealTime[0] / 24) * 100}%` }}
-                          onMouseDown={(e) => handleMouseDown(e, 'bedtime')}
-                          onTouchStart={(e) => handleTouchStart(e, 'bedtime')}
-                        />
-                        
-                        {/* Time labels */}
-                        <div className="absolute -bottom-6 left-0 text-xs text-muted-foreground">00:00</div>
-                        <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs text-muted-foreground">12:00</div>
-                        <div className="absolute -bottom-6 right-0 text-xs text-muted-foreground">23:59</div>
-                      </div>
-                    </div>
-                  )}
+                  <Slider
+                    value={lastMealTime}
+                    onValueChange={setLastMealTime}
+                    max={23.5}
+                    min={16}
+                    step={0.5}
+                    className="w-full"
+                  />
                 </div>
               </CollapsibleContent>
             </Collapsible>
