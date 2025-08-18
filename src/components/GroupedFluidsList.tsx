@@ -95,7 +95,7 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids, onEditFluid, 
         <div className="flex items-center gap-1">
           <span className={colorClass}>{formatFluidAmount(fluid.amount_ml || 0)}</span>
           {(onEditFluid || onDeleteFluid) && (
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
+            <div className="flex gap-1 ml-2">
               {onEditFluid && (
                 <Button
                   size="sm"
