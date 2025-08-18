@@ -10,6 +10,8 @@ import { GridPhotoView } from './GridPhotoView';
 import { EnhancedTargetImageSelector } from '../TargetImageSelector/EnhancedTargetImageSelector';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
 import { AiTargetImageGeneration } from './AiTargetImageGeneration';
+import { KiComparisonView } from './KiComparisonView';
+import { ProgressComparisonView } from './ProgressComparisonView';
 import { 
   ImageIcon, 
   SparklesIcon, 
@@ -191,8 +193,10 @@ export const TransformationJourneyWidget: React.FC = () => {
       <ProgressPhotoCropModal />
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="ki-vergleich">KI-Vergleich</TabsTrigger>
+          <TabsTrigger value="progress-vergleich">Progress-Vergleich</TabsTrigger>
           <TabsTrigger value="generate">KI Zielbild</TabsTrigger>
           <TabsTrigger value="photos">Alle Fotos</TabsTrigger>
         </TabsList>
@@ -228,6 +232,19 @@ export const TransformationJourneyWidget: React.FC = () => {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="ki-vergleich" className="space-y-6">
+          <KiComparisonView
+            targetImages={targetImages}
+            progressPhotos={progressPhotos}
+          />
+        </TabsContent>
+
+        <TabsContent value="progress-vergleich" className="space-y-6">
+          <ProgressComparisonView
+            progressPhotos={progressPhotos}
+          />
         </TabsContent>
 
         <TabsContent value="photos" className="space-y-6">

@@ -95,11 +95,15 @@ serve(async (req) => {
 
     console.log('Successfully downloaded and stored AI image');
 
+    // Also trigger a database refresh notification
+    console.log('Notifying frontend about storage update...');
+
     return new Response(
       JSON.stringify({ 
         success: true,
         storagePath,
         publicUrl,
+        targetImageId,
         message: 'AI image downloaded and stored successfully'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

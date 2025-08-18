@@ -183,7 +183,7 @@ export const useTargetImages = () => {
       if (selectedImageUrl.includes('delivery-eu4.bfl.ai') || selectedImageUrl.includes('replicate.delivery')) {
         try {
           console.log('Downloading AI image for permanent storage...');
-          const { error: downloadError } = await supabase.functions.invoke('download-ai-image', {
+          const { data: downloadResponse, error: downloadError } = await supabase.functions.invoke('download-ai-image', {
             body: {
               imageUrl: selectedImageUrl,
               targetImageId: saveResponse.id,
@@ -195,7 +195,19 @@ export const useTargetImages = () => {
             console.warn('Failed to download AI image for permanent storage:', downloadError);
             // Don't throw here, as the main save operation was successful
           } else {
-            console.log('AI image downloaded and stored permanently');
+            console.log('AI image downloaded and stored permanently:', downloadResponse);
+            
+            // Update the local state with the new storage URL
+            if (downloadResponse?.publicUrl) {
+              setTargetImages(prev => 
+                prev.map(img => 
+                  img.id === saveResponse.id 
+                    ? { ...img, image_url: downloadResponse.publicUrl }
+                    : img
+                )
+              );
+              console.log('Updated local state with permanent storage URL');
+            }
           }
         } catch (downloadError) {
           console.warn('Error downloading AI image:', downloadError);
