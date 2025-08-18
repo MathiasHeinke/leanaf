@@ -62,8 +62,10 @@ import { useOrchestrator, OrchestratorReply, CoachEvent } from '@/hooks/useOrche
 import { useOrchestratorWithDebug } from '@/hooks/useOrchestratorWithDebug';
 import { UserChatDebugger } from '@/components/debug/UserChatDebugger';
 import { AresChatDebugPanel } from '@/components/debug/AresChatDebugPanel';
+import { PromptInspectionModal } from '@/components/debug/PromptInspectionModal';
 import { PromptViewer, PromptData } from '@/components/gehirn/PromptViewer';
 import { useDebugSteps } from '@/hooks/useDebugSteps';
+import { usePromptTraceData } from '@/hooks/usePromptTraceData';
 import { Bug, Search } from 'lucide-react';
 import ChoiceBar from '@/components/ChoiceBar';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
@@ -1038,30 +1040,9 @@ const handleChipClick = useCallback(async (label: string) => {
 }, [user?.id, isOrchestratorLoading, clearChips, setUserTyping, mode, coach?.id, shadowTraceId, lastProposal, sendEvent, renderOrchestratorReply]);
 
 // ============= INSPECT MESSAGE HANDLER =============
-const handleInspectMessage = useCallback(async (traceId: string) => {
-  try {
-    // Mock prompt data for now - in real implementation, fetch from traces
-    const mockPromptData: PromptData = {
-      traceId,
-      finalPrompt: {
-        system: "Du bist ARES, der ultimative Cross-Domain Coach...",
-        user: "Benutzer-Nachricht hier...",
-        full: "System + User prompt kombiniert"
-      },
-      llmResponse: {
-        raw_response: lastResponse?.content || "LLM Antwort hier...",
-        usage: {
-          prompt_tokens: 150,
-          completion_tokens: 75,
-          total_tokens: 225
-        }
-      }
-    };
-    setPromptViewerData(mockPromptData);
-  } catch (error) {
-    toast.error('Konnte Prompt-Daten nicht laden');
-  }
-}, [lastResponse]);
+const handleInspectMessage = useCallback((traceId: string) => {
+  setSelectedTraceForPrompt(traceId);
+}, []);
 
 // ============= ENHANCED SEND MESSAGE HANDLER =============
 const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
@@ -1503,6 +1484,24 @@ chatInput={
           }
         }}
         onClose={() => setConfirmMeal(prev => ({ ...prev, open: false }))}
+      />
+      
+      {/* Enhanced ARES Debug Panel for coach 'ares' */}
+      {isAres && (
+        <AresChatDebugPanel
+          isOpen={showDebugger}
+          onClose={() => setShowDebugger(false)}
+          debugSteps={debugSteps.steps}
+          lastRequest={lastRequest}
+          lastResponse={lastResponse}
+          onClearSteps={debugSteps.clearSteps}
+        />
+      )}
+      
+      {/* Prompt Viewer for individual message inspection */}
+      <PromptInspectionModal 
+        traceId={selectedTraceForPrompt}
+        onClose={() => setSelectedTraceForPrompt(null)}
       />
     </Card>
   );
