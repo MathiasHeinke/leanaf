@@ -29,7 +29,7 @@ export const TransformationJourneyWidget: React.FC = () => {
     startCropWorkflow,
     ProgressPhotoCropModal 
   } = useProgressPhotos();
-  const [activeTab, setActiveTab] = useState("ki-vergleich");
+  const [activeTab, setActiveTab] = useState("generate");
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('front');
   
@@ -193,19 +193,12 @@ export const TransformationJourneyWidget: React.FC = () => {
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="ki-vergleich">KI-Vergleich</TabsTrigger>
           <TabsTrigger value="generate">KI Zielbild</TabsTrigger>
+          <TabsTrigger value="ki-vergleich">KI-Vergleich</TabsTrigger>
           <TabsTrigger value="progress-vergleich">Progress</TabsTrigger>
           <TabsTrigger value="photos">Bilder</TabsTrigger>
         </TabsList>
 
-
-        <TabsContent value="ki-vergleich" className="space-y-6">
-          <KiComparisonView
-            targetImages={targetImages}
-            progressPhotos={progressPhotos}
-          />
-        </TabsContent>
 
         <TabsContent value="generate" className="space-y-6">
           {/* Progress photo selection and AI generation UI */}
@@ -356,6 +349,13 @@ export const TransformationJourneyWidget: React.FC = () => {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="ki-vergleich" className="space-y-6">
+          <KiComparisonView
+            targetImages={targetImages}
+            progressPhotos={progressPhotos}
+          />
         </TabsContent>
 
         <TabsContent value="progress-vergleich" className="space-y-6">
