@@ -238,14 +238,8 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       
       toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
       
-      // Reload data to get the real ID and replace temp entry
-      await loadTodaysFluids();
-      
-      // Trigger parent update to refresh main page
+      // Only trigger parent update for mission updates (not full reload)
       onFluidUpdate?.();
-      
-      // Global refresh for header/mission
-      triggerDataRefresh();
     } catch (error) {
       console.error('Error adding fluid directly:', error);
       // Rollback optimistic update on error
@@ -287,14 +281,11 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setNotes('');
       setShowAddForm(false);
       
-      // Reload data
+      // Add optimistic update to immediate UI refresh
       await loadTodaysFluids();
       
-      // Trigger parent update to refresh main page
+      // Only trigger parent update for mission updates
       onFluidUpdate?.();
-      
-      // Global refresh for header/mission
-      triggerDataRefresh();
     } catch (error) {
       console.error('Error adding fluid:', error);
       toast.error('Fehler beim Hinzufügen des Getränks');
@@ -374,9 +365,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       if (error) throw error;
 
       toast.success('Getränk gelöscht');
-      onFluidUpdate?.();
-      // Only trigger global refresh for missions/header - not full data reload
-      triggerDataRefresh();
+      // No additional reloads - optimistic update already done
     } catch (error) {
       console.error('Error deleting fluid:', error);
       // Rollback optimistic update on error
@@ -425,9 +414,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setEditingFluidId(null);
       setEditAmount('');
       setEditNotes('');
-      onFluidUpdate?.();
-      // Only trigger global refresh for missions/header - not full data reload
-      triggerDataRefresh();
+      // No additional reloads - optimistic update already done
     } catch (error) {
       console.error('Error updating fluid:', error);
       // Rollback optimistic update on error
@@ -463,7 +450,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       toast.success('Getränk dupliziert');
       await loadTodaysFluids();
       onFluidUpdate?.();
-      triggerDataRefresh();
     } catch (error) {
       console.error('Error duplicating fluid:', error);
       toast.error('Fehler beim Duplizieren des Getränks');
