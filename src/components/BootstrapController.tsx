@@ -96,11 +96,6 @@ export const BootstrapController: React.FC<BootstrapControllerProps> = ({
   return (
     <>
       {children}
-      {gate.degraded && !gate.ready && (
-        <div className="fixed bottom-4 right-4 bg-muted/90 text-muted-foreground text-xs px-3 py-1 rounded-md backdrop-blur-sm">
-          Degraded Mode: {gate.reason}
-        </div>
-      )}
     </>
   );
 };
