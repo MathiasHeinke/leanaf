@@ -911,10 +911,17 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
                         date: fluid.consumed_at.split('T')[0]
                       }))}
                       onEditFluid={async (fluidId: string, amount: number) => {
-                        // Update the edit state and save
-                        setEditingFluidId(null);
-                        setEditAmount('');
-                        setEditNotes('');
+                        // Store original for rollback
+                        const originalFluids = [...todaysFluids];
+                        
+                        // Optimistic update - immediately update UI
+                        setTodaysFluids(prev => 
+                          prev.map(fluid => 
+                            fluid.id === fluidId 
+                              ? { ...fluid, amount_ml: amount }
+                              : fluid
+                          )
+                        );
                         
                         try {
                           const { error } = await supabase
@@ -925,11 +932,11 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
                           if (error) throw error;
 
                           toast.success('Getränk aktualisiert');
-                          await loadTodaysFluids();
-                          onFluidUpdate?.();
-                          triggerDataRefresh();
+                          // No reloads - optimistic update already done
                         } catch (error) {
                           console.error('Error updating fluid:', error);
+                          // Rollback optimistic update on error
+                          setTodaysFluids(originalFluids);
                           toast.error('Fehler beim Aktualisieren des Getränks');
                         }
                       }}
