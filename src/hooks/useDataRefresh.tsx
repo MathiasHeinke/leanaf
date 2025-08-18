@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { clearFluidsCache } from '@/hooks/useTodaysFluids';
+import { clearFrequentFluidsCache } from '@/hooks/useFrequentFluids';
 
 // Event system for data refresh
 class DataRefreshEventBus {
@@ -38,11 +39,12 @@ export const triggerDataRefresh = () => {
     clearTimeout(refreshTimeout);
   }
   
-  // Debounce to 300ms to handle rapid user interactions
+  // Debounce to 500ms to handle rapid user interactions better
   refreshTimeout = setTimeout(() => {
     console.log('[DATA_REFRESH] Executing debounced refresh');
     clearFluidsCache();
+    clearFrequentFluidsCache();
     dataRefreshBus.emit();
     refreshTimeout = null;
-  }, 300);
+  }, 500);
 };

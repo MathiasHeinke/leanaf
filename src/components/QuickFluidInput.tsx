@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
@@ -87,7 +87,8 @@ interface QuickFluidInputProps {
 
 export const QuickFluidInput = ({ currentDate }: QuickFluidInputProps = {}) => {
   const { user } = useAuth();
-  const { frequent: frequentFluids } = useFrequentFluids(user?.id, 45);
+  // Only load frequent fluids when needed for smart chips
+  const { frequent: frequentFluids, loading: frequentLoading } = useFrequentFluids(user?.id, 45);
   const { data: todaysFluids, loading: fluidsLoading } = useTodaysFluids();
   const [fluids, setFluids] = useState<FluidOption[]>([]);
   
@@ -462,20 +463,31 @@ export const QuickFluidInput = ({ currentDate }: QuickFluidInputProps = {}) => {
   const waterGoal = 2000;
   const waterProgress = Math.min((totalWater / waterGoal) * 100, 100);
 
-  // Generate smart chips based on frequent database entries
-  const generateSmartChips = () => {
+  // Optimized smart chips generation with proper memoization
+  const smartChips = useMemo(() => {
+    if (frequentLoading) {
+      // Show loading state chips
+      return [
+        { label: "Lädt...", action: () => {}, disabled: true },
+        { label: "Lädt...", action: () => {}, disabled: true },
+        { label: "Lädt...", action: () => {}, disabled: true }
+      ];
+    }
+
     const chips = [];
     
     // Add frequent database entries first (these are the actual drinks from database)
-    frequentFluids.databaseEntries.slice(0, 3).forEach(entry => {
-      chips.push({
-        label: `+ ${entry.default_amount}ml ${entry.name}`,
-        action: () => addFluidDirectly(entry.id, null, entry.default_amount)
+    if (frequentFluids.databaseEntries.length > 0) {
+      frequentFluids.databaseEntries.slice(0, 3).forEach(entry => {
+        chips.push({
+          label: `+ ${entry.default_amount}ml ${entry.name}`,
+          action: () => addFluidDirectlyOptimized(entry.id, null, entry.default_amount)
+        });
       });
-    });
+    }
     
     // If we have less than 3 database entries, add frequent amounts
-    if (chips.length < 3) {
+    if (chips.length < 3 && frequentFluids.amounts.length > 0) {
       frequentFluids.amounts.slice(0, 3 - chips.length).forEach(amount => {
         // Find a popular water drink from database for the amount
         const waterDrink = fluids.find(f => f.category === 'water');
@@ -483,9 +495,9 @@ export const QuickFluidInput = ({ currentDate }: QuickFluidInputProps = {}) => {
           label: `+ ${amount}ml Wasser`,
           action: () => {
             if (waterDrink) {
-              addFluidDirectly(waterDrink.id, null, amount);
+              addFluidDirectlyOptimized(waterDrink.id, null, amount);
             } else {
-              addFluidDirectly(null, 'Wasser', amount);
+              addFluidDirectlyOptimized(null, 'Wasser', amount);
             }
           }
         });
@@ -502,23 +514,60 @@ export const QuickFluidInput = ({ currentDate }: QuickFluidInputProps = {}) => {
         popularDrinks.forEach(drink => {
           chips.push({
             label: `+ ${drink.default_amount}ml ${drink.name}`,
-            action: () => addFluidDirectly(drink.id, null, drink.default_amount)
+            action: () => addFluidDirectlyOptimized(drink.id, null, drink.default_amount)
           });
         });
       } else {
         // Final fallback if no database entries
         chips.push(
-          { label: "+ 250ml Wasser", action: () => addFluidDirectly(null, 'Wasser', 250) },
-          { label: "+ 500ml Wasser", action: () => addFluidDirectly(null, 'Wasser', 500) },
-          { label: "+ 200ml Kaffee", action: () => addFluidDirectly(null, 'Kaffee', 200) }
+          { label: "+ 250ml Wasser", action: () => addFluidDirectlyOptimized(null, 'Wasser', 250) },
+          { label: "+ 500ml Wasser", action: () => addFluidDirectlyOptimized(null, 'Wasser', 500) },
+          { label: "+ 200ml Kaffee", action: () => addFluidDirectlyOptimized(null, 'Kaffee', 200) }
         );
       }
     }
     
     return chips.slice(0, 3);
-  };
+  }, [frequentFluids, fluids, frequentLoading]);
 
-  const smartChips = generateSmartChips();
+  // Optimized add function with better state management
+  const addFluidDirectlyOptimized = useCallback(async (fluidId: string | null, customFluidName: string | null, amountMl: number) => {
+    if (!user) {
+      toast.error('Benutzer nicht angemeldet');
+      return;
+    }
+
+    try {
+      const fluidData = {
+        user_id: user.id,
+        fluid_id: fluidId,
+        custom_name: customFluidName,
+        amount_ml: amountMl,
+        notes: null
+      };
+
+      const { error } = await supabase
+        .from('user_fluids')
+        .insert([fluidData]);
+
+      if (error) throw error;
+
+      // Get fluid name for toast
+      const fluidName = fluidId 
+        ? fluids.find(f => f.id === fluidId)?.name || 'Getränk'
+        : customFluidName || 'Getränk';
+      
+      toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
+      
+      // Global refresh for cached data
+      triggerDataRefresh();
+    } catch (error) {
+      console.error('Error adding fluid directly:', error);
+      toast.error('Fehler beim Hinzufügen des Getränks');
+    }
+  }, [user, fluids]);
+
+  
 
   // Fluid Pills Component
   const FluidPill: React.FC<{ label: string; value: string; color: string; progress?: number }> = ({ label, value, color, progress }) => (
