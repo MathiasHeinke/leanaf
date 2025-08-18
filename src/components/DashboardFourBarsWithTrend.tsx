@@ -46,9 +46,9 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const fatsGoal = dailyGoals?.fats || 65;
   const caloriesGoal = dailyGoals?.calories || 2000;
 
-  // Calculate fluid intake (non-alcoholic only)
+  // Calculate fluid intake (non-alcoholic, non-coffee)
   const totalFluidMl = todaysFluids
-    .filter(fluid => !fluid.has_alcohol)
+    .filter(fluid => !fluid.has_alcohol && fluid.fluid_type !== 'kaffee')
     .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
   const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
   const fluidProgress = Math.min(totalFluidMl / fluidGoalMl, 1);
