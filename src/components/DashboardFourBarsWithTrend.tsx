@@ -2,6 +2,7 @@ import React from "react";
 import FourBarsWithTrend from "./FourBarsWithTrend";
 import { Droplet, Footprints, Pill } from "lucide-react";
 import { useSupplementData } from "@/hooks/useSupplementData";
+import { fluidCalculations, calculateProgress } from "@/utils/fluidCalculations";
 
 interface Props {
   meals: any[];
@@ -34,11 +35,8 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const totalCarbs = meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0);
   const totalFats = meals.reduce((sum, meal) => sum + (meal.fats || 0), 0);
 
-  // Add fluid calories to total
-  const fluidCalories = todaysFluids.reduce((sum, fluid) => {
-    const calories = (fluid.calories_per_100ml || 0) * (fluid.amount_ml / 100);
-    return sum + calories;
-  }, 0);
+  // Add fluid calories to total (unified calculation)
+  const fluidCalories = fluidCalculations.getTotalCalories(todaysFluids);
 
   // Goals with fallbacks
   const proteinGoal = dailyGoals?.protein || 150;
@@ -46,17 +44,15 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const fatsGoal = dailyGoals?.fats || 65;
   const caloriesGoal = dailyGoals?.calories || 2000;
 
-  // Calculate fluid intake (non-alcoholic, non-coffee)
-  const totalFluidMl = todaysFluids
-    .filter(fluid => !fluid.has_alcohol && fluid.fluid_type !== 'kaffee')
-    .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
+  // Calculate fluid intake (water only - unified calculation)
+  const totalFluidMl = fluidCalculations.getHydrationAmount(todaysFluids);
   const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
-  const fluidProgress = Math.min(totalFluidMl / fluidGoalMl, 1);
+  const fluidProgress = calculateProgress(totalFluidMl, fluidGoalMl);
 
   // Calculate steps
   const todaysSteps = todaysWorkout?.steps || 0;
   const stepsGoal = dailyGoals?.steps_goal || 10000;
-  const stepsProgress = Math.min(todaysSteps / stepsGoal, 1);
+  const stepsProgress = calculateProgress(todaysSteps, stepsGoal);
 
   // Use supplements data from hook instead of manual calculation
   const supplementsProgress = completionPercent / 100; // Hook returns percentage, we need decimal

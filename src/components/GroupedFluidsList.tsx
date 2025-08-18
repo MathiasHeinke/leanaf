@@ -4,26 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Droplet, Coffee, Wine, Calendar } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { de } from "date-fns/locale";
+import { 
+  groupFluids, 
+  fluidCalculations, 
+  formatFluidAmount, 
+  getFluidDisplayName 
+} from "@/utils/fluidCalculations";
 
 interface Props {
   todaysFluids: any[];
 }
 
 export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
-  // Group fluids by category
-  const waterFluids = todaysFluids.filter(fluid => 
-    !fluid.has_alcohol && 
-    !fluid.is_non_alcoholic && 
-    fluid.fluid_type !== 'kaffee'
-  );
-  
-  const nonAlcoholicFluids = todaysFluids.filter(fluid => 
-    fluid.is_non_alcoholic || fluid.fluid_type === 'kaffee'
-  );
-  
-  const alcoholicFluids = todaysFluids.filter(fluid => 
-    fluid.has_alcohol
-  );
+  // Group fluids by category (unified)
+  const { water: waterFluids, nonAlcoholic: nonAlcoholicFluids, alcoholic: alcoholicFluids } = groupFluids(todaysFluids);
 
   // Calculate last alcohol consumption for "sober since" display
   const lastAlcoholDate = alcoholicFluids.length > 0 
@@ -34,21 +28,9 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
     ? differenceInDays(new Date(), lastAlcoholDate)
     : null;
 
-  // Format fluid display
-  const formatFluid = (ml: number) => {
-    if (ml >= 1000) {
-      return `${(ml / 1000).toFixed(1)}L`;
-    }
-    return `${ml}ml`;
-  };
-
-  const formatFluidName = (fluid: any) => {
-    return fluid.name || fluid.fluid_type || 'Unbekannt';
-  };
-
-  const calculateCategoryTotal = (fluids: any[]) => {
-    return fluids.reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
-  };
+  // All formatting now uses unified utilities
+  // formatFluidAmount and getFluidDisplayName are imported
+  // fluidCalculations.getTotalAmount replaces calculateCategoryTotal
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50">
@@ -68,14 +50,14 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
                 Wasser
               </h4>
               <span className="text-sm font-medium text-blue-500">
-                {formatFluid(calculateCategoryTotal(waterFluids))}
+                {formatFluidAmount(fluidCalculations.getTotalAmount(waterFluids))}
               </span>
             </div>
             <div className="pl-6 space-y-1">
               {waterFluids.map((fluid, index) => (
                 <div key={`water-${index}`} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{formatFluidName(fluid)}</span>
-                  <span className="text-blue-500">{formatFluid(fluid.amount_ml || 0)}</span>
+                  <span className="text-muted-foreground">{getFluidDisplayName(fluid)}</span>
+                  <span className="text-blue-500">{formatFluidAmount(fluid.amount_ml || 0)}</span>
                 </div>
               ))}
             </div>
@@ -91,14 +73,14 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
                 Non-Alkohol
               </h4>
               <span className="text-sm font-medium text-amber-600">
-                {formatFluid(calculateCategoryTotal(nonAlcoholicFluids))}
+                {formatFluidAmount(fluidCalculations.getTotalAmount(nonAlcoholicFluids))}
               </span>
             </div>
             <div className="pl-6 space-y-1">
               {nonAlcoholicFluids.map((fluid, index) => (
                 <div key={`non-alcohol-${index}`} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{formatFluidName(fluid)}</span>
-                  <span className="text-amber-600">{formatFluid(fluid.amount_ml || 0)}</span>
+                  <span className="text-muted-foreground">{getFluidDisplayName(fluid)}</span>
+                  <span className="text-amber-600">{formatFluidAmount(fluid.amount_ml || 0)}</span>
                 </div>
               ))}
             </div>
@@ -114,14 +96,14 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
                 Alkohol
               </h4>
               <span className="text-sm font-medium text-purple-600">
-                {formatFluid(calculateCategoryTotal(alcoholicFluids))}
+                {formatFluidAmount(fluidCalculations.getTotalAmount(alcoholicFluids))}
               </span>
             </div>
             <div className="pl-6 space-y-1">
               {alcoholicFluids.map((fluid, index) => (
                 <div key={`alcohol-${index}`} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{formatFluidName(fluid)}</span>
-                  <span className="text-purple-600">{formatFluid(fluid.amount_ml || 0)}</span>
+                  <span className="text-muted-foreground">{getFluidDisplayName(fluid)}</span>
+                  <span className="text-purple-600">{formatFluidAmount(fluid.amount_ml || 0)}</span>
                 </div>
               ))}
             </div>
@@ -152,7 +134,7 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">Gesamt:</span>
             <span className="text-lg font-semibold text-foreground">
-              {formatFluid(calculateCategoryTotal(todaysFluids))}
+              {formatFluidAmount(fluidCalculations.getTotalAmount(todaysFluids))}
             </span>
           </div>
         </div>

@@ -1,29 +1,16 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Coffee, Wine } from "lucide-react";
+import { fluidCalculations, formatFluidAmount } from "@/utils/fluidCalculations";
 
 interface Props {
   todaysFluids: any[];
 }
 
 export const OtherDrinksCard: React.FC<Props> = ({ todaysFluids }) => {
-  // Calculate coffee intake
-  const totalCoffeeMl = todaysFluids
-    .filter(fluid => fluid.fluid_type === 'kaffee')
-    .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
-
-  // Calculate alcohol intake
-  const totalAlcoholMl = todaysFluids
-    .filter(fluid => fluid.has_alcohol)
-    .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
-
-  // Format values
-  const formatFluid = (ml: number) => {
-    if (ml >= 1000) {
-      return `${(ml / 1000).toFixed(1)}L`;
-    }
-    return `${ml}ml`;
-  };
+  // Calculate intake (unified calculations)
+  const totalCoffeeMl = fluidCalculations.getCoffeeAmount(todaysFluids);
+  const totalAlcoholMl = fluidCalculations.getAlcoholAmount(todaysFluids);
 
   // Don't show card if no other drinks
   if (totalCoffeeMl === 0 && totalAlcoholMl === 0) {
@@ -45,7 +32,7 @@ export const OtherDrinksCard: React.FC<Props> = ({ todaysFluids }) => {
               <span className="text-sm text-foreground">Kaffee</span>
             </div>
             <span className="text-sm font-medium text-foreground">
-              {formatFluid(totalCoffeeMl)}
+              {formatFluidAmount(totalCoffeeMl)}
             </span>
           </div>
         )}
@@ -57,7 +44,7 @@ export const OtherDrinksCard: React.FC<Props> = ({ todaysFluids }) => {
               <span className="text-sm text-foreground">Alkohol</span>
             </div>
             <span className="text-sm font-medium text-foreground">
-              {formatFluid(totalAlcoholMl)}
+              {formatFluidAmount(totalAlcoholMl)}
             </span>
           </div>
         )}
