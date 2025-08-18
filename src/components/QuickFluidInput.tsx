@@ -875,7 +875,21 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
 
                 <Collapsible open={showFluids} onOpenChange={setShowFluids}>
                   <CollapsibleContent>
-                    <GroupedFluidsList todaysFluids={todaysFluids} />
+                    <GroupedFluidsList 
+                      todaysFluids={todaysFluids.map(fluid => ({
+                        id: fluid.id,
+                        amount_ml: fluid.amount_ml,
+                        has_alcohol: fluid.has_alcohol || false,
+                        has_caffeine: fluid.fluid_database?.category === 'coffee' || false,
+                        category: fluid.fluid_category || fluid.fluid_database?.category,
+                        name: fluid.fluid_name || fluid.custom_name,
+                        fluid_name: fluid.fluid_name,
+                        custom_name: fluid.custom_name,
+                        calories_per_100ml: fluid.calories_per_100ml || 0,
+                        created_at: fluid.consumed_at,
+                        date: fluid.consumed_at.split('T')[0]
+                      }))} 
+                    />
                   </CollapsibleContent>
                 </Collapsible>
               </div>
