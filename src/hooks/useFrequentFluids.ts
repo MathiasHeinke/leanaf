@@ -61,7 +61,7 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
         const databaseEntryCounts: { [key: string]: { entry: any; count: number } } = {};
 
         userFluids?.forEach(fluid => {
-          const drinkName = fluid.fluid_database?.name || fluid.custom_name || 'Unbekannt';
+          const drinkName = fluid.fluid_database?.name || fluid.custom_name || 'Getränk';
           drinkCounts[drinkName] = (drinkCounts[drinkName] || 0) + 1;
           
           const amount = fluid.amount_ml;

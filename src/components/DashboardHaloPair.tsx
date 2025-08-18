@@ -22,7 +22,7 @@ export const DashboardHaloPair: React.FC<Props> = ({
   // Calculate steps
   const todaysSteps = todaysWorkout?.steps || 0;
   const stepsGoal = dailyGoals?.steps_goal || 10000;
-  const stepsProgress = Math.min(todaysSteps / stepsGoal, 1);
+  const stepsProgress = calculateProgress(todaysSteps, stepsGoal);
 
   // Format values
   const formatFluid = (ml: number) => `${(ml / 1000).toFixed(1)}L`;

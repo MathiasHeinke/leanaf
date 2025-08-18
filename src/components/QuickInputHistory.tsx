@@ -394,7 +394,7 @@ export const QuickInputHistory = ({ timeRange }: QuickInputHistoryProps) => {
                             {new Date(fluid.consumed_at).toLocaleTimeString('de-DE', { 
                               hour: '2-digit', 
                               minute: '2-digit' 
-                            })}: <strong>{fluid.custom_name || fluid.fluid_name || 'Unbekanntes Getränk'}</strong> - {fluid.amount_ml}ml
+                            })}: <strong>{fluid.custom_name || fluid.fluid_name || 'Getränk'}</strong> - {fluid.amount_ml}ml
                           </div>
                           {fluid.notes && (
                             <div className="text-xs italic ml-4">Notiz: {fluid.notes}</div>
