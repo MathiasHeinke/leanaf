@@ -50,6 +50,7 @@ import { GripVertical } from "lucide-react";
 import { usePlusData } from "@/hooks/usePlusData";
 import ConcentricStatCard from "@/components/ConcentricStatCard";
 import { DashboardFourBarsWithTrend } from "@/components/DashboardFourBarsWithTrend";
+import { OtherDrinksCard } from "@/components/OtherDrinksCard";
 import { DashboardHaloPair } from "@/components/DashboardHaloPair";
 // DEVELOPMENT DEBUG PANELS - Deactivated for production
 // import { AuthDebugPanel } from "@/components/AuthDebugPanel";
@@ -1061,6 +1062,9 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
           todaysWorkout={todaysWorkout}
           currentDate={currentDate}
         />
+
+        {/* Other Drinks Card */}
+        <OtherDrinksCard todaysFluids={todaysFluids} />
 
         <div className="rounded-xl"
         >
