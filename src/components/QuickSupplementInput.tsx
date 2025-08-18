@@ -295,7 +295,7 @@ export const QuickSupplementInput: React.FC<QuickSupplementInputProps> = ({ onSu
 
         {/* Smart Chips for timing groups - visible in both collapsed and expanded states */}
         {smartChips.length > 0 && (
-          <div className="mt-3 flex gap-3 overflow-hidden">
+          <div className="mt-3 flex gap-3 overflow-x-auto scroll-smooth flex-nowrap">
             {smartChips.slice(0, 3).map((chip) => (
               <TimingChip
                 key={chip.timing}
