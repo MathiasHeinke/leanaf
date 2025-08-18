@@ -27,12 +27,15 @@ export const getCurrentDateInTimezone = (timezone: string = 'Europe/Berlin'): st
  */
 export const getDateBoundariesInTimezone = (dateString: string, timezone: string) => {
   const startOfDay = new Date(`${dateString}T00:00:00`);
-  const endOfDay = new Date(`${dateString}T23:59:59`);
-  
-  // Convert to UTC considering the timezone
-  const startUTC = new Date(startOfDay.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const endUTC = new Date(endOfDay.toLocaleString('en-US', { timeZone: 'UTC' }));
-  
+  const nextDayStart = new Date(`${dateString}T00:00:00`);
+  nextDayStart.setDate(nextDayStart.getDate() + 1);
+
+  const startInTz = new Date(startOfDay.toLocaleString('en-US', { timeZone: timezone }));
+  const nextDayStartInTz = new Date(nextDayStart.toLocaleString('en-US', { timeZone: timezone }));
+
+  const startUTC = new Date(startOfDay.getTime() + (startOfDay.getTime() - startInTz.getTime()));
+  const endUTC = new Date(nextDayStart.getTime() + (nextDayStart.getTime() - nextDayStartInTz.getTime()));
+
   return {
     start: startUTC.toISOString(),
     end: endUTC.toISOString()
@@ -55,7 +58,7 @@ export const getTimezoneOffset = (timezone: string = 'Europe/Berlin'): number =>
 export const createTimezoneHeaders = (): Record<string, string> => {
   const timezone = getUserTimezone();
   return {
-    'X-User-Timezone': timezone,
-    'X-Current-Date': getCurrentDateInTimezone(timezone)
+    'x-user-timezone': timezone,
+    'x-current-date': getCurrentDateInTimezone(timezone)
   };
 };

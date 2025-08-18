@@ -27,19 +27,23 @@ export const getCurrentDateInTimezone = (timezone: string = 'Europe/Berlin'): st
  * Create timezone-aware timestamp boundaries for a date
  */
 export const getDateBoundariesInTimezone = (dateString: string, timezone: string) => {
-  // Create start and end of day in the user's timezone
+  // Create start of day and next day start (half-open range)
   const startTs = new Date(`${dateString}T00:00:00`);
-  const endTs = new Date(`${dateString}T23:59:59`);
+  const nextDayStartTs = new Date(`${dateString}T00:00:00`);
+  nextDayStartTs.setDate(nextDayStartTs.getDate() + 1);
   
-  // Convert to UTC for database storage
-  const startUTC = new Date(startTs.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const endUTC = new Date(endTs.toLocaleString('en-US', { timeZone: 'UTC' }));
+  // Adjust to UTC based on the provided timezone
+  const startInTz = new Date(startTs.toLocaleString('en-US', { timeZone: timezone }));
+  const nextDayStartInTz = new Date(nextDayStartTs.toLocaleString('en-US', { timeZone: timezone }));
+  
+  const startUTC = new Date(startTs.getTime() + (startTs.getTime() - startInTz.getTime()));
+  const endUTC = new Date(nextDayStartTs.getTime() + (nextDayStartTs.getTime() - nextDayStartInTz.getTime()));
   
   return {
     start: startUTC.toISOString(),
     end: endUTC.toISOString(),
     startDate: startTs,
-    endDate: endTs
+    endDate: nextDayStartTs
   };
 };
 
