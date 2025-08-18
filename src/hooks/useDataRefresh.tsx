@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react';
+import { clearFluidsCache } from '@/hooks/useTodaysFluids';
 
 // Event system for data refresh
 class DataRefreshEventBus {
@@ -27,5 +28,8 @@ export const useDataRefresh = (refreshCallback: () => void) => {
 };
 
 export const triggerDataRefresh = () => {
+  console.log('[DATA_REFRESH] Triggering global data refresh');
+  // Clear fluids cache to force fresh data on next load
+  clearFluidsCache();
   dataRefreshBus.emit();
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { loadTodaysFluids } from "@/data/queries";
 import { todayRangeISO, withWatchdog } from "@/utils/timeRange";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,13 @@ type FluidsCacheEntry = { data: any[]; error: string | null; ts: number; hash: s
 const fluidsCache = new Map<string, FluidsCacheEntry>();
 const fluidsInflight = new Map<string, Promise<void>>();
 
+// Export cache clearing function for external use
+export const clearFluidsCache = () => {
+  console.log('[FLUIDS] Clearing cache, entries:', fluidsCache.size);
+  fluidsCache.clear();
+  fluidsInflight.clear();
+};
+
 export function useTodaysFluids() {
   const [data, setData] = useState<any[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +25,9 @@ export function useTodaysFluids() {
   const acRef = useRef<AbortController | null>(null);
   const { user } = useAuth();
 
+  // Stable today start to prevent unnecessary re-renders
+  const todayStart = useMemo(() => todayRangeISO().start, []);
+  
   const fetchData = useCallback(async () => {
     if (!user?.id) return;
 
@@ -26,19 +36,21 @@ export function useTodaysFluids() {
     const ac = new AbortController();
     acRef.current = ac;
 
-    const { start } = todayRangeISO();
-    const key = `${user.id}:${start}`;
+    const key = `${user.id}:${todayStart}`;
     const now = Date.now();
 
     // 1) Serve fresh cache immediately
     const cached = fluidsCache.get(key);
     if (cached && now - cached.ts < FLUIDS_TTL) {
       if (ac.signal.aborted) return;
+      console.log('[FLUIDS] Cache hit:', { key, dataLength: cached.data.length, hash: cached.hash });
       setError(cached.error);
       setData(cached.data);
       setLoading(false);
       return;
     }
+
+    console.log('[FLUIDS] Cache miss, loading fresh data:', { key, cached: !!cached });
 
     setLoading(true);
     setError(null);
@@ -58,14 +70,34 @@ export function useTodaysFluids() {
         }
 
         const list = res.data ?? [];
-        const hash = JSON.stringify(list.map((f: any) => [f.id ?? f.created_at ?? f.date, f.amount_ml, f.created_at ?? f.date]));
+        
+        // Improved hash calculation with all relevant fields, sorted for consistency
+        const sortedList = [...list].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
+        const hash = JSON.stringify(sortedList.map((f: any) => [
+          f.id,
+          f.amount_ml,
+          f.consumed_at || f.created_at,
+          f.fluid_id,
+          f.custom_name,
+          f.notes
+        ]));
         const prevHash = cached?.hash;
 
         fluidsCache.set(key, { data: list, error: null, ts: Date.now(), hash });
+        console.log('[FLUIDS] Cache updated:', { 
+          key, 
+          dataLength: list.length, 
+          newHash: hash.substring(0, 50) + '...', 
+          prevHash: prevHash?.substring(0, 50) + '...',
+          hashChanged: hash !== prevHash 
+        });
 
         // Only update state if changed to prevent unnecessary re-renders
         if (hash !== prevHash) {
+          console.log('[FLUIDS] State updated due to hash change');
           setData(list);
+        } else {
+          console.log('[FLUIDS] State NOT updated - hash unchanged');
         }
         setError(null);
       } catch (e: any) {
@@ -89,7 +121,7 @@ export function useTodaysFluids() {
     await p.finally(() => {
       fluidsInflight.delete(key);
     });
-  }, [user?.id, todayRangeISO().start]);
+  }, [user?.id, todayStart]);
 
   // Initial and dependency-based load
   useEffect(() => {
