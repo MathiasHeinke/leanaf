@@ -1,7 +1,9 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Droplet, Coffee, Wine, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Droplet, Coffee, Wine, Calendar, Edit, Trash2, Check, X } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { de } from "date-fns/locale";
 import { 
@@ -13,9 +15,14 @@ import {
 
 interface Props {
   todaysFluids: any[];
+  onEditFluid?: (fluidId: string, amount: number, notes?: string) => void;
+  onDeleteFluid?: (fluidId: string) => void;
 }
 
-export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
+export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids, onEditFluid, onDeleteFluid }) => {
+  const [editingFluidId, setEditingFluidId] = useState<string | null>(null);
+  const [editAmount, setEditAmount] = useState<string>('');
+  
   // Group fluids by category (unified)
   const { water: waterFluids, nonAlcoholic: nonAlcoholicFluids, alcoholic: alcoholicFluids } = groupFluids(todaysFluids);
 
@@ -28,9 +35,93 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
     ? differenceInDays(new Date(), lastAlcoholDate)
     : null;
 
-  // All formatting now uses unified utilities
-  // formatFluidAmount and getFluidDisplayName are imported
-  // fluidCalculations.getTotalAmount replaces calculateCategoryTotal
+  const handleEditStart = (fluid: any) => {
+    setEditingFluidId(fluid.id);
+    setEditAmount(fluid.amount_ml.toString());
+  };
+
+  const handleEditSave = (fluidId: string) => {
+    const amount = parseFloat(editAmount);
+    if (!isNaN(amount) && amount > 0) {
+      onEditFluid?.(fluidId, amount);
+      setEditingFluidId(null);
+      setEditAmount('');
+    }
+  };
+
+  const handleEditCancel = () => {
+    setEditingFluidId(null);
+    setEditAmount('');
+  };
+
+  const FluidItem = ({ fluid, colorClass }: { fluid: any; colorClass: string }) => {
+    const isEditing = editingFluidId === fluid.id;
+    
+    if (isEditing) {
+      return (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground flex-1">{getFluidDisplayName(fluid)}</span>
+          <Input
+            type="number"
+            value={editAmount}
+            onChange={(e) => setEditAmount(e.target.value)}
+            className="w-20 h-6 text-xs"
+            autoFocus
+          />
+          <span className="text-xs text-muted-foreground">ml</span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => handleEditSave(fluid.id)}
+            className="h-6 w-6 p-0"
+          >
+            <Check size={12} />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleEditCancel}
+            className="h-6 w-6 p-0"
+          >
+            <X size={12} />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-between text-sm group hover:bg-muted/50 rounded px-1 py-0.5">
+        <span className="text-muted-foreground">{getFluidDisplayName(fluid)}</span>
+        <div className="flex items-center gap-1">
+          <span className={colorClass}>{formatFluidAmount(fluid.amount_ml || 0)}</span>
+          {(onEditFluid || onDeleteFluid) && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 ml-2">
+              {onEditFluid && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleEditStart(fluid)}
+                  className="h-6 w-6 p-0"
+                >
+                  <Edit size={12} />
+                </Button>
+              )}
+              {onDeleteFluid && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onDeleteFluid(fluid.id)}
+                  className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                >
+                  <Trash2 size={12} />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50">
@@ -55,10 +146,7 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
             </div>
             <div className="pl-6 space-y-1">
               {waterFluids.map((fluid, index) => (
-                <div key={`water-${index}`} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{getFluidDisplayName(fluid)}</span>
-                  <span className="text-blue-500">{formatFluidAmount(fluid.amount_ml || 0)}</span>
-                </div>
+                <FluidItem key={`water-${fluid.id || index}`} fluid={fluid} colorClass="text-blue-500" />
               ))}
             </div>
           </div>
@@ -78,10 +166,7 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
             </div>
             <div className="pl-6 space-y-1">
               {nonAlcoholicFluids.map((fluid, index) => (
-                <div key={`non-alcohol-${index}`} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{getFluidDisplayName(fluid)}</span>
-                  <span className="text-amber-600">{formatFluidAmount(fluid.amount_ml || 0)}</span>
-                </div>
+                <FluidItem key={`non-alcohol-${fluid.id || index}`} fluid={fluid} colorClass="text-amber-600" />
               ))}
             </div>
           </div>
@@ -101,10 +186,7 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids }) => {
             </div>
             <div className="pl-6 space-y-1">
               {alcoholicFluids.map((fluid, index) => (
-                <div key={`alcohol-${index}`} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{getFluidDisplayName(fluid)}</span>
-                  <span className="text-purple-600">{formatFluidAmount(fluid.amount_ml || 0)}</span>
-                </div>
+                <FluidItem key={`alcohol-${fluid.id || index}`} fluid={fluid} colorClass="text-purple-600" />
               ))}
             </div>
           </div>

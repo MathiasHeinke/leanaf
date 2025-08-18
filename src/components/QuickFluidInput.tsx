@@ -888,7 +888,31 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
                         calories_per_100ml: fluid.calories_per_100ml || 0,
                         created_at: fluid.consumed_at,
                         date: fluid.consumed_at.split('T')[0]
-                      }))} 
+                      }))}
+                      onEditFluid={async (fluidId: string, amount: number) => {
+                        // Update the edit state and save
+                        setEditingFluidId(null);
+                        setEditAmount('');
+                        setEditNotes('');
+                        
+                        try {
+                          const { error } = await supabase
+                            .from('user_fluids')
+                            .update({ amount_ml: amount })
+                            .eq('id', fluidId);
+
+                          if (error) throw error;
+
+                          toast.success('Getränk aktualisiert');
+                          await loadTodaysFluids();
+                          onFluidUpdate?.();
+                          triggerDataRefresh();
+                        } catch (error) {
+                          console.error('Error updating fluid:', error);
+                          toast.error('Fehler beim Aktualisieren des Getränks');
+                        }
+                      }}
+                      onDeleteFluid={handleDeleteFluid}
                     />
                   </CollapsibleContent>
                 </Collapsible>
