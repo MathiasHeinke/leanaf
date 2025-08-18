@@ -1,6 +1,7 @@
-import React, { useState, useCallback, Suspense, lazy, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Camera, Mic, ArrowRight, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrchestrator } from "@/hooks/useOrchestrator";
@@ -14,8 +15,11 @@ import { IMAGE_UPLOAD_MAX_DEFAULT } from "@/lib/constants";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { SmartCardOverlay } from "@/components/SmartCardOverlay";
 import { UploadProgress } from "@/components/UploadProgress";
+import { useFrequentMeals, type Daypart } from "@/hooks/useFrequentMeals";
+import { SmartChip } from "@/components/ui/smart-chip";
 
-const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
+// Commented out for now - will be removed later once this is working perfectly
+// const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
 export const DashboardMealComposer: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"text" | "photo" | "voice">("text");
@@ -35,12 +39,15 @@ export const DashboardMealComposer: React.FC = () => {
     uploadProgress,
     handleSubmitMeal
   } = useGlobalMealInput();
-  const [quickMealSheetOpen, setQuickMealSheetOpen] = useState(false);
   const { isEnabled } = useFeatureFlags();
   const orchestrationEnabled = isEnabled('auto_tool_orchestration');
   const { user } = useAuth();
   const { sendEvent } = useOrchestrator();
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Frequent meals for smart chips
+  const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
 
   const [clarify, setClarify] = useState<{ prompt: string; options: string[]; traceId?: string } | null>(null);
   const [confirmMeal, setConfirmMeal] = useState<{ open: boolean; prompt: string; proposal: any; traceId?: string }>({ open: false, prompt: '', proposal: null, traceId: undefined });
@@ -81,41 +88,74 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
   const handleVoiceTap = useCallback(async () => {
     await handleVoiceRecord();
     setActiveTab("voice");
-    openQuickMealSheet("voice");
-  }, [handleVoiceRecord]);
+    // Direct submission instead of opening QuickMealSheet
+    if (inputText.trim() || uploadedImages.length > 0) {
+      await handleSubmitMeal();
+    }
+  }, [handleVoiceRecord, inputText, uploadedImages, handleSubmitMeal]);
 
-  const handleTextTap = useCallback(() => {
+  // Auto-resize textarea function
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    textarea.style.height = 'auto';
+    const scrollHeight = textarea.scrollHeight;
+    const lineHeight = 20; // Approximate line height
+    const maxLines = 5;
+    const maxHeight = lineHeight * maxLines;
+    
+    if (scrollHeight <= maxHeight) {
+      textarea.style.height = `${Math.max(scrollHeight, lineHeight)}px`;
+      textarea.style.overflowY = 'hidden';
+    } else {
+      textarea.style.height = `${maxHeight}px`;
+      textarea.style.overflowY = 'auto';
+    }
+  }, []);
+
+  // Adjust height when text changes
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [inputText, adjustTextareaHeight]);
+
+  // Get current time-based meal suggestions
+  const getCurrentMealSuggestions = useCallback(() => {
+    if (!frequentMeals) return [];
+    
+    const hour = new Date().getHours();
+    let currentDaypart: Daypart;
+    
+    if (hour >= 5 && hour < 11) currentDaypart = "morning";
+    else if (hour >= 11 && hour < 15) currentDaypart = "noon";
+    else if (hour >= 15 && hour < 22) currentDaypart = "evening";
+    else currentDaypart = "night";
+    
+    return frequentMeals[currentDaypart] || [];
+  }, [frequentMeals]);
+
+  const handleMealChipClick = useCallback((mealText: string) => {
+    setInputText(mealText);
     setActiveTab("text");
-    setQuickMealSheetOpen(true);
-  }, []);
-
-  const openQuickMealSheet = useCallback((tab?: string) => {
-    if (tab) setActiveTab(tab as any);
-    setQuickMealSheetOpen(true);
-  }, []);
-
-  const closeQuickMealSheet = useCallback(() => {
-    setQuickMealSheetOpen(false);
-  }, []);
+    // Focus on textarea after setting text
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 100);
+  }, [setInputText]);
 
 
 const handleSubmit = useCallback(async () => {
-  // Check if we have images but no text - direct image submit
+  // Check if we have content to submit
   const hasImages = uploadedImages.length > 0;
   const hasText = inputText.trim();
   
   if (!hasText && !hasImages) return;
   
-  // If only images (no text), use direct meal submission from hook
-  if (hasImages && !hasText) {
-    await handleSubmitMeal();
-    return;
-  }
+  // Direct submission - both text and images go directly to analysis
+  await handleSubmitMeal();
   
-  // If text present, open QuickMealSheet for expanded input
-  setActiveTab("text");
-  openQuickMealSheet("text");
-  if (orchestrationEnabled && user?.id) {
+  // Optional: still use orchestrator for enhanced experience if enabled
+  if (orchestrationEnabled && user?.id && hasText) {
     try {
       const reply = await sendEvent(user.id, {
         type: 'TEXT',
@@ -139,7 +179,7 @@ const handleSubmit = useCallback(async () => {
       console.debug('Orchestrator sendEvent failed (non-blocking)', e);
     }
   }
-}, [inputText, uploadedImages, handleSubmitMeal, openQuickMealSheet, orchestrationEnabled, user?.id, sendEvent]);
+}, [inputText, uploadedImages, handleSubmitMeal, orchestrationEnabled, user?.id, sendEvent]);
 
   return (
     <>
@@ -151,6 +191,24 @@ const handleSubmit = useCallback(async () => {
         <div className="container mx-auto px-4 py-3 max-w-5xl">
           {/* Upload Progress */}
           <UploadProgress progress={uploadProgress} isVisible={isUploading} />
+          
+          {/* Smart Chips for frequent meals based on time of day */}
+          {getCurrentMealSuggestions().length > 0 && (
+            <div className="mb-3">
+              <div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap">
+                {getCurrentMealSuggestions().map((meal, index) => (
+                  <SmartChip
+                    key={index}
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleMealChipClick(meal)}
+                  >
+                    {meal}
+                  </SmartChip>
+                ))}
+              </div>
+            </div>
+          )}
           
           {/* Combined Images Display: Optimistic + Uploaded */}
           {(optimisticImages.length > 0 || uploadedImages.length > 0) && (
@@ -262,20 +320,22 @@ const handleSubmit = useCallback(async () => {
               onChange={handleFileChange}
             />
             <div className="flex-1 relative">
-              <input
-                type="text"
+              <Textarea
+                ref={textareaRef}
                 placeholder="Beschreibe deine Mahlzeit…"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                onClick={handleTextTap}
-                onFocus={handleTextTap}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     handleSubmit();
                   }
                 }}
-                className="w-full h-10 px-4 bg-muted/50 border border-border rounded-full text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                className="w-full min-h-[40px] h-10 px-4 py-2.5 bg-muted/50 border border-border rounded-full text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 resize-none"
+                style={{
+                  overflowY: 'hidden',
+                  lineHeight: '20px'
+                }}
               />
             </div>
 
@@ -352,15 +412,15 @@ const handleSubmit = useCallback(async () => {
         </div>
       )}
 
-      {/* Quick sheet for rich input experience */}
-      <Suspense fallback={null}>
+      {/* Quick sheet for rich input experience - COMMENTED OUT FOR NOW */}
+      {/* <Suspense fallback={null}>
         {quickMealSheetOpen && (
           <QuickMealSheet
             open={quickMealSheetOpen}
             onOpenChange={(open) => !open && closeQuickMealSheet()}
           />
         )}
-      </Suspense>
+      </Suspense> */}
 
       {/* Confirmation modals */}
       <ConfirmMealModal
