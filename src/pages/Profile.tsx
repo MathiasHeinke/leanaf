@@ -582,6 +582,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         goal_type: currentGoalType,
         is_realistic_goal: realismScore >= 6,
         warning_message: realismScore < 6 ? getRealismLabel(realismScore) : null,
+        fluid_goal_ml: 2500, // Default fluid goal
       }, {
         onConflict: 'user_id,goal_date'
       });

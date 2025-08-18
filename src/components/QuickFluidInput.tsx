@@ -22,6 +22,7 @@ import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { de } from 'date-fns/locale';
 import { useFrequentFluids } from '@/hooks/useFrequentFluids';
 import { useTodaysFluids } from '@/hooks/useTodaysFluids';
+import { useFluidGoalCalculation } from '@/hooks/useFluidGoalCalculation';
 import { ChevronUp } from 'lucide-react';
 
 interface FluidOption {
@@ -90,6 +91,7 @@ export const QuickFluidInput = ({ currentDate }: QuickFluidInputProps = {}) => {
   // Only load frequent fluids when needed for smart chips
   const { frequent: frequentFluids, loading: frequentLoading } = useFrequentFluids(user?.id, 45);
   const { data: todaysFluids, loading: fluidsLoading } = useTodaysFluids();
+  const { data: fluidGoal } = useFluidGoalCalculation();
   const [fluids, setFluids] = useState<FluidOption[]>([]);
   
   const [alcoholAbstinence, setAlcoholAbstinence] = useState<AlcoholAbstinence | null>(null);
@@ -459,8 +461,8 @@ export const QuickFluidInput = ({ currentDate }: QuickFluidInputProps = {}) => {
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [showFluids, setShowFluids] = useState(false);
 
-  // Calculate progress toward daily water goal (2000ml)
-  const waterGoal = 2000;
+  // Calculate progress toward daily water goal - use dynamic goal
+  const waterGoal = fluidGoal?.goalMl || 2500;
   const waterProgress = Math.min((totalWater / waterGoal) * 100, 100);
 
   // Optimized smart chips generation with proper memoization

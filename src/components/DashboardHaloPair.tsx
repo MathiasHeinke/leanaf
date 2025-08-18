@@ -1,6 +1,7 @@
 import React from "react";
 import HaloPair from "./HaloPair";
 import { Droplet, Footprints } from "lucide-react";
+import { useFluidGoalCalculation } from "@/hooks/useFluidGoalCalculation";
 
 interface Props {
   todaysFluids: any[];
@@ -13,11 +14,15 @@ export const DashboardHaloPair: React.FC<Props> = ({
   todaysWorkout,
   dailyGoals
 }) => {
+  const { data: fluidGoal } = useFluidGoalCalculation();
+  
   // Calculate fluid intake (non-alcoholic only)
   const totalFluidMl = todaysFluids
     .filter(fluid => !fluid.has_alcohol)
     .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
-  const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
+  
+  // Use dynamic fluid goal from hook, fallback to dailyGoals, then hardcoded
+  const fluidGoalMl = fluidGoal?.goalMl || dailyGoals?.fluid_goal_ml || dailyGoals?.fluids || 2500;
   const fluidProgress = Math.min(totalFluidMl / fluidGoalMl, 1);
 
   // Calculate steps
