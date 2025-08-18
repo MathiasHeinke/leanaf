@@ -4,6 +4,7 @@ import KeyMetricsBoard from "./KeyMetricsBoard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format, subDays } from "date-fns";
+import { fluidCalculations } from "@/utils/fluidCalculations";
 
 interface Props {
   currentDate: Date;
@@ -90,8 +91,8 @@ export const DashboardKeyMetrics: React.FC<Props> = ({
     ? "Kalorien heute" 
     : "Letzte Aktivität";
 
-  // Calculate fluid intake in liters
-  const totalFluidMl = todaysFluids.reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
+  // Calculate water intake only (using unified calculation)
+  const totalFluidMl = fluidCalculations.getHydrationAmount(todaysFluids);
   const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
   const fluidProgress = Math.min(totalFluidMl / fluidGoalMl, 1);
 
