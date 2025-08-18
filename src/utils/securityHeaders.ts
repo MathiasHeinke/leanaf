@@ -1,9 +1,9 @@
 // Enhanced security headers for the application
 export const getEnhancedSecurityHeaders = () => {
   return {
-'Content-Security-Policy': [
+    'Content-Security-Policy': [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
@@ -12,7 +12,6 @@ export const getEnhancedSecurityHeaders = () => {
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "frame-ancestors 'none'",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
       "upgrade-insecure-requests"
