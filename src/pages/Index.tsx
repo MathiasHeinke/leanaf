@@ -444,25 +444,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         setTodaysMeasurements(measurementsData);
       }
 
-      // Load today's fluids
-      const { data: fluidsData, error: fluidsError } = await supabase
-        .from('user_fluids')
-        .select(`
-          *,
-          fluid_database:fluid_id (
-            name,
-            calories_per_100ml,
-            protein_per_100ml,
-            carbs_per_100ml,
-            fats_per_100ml,
-            has_alcohol,
-            category
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('date', dateString)
-        .order('consumed_at', { ascending: false });
-
+      // REMOVED: Legacy fluid loading - now using cached hook todaysFluidsFresh
 
       // Load today's mindset/journal entries
       const { data: mindsetData, error: mindsetError } = await supabase
@@ -510,24 +492,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         .eq('date', targetDate)
         .maybeSingle();
 
-      // Load fluids
-      const { data: fluidsData } = await supabase
-        .from('user_fluids')
-        .select(`
-          *,
-          fluid_database:fluid_id (
-            name,
-            calories_per_100ml,
-            protein_per_100ml,
-            carbs_per_100ml,
-            fats_per_100ml,
-            has_alcohol,
-            category
-          )
-        `)
-        .eq('user_id', user.id)
-        .eq('date', targetDate)
-        .order('consumed_at', { ascending: false });
+      // REMOVED: Legacy fluid loading - now using cached hook todaysFluidsFresh
 
       // Load mindset
       const { data: mindsetData } = await supabase
@@ -541,7 +506,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         workouts: workoutsData || [],
         sleep: sleepData,
         weight: weightData,
-        fluids: fluidsData || [],
         mindset: mindsetData || []
       };
     };
@@ -554,7 +518,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     let data = await loadDataForSingleDate(dateString);
     
     // Check if we have any meaningful data
-    if (data.workouts.length > 0 || data.sleep || data.weight || data.fluids.length > 0) {
+    if (data.workouts.length > 0 || data.sleep || data.weight) {
       dataFound = true;
     }
 
@@ -567,7 +531,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         
         const fallbackData = await loadDataForSingleDate(fallbackDateString);
         
-        if (fallbackData.workouts.length > 0 || fallbackData.sleep || fallbackData.weight || fallbackData.fluids.length > 0) {
+        if (fallbackData.workouts.length > 0 || fallbackData.sleep || fallbackData.weight) {
           data = fallbackData;
           lastDataDate = fallbackDateString;
           dataFound = true;

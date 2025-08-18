@@ -27,6 +27,7 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
     const fetchFrequentFluids = async () => {
       try {
         setLoading(true);
+        console.log('[FREQUENT_FLUIDS] Loading data for user:', userId, 'lookbackDays:', lookbackDays);
         
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - lookbackDays);
@@ -50,10 +51,12 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('Error fetching frequent fluids:', error);
+          console.error('[FREQUENT_FLUIDS] Error fetching frequent fluids:', error);
           setFrequent({ drinks: [], amounts: [], databaseEntries: [] });
           return;
         }
+
+        console.log('[FREQUENT_FLUIDS] Raw data:', userFluids?.length, 'entries');
 
         // Count drink names
         const drinkCounts: { [key: string]: number } = {};
@@ -109,6 +112,12 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
           drinks: topDrinks,
           amounts: topAmounts,
           databaseEntries: topDatabaseEntries
+        });
+
+        console.log('[FREQUENT_FLUIDS] Processed results:', { 
+          drinks: topDrinks.length, 
+          amounts: topAmounts.length, 
+          databaseEntries: topDatabaseEntries.length 
         });
       } catch (error) {
         console.error('Error in fetchFrequentFluids:', error);
