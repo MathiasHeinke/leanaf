@@ -238,7 +238,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       
       toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
       
-      // Reload data to get the real ID
+      // Reload data to get the real ID and replace temp entry
       await loadTodaysFluids();
       
       // Trigger parent update to refresh main page
@@ -359,6 +359,12 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
   const handleDeleteFluid = async (fluidId: string) => {
     if (!user) return;
 
+    // Store original state for rollback
+    const originalFluids = [...todaysFluids];
+
+    // Optimistic update - immediately remove from UI
+    setTodaysFluids(prev => prev.filter(f => f.id !== fluidId));
+    
     try {
       const { error } = await supabase
         .from('user_fluids')
@@ -368,11 +374,13 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       if (error) throw error;
 
       toast.success('Getränk gelöscht');
-      await loadTodaysFluids();
       onFluidUpdate?.();
+      // Only trigger global refresh for missions/header - not full data reload
       triggerDataRefresh();
     } catch (error) {
       console.error('Error deleting fluid:', error);
+      // Rollback optimistic update on error
+      setTodaysFluids(originalFluids);
       toast.error('Fehler beim Löschen des Getränks');
     }
   };
@@ -392,6 +400,16 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       return;
     }
 
+    // Store original state for rollback
+    const originalFluids = [...todaysFluids];
+
+    // Optimistic update - immediately update UI
+    setTodaysFluids(prev => prev.map(f => 
+      f.id === fluidId 
+        ? { ...f, amount_ml: amountValue, notes: editNotes || null }
+        : f
+    ));
+
     try {
       const { error } = await supabase
         .from('user_fluids')
@@ -407,11 +425,13 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setEditingFluidId(null);
       setEditAmount('');
       setEditNotes('');
-      await loadTodaysFluids();
       onFluidUpdate?.();
+      // Only trigger global refresh for missions/header - not full data reload
       triggerDataRefresh();
     } catch (error) {
       console.error('Error updating fluid:', error);
+      // Rollback optimistic update on error
+      setTodaysFluids(originalFluids);
       toast.error('Fehler beim Aktualisieren des Getränks');
     }
   };
@@ -443,6 +463,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       toast.success('Getränk dupliziert');
       await loadTodaysFluids();
       onFluidUpdate?.();
+      triggerDataRefresh();
     } catch (error) {
       console.error('Error duplicating fluid:', error);
       toast.error('Fehler beim Duplizieren des Getränks');
