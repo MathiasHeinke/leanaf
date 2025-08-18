@@ -149,16 +149,30 @@ export const TransformationJourneyWidget: React.FC = () => {
     }
   };
 
-  const handleViewTransformation = (photo: any) => {
-    // Find the photo index in raw progress photos
-    const photoIndex = rawProgressPhotos.findIndex(p => p.id === photo.id);
-    if (photoIndex !== -1) {
-      setSelectedProgressPhotoIndex(photoIndex);
+  const handleViewTransformation = (photo: any, category?: string) => {
+    console.log('Viewing transformation for photo:', photo, 'category:', category);
+    
+    // Check if there's actually an AI image for this photo and category
+    const hasAiForCategory = targetImages.some(target => 
+      target.ai_generated_from_photo_id === photo.id && 
+      target.image_category === category
+    );
+    
+    if (hasAiForCategory) {
+      // Find the photo index in raw progress photos
+      const photoIndex = rawProgressPhotos.findIndex(p => p.id === photo.id);
+      if (photoIndex !== -1) {
+        setSelectedProgressPhotoIndex(photoIndex);
+      }
+      setActiveTab("ki-vergleich");
+    } else {
+      // If no AI image exists, redirect to progress comparison
+      setActiveTab("progress-vergleich");
     }
-    setActiveTab("ki-vergleich");
   };
 
   const handleCreateTransformation = (photo: any, category?: string) => {
+    console.log('Creating transformation for photo:', photo, 'category:', category);
     // Find the photo index in raw progress photos
     const photoIndex = rawProgressPhotos.findIndex(p => p.id === photo.id);
     if (photoIndex !== -1) {

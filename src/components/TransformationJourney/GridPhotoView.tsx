@@ -30,8 +30,8 @@ interface GridPhotoViewProps {
     target_body_fat_percentage?: number;
   }>;
   onPhotosUpdated?: () => void;
-  onViewTransformation?: (photo: any) => void;
-  onCreateTransformation?: (photo: any) => void;
+  onViewTransformation?: (photo: any, category?: string) => void;
+  onCreateTransformation?: (photo: any, category?: string) => void;
   startCropWorkflow?: (files: File[], weight?: number, bodyFat?: number, muscleMass?: number, notes?: string) => void;
 }
 
@@ -245,6 +245,13 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
     return targetImages.some(target => target.ai_generated_from_photo_id === photoId);
   };
 
+  const hasAiTransformationForCategory = (photoId: string, category: string) => {
+    return targetImages.some(target => 
+      target.ai_generated_from_photo_id === photoId && 
+      target.image_category === category
+    );
+  };
+
   const categoryCounts = {
     all: photoEntries.length,
     front: photoEntries.filter(e => e.category === 'front' && !e.isAI).length,
@@ -312,7 +319,7 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
                 <Badge className={`text-xs ${getCategoryColor(entry.category, entry.isAI)}`}>
                   {entry.isAI ? 'KI-Generiert' : getCategoryLabel(entry.category)}
                 </Badge>
-                {!entry.isAI && hasAiTransformation(entry.entryId) && (
+                {!entry.isAI && hasAiTransformationForCategory(entry.entryId, entry.category) && (
                   <Badge className="bg-purple-500/90 hover:bg-purple-600 text-white text-xs">
                     <WandIcon className="h-3 w-3 mr-1" />
                     KI-Transformiert
@@ -391,14 +398,14 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
                         <RefreshCw className="h-3 w-3 mr-1" />
                         Neu generieren
                       </Button>
-                    ) : hasAiTransformation(entry.entryId) ? (
+                    ) : hasAiTransformationForCategory(entry.entryId, entry.category) ? (
                       <Button
                         size="sm"
                         variant="secondary"
                         className="h-6 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm w-full"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onViewTransformation?.(entry.photo);
+                          onViewTransformation?.(entry.photo, entry.category);
                         }}
                       >
                         <EyeIcon className="h-3 w-3 mr-1" />
@@ -411,7 +418,7 @@ export const GridPhotoView: React.FC<GridPhotoViewProps> = ({ photos, targetImag
                         className="h-6 text-xs bg-white/20 hover:bg-white/30 backdrop-blur-sm w-full"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onCreateTransformation?.(entry.photo);
+                          onCreateTransformation?.(entry.photo, entry.category);
                         }}
                       >
                         <WandIcon className="h-3 w-3 mr-1" />
