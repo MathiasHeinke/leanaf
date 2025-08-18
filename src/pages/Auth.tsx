@@ -45,7 +45,9 @@ const Auth = () => {
     const initializeAuth = async () => {
       // Redirect if already logged in + debug detection
       if (user) {
-        console.log('User already logged in, redirecting to home');
+        if (import.meta.env.DEV) {
+          console.log('User already logged in, redirecting to home');
+        }
         authLogger.log({ 
           event: 'REDIRECT_DECISION', 
           stage: 'authPageMount',
@@ -132,9 +134,13 @@ const Auth = () => {
         }
       });
       
-      console.log('Auth state cleaned up successfully');
+      if (import.meta.env.DEV) {
+        console.log('Auth state cleaned up successfully');
+      }
     } catch (error) {
-      console.error('Error during auth cleanup:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error during auth cleanup:', error);
+      }
     }
   };
 
@@ -234,35 +240,30 @@ const Auth = () => {
         client_info: navigator.userAgent,
         remaining_attempts: remaining,
         minutes_until_reset: minutesUntilReset
-      });
-      authLogger.log({ 
-        event: 'RATE_LIMIT_EXCEEDED', 
-        stage: 'handleSubmit',
-        details: { remaining, minutesUntilReset, clientId: clientId.substring(0, 50) }
-      });
-      console.log('Rate limit exceeded:', { remaining, minutesUntilReset });
-      return;
+          });
+          authLogger.log({ 
+            event: 'RATE_LIMIT_EXCEEDED', 
+            stage: 'handleSubmit',
+            details: { remaining, minutesUntilReset, clientId: clientId.substring(0, 50) }
+          });
+          return;
     }
     
     if (isPasswordReset) {
-      console.log('Handling password reset');
       handlePasswordReset();
       return;
     }
     
-    console.log('Validating form...');
     const isValid = validateForm();
-    console.log('Form validation result:', isValid, validationErrors);
     if (!isValid) return;
     
-    console.log('Starting authentication...');
     setLoading(true);
     setError('');
     setShowResend(false);
 
     // Check for preview domain warning - ONLY for real preview domains
     const isPreviewDomain = window.location.hostname.includes('preview--');
-    if (isPreviewDomain) {
+    if (isPreviewDomain && import.meta.env.DEV) {
       console.warn('🚨 PREVIEW MODE: Sessions may not persist correctly. Use production URL for full testing.');
       authLogger.log({ 
         event: 'PREVIEW_DOMAIN_WARNING', 

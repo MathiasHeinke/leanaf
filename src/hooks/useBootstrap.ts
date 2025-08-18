@@ -13,7 +13,9 @@ interface BootstrapState {
 }
 
 export const useBootstrap = () => {
-  console.log('🔍 useBootstrap mounted');
+  if (import.meta.env.DEV) {
+    console.log('🔍 useBootstrap mounted');
+  }
   const { isSessionReady, user } = useAuth();
   const { addDebugEvent } = useDebug();
   const hasBootstrappedRef = useRef(false);
@@ -128,7 +130,9 @@ export const useBootstrap = () => {
               .eq('user_id', user.id)
               .maybeSingle();
             if (error) throw error;
-            console.log('✅ Profile loaded:', data ? 'Found' : 'Not found');
+            if (import.meta.env.DEV) {
+              console.log('✅ Profile loaded:', data ? 'Found' : 'Not found');
+            }
             return data;
           }, 'profiles'),
 
@@ -140,7 +144,6 @@ export const useBootstrap = () => {
               .eq('user_id', user.id)
               .maybeSingle();
             if (error) throw error;
-            console.log('✅ Daily goals loaded:', data ? 'Found' : 'Using defaults');
             return data;
           }, 'daily_goals'),
 
@@ -153,7 +156,6 @@ export const useBootstrap = () => {
               .eq('date', new Date().toISOString().split('T')[0])
               .order('ts', { ascending: false });
             if (error) throw error;
-            console.log('✅ Today\'s meals loaded:', data?.length || 0);
             return data || [];
           }, 'meals'),
 
@@ -177,7 +179,6 @@ export const useBootstrap = () => {
               .eq('date', new Date().toISOString().split('T')[0])
               .order('consumed_at', { ascending: false });
             if (error) throw error;
-            console.log('✅ Today\'s fluids loaded:', data?.length || 0);
             return data || [];
           }, 'fluids'),
 
@@ -189,7 +190,6 @@ export const useBootstrap = () => {
               .eq('user_id', user.id)
               .maybeSingle();
             if (error) throw error;
-            console.log('✅ User points loaded:', data?.total_points || 0);
             return data;
           }, 'user_points')
         ]);
@@ -201,20 +201,22 @@ export const useBootstrap = () => {
         const successful = results.filter(result => result.status === 'fulfilled').length;
         const failed = results.filter(result => result.status === 'rejected').length;
 
-        console.log('🏁 Bootstrap complete:', {
-          duration: `${duration.toFixed(1)}ms`,
-          successful,
-          failed,
-          total: results.length
-        });
+        if (import.meta.env.DEV) {
+          console.log('🏁 Bootstrap complete:', {
+            duration: `${duration.toFixed(1)}ms`,
+            successful,
+            failed,
+            total: results.length
+          });
 
-        // Log any failed operations
-        results.forEach((result, index) => {
-          if (result.status === 'rejected') {
-            const operations = ['profile', 'goals', 'meals', 'fluids', 'points'];
-            console.error(`❌ Failed to load ${operations[index]}:`, result.reason);
-          }
-        });
+          // Log any failed operations
+          results.forEach((result, index) => {
+            if (result.status === 'rejected') {
+              const operations = ['profile', 'goals', 'meals', 'fluids', 'points'];
+              console.error(`❌ Failed to load ${operations[index]}:`, result.reason);
+            }
+          });
+        }
 
         setBootstrapState({
           isBootstrapping: false,
@@ -236,7 +238,9 @@ export const useBootstrap = () => {
         const duration = endTime - startTime;
         const errorMessage = error instanceof Error ? error.message : 'Unknown bootstrap error';
         
-        console.error('❌ Bootstrap failed:', errorMessage);
+        if (import.meta.env.DEV) {
+          console.error('❌ Bootstrap failed:', errorMessage);
+        }
         
         // FAIL-SAFE: Always set bootstrapComplete=true, even on errors
         setBootstrapState({

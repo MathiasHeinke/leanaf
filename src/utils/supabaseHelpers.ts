@@ -120,13 +120,13 @@ export const loadUserData = async (userId: string) => {
 
 export const loadDailyGoals = async (userId: string) => {
   if (!userId) {
-    console.warn('🔧 [SUPABASE] loadDailyGoals: No userId provided');
+    if (import.meta.env.DEV) {
+      console.warn('🔧 [SUPABASE] loadDailyGoals: No userId provided');
+    }
     return null;
   }
   
   try {
-    console.log('🔧 [SUPABASE] Loading daily goals for:', userId);
-    
     const { data, error } = await supabase
       .from('daily_goals')
       .select('*')
@@ -134,35 +134,33 @@ export const loadDailyGoals = async (userId: string) => {
       .maybeSingle();
     
     if (error) {
-      console.error('🔧 [SUPABASE] Error loading daily goals:', error);
+      if (import.meta.env.DEV) {
+        console.error('🔧 [SUPABASE] Error loading daily goals:', error);
+      }
       throw error;
     }
     
-    console.log('🔧 [SUPABASE] Daily goals loaded successfully');
     return data;
   } catch (error) {
-    console.error('🔧 [SUPABASE] Critical error loading daily goals:', error);
+    if (import.meta.env.DEV) {
+      console.error('🔧 [SUPABASE] Critical error loading daily goals:', error);
+    }
     return null;
   }
 };
 
 export const loadTodaysMeals = async (userId: string) => {
   if (!userId) {
-    console.warn('🔧 [SUPABASE] loadTodaysMeals: No userId provided');
+    if (import.meta.env.DEV) {
+      console.warn('🔧 [SUPABASE] loadTodaysMeals: No userId provided');
+    }
     return [];
   }
   
   try {
-    console.log('🔧 [SUPABASE] Loading today\'s meals for:', userId);
-    
     const today = new Date();
     const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const startOfNextDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
-    
-    console.log('🔧 [SUPABASE] Date range:', {
-      startOfDay: startOfDay.toISOString(),
-      startOfNextDay: startOfNextDay.toISOString()
-    });
     
     const { data, error } = await supabase
       .from('meals')
@@ -173,27 +171,30 @@ export const loadTodaysMeals = async (userId: string) => {
       .order('created_at', { ascending: false });
     
     if (error) {
-      console.error('🔧 [SUPABASE] Error loading today\'s meals:', error);
+      if (import.meta.env.DEV) {
+        console.error('🔧 [SUPABASE] Error loading today\'s meals:', error);
+      }
       throw error;
     }
     
-    console.log(`🔧 [SUPABASE] Today's meals loaded successfully: ${data?.length || 0} meals`);
     return data || [];
   } catch (error) {
-    console.error('🔧 [SUPABASE] Critical error loading today\'s meals:', error);
+    if (import.meta.env.DEV) {
+      console.error('🔧 [SUPABASE] Critical error loading today\'s meals:', error);
+    }
     return [];
   }
 };
 
 export const loadWeightHistory = async (userId: string) => {
   if (!userId) {
-    console.warn('🔧 [SUPABASE] loadWeightHistory: No userId provided');
+    if (import.meta.env.DEV) {
+      console.warn('🔧 [SUPABASE] loadWeightHistory: No userId provided');
+    }
     return [];
   }
   
   try {
-    console.log('🔧 [SUPABASE] Loading weight history for:', userId);
-    
     const { data, error } = await supabase
       .from('weight_history')
       .select('*')
@@ -202,14 +203,17 @@ export const loadWeightHistory = async (userId: string) => {
       .limit(30);
     
     if (error) {
-      console.error('🔧 [SUPABASE] Error loading weight history:', error);
+      if (import.meta.env.DEV) {
+        console.error('🔧 [SUPABASE] Error loading weight history:', error);
+      }
       throw error;
     }
     
-    console.log(`🔧 [SUPABASE] Weight history loaded successfully: ${data?.length || 0} entries`);
     return data || [];
   } catch (error) {
-    console.error('🔧 [SUPABASE] Critical error loading weight history:', error);
+    if (import.meta.env.DEV) {
+      console.error('🔧 [SUPABASE] Critical error loading weight history:', error);
+    }
     return [];
   }
 };
@@ -217,29 +221,32 @@ export const loadWeightHistory = async (userId: string) => {
 // Connection health check with detailed logging
 export const checkConnection = async (): Promise<boolean> => {
   try {
-    console.log('🔧 [SUPABASE] Checking connection health...');
-    
     const { data, error } = await supabase
       .from('men_quotes')
       .select('id')
       .limit(1);
     
     if (error) {
-      console.error('🔧 [SUPABASE] Connection check failed:', error);
+      if (import.meta.env.DEV) {
+        console.error('🔧 [SUPABASE] Connection check failed:', error);
+      }
       return false;
     }
     
-    console.log('🔧 [SUPABASE] Connection check successful');
     return true;
   } catch (networkError) {
-    console.error('🔧 [SUPABASE] Network error during connection check:', networkError);
+    if (import.meta.env.DEV) {
+      console.error('🔧 [SUPABASE] Network error during connection check:', networkError);
+    }
     return false;
   }
 };
 
 // Clear cache when needed
 export const clearCache = () => {
-  console.log('🔧 [SUPABASE] Clearing request cache');
+  if (import.meta.env.DEV) {
+    console.log('🔧 [SUPABASE] Clearing request cache');
+  }
   requestCache.clear();
 };
 
@@ -251,6 +258,8 @@ export const getConnectionStatus = () => {
     cacheSize: requestCache.size
   };
   
-  console.log('🔧 [SUPABASE] Connection status:', status);
+  if (import.meta.env.DEV) {
+    console.log('🔧 [SUPABASE] Connection status:', status);
+  }
   return status;
 };
