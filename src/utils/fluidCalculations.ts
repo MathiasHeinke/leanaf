@@ -33,10 +33,8 @@ export const categorizeFluid = (fluid: FluidData): 'water' | 'nonAlcoholic' | 'a
     return 'alcoholic';
   }
   
-  // Water category OR wenn kein Name/Category dann ist es wahrscheinlich Wasser
-  if (fluid.category === 'water' || 
-      fluid.fluid_type === 'water' ||
-      (!fluid.category && !fluid.fluid_type && !fluid.has_caffeine && !fluid.name?.toLowerCase().includes('kaffee'))) {
+  // ONLY explicit water counts as water
+  if (fluid.category === 'water' || fluid.fluid_type === 'water') {
     return 'water';
   }
   
