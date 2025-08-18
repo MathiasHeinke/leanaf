@@ -27,6 +27,8 @@ type DebugCallbacks = {
   addStep: (title: string, details?: string) => string;
   completeStep: (id: string, details?: string) => void;
   errorStep: (id: string, error: string) => void;
+  setLastRequest?: (request: any) => void;
+  setLastResponse?: (response: any) => void;
 };
 
 export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
@@ -106,6 +108,9 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
       
       console.log("🔧 Sending payload:", JSON.stringify(payload, null, 2));
       
+      // Store request for debugging
+      debugCallbacks?.setLastRequest?.(payload);
+      
       const result = await withTimeout(
         supabase.functions.invoke(orchestratorFunction, {
           body: payload
@@ -116,6 +121,9 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
       if (result.error) {
         throw new Error(result.error.message || 'Unknown orchestrator error');
       }
+
+      // Store response for debugging
+      debugCallbacks?.setLastResponse?.(result.data);
 
       debugCallbacks?.completeStep(currentStepId!, "Request completed successfully");
 

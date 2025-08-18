@@ -61,8 +61,10 @@ import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useOrchestrator, OrchestratorReply, CoachEvent } from '@/hooks/useOrchestrator';
 import { useOrchestratorWithDebug } from '@/hooks/useOrchestratorWithDebug';
 import { UserChatDebugger } from '@/components/debug/UserChatDebugger';
+import { AresChatDebugPanel } from '@/components/debug/AresChatDebugPanel';
+import { PromptViewer, PromptData } from '@/components/gehirn/PromptViewer';
 import { useDebugSteps } from '@/hooks/useDebugSteps';
-import { Bug } from 'lucide-react';
+import { Bug, Search } from 'lucide-react';
 import ChoiceBar from '@/components/ChoiceBar';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
 import ConfirmSupplementModal from '@/components/ConfirmSupplementModal';
@@ -187,7 +189,16 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   // Debug system integration
   const debugSteps = useDebugSteps();
   const [showDebugger, setShowDebugger] = useState(false);
-  const { sendEvent: sendEventWithDebug } = useOrchestratorWithDebug(debugSteps);
+  const [lastRequest, setLastRequest] = useState<any>(null);
+  const [lastResponse, setLastResponse] = useState<any>(null);
+  const [selectedTraceForPrompt, setSelectedTraceForPrompt] = useState<string | null>(null);
+  const [promptViewerData, setPromptViewerData] = useState<PromptData | null>(null);
+  
+  const { sendEvent: sendEventWithDebug } = useOrchestratorWithDebug({
+    ...debugSteps,
+    setLastRequest,
+    setLastResponse
+  });
 
   // Points & streaks
   const { awardPoints, updateStreak } = usePointsSystem();
@@ -936,7 +947,26 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
                       </Tooltip>
                     )}
                     
-                    {message.metadata.tokensUsed && (
+                     {/* Debug inspect button for messages with traceId */}
+                     {message.metadata?.traceId && (
+                       <Tooltip>
+                         <TooltipTrigger>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             className="h-4 w-4 p-0"
+                             onClick={() => handleInspectMessage(message.metadata!.traceId!)}
+                           >
+                             <Search className="w-3 h-3" />
+                           </Button>
+                         </TooltipTrigger>
+                         <TooltipContent>
+                           <p>Prompt & Antwort inspizieren</p>
+                         </TooltipContent>
+                       </Tooltip>
+                     )}
+                     
+                     {message.metadata.tokensUsed && (
                       <Tooltip>
                         <TooltipTrigger>
                           <Badge variant="outline" className="h-4 px-1 text-xs">
@@ -1006,6 +1036,32 @@ const handleChipClick = useCallback(async (label: string) => {
     setIsOrchestratorLoading(false);
   }
 }, [user?.id, isOrchestratorLoading, clearChips, setUserTyping, mode, coach?.id, shadowTraceId, lastProposal, sendEvent, renderOrchestratorReply]);
+
+// ============= INSPECT MESSAGE HANDLER =============
+const handleInspectMessage = useCallback(async (traceId: string) => {
+  try {
+    // Mock prompt data for now - in real implementation, fetch from traces
+    const mockPromptData: PromptData = {
+      traceId,
+      finalPrompt: {
+        system: "Du bist ARES, der ultimative Cross-Domain Coach...",
+        user: "Benutzer-Nachricht hier...",
+        full: "System + User prompt kombiniert"
+      },
+      llmResponse: {
+        raw_response: lastResponse?.content || "LLM Antwort hier...",
+        usage: {
+          prompt_tokens: 150,
+          completion_tokens: 75,
+          total_tokens: 225
+        }
+      }
+    };
+    setPromptViewerData(mockPromptData);
+  } catch (error) {
+    toast.error('Konnte Prompt-Daten nicht laden');
+  }
+}, [lastResponse]);
 
 // ============= ENHANCED SEND MESSAGE HANDLER =============
 const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {

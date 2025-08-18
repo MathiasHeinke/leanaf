@@ -56,6 +56,15 @@ export interface PromptData {
     cost_usd?: number;
     model?: string;
   };
+  llmResponse?: {
+    raw_response: string;
+    choices?: any[];
+    usage?: {
+      prompt_tokens: number;
+      completion_tokens: number;
+      total_tokens: number;
+    };
+  };
 }
 
 interface PromptViewerProps {
@@ -112,7 +121,7 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
 
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="prompt" className="gap-2">
               <Brain className="h-4 w-4" />
               Final Prompt
@@ -132,6 +141,10 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
             <TabsTrigger value="intent" className="gap-2">
               <Brain className="h-4 w-4" />
               Intent & Tools
+            </TabsTrigger>
+            <TabsTrigger value="response" className="gap-2">
+              <ExternalLink className="h-4 w-4" />
+              LLM Response
             </TabsTrigger>
           </TabsList>
 
@@ -414,6 +427,62 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 No intent or tool data available for this trace
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="response" className="space-y-4">
+            {data.llmResponse ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Raw LLM Response</h3>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => copyToClipboard(data.llmResponse!.raw_response, 'LLM response')}
+                    className="gap-2"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copy Response
+                  </Button>
+                </div>
+
+                <div>
+                  <h4 className="font-medium mb-2">Generated Content</h4>
+                  <ScrollArea className="h-64 w-full rounded-md border p-4">
+                    <pre className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {data.llmResponse.raw_response}
+                    </pre>
+                  </ScrollArea>
+                </div>
+
+                {data.llmResponse.usage && (
+                  <div>
+                    <h4 className="font-medium mb-2">Token Usage</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="secondary">
+                        {data.llmResponse.usage.prompt_tokens} prompt tokens
+                      </Badge>
+                      <Badge variant="secondary">
+                        {data.llmResponse.usage.completion_tokens} completion tokens
+                      </Badge>
+                      <Badge variant="secondary">
+                        {data.llmResponse.usage.total_tokens} total tokens
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
+                {data.llmResponse.choices && (
+                  <div>
+                    <h4 className="font-medium mb-2">API Response Structure</h4>
+                    <JsonPanel data={data.llmResponse.choices} maxHeight={200} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No LLM response data available for this trace
               </div>
             )}
           </TabsContent>
