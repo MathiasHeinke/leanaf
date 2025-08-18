@@ -427,7 +427,25 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     // Auto-analyze if we have images but no text
     if (uploadedImages.length > 0 && !inputText.trim()) {
-      await analyzeMealText('', uploadedImages);
+      try {
+        const mealData = await analyzeMealText('', uploadedImages);
+        if (mealData) {
+          const analyzedData = {
+            title: mealData.text,
+            calories: mealData.calories,
+            protein: mealData.protein,
+            carbs: mealData.carbs,
+            fats: mealData.fats,
+            meal_type: mealData.meal_type || 'other',
+            confidence: 0.85
+          };
+          updateDialogState(analyzedData, mealData.meal_type || 'other');
+        } else {
+          toast.error('Keine Daten von der Bildanalyse erhalten');
+        }
+      } catch (e) {
+        toast.error('Fehler bei der Bildanalyse');
+      }
       return;
     }
 
