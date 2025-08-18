@@ -197,8 +197,12 @@ const handleSubmit = useCallback(async () => {
     <>
       {/* Bottom Composer Bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-20 bg-background/80 backdrop-blur-md border-t border-border relative"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+        className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-t border-border w-full"
+        style={{ 
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
+          position: "fixed",
+          bottom: 0
+        }}
       >
         {/* Simple Upload Progress Bar */}
         <SimpleProgressBar 
