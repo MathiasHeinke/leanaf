@@ -81,8 +81,11 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
 
       if (error) {
         console.error('[FREQUENT_FLUIDS] Error fetching frequent fluids:', error);
-        const emptyData = { drinks: [], amounts: [], databaseEntries: [] };
-        setFrequent(emptyData);
+        if (!ac.signal.aborted) {
+          const emptyData = { drinks: [], amounts: [], databaseEntries: [] };
+          setFrequent(emptyData);
+          setLoading(false);
+        }
         return;
       }
 
