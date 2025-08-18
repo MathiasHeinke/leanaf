@@ -32,7 +32,9 @@ export async function loadDailyGoals(userId: string) {
     });
     
     if (goals && !rpcError) {
-      console.log('[loadDailyGoals] ✅ RPC success:', goals);
+      if (import.meta.env.DEV) {
+        console.log('[loadDailyGoals] ✅ RPC success:', goals);
+      }
       return { data: goals, error: null };
     }
     

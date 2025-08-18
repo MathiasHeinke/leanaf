@@ -28,13 +28,13 @@ export const supabaseRequest = async <T>(
   requestFn: () => Promise<T>,
   useCache: boolean = true
 ): Promise<T> => {
-  console.log(`🔧 [SUPABASE] Starting request: ${requestKey}`);
-  
   // Check cache first
   if (useCache && requestCache.has(requestKey)) {
     const cached = requestCache.get(requestKey);
     if (Date.now() - cached.timestamp < CACHE_DURATION) {
-      console.log(`🔧 [SUPABASE] Using cached result for: ${requestKey}`);
+      if (import.meta.env.DEV) {
+        console.log(`🔧 [SUPABASE] Using cached result for: ${requestKey}`);
+      }
       return cached.data;
     }
   }
@@ -43,8 +43,6 @@ export const supabaseRequest = async <T>(
   
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`🔧 [SUPABASE] Attempt ${attempt + 1}/${MAX_RETRIES + 1} for: ${requestKey}`);
-      
       const data = await requestFn();
       
       // Cache successful response
@@ -57,29 +55,34 @@ export const supabaseRequest = async <T>(
       
       // Reset retry count on success
       connectionRetryCount = 0;
-      console.log(`🔧 [SUPABASE] Request successful: ${requestKey}`);
       
       return data;
     } catch (error: any) {
       lastError = error;
       connectionRetryCount++;
       
-      console.error(`🔧 [SUPABASE] Request failed (attempt ${attempt + 1}/${MAX_RETRIES + 1}) for ${requestKey}:`, {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
+      if (import.meta.env.DEV) {
+        console.error(`🔧 [SUPABASE] Request failed (attempt ${attempt + 1}/${MAX_RETRIES + 1}) for ${requestKey}:`, {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+      }
       
       if (attempt < MAX_RETRIES) {
         const delayTime = RETRY_DELAY * (attempt + 1);
-        console.log(`🔧 [SUPABASE] Retrying in ${delayTime}ms...`);
+        if (import.meta.env.DEV) {
+          console.log(`🔧 [SUPABASE] Retrying in ${delayTime}ms...`);
+        }
         await new Promise(resolve => setTimeout(resolve, delayTime));
       }
     }
   }
   
-  console.error(`🔧 [SUPABASE] Request failed permanently after ${MAX_RETRIES + 1} attempts: ${requestKey}`, lastError);
+  if (import.meta.env.DEV) {
+    console.error(`🔧 [SUPABASE] Request failed permanently after ${MAX_RETRIES + 1} attempts: ${requestKey}`, lastError);
+  }
   throw lastError;
 };
 

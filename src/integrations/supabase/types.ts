@@ -6501,7 +6501,7 @@ export type Database = {
         Args:
           | Record<PropertyKey, never>
           | { _role: Database["public"]["Enums"]["app_role"] }
-          | { _role: string }
+          | { _role?: string }
         Returns: boolean
       }
       days_in_month: {
