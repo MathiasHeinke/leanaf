@@ -3146,7 +3146,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "meal_images_meal_id_fkey"
+            columns: ["meal_id"]
+            isOneToOne: false
+            referencedRelation: "meals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meal_images_meal_id_fkey"
+            columns: ["meal_id"]
+            isOneToOne: false
+            referencedRelation: "v_today_meals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meals: {
         Row: {
@@ -6498,10 +6513,7 @@ export type Database = {
         Returns: Json
       }
       current_user_has_role: {
-        Args:
-          | Record<PropertyKey, never>
-          | { _role: Database["public"]["Enums"]["app_role"] }
-          | { _role?: string }
+        Args: { _role?: string }
         Returns: boolean
       }
       days_in_month: {
@@ -6555,7 +6567,7 @@ export type Database = {
       }
       get_my_uid: {
         Args: Record<PropertyKey, never>
-        Returns: string
+        Returns: Json
       }
       get_next_entry_sequence: {
         Args: { p_date: string; p_user_id: string }

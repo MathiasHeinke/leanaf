@@ -8,8 +8,8 @@ export async function loadTodaysFluids(userId: string) {
     .from("user_fluids")
     .select("*")
     .eq("user_id", userId)
-    .gte("intake_time", start)
-    .lte("intake_time", end)
+    .gte("date", start.split('T')[0])
+    .lte("date", end.split('T')[0])
     .order("created_at", { ascending: false });
 }
 
@@ -19,8 +19,7 @@ export async function loadTodaysWorkout(userId: string) {
     .from("workouts")
     .select("*")
     .eq("user_id", userId)
-    .gte("start_time", start)
-    .lte("start_time", end)
+    .eq("date", start.split('T')[0])
     .maybeSingle();
 }
 
@@ -65,7 +64,10 @@ export async function loadTodaysMeals(userId: string) {
   const { start, end } = todayRange();
   return sb
     .from("meals")
-    .select("*")
+    .select(`
+      *,
+      meal_images:meal_images!meal_images_meal_id_fkey(id, url, thumbnail_url)
+    `)
     .eq("user_id", userId)
     .gte("eaten_at", start)
     .lte("eaten_at", end)
