@@ -86,13 +86,13 @@ export const supabaseRequest = async <T>(
 // Safe data loading with enhanced error handling
 export const loadUserData = async (userId: string) => {
   if (!userId) {
-    console.warn('🔧 [SUPABASE] loadUserData: No userId provided');
+    if (import.meta.env.DEV) {
+      console.warn('🔧 [SUPABASE] loadUserData: No userId provided');
+    }
     return null;
   }
   
   try {
-    console.log('🔧 [SUPABASE] Loading user data for:', userId);
-    
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -100,14 +100,17 @@ export const loadUserData = async (userId: string) => {
       .maybeSingle();
     
     if (error) {
-      console.error('🔧 [SUPABASE] Error loading user data:', error);
+      if (import.meta.env.DEV) {
+        console.error('🔧 [SUPABASE] Error loading user data:', error);
+      }
       throw error;
     }
     
-    console.log('🔧 [SUPABASE] User data loaded successfully');
     return data;
   } catch (error) {
-    console.error('🔧 [SUPABASE] Critical error loading user data:', error);
+    if (import.meta.env.DEV) {
+      console.error('🔧 [SUPABASE] Critical error loading user data:', error);
+    }
     return null;
   }
 };

@@ -203,24 +203,12 @@ const Auth = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    console.log('🔧 DEBUG: handleSubmit CALLED - START OF FUNCTION');
-    console.log('🔧 DEBUG: Event object:', e);
-    console.log('🔧 DEBUG: Form data:', { email, password: '***', isSignUp, isPasswordReset });
+    e.preventDefault();
     
     // Close debug overlay if open to prevent blocking
     if (showDebugOverlay) {
       setShowDebugOverlay(false);
     }
-    
-    try {
-      e.preventDefault();
-      console.log('🔧 DEBUG: e.preventDefault() executed successfully');
-    } catch (error) {
-      console.error('🔧 CRITICAL ERROR: e.preventDefault() failed:', error);
-      return;
-    }
-    
-    console.log('🔧 DEBUG: Login attempt started', { email, isSignUp, isPasswordReset });
     
     // Check rate limiting - NON-BLOCKING
     const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
@@ -532,7 +520,7 @@ const Auth = () => {
     }
   };
 
-  console.log('🔧 DEBUG: Auth component rendering, about to return JSX');
+  
   
   return (
     <AuthErrorBoundary>
