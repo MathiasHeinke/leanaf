@@ -7,11 +7,7 @@ import { logTraceEvent } from "../telemetry.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { handleOptions, okJson, errJson } from '../_shared/cors.ts';
 
 serve(async (req) => {
   const requestStartTime = Date.now();
@@ -19,7 +15,7 @@ serve(async (req) => {
   
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleOptions(req);
   }
 
   try {
@@ -105,17 +101,9 @@ serve(async (req) => {
       // Only block if rate limiting is working AND limit is exceeded
       if (rateLimitResult && !rateLimitResult.allowed) {
         console.log('🚫 [ANALYZE-MEAL] Rate limit exceeded for IP:', clientIP);
-        return new Response(JSON.stringify({ 
-          error: 'Rate limit exceeded. Please try again later.',
+        return errJson('Rate limit exceeded. Please try again later.', req, 429, {
           code: 'RATE_LIMIT_EXCEEDED',
           retry_after: rateLimitResult?.retry_after_seconds || 3600
-        }), {
-          status: 429,
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json',
-            'Retry-After': String(rateLimitResult?.retry_after_seconds || 3600)
-          }
         });
       }
       
@@ -129,26 +117,14 @@ serve(async (req) => {
     // Authentication verification - REQUIRED
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('🚫 [ANALYZE-MEAL] Missing or invalid authorization header');
-      return new Response(JSON.stringify({ 
-        error: 'Authentication required',
-        code: 'AUTH_REQUIRED'
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return errJson('Authentication required', req, 401, { code: 'AUTH_REQUIRED' });
     }
     
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
     
     if (authError || !user) {
       console.log('🚫 [ANALYZE-MEAL] Authentication failed:', authError?.message);
-      return new Response(JSON.stringify({ 
-        error: 'Authentication failed',
-        code: 'AUTH_FAILED'
-      }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return errJson('Authentication failed', req, 401, { code: 'AUTH_FAILED' });
     }
 
     const userId = user.id;
@@ -172,14 +148,10 @@ serve(async (req) => {
       
       if (!usageResult?.can_use) {
         console.log('⛔ [ANALYZE-MEAL] Usage limit exceeded for user:', user.id);
-        return new Response(JSON.stringify({ 
-          error: 'Daily usage limit exceeded. Upgrade to Pro for unlimited access.',
+        return errJson('Daily usage limit exceeded. Upgrade to Pro for unlimited access.', req, 429, {
           code: 'USAGE_LIMIT_EXCEEDED',
           daily_remaining: usageResult?.daily_remaining || 0,
           monthly_remaining: usageResult?.monthly_remaining || 0
-        }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
     }
@@ -196,8 +168,7 @@ serve(async (req) => {
     // Validate input - allow either text OR images OR both
     if (!text && (!images || images.length === 0)) {
       console.log('❌ [ANALYZE-MEAL] No input provided');
-      return new Response(JSON.stringify({ 
-        error: 'Bitte geben Sie Text ein oder laden Sie ein Bild hoch',
+      return errJson('Bitte geben Sie Text ein oder laden Sie ein Bild hoch', req, 400, {
         code: 'NO_INPUT',
         fallback: {
           title: 'Mahlzeit',
@@ -205,9 +176,6 @@ serve(async (req) => {
           confidence: 'low',
           notes: 'Keine Eingabe verfügbar'
         }
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -464,9 +432,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         payload: { method: 'rag', imageCount: images?.length || 0 }
       });
       
-      return new Response(JSON.stringify(ragResponse), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return okJson(ragResponse, req);
     } else if (!isComplexInput) {
       console.log('⚠️ [ANALYZE-MEAL] RAG analysis failed or returned no results, falling back to OpenAI');
       if (ragError) console.log('RAG Error:', ragError);
@@ -579,9 +545,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         latencyMs: totalDuration,
         payload: { method: 'openai', imageCount: images?.length || 0 }
       });
-      return new Response(JSON.stringify(parsed), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return okJson(parsed, req);
     } catch (parseError) {
       console.error('❌ [ANALYZE-MEAL] JSON Parse Error:', parseError);
       console.error('📄 [ANALYZE-MEAL] Raw content that failed to parse:', content);
@@ -617,9 +581,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
         latencyMs: Date.now() - requestStartTime,
         payload: { method: 'fallback', imageCount: images?.length || 0 }
       });
-      return new Response(JSON.stringify(fallbackResponse), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return okJson(fallbackResponse, req);
     }
 
   } catch (error) {
@@ -640,17 +602,13 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     
     // Always provide fallback data to prevent blocking user
     console.log('🔄 [ANALYZE-MEAL] Providing fallback response due to error');
-    return new Response(JSON.stringify({ 
-      error: (error as any).message || 'Ein unerwarteter Fehler ist aufgetreten',
+    return errJson((error as any).message || 'Ein unerwarteter Fehler ist aufgetreten', req, 500, {
       fallback: {
         title: 'Mahlzeit',
         total: { calories: 0, protein: 0, carbs: 0, fats: 0 },
         confidence: 'low',
         notes: 'Analyse fehlgeschlagen - Bitte Werte manuell eingeben'
       }
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });

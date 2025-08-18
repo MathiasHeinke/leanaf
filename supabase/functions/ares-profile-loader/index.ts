@@ -1,15 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { handleOptions, okJson, errJson } from '../_shared/cors.ts';
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return handleOptions(req);
   }
 
   try {
@@ -26,7 +22,7 @@ serve(async (req) => {
     const { data: user, error: userErr } = await admin.auth.getUser(token);
     if (userErr || !user?.user) {
       console.error("Auth verification failed:", userErr);
-      return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      return errJson("Unauthorized", req, 401);
     }
 
     const { userId } = await req.json().catch(() => ({ userId: null }));
@@ -34,7 +30,7 @@ serve(async (req) => {
     // Security check: user can only access their own profile
     if (!userId || userId !== user.user.id) {
       console.error("User ID mismatch:", { requested: userId, actual: user.user.id });
-      return new Response("Forbidden", { status: 403, headers: corsHeaders });
+      return errJson("Forbidden", req, 403);
     }
 
     console.log(`Loading profile for user: ${userId}`);
@@ -48,22 +44,14 @@ serve(async (req) => {
 
     if (error) {
       console.error("Database error:", error);
-      return new Response(JSON.stringify({ error: error.message }), { 
-        status: 500, 
-        headers: { ...corsHeaders, "content-type": "application/json" } 
-      });
+      return errJson(error.message, req, 500);
     }
 
     console.log(`Profile loaded successfully:`, data ? "found" : "not found");
 
-    return new Response(JSON.stringify({ data }), { 
-      headers: { ...corsHeaders, "content-type": "application/json" } 
-    });
+    return okJson({ data }, req);
   } catch (e) {
     console.error("Function error:", e);
-    return new Response(JSON.stringify({ error: String(e) }), { 
-      status: 500, 
-      headers: { ...corsHeaders, "content-type": "application/json" } 
-    });
+    return errJson(String(e), req, 500);
   }
 });
