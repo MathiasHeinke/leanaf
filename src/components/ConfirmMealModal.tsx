@@ -24,7 +24,7 @@ export default function ConfirmMealModal({ open, prompt, proposal, onConfirm, on
           {uploadedImages.length > 0 && (
             <div className="mb-4">
               <p className="text-xs text-muted-foreground mb-2">Bilder ({uploadedImages.length})</p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
                 {uploadedImages.map((url, idx) => (
                   <div key={url + idx} className="flex-shrink-0">
                     <img

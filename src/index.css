@@ -555,6 +555,17 @@
   }
 }
 
+/* Hide scrollbars while maintaining scroll functionality */
+@layer utilities {
+  .hide-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/WebKit */
+  }
+}
+
 /* Global heading polish for display look */
 @layer base {
   h1 { @apply font-display font-extrabold tracking-tight leading-tight; }

@@ -349,7 +349,7 @@ export function CaloriesCard({ date, totals, meals, frequent, onAddQuickMeal, on
 
         {/* Smart Chips for frequent meals - visible in both collapsed and expanded states */}
         {chips.length > 0 && (
-          <div className="mt-3 flex gap-2 overflow-x-auto scroll-smooth flex-nowrap">
+          <div className="mt-3 flex gap-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar">
             {chips.map((c) => (
               <SmartChip 
                 key={c} 

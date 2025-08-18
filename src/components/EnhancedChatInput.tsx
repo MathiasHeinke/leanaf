@@ -172,7 +172,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
         {/* Attachments Preview */}
         {attachments.length > 0 && (
           <div className="px-4 pb-2">
-            <div className="flex gap-2 overflow-x-auto">
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar">
               {attachments.map((url, i) => (
                 <div key={url + i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
                   <img src={url} alt="Ausgewählter Anhang" className="w-full h-full object-cover" loading="lazy" />

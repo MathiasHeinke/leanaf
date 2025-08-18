@@ -214,7 +214,7 @@ const handleSubmit = useCallback(async () => {
           {/* Smart Chips for frequent meals based on time of day */}
           {getCurrentMealSuggestions().length > 0 && (
             <div className="mb-3">
-              <div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap">
+              <div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar">
                 {getCurrentMealSuggestions().map((meal, index) => (
                   <SmartChip
                     key={index}
@@ -232,7 +232,7 @@ const handleSubmit = useCallback(async () => {
           {/* Combined Images Display: Optimistic + Uploaded */}
           {(optimisticImages.length > 0 || uploadedImages.length > 0) && (
             <div className="mb-2">
-              <div className="flex items-center gap-2 overflow-x-auto py-1">
+              <div className="flex items-center gap-2 overflow-x-auto py-1 hide-scrollbar">
                 {/* Optimistic images (instant preview) */}
                 {optimisticImages.map((img, idx) => (
                   <div key={`optimistic-${idx}`} className="relative flex-shrink-0">

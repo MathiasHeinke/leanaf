@@ -277,7 +277,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
         )}
 
         {/* Smart Chips & Journal Indicator */}
-        <div className="mt-3 flex gap-3 overflow-x-auto scroll-smooth flex-nowrap">
+        <div className="mt-3 flex gap-3 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar">
           {smartChips.map((chip, index) => (
             <SmartChip
               key={index}

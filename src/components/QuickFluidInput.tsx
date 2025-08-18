@@ -817,7 +817,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
             </div>
             
             {/* Smart Chips - always show */}
-            <div className="flex gap-1 mt-2 overflow-x-auto scroll-smooth flex-nowrap">
+            <div className="flex gap-1 mt-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar">
               {smartChips.slice(0, 3).map((chip, index) => (
                 <SmartChip
                   key={index}
@@ -835,7 +835,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
         <CollapsibleContent>
           <div className="pt-4 space-y-6">
             {/* Smart Chips - always show when expanded */}
-            <div className="flex gap-1 overflow-x-auto scroll-smooth flex-nowrap">
+            <div className="flex gap-1 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar">
               {smartChips.slice(0, 3).map((chip, index) => (
                 <SmartChip
                   key={index}

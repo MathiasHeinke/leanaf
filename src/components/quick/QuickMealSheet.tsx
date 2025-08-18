@@ -255,7 +255,7 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
 
             {/* Combined Images preview: Optimistic + Uploaded */}
             {(optimisticImages.length > 0 || uploadedImages.length > 0) && (
-              <div className="mt-2 flex gap-2 overflow-x-auto">
+              <div className="mt-2 flex gap-2 overflow-x-auto hide-scrollbar">
                 {/* Optimistic images (instant preview) */}
                 {optimisticImages.map((img, idx) => (
                   <div key={`opt-${idx}`} className="relative">
