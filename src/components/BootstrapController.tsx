@@ -57,8 +57,9 @@ export const BootstrapController: React.FC<BootstrapControllerProps> = ({
     setState(prev => ({ ...prev, bootstrapComplete }));
   }, [bootstrapState]);
 
-  // NEW LOGIC: Use gate instead of strict UND-verknüpfung
-  const showDashboard = gate.ready || gate.degraded;
+  // NEW LOGIC: Auth must be ready AND (gate ready OR degraded)
+  const authReady = isSessionReady && !!user && !!session;
+  const showDashboard = authReady && (gate.ready || gate.degraded);
   const showLoading = !showDashboard;
 
   // Debug logging

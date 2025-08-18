@@ -7,6 +7,19 @@ import { dataLogger } from '../../utils/dataLogger';
 const SUPABASE_URL = "https://gzczjscctgyxjyodhnhk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd6Y3pqc2NjdGd5eGp5b2RobmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NDc5ODIsImV4cCI6MjA2ODMyMzk4Mn0.RIEpNuSbszttym0v9KulYOxXX_Klose6QRAfEMuub1I";
 
+// Auth header fail-safe injection
+const SB_AUTH_STORAGE_KEY = 'sb-gzczjscctgyxjyodhnhk-auth-token';
+function getAccessTokenFromStorage(): string | null {
+  try {
+    const raw = localStorage.getItem(SB_AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.currentSession?.access_token || parsed?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
@@ -68,6 +81,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 
       // Add our custom headers
       mergedHeaders.set('apikey', SUPABASE_PUBLISHABLE_KEY);
+      
+      // Fail-safe auth header injection (prevents early request failures)
+      if (!mergedHeaders.has('Authorization')) {
+        const token = getAccessTokenFromStorage();
+        if (token) {
+          mergedHeaders.set('Authorization', `Bearer ${token}`);
+        }
+      }
       
       // Don't add timezone headers to edge functions to avoid CORS issues
       if (!isEdgeFunction) {

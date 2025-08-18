@@ -25,6 +25,37 @@ export const useBootstrap = () => {
     error: null
   });
 
+  // Helper: Wait for auth token to be available
+  const waitForAuthToken = async (maxMs = 1200) => {
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) return session.access_token;
+      await new Promise(r => setTimeout(r, 120));
+    }
+    return null;
+  };
+
+  // Helper: Retry requests that fail with common Safari auth errors
+  const withAuthRetry = async <T>(fn: () => Promise<T>, label: string): Promise<T> => {
+    let lastErr: any;
+    const delays = [0, 150, 350];
+    for (let i = 0; i < delays.length; i++) {
+      try {
+        return await fn();
+      } catch (e: any) {
+        lastErr = e;
+        const msg = String(e?.message || e);
+        if (!/load failed|access control|fetch api cannot load/i.test(msg)) break;
+        if (i < delays.length - 1) {
+          console.warn(`🔄 Retry ${i + 1} for ${label} after ${delays[i + 1]}ms`, e);
+          await new Promise(r => setTimeout(r, delays[i + 1]));
+        }
+      }
+    }
+    throw lastErr;
+  };
+
   // Single effect that triggers all data loading in parallel
   useEffect(() => {
     console.log('🔍 Bootstrap Check:', { 
@@ -66,82 +97,87 @@ export const useBootstrap = () => {
       });
 
       console.log('🚀 Bootstrap starting for user:', user.id);
+      
+      // Wait for auth token to prevent early fetch failures
+      console.log('🔑 Ensuring token...');
+      await waitForAuthToken();
+      console.log('✅ Token ready');
 
       try {
-        // Load all initial data in parallel with Promise.allSettled
+        // Load all initial data in parallel with auth retry protection
         const results = await Promise.allSettled([
-          // 1. Load profile data directly (bypass useUserProfile to avoid dependency loops)
-          supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle()
-            .then(({ data, error }) => {
-              if (error) throw error;
-              console.log('✅ Profile loaded:', data ? 'Found' : 'Not found');
-              return data;
-            }),
+          // 1. Load profile data with retry
+          withAuthRetry(async () => {
+            const { data, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            if (error) throw error;
+            console.log('✅ Profile loaded:', data ? 'Found' : 'Not found');
+            return data;
+          }, 'profiles'),
 
-          // 2. Load daily goals
-          supabase
-            .from('daily_goals')
-            .select('*')
-            .eq('user_id', user.id)
-            .maybeSingle()
-            .then(({ data, error }) => {
-              if (error) throw error;
-              console.log('✅ Daily goals loaded:', data ? 'Found' : 'Using defaults');
-              return data;
-            }),
+          // 2. Load daily goals with retry
+          withAuthRetry(async () => {
+            const { data, error } = await supabase
+              .from('daily_goals')
+              .select('*')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            if (error) throw error;
+            console.log('✅ Daily goals loaded:', data ? 'Found' : 'Using defaults');
+            return data;
+          }, 'daily_goals'),
 
-          // 3. Load today's meals (simplified - meal_foods relation doesn't exist)
-          supabase
-            .from('meals')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('date', new Date().toISOString().split('T')[0])
-            .order('ts', { ascending: false })
-            .then(({ data, error }) => {
-              if (error) throw error;
-              console.log('✅ Today\'s meals loaded:', data?.length || 0);
-              return data || [];
-            }),
+          // 3. Load today's meals with retry
+          withAuthRetry(async () => {
+            const { data, error } = await supabase
+              .from('meals')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('date', new Date().toISOString().split('T')[0])
+              .order('ts', { ascending: false });
+            if (error) throw error;
+            console.log('✅ Today\'s meals loaded:', data?.length || 0);
+            return data || [];
+          }, 'meals'),
 
-          // 4. Load today's fluids
-          supabase
-            .from('user_fluids')
-            .select(`
-              *,
-              fluid_database:fluid_id (
-                name,
-                calories_per_100ml,
-                protein_per_100ml,
-                carbs_per_100ml,
-                fats_per_100ml,
-                has_alcohol,
-                category
-              )
-            `)
-            .eq('user_id', user.id)
-            .eq('date', new Date().toISOString().split('T')[0])
-            .order('consumed_at', { ascending: false })
-            .then(({ data, error }) => {
-              if (error) throw error;
-              console.log('✅ Today\'s fluids loaded:', data?.length || 0);
-              return data || [];
-            }),
+          // 4. Load today's fluids with retry
+          withAuthRetry(async () => {
+            const { data, error } = await supabase
+              .from('user_fluids')
+              .select(`
+                *,
+                fluid_database:fluid_id (
+                  name,
+                  calories_per_100ml,
+                  protein_per_100ml,
+                  carbs_per_100ml,
+                  fats_per_100ml,
+                  has_alcohol,
+                  category
+                )
+              `)
+              .eq('user_id', user.id)
+              .eq('date', new Date().toISOString().split('T')[0])
+              .order('consumed_at', { ascending: false });
+            if (error) throw error;
+            console.log('✅ Today\'s fluids loaded:', data?.length || 0);
+            return data || [];
+          }, 'fluids'),
 
-          // 5. Load user points
-          supabase
-            .from('user_points')
-            .select('total_points, points_to_next_level, current_level, level_name')
-            .eq('user_id', user.id)
-            .maybeSingle()
-            .then(({ data, error }) => {
-              if (error) throw error;
-              console.log('✅ User points loaded:', data?.total_points || 0);
-              return data;
-            })
+          // 5. Load user points with retry
+          withAuthRetry(async () => {
+            const { data, error } = await supabase
+              .from('user_points')
+              .select('total_points, points_to_next_level, current_level, level_name')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            if (error) throw error;
+            console.log('✅ User points loaded:', data?.total_points || 0);
+            return data;
+          }, 'user_points')
         ]);
 
         const endTime = performance.now();
