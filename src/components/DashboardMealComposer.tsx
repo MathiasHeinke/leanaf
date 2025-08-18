@@ -32,7 +32,8 @@ export const DashboardMealComposer: React.FC = () => {
     resetForm,
     isAnalyzing,
     isUploading,
-    uploadProgress
+    uploadProgress,
+    handleSubmitMeal
   } = useGlobalMealInput();
   const [quickMealSheetOpen, setQuickMealSheetOpen] = useState(false);
   const { isEnabled } = useFeatureFlags();
@@ -99,7 +100,19 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
 
 
 const handleSubmit = useCallback(async () => {
-  if (!inputText.trim()) return;
+  // Check if we have images but no text - direct image submit
+  const hasImages = uploadedImages.length > 0;
+  const hasText = inputText.trim();
+  
+  if (!hasText && !hasImages) return;
+  
+  // If only images (no text), use direct meal submission from hook
+  if (hasImages && !hasText) {
+    await handleSubmitMeal();
+    return;
+  }
+  
+  // If text present, open QuickMealSheet for expanded input
   setActiveTab("text");
   openQuickMealSheet("text");
   if (orchestrationEnabled && user?.id) {
@@ -126,7 +139,7 @@ const handleSubmit = useCallback(async () => {
       console.debug('Orchestrator sendEvent failed (non-blocking)', e);
     }
   }
-}, [inputText, openQuickMealSheet, orchestrationEnabled, user?.id, sendEvent]);
+}, [inputText, uploadedImages, handleSubmitMeal, openQuickMealSheet, orchestrationEnabled, user?.id, sendEvent]);
 
   return (
     <>
@@ -271,7 +284,7 @@ const handleSubmit = useCallback(async () => {
             <Button
               size="icon"
               onClick={handleSubmit}
-              disabled={!inputText.trim()}
+              disabled={!inputText.trim() && uploadedImages.length === 0}
               className="flex-shrink-0 h-10 w-10 rounded-full"
               aria-label="Mahlzeit hinzufügen"
             >
