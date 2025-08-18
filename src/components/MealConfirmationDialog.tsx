@@ -366,6 +366,9 @@ export const MealConfirmationDialog = ({
       <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-md border border-border/50 shadow-2xl z-[9999]">
         <AlertDialogHeader>
           <AlertDialogTitle>{t('meal.confirm')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            Überprüfe und bearbeite die erkannten Nährwerte deiner Mahlzeit, bevor du sie speicherst.
+          </AlertDialogDescription>
           
           {confidence === 'low' && (
             <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
