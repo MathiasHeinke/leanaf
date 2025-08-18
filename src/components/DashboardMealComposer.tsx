@@ -14,7 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { IMAGE_UPLOAD_MAX_DEFAULT } from "@/lib/constants";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { SmartCardOverlay } from "@/components/SmartCardOverlay";
-import { UploadProgress } from "@/components/UploadProgress";
+import { SimpleProgressBar } from "@/components/SimpleProgressBar";
 import { useFrequentMeals, type Daypart } from "@/hooks/useFrequentMeals";
 import { SmartChip } from "@/components/ui/smart-chip";
 
@@ -196,13 +196,16 @@ const handleSubmit = useCallback(async () => {
   return (
     <>
       {/* Bottom Composer Bar */}
-      <div 
-        className="fixed bottom-0 left-0 right-0 z-20 bg-background/80 backdrop-blur-md border-t border-border"
+      <div
+        className="fixed bottom-0 left-0 right-0 z-20 bg-background/80 backdrop-blur-md border-t border-border relative"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
+        {/* Simple Upload Progress Bar */}
+        <SimpleProgressBar 
+          isVisible={isUploading} 
+          progress={uploadProgress.length > 0 ? Math.round(uploadProgress.reduce((sum, item) => sum + item.progress, 0) / uploadProgress.length) : 0} 
+        />
         <div className="container mx-auto px-4 py-3 max-w-5xl">
-          {/* Upload Progress */}
-          <UploadProgress progress={uploadProgress} isVisible={isUploading} />
           
           {/* Smart Chips for frequent meals based on time of day */}
           {getCurrentMealSuggestions().length > 0 && (
