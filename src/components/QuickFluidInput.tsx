@@ -22,6 +22,7 @@ import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { de } from 'date-fns/locale';
 import { useFrequentFluids } from '@/hooks/useFrequentFluids';
 import { ChevronUp } from 'lucide-react';
+import { GroupedFluidsList } from '@/components/GroupedFluidsList';
 
 interface FluidOption {
   id: string;
@@ -912,11 +913,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
 
                 <Collapsible open={showFluids} onOpenChange={setShowFluids}>
                   <CollapsibleContent>
-                    <div className="space-y-2">
-                      {todaysFluids.map((fluid) => (
-                        <FluidRow key={fluid.id} fluid={fluid} onEdit={handleEditFluid} onDelete={handleDeleteFluid} onDuplicate={handleDuplicateFluid} />
-                      ))}
-                    </div>
+                    <GroupedFluidsList todaysFluids={todaysFluids} />
                   </CollapsibleContent>
                 </Collapsible>
               </div>
