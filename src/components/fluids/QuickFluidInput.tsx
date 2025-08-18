@@ -1,29 +1,30 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useFluidsToday } from '@/hooks/useFluidsToday';
-import { useFluidTargets } from '@/hooks/useFluidTargets';
-import { quickAddFluid } from '@/services/fluids';
+import { useTodayFluids } from '@/hooks/useTodayFluids';
+import { useAddFluid } from '@/hooks/useAddFluid';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface QuickFluidInputProps {
   weightKg?: number;
+  currentDate?: Date;
 }
 
-export function QuickFluidInput({ weightKg }: QuickFluidInputProps) {
+export function QuickFluidInput({ weightKg, currentDate }: QuickFluidInputProps) {
   const { user } = useAuth();
   const [pending, setPending] = useState(false);
-  const { totalMl, waterEqMl, loading: fluidsLoading } = useFluidsToday(user?.id);
-  const { goalMl, recommendedMl, loading: goalsLoading, setGoalMl, source } =
-    useFluidTargets(user?.id, weightKg);
+  const { hydrationMl, goalMl, percent, loading } = useTodayFluids(user?.id, currentDate);
+  const addFluid = useAddFluid(user?.id);
 
-  const add = async (ml: number, opts?: { category?: string; alcohol_percent?: number }) => {
+  const add = async (ml: number, opts?: { category?: string; alcohol_percent?: number; name?: string }) => {
     if (!user?.id || pending) return;
     setPending(true);
     try { 
-      await quickAddFluid(user.id, ml, opts); 
-      toast.success(`${ml}ml hinzugefügt`);
+      await addFluid(ml, { 
+        name: opts?.name,
+        has_alcohol: opts?.alcohol_percent ? true : false
+      });
     } catch (error) {
       toast.error('Fehler beim Hinzufügen');
     } finally { 
@@ -32,10 +33,9 @@ export function QuickFluidInput({ weightKg }: QuickFluidInputProps) {
   };
 
   const goalL = (goalMl / 1000).toFixed(1);
-  const doneL = (waterEqMl / 1000).toFixed(1);
-  const pct = Math.min(100, Math.round((waterEqMl / Math.max(goalMl, 1)) * 100));
+  const doneL = (hydrationMl / 1000).toFixed(1);
 
-  if (fluidsLoading || goalsLoading) {
+  if (loading) {
     return <div className="rounded-xl border p-3">Lädt...</div>;
   }
 
@@ -44,13 +44,8 @@ export function QuickFluidInput({ weightKg }: QuickFluidInputProps) {
       <div className="mb-2 flex items-center justify-between">
         <div className="text-sm font-medium">
           Flüssigkeit: <span className="tabular-nums">{doneL} / {goalL} L</span>
-          {source === 'fallback' && (
-            <span className="ml-2 text-xs text-muted-foreground">
-              (Empfehlung: {(recommendedMl/1000).toFixed(1)} L)
-            </span>
-          )}
         </div>
-        <div className="text-xs">{pct}%</div>
+        <div className="text-xs">{percent}%</div>
       </div>
 
       {/* Smart Chips */}
@@ -59,7 +54,7 @@ export function QuickFluidInput({ weightKg }: QuickFluidInputProps) {
           type="button" 
           variant="outline" 
           size="sm"
-          onClick={() => add(250)} 
+          onClick={() => add(250, { name: "250ml Wasser" })} 
           disabled={pending}
         >
           250 ml
@@ -68,7 +63,7 @@ export function QuickFluidInput({ weightKg }: QuickFluidInputProps) {
           type="button" 
           variant="outline" 
           size="sm"
-          onClick={() => add(500)} 
+          onClick={() => add(500, { name: "500ml Wasser" })} 
           disabled={pending}
         >
           500 ml
@@ -77,7 +72,7 @@ export function QuickFluidInput({ weightKg }: QuickFluidInputProps) {
           type="button" 
           variant="outline" 
           size="sm"
-          onClick={() => add(750)} 
+          onClick={() => add(750, { name: "750ml Wasser" })} 
           disabled={pending}
         >
           750 ml
@@ -86,7 +81,7 @@ export function QuickFluidInput({ weightKg }: QuickFluidInputProps) {
           type="button" 
           variant="outline" 
           size="sm"
-          onClick={() => add(330, { category: 'soda' })} 
+          onClick={() => add(330, { name: "330ml Softdrink" })} 
           disabled={pending}
         >
           330 ml Softdrink
@@ -95,38 +90,18 @@ export function QuickFluidInput({ weightKg }: QuickFluidInputProps) {
           type="button" 
           variant="outline" 
           size="sm"
-          onClick={() => add(500, { category: 'beer', alcohol_percent: 5 })} 
+          onClick={() => add(500, { name: "500ml Bier", alcohol_percent: 5 })} 
           disabled={pending}
         >
           500 ml Bier
         </Button>
       </div>
 
-      {/* Ziel setzen */}
+      {/* Ziel setzen - simplified for now */}
       <div className="flex items-center gap-2">
-        <Input
-          type="number"
-          inputMode="numeric"
-          min={1000} 
-          step={100}
-          defaultValue={goalMl}
-          className="w-28"
-          onBlur={(e) => {
-            const v = Math.max(500, Math.min(8000, Number(e.currentTarget.value || 0)));
-            if (v !== goalMl) setGoalMl(v);
-          }}
-        />
-        <span className="text-xs text-muted-foreground">ml / Tag</span>
-        {source === 'fallback' && (
-          <Button 
-            type="button" 
-            variant="link" 
-            size="sm"
-            onClick={() => setGoalMl(recommendedMl)}
-          >
-            Empfehlung übernehmen
-          </Button>
-        )}
+        <span className="text-xs text-muted-foreground">
+          Ziel: {goalL}L täglich
+        </span>
       </div>
     </div>
   );

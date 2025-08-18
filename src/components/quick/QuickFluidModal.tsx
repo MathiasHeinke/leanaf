@@ -1,6 +1,6 @@
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { QuickFluidInput } from "@/components/QuickFluidInput";
+import { QuickFluidInput } from "@/components/fluids/QuickFluidInput";
 
 interface QuickFluidModalProps {
   isOpen: boolean;
