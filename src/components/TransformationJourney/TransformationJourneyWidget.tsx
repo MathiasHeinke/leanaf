@@ -194,9 +194,9 @@ export const TransformationJourneyWidget: React.FC = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="ki-vergleich">KI-Vergleich</TabsTrigger>
-          <TabsTrigger value="progress-vergleich">Progress-Vergleich</TabsTrigger>
           <TabsTrigger value="generate">KI Zielbild</TabsTrigger>
-          <TabsTrigger value="photos">Alle Fotos</TabsTrigger>
+          <TabsTrigger value="progress-vergleich">Progress</TabsTrigger>
+          <TabsTrigger value="photos">Bilder</TabsTrigger>
         </TabsList>
 
 
@@ -204,23 +204,6 @@ export const TransformationJourneyWidget: React.FC = () => {
           <KiComparisonView
             targetImages={targetImages}
             progressPhotos={progressPhotos}
-          />
-        </TabsContent>
-
-        <TabsContent value="progress-vergleich" className="space-y-6">
-          <ProgressComparisonView
-            progressPhotos={progressPhotos}
-          />
-        </TabsContent>
-
-        <TabsContent value="photos" className="space-y-6">
-          <GridPhotoView 
-            photos={rawProgressPhotos} 
-            targetImages={targetImages}
-            onPhotosUpdated={refreshPhotos}
-            startCropWorkflow={startCropWorkflow}
-            onViewTransformation={handleViewTransformation}
-            onCreateTransformation={handleCreateTransformation}
           />
         </TabsContent>
 
@@ -373,6 +356,23 @@ export const TransformationJourneyWidget: React.FC = () => {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="progress-vergleich" className="space-y-6">
+          <ProgressComparisonView
+            progressPhotos={progressPhotos}
+          />
+        </TabsContent>
+
+        <TabsContent value="photos" className="space-y-6">
+          <GridPhotoView 
+            photos={rawProgressPhotos} 
+            targetImages={targetImages}
+            onPhotosUpdated={refreshPhotos}
+            startCropWorkflow={startCropWorkflow}
+            onViewTransformation={handleViewTransformation}
+            onCreateTransformation={handleCreateTransformation}
+          />
         </TabsContent>
 
       </Tabs>
