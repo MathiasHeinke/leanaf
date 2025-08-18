@@ -6,11 +6,22 @@ export async function loadTodaysFluids(userId: string) {
   const { start, end } = todayRange();
   return sb
     .from("user_fluids")
-    .select("*")
+    .select(`
+      *,
+      fluid_database:fluid_id (
+        name,
+        calories_per_100ml,
+        protein_per_100ml,
+        carbs_per_100ml,
+        fats_per_100ml,
+        has_alcohol,
+        category
+      )
+    `)
     .eq("user_id", userId)
     .gte("date", start.split('T')[0])
     .lte("date", end.split('T')[0])
-    .order("created_at", { ascending: false });
+    .order("consumed_at", { ascending: false });
 }
 
 export async function loadTodaysWorkout(userId: string) {

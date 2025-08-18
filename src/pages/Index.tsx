@@ -221,7 +221,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
   const [todaysSleep, setTodaysSleep] = useState<any>(null);
   const [todaysMeasurements, setTodaysMeasurements] = useState<any>(null);
   const [todaysWeight, setTodaysWeight] = useState<any>(null);
-  const [todaysFluids, setTodaysFluids] = useState<any[]>([]);
   const [todaysMindset, setTodaysMindset] = useState<any[]>([]);
   
   // Real-time dashboard data with watchdog
@@ -286,10 +285,10 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
   // Update calorie summary when fluids change
   useEffect(() => {
-    if (meals.length > 0 || todaysFluids.length > 0) {
+    if (meals.length > 0 || (todaysFluidsFresh && todaysFluidsFresh.length > 0)) {
       updateCalorieSummary(meals);
     }
-  }, [todaysFluids, meals]);
+  }, [todaysFluidsFresh, meals]);
 
   const loadDailyGoals = async () => {
     if (!user) return;
@@ -464,23 +463,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         .eq('date', dateString)
         .order('consumed_at', { ascending: false });
 
-      if (fluidsError) {
-        console.error('Error loading fluids:', fluidsError);
-        setTodaysFluids([]);
-      } else {
-        // Flatten the fluid data structure for easier use
-        const processedFluids = (fluidsData || []).map(fluid => ({
-          ...fluid,
-          fluid_name: fluid.custom_name || fluid.fluid_database?.name || 'Unknown',
-          calories_per_100ml: fluid.fluid_database?.calories_per_100ml || 0,
-          protein_per_100ml: fluid.fluid_database?.protein_per_100ml || 0,
-          carbs_per_100ml: fluid.fluid_database?.carbs_per_100ml || 0,
-          fats_per_100ml: fluid.fluid_database?.fats_per_100ml || 0,
-          has_alcohol: fluid.fluid_database?.has_alcohol || false,
-          fluid_category: fluid.fluid_database?.category || 'other'
-        }));
-        setTodaysFluids(processedFluids);
-      }
 
       // Load today's mindset/journal entries
       const { data: mindsetData, error: mindsetError } = await supabase
@@ -600,18 +582,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     setTodaysSleep(data.sleep);
     setTodaysWeight(data.weight);
     
-    // Process fluids
-    const processedFluids = data.fluids.map(fluid => ({
-      ...fluid,
-      fluid_name: fluid.custom_name || fluid.fluid_database?.name || 'Unknown',
-      calories_per_100ml: fluid.fluid_database?.calories_per_100ml || 0,
-      protein_per_100ml: fluid.fluid_database?.protein_per_100ml || 0,
-      carbs_per_100ml: fluid.fluid_database?.carbs_per_100ml || 0,
-      fats_per_100ml: fluid.fluid_database?.fats_per_100ml || 0,
-      has_alcohol: fluid.fluid_database?.has_alcohol || false,
-      fluid_category: fluid.fluid_database?.category || 'other'
-    }));
-    setTodaysFluids(processedFluids);
+    // Fluids are now loaded via useTodaysFluids hook - no need to process here
     setTodaysMindset(data.mindset);
 
     // Load measurements (weekly)
@@ -745,7 +716,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
 
   const updateCalorieSummary = (meals: any[]) => {
     const mealCalories = meals.reduce((sum, meal) => sum + (meal.calories || 0), 0);
-    const fluidCalories = todaysFluids.reduce((sum, fluid) => {
+    const fluidCalories = (todaysFluidsFresh || []).reduce((sum, fluid) => {
       const calories = (fluid.calories_per_100ml || 0) * (fluid.amount_ml / 100);
       return sum + calories;
     }, 0);
@@ -893,7 +864,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       plannedWorkouts: 1, // Assuming 1 planned workout per day for now
       
       // Fluids data
-      fluidsMl: todaysFluids.reduce((sum, fluid) => sum + fluid.amount_ml, 0),
+      fluidsMl: (todaysFluidsFresh || []).reduce((sum, fluid) => sum + fluid.amount_ml, 0),
       targetFluidsMl: dailyGoalsFresh?.fluids || 2000,
       
       // Mindset data
@@ -1057,7 +1028,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         <DashboardFourBarsWithTrend 
           meals={meals}
           dailyGoals={dailyGoalsFresh}
-          todaysFluids={todaysFluids}
+          todaysFluids={todaysFluidsFresh || []}
           todaysWorkout={todaysWorkout}
           currentDate={currentDate}
         />
@@ -1070,11 +1041,11 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
               caloriesUsed: calorieSummary.consumed,
               caloriesTarget: dailyGoalsFresh?.calories || 2000,
               protein: meals.reduce((sum, meal) => sum + (meal.protein || 0), 0) +
-                       todaysFluids.reduce((sum, fluid) => sum + ((fluid.protein_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+                       (todaysFluidsFresh || []).reduce((sum, fluid) => sum + ((fluid.protein_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
               carbs: meals.reduce((sum, meal) => sum + (meal.carbs || 0), 0) +
-                     todaysFluids.reduce((sum, fluid) => sum + ((fluid.carbs_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+                     (todaysFluidsFresh || []).reduce((sum, fluid) => sum + ((fluid.carbs_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
               fat: meals.reduce((sum, meal) => sum + (meal.fats || meal.fat || 0), 0) +
-                   todaysFluids.reduce((sum, fluid) => sum + ((fluid.fats_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
+                   (todaysFluidsFresh || []).reduce((sum, fluid) => sum + ((fluid.fats_per_100ml || 0) * (fluid.amount_ml / 100)), 0),
               targetProtein: dailyGoalsFresh?.protein || 150,
               targetCarbs: dailyGoalsFresh?.carbs || 250,
               targetFat: dailyGoalsFresh?.fats || 65,

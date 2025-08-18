@@ -21,6 +21,7 @@ import { getCurrentDateString } from "@/utils/dateHelpers";
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 import { de } from 'date-fns/locale';
 import { useFrequentFluids } from '@/hooks/useFrequentFluids';
+import { useTodaysFluids } from '@/hooks/useTodaysFluids';
 import { ChevronUp } from 'lucide-react';
 
 interface FluidOption {
@@ -88,8 +89,9 @@ interface QuickFluidInputProps {
 export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputProps = {}) => {
   const { user } = useAuth();
   const { frequent: frequentFluids } = useFrequentFluids(user?.id, 45);
+  const { data: todaysFluids, loading: fluidsLoading } = useTodaysFluids();
   const [fluids, setFluids] = useState<FluidOption[]>([]);
-  const [todaysFluids, setTodaysFluids] = useState<UserFluid[]>([]);
+  
   const [alcoholAbstinence, setAlcoholAbstinence] = useState<AlcoholAbstinence | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAbstinenceForm, setShowAbstinenceForm] = useState(false);
@@ -110,7 +112,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
   useEffect(() => {
     if (user) {
       loadFluids();
-      loadTodaysFluids();
       loadAlcoholAbstinence();
     }
   }, [user, currentDate]);
@@ -130,44 +131,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
     setFluids(data || []);
   };
 
-  const loadTodaysFluids = async () => {
-    if (!user) return;
-
-    const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
-    
-    const { data, error } = await supabase
-      .from('user_fluids')
-      .select(`
-        *,
-        fluid_database (
-          name,
-          category,
-          has_alcohol,
-          calories_per_100ml,
-          protein_per_100ml,
-          carbs_per_100ml,
-          fats_per_100ml
-        )
-      `)
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .order('consumed_at', { ascending: false });
-
-    if (error) {
-      console.error('Error loading today\'s fluids:', error);
-      return;
-    }
-
-    const fluidsWithNames = data?.map(fluid => ({
-      ...fluid,
-      fluid_name: fluid.fluid_database?.name || fluid.custom_name,
-      fluid_category: fluid.fluid_database?.category,
-      has_alcohol: fluid.fluid_database?.has_alcohol || false,
-      calories_per_100ml: fluid.fluid_database?.calories_per_100ml || 0
-    })) || [];
-
-    setTodaysFluids(fluidsWithNames);
-  };
 
   const loadAlcoholAbstinence = async () => {
     if (!user) return;
@@ -211,8 +174,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       } : undefined
     };
 
-    // Optimistic update
-    setTodaysFluids(prev => [tempFluid, ...prev]);
+    // No optimistic update needed - cache handles it
 
     try {
       const fluidData = {
@@ -236,18 +198,13 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       
       toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
       
-      // Reload data to get the real ID
-      await loadTodaysFluids();
-      
       // Trigger parent update to refresh main page
       onFluidUpdate?.();
       
-      // Global refresh for header/mission
+      // Global refresh for cached data
       triggerDataRefresh();
     } catch (error) {
       console.error('Error adding fluid directly:', error);
-      // Rollback optimistic update on error
-      setTodaysFluids(prev => prev.filter(f => f.id !== tempFluid.id));
       toast.error('Fehler beim Hinzufügen des Getränks');
     }
   };
@@ -285,13 +242,10 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setNotes('');
       setShowAddForm(false);
       
-      // Reload data
-      await loadTodaysFluids();
-      
       // Trigger parent update to refresh main page
       onFluidUpdate?.();
       
-      // Global refresh for header/mission
+      // Global refresh for cached data
       triggerDataRefresh();
     } catch (error) {
       console.error('Error adding fluid:', error);
@@ -366,7 +320,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       if (error) throw error;
 
       toast.success('Getränk gelöscht');
-      await loadTodaysFluids();
       onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
@@ -405,7 +358,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setEditingFluidId(null);
       setEditAmount('');
       setEditNotes('');
-      await loadTodaysFluids();
       onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
@@ -439,8 +391,8 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       if (error) throw error;
 
       toast.success('Getränk dupliziert');
-      await loadTodaysFluids();
       onFluidUpdate?.();
+      triggerDataRefresh();
     } catch (error) {
       console.error('Error duplicating fluid:', error);
       toast.error('Fehler beim Duplizieren des Getränks');
@@ -484,20 +436,20 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
   };
 
   const getTotalWaterIntake = () => {
-    return todaysFluids
+    return (todaysFluids || [])
       .filter(f => isWaterDrink(f))
       .reduce((sum, f) => sum + f.amount_ml, 0);
   };
 
   const getTotalCaloriesFromDrinks = () => {
-    return todaysFluids.reduce((sum, f) => {
+    return (todaysFluids || []).reduce((sum, f) => {
       const calories = (f.calories_per_100ml || 0) * (f.amount_ml / 100);
       return sum + calories;
     }, 0);
   };
 
   const getTotalMacrosFromDrinks = () => {
-    return todaysFluids.reduce((totals, f) => {
+    return (todaysFluids || []).reduce((totals, f) => {
       const factor = f.amount_ml / 100;
       return {
         protein: totals.protein + ((f.fluid_database?.protein_per_100ml || 0) * factor),
@@ -507,14 +459,14 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
     }, { protein: 0, carbs: 0, fats: 0 });
   };
 
-  const hasAlcoholToday = todaysFluids.some(f => f.has_alcohol);
+  const hasAlcoholToday = (todaysFluids || []).some(f => f.has_alcohol);
   const totalWater = getTotalWaterIntake();
   const totalCalories = getTotalCaloriesFromDrinks();
   const totalMacros = getTotalMacrosFromDrinks();
   
   // Calculate completion status
-  const hasFluidEntries = todaysFluids.length > 0;
-  const totalFluidAmount = todaysFluids.reduce((sum, f) => sum + f.amount_ml, 0);
+  const hasFluidEntries = (todaysFluids || []).length > 0;
+  const totalFluidAmount = (todaysFluids || []).reduce((sum, f) => sum + f.amount_ml, 0);
   const isCompleted = hasFluidEntries;
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [showFluids, setShowFluids] = useState(false);
@@ -828,9 +780,9 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
               </div>
               <div className="space-y-2">
                 {/* Show individual water drinks */}
-                {todaysFluids.filter(f => isWaterDrink(f)).length > 0 ? (
+                {(todaysFluids || []).filter(f => isWaterDrink(f)).length > 0 ? (
                   <div className="space-y-1">
-                    {todaysFluids
+                    {(todaysFluids || [])
                       .filter(f => isWaterDrink(f))
                       .map((fluid, index) => (
                         <div key={index} className="flex justify-between text-sm">
@@ -899,7 +851,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
             )}
 
             {/* Getränke anzeigen/ausblenden */}
-            {todaysFluids.length > 0 && (
+            {(todaysFluids || []).length > 0 && (
               <div className="space-y-3 border-t pt-4">
                 <Button
                   variant="ghost"
@@ -913,7 +865,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
                 <Collapsible open={showFluids} onOpenChange={setShowFluids}>
                   <CollapsibleContent>
                     <div className="space-y-2">
-                      {todaysFluids.map((fluid) => (
+                      {(todaysFluids || []).map((fluid) => (
                         <FluidRow key={fluid.id} fluid={fluid} onEdit={handleEditFluid} onDelete={handleDeleteFluid} onDuplicate={handleDuplicateFluid} />
                       ))}
                     </div>
