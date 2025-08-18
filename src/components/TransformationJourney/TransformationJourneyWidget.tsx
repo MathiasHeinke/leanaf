@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTargetImages } from '@/hooks/useTargetImages';
 import { useProgressPhotos } from '@/hooks/useProgressPhotos';
-import { EnhancedComparisonView } from './EnhancedComparisonView';
+
 import { GridPhotoView } from './GridPhotoView';
 import { EnhancedTargetImageSelector } from '../TargetImageSelector/EnhancedTargetImageSelector';
 import { BeforeAfterSlider } from './BeforeAfterSlider';
@@ -29,7 +29,7 @@ export const TransformationJourneyWidget: React.FC = () => {
     startCropWorkflow,
     ProgressPhotoCropModal 
   } = useProgressPhotos();
-  const [activeTab, setActiveTab] = useState("timeline");
+  const [activeTab, setActiveTab] = useState("ki-vergleich");
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('front');
   
@@ -127,7 +127,7 @@ export const TransformationJourneyWidget: React.FC = () => {
 
   const handleImageSelected = async () => {
     setGeneratedImages(null);
-    setActiveTab('timeline');
+    setActiveTab('ki-vergleich');
     // Force refresh both data sources and wait for completion
     await Promise.all([
       refreshTargetImages(),
@@ -155,8 +155,7 @@ export const TransformationJourneyWidget: React.FC = () => {
     if (photoIndex !== -1) {
       setSelectedProgressPhotoIndex(photoIndex);
     }
-    setActiveTab("timeline");
-    // The Split View will automatically show the transformation
+    setActiveTab("ki-vergleich");
   };
 
   const handleCreateTransformation = (photo: any, category?: string) => {
@@ -193,46 +192,13 @@ export const TransformationJourneyWidget: React.FC = () => {
       <ProgressPhotoCropModal />
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="ki-vergleich">KI-Vergleich</TabsTrigger>
           <TabsTrigger value="progress-vergleich">Progress-Vergleich</TabsTrigger>
           <TabsTrigger value="generate">KI Zielbild</TabsTrigger>
           <TabsTrigger value="photos">Alle Fotos</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="timeline" className="space-y-6">
-          {targetImages.length > 0 || progressPhotos.length > 0 ? (
-            <EnhancedComparisonView
-              targetImages={targetImages}
-              progressPhotos={progressPhotos}
-              onDeleteTarget={handleDeleteTarget}
-              onViewTransformation={handleViewTransformation}
-              onCreateTransformation={handleCreateTransformation}
-              onUpdateTargetImage={updateTargetImageUrl}
-            />
-          ) : (
-            <Card className="gradient-card">
-              <CardContent className="p-8 text-center">
-                <ImageIcon className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">Starte deine Transformation</h3>
-                <p className="text-muted-foreground mb-6">
-                  Lade dein erstes Fortschrittsfoto hoch oder erstelle ein KI-Zielbild
-                </p>
-                <div className="flex gap-3 justify-center">
-                  <Button variant="outline" size="sm">
-                    <UploadIcon className="h-4 w-4 mr-2" />
-                    Foto hochladen
-                  </Button>
-                  <Button size="sm" onClick={() => setActiveTab('generate')}>
-                    <SparklesIcon className="h-4 w-4 mr-2" />
-                    KI Zielbild erstellen
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
 
         <TabsContent value="ki-vergleich" className="space-y-6">
           <KiComparisonView

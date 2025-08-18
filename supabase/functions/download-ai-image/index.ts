@@ -54,15 +54,15 @@ serve(async (req) => {
 
     const imageBlob = await imageResponse.blob();
     const imageBuffer = await imageBlob.arrayBuffer();
-    const imageFile = new File([imageBuffer], `ai-target-${targetImageId}.jpg`, { type: 'image/jpeg' });
+    const imageFile = new File([imageBuffer], `ai-target-${targetImageId}.webp`, { type: 'image/webp' });
 
     // Upload to Supabase Storage
-    const storagePath = `${userId}/ai-target-${targetImageId}-${Date.now()}.jpg`;
+    const storagePath = `${userId}/ai-target-${targetImageId}-${Date.now()}.webp`;
     
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('ai-target-images')
       .upload(storagePath, imageFile, {
-        contentType: 'image/jpeg',
+        contentType: 'image/webp',
         upsert: false
       });
 
