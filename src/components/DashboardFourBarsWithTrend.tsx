@@ -21,6 +21,17 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
 }) => {
   const { groupedSupplements, totalScheduled, totalTaken, completionPercent } = useSupplementData(currentDate);
   
+  // Map fluid data to ensure categorizeFluid gets the correct field structure
+  const mappedFluids = todaysFluids.map(fluid => ({
+    ...fluid,
+    category: fluid.fluid_category || fluid.fluid_database?.category,
+    fluid_type: fluid.fluid_type || fluid.fluid_database?.fluid_type,
+    name: fluid.name || fluid.fluid_database?.name,
+    has_caffeine: fluid.has_caffeine ?? fluid.fluid_database?.has_caffeine,
+    has_alcohol: fluid.has_alcohol ?? fluid.fluid_database?.has_alcohol,
+    calories_per_100ml: fluid.calories_per_100ml ?? fluid.fluid_database?.calories_per_100ml
+  }));
+  
   // Debug logs for supplement data
   console.log('Supplement Debug:', {
     groupedSupplements,
@@ -36,7 +47,7 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const totalFats = meals.reduce((sum, meal) => sum + (meal.fats || 0), 0);
 
   // Add fluid calories to total (unified calculation)
-  const fluidCalories = fluidCalculations.getTotalCalories(todaysFluids);
+  const fluidCalories = fluidCalculations.getTotalCalories(mappedFluids);
 
   // Goals with fallbacks
   const proteinGoal = dailyGoals?.protein || 150;
@@ -45,7 +56,7 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const caloriesGoal = dailyGoals?.calories || 2000;
 
   // Calculate fluid intake (water only - unified calculation)
-  const totalFluidMl = fluidCalculations.getHydrationAmount(todaysFluids);
+  const totalFluidMl = fluidCalculations.getHydrationAmount(mappedFluids);
   const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
   const fluidProgress = calculateProgress(totalFluidMl, fluidGoalMl);
 
