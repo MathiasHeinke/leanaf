@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { runThrottled } from "@/lib/request-queue";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
 
-const FLUIDS_TTL = 5000; // 5s cache TTL
+const FLUIDS_TTL = 30000; // 30s cache TTL for better stability
 
 type FluidsCacheEntry = { data: any[]; error: string | null; ts: number; hash: string };
 const fluidsCache = new Map<string, FluidsCacheEntry>();
@@ -39,14 +39,15 @@ export function useTodaysFluids() {
     const key = `${user.id}:${todayStart}`;
     const now = Date.now();
 
-    // 1) Serve fresh cache immediately
+    // 1) Serve fresh cache immediately (only show loading for network requests)
     const cached = fluidsCache.get(key);
     if (cached && now - cached.ts < FLUIDS_TTL) {
       if (ac.signal.aborted) return;
-      console.log('[FLUIDS] Cache hit:', { key, dataLength: cached.data.length, hash: cached.hash });
+      console.log('[FLUIDS] Cache hit:', { key, dataLength: cached.data.length });
       setError(cached.error);
       setData(cached.data);
-      setLoading(false);
+      // Don't show loading for cache hits
+      if (loading) setLoading(false);
       return;
     }
 
@@ -71,12 +72,12 @@ export function useTodaysFluids() {
 
         const list = res.data ?? [];
         
-        // Simplified cache - always update state, let React handle re-renders
-        fluidsCache.set(key, { data: list, error: null, ts: Date.now(), hash: 'simplified' });
+        // Update cache with fresh data
+        fluidsCache.set(key, { data: list, error: null, ts: Date.now(), hash: 'fresh' });
         console.log('[FLUIDS] Cache updated:', { 
           key, 
           dataLength: list.length,
-          simplified: true
+          cached: true
         });
 
         // Always update state - let React's reconciliation handle unnecessary re-renders

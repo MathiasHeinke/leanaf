@@ -27,9 +27,22 @@ export const useDataRefresh = (refreshCallback: () => void) => {
   }, [refreshCallback]);
 };
 
+// Debounce multiple refresh calls
+let refreshTimeout: NodeJS.Timeout | null = null;
+
 export const triggerDataRefresh = () => {
-  console.log('[DATA_REFRESH] Triggering global data refresh');
-  // Clear fluids cache to force fresh data on next load
-  clearFluidsCache();
-  dataRefreshBus.emit();
+  console.log('[DATA_REFRESH] Triggering global data refresh (debounced)');
+  
+  // Clear any pending refresh
+  if (refreshTimeout) {
+    clearTimeout(refreshTimeout);
+  }
+  
+  // Debounce to 300ms to handle rapid user interactions
+  refreshTimeout = setTimeout(() => {
+    console.log('[DATA_REFRESH] Executing debounced refresh');
+    clearFluidsCache();
+    dataRefreshBus.emit();
+    refreshTimeout = null;
+  }, 300);
 };
