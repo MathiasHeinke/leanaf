@@ -23,6 +23,7 @@ import { de } from 'date-fns/locale';
 import { useFrequentFluids } from '@/hooks/useFrequentFluids';
 import { ChevronUp } from 'lucide-react';
 import { GroupedFluidsList } from '@/components/GroupedFluidsList';
+import { fluidFilters, formatFluidAmount } from '@/utils/fluidCalculations';
 
 interface FluidOption {
   id: string;
@@ -458,35 +459,19 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
     return diffDays;
   };
 
-  // Helper function to detect if a drink is water-based
-  const isWaterDrink = (fluid: UserFluid): boolean => {
-    // If it's from database with water category
-    if (fluid.fluid_category === 'water') {
-      return true;
-    }
-    
-    // If it's a custom entry, check name for water-related keywords
-    if (fluid.custom_name) {
-      const name = fluid.custom_name.toLowerCase();
-      const waterKeywords = [
-        'wasser',
-        'mineralwasser', 
-        'leitungswasser',
-        'sprudelwasser',
-        'stilleswasser',
-        'stilles wasser',
-        'wasserstill'
-      ];
-      
-      return waterKeywords.some(keyword => name.includes(keyword));
-    }
-    
-    return false;
-  };
-
   const getTotalWaterIntake = () => {
-    return todaysFluids
-      .filter(f => isWaterDrink(f))
+    // Map UserFluid to FluidData format for unified filtering
+    const mappedFluids = todaysFluids.map(f => ({
+      amount_ml: f.amount_ml,
+      has_alcohol: f.has_alcohol,
+      category: f.fluid_category,
+      custom_name: f.custom_name,
+      fluid_name: f.fluid_name,
+      name: f.fluid_name
+    }));
+    
+    return mappedFluids
+      .filter(fluidFilters.water)
       .reduce((sum, f) => sum + f.amount_ml, 0);
   };
 
@@ -828,32 +813,9 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
                 </Badge>
               </div>
               <div className="space-y-2">
-                {/* Show individual water drinks */}
-                {todaysFluids.filter(f => isWaterDrink(f)).length > 0 ? (
-                  <div className="space-y-1">
-                    {todaysFluids
-                      .filter(f => isWaterDrink(f))
-                      .map((fluid, index) => (
-                        <div key={index} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            {fluid.fluid_name || fluid.custom_name}
-                          </span>
-                          <span className="font-medium text-blue-600 dark:text-blue-400">
-                            {fluid.amount_ml} ml
-                          </span>
-                        </div>
-                      ))
-                    }
-                    <div className="border-t pt-1 flex justify-between font-medium">
-                      <span>Gesamt:</span>
-                      <span className="text-blue-600 dark:text-blue-400">{totalWater} ml</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-2xl font-medium text-blue-600 dark:text-blue-400">
-                    {totalWater} ml
-                  </div>
-                )}
+                <div className="text-2xl font-medium text-blue-600 dark:text-blue-400">
+                  {totalWater} ml
+                </div>
                 <div className="text-sm text-muted-foreground">
                   Ziel: {waterGoal} ml
                 </div>

@@ -5,8 +5,10 @@ export interface FluidData {
   id?: string;
   amount_ml: number;
   has_alcohol?: boolean;
+  has_caffeine?: boolean;
   is_non_alcoholic?: boolean;
   fluid_type?: string;
+  category?: string;
   name?: string;
   fluid_name?: string;
   custom_name?: string;
@@ -31,8 +33,16 @@ export const categorizeFluid = (fluid: FluidData): 'water' | 'nonAlcoholic' | 'a
     return 'alcoholic';
   }
   
-  // Coffee and non-alcoholic drinks
-  if (fluid.is_non_alcoholic || fluid.fluid_type === 'kaffee') {
+  // Coffee and caffeine drinks (check database category or has_caffeine)
+  if (fluid.category === 'coffee' || 
+      fluid.has_caffeine || 
+      fluid.is_non_alcoholic || 
+      fluid.fluid_type === 'kaffee') {
+    return 'nonAlcoholic';
+  }
+  
+  // Check for other non-water categories
+  if (fluid.category && fluid.category !== 'water') {
     return 'nonAlcoholic';
   }
   
@@ -101,7 +111,10 @@ export const getFluidDisplayName = (fluid: FluidData): string => {
       case 'water':
         return 'Wasser';
       case 'nonAlcoholic':
-        return fluid.fluid_type === 'kaffee' ? 'Kaffee' : 'Getränk';
+        if (fluid.category === 'coffee' || fluid.has_caffeine || fluid.fluid_type === 'kaffee') {
+          return 'Kaffee';
+        }
+        return 'Getränk';
       case 'alcoholic':
         return 'Alkoholisches Getränk';
       default:
@@ -151,7 +164,11 @@ export const fluidCalculations = {
   // Coffee intake
   getCoffeeAmount: (fluids: FluidData[]): number => {
     return fluidCalculations.getTotalAmount(
-      fluids.filter(fluid => fluid.fluid_type === 'kaffee')
+      fluids.filter(fluid => 
+        fluid.category === 'coffee' || 
+        fluid.has_caffeine || 
+        fluid.fluid_type === 'kaffee'
+      )
     );
   },
   
