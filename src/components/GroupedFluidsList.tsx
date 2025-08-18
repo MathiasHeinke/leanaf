@@ -40,12 +40,23 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids, onEditFluid, 
     setEditAmount(fluid.amount_ml.toString());
   };
 
-  const handleEditSave = (fluidId: string) => {
+  const handleEditSave = async (fluidId: string) => {
     const amount = parseFloat(editAmount);
     if (!isNaN(amount) && amount > 0) {
+      // Only call the external callback, don't trigger any reloads here
       onEditFluid?.(fluidId, amount);
       setEditingFluidId(null);
       setEditAmount('');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent, fluidId: string) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleEditSave(fluidId);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleEditCancel();
     }
   };
 
@@ -65,6 +76,8 @@ export const GroupedFluidsList: React.FC<Props> = ({ todaysFluids, onEditFluid, 
             type="number"
             value={editAmount}
             onChange={(e) => setEditAmount(e.target.value)}
+            onKeyDown={(e) => handleKeyPress(e, fluid.id)}
+            onBlur={() => handleEditSave(fluid.id)}
             className="w-20 h-6 text-xs"
             autoFocus
           />
