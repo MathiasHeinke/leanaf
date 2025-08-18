@@ -36,40 +36,9 @@ const Auth = () => {
   const [rateLimiter] = useState(() => new ClientRateLimit(10, 5 * 60 * 1000)); // 10 attempts per 5 minutes
   const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   
-  // CRITICAL DEBUG: Wrap all hooks in try-catch to detect hook errors
-  let user, t, logAuthAttempt, logSuspiciousActivity;
-  
-  try {
-    console.log('🔧 DEBUG: Loading useAuth hook...');
-    const authResult = useAuth();
-    user = authResult.user;
-    console.log('🔧 DEBUG: useAuth loaded successfully', { hasUser: !!user });
-  } catch (error) {
-    console.error('🔧 CRITICAL ERROR: useAuth hook failed:', error);
-    throw new Error(`useAuth hook error: ${error}`);
-  }
-
-  try {
-    console.log('🔧 DEBUG: Loading useTranslation hook...');
-    const translationResult = useTranslation();
-    t = translationResult.t;
-    console.log('🔧 DEBUG: useTranslation loaded successfully');
-  } catch (error) {
-    console.error('🔧 CRITICAL ERROR: useTranslation hook failed:', error);
-    t = (key: string) => key; // Fallback function
-  }
-
-  try {
-    console.log('🔧 DEBUG: Loading useSecurityMonitoring hook...');
-    const securityResult = useSecurityMonitoring();
-    logAuthAttempt = securityResult.logAuthAttempt;
-    logSuspiciousActivity = securityResult.logSuspiciousActivity;
-    console.log('🔧 DEBUG: useSecurityMonitoring loaded successfully');
-  } catch (error) {
-    console.error('🔧 CRITICAL ERROR: useSecurityMonitoring hook failed:', error);
-    logAuthAttempt = async () => {}; // Fallback function
-    logSuspiciousActivity = async () => {}; // Fallback function
-  }
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  const { logAuthAttempt, logSuspiciousActivity } = useSecurityMonitoring();
   const navigate = useNavigate();
 
   useEffect(() => {

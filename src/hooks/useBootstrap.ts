@@ -48,7 +48,9 @@ export const useBootstrap = () => {
         const msg = String(e?.message || e);
         if (!/load failed|access control|fetch api cannot load/i.test(msg)) break;
         if (i < delays.length - 1) {
-          console.warn(`🔄 Retry ${i + 1} for ${label} after ${delays[i + 1]}ms`, e);
+          if (import.meta.env.DEV) {
+            console.warn(`🔄 Retry ${i + 1} for ${label} after ${delays[i + 1]}ms`, e);
+          }
           await new Promise(r => setTimeout(r, delays[i + 1]));
         }
       }
@@ -58,24 +60,30 @@ export const useBootstrap = () => {
 
   // Single effect that triggers all data loading in parallel
   useEffect(() => {
-    console.log('🔍 Bootstrap Check:', { 
-      isSessionReady, 
-      hasUser: !!user, 
-      userId: user?.id,
-      email: user?.email,
-      isBootstrapping: bootstrapState.isBootstrapping,
-      bootstrapComplete: bootstrapState.bootstrapComplete,
-      hasBootstrapped: hasBootstrappedRef.current
-    });
+    if (import.meta.env.DEV) {
+      console.log('🔍 Bootstrap Check:', { 
+        isSessionReady, 
+        hasUser: !!user, 
+        userId: user?.id,
+        email: user?.email,
+        isBootstrapping: bootstrapState.isBootstrapping,
+        bootstrapComplete: bootstrapState.bootstrapComplete,
+        hasBootstrapped: hasBootstrappedRef.current
+      });
+    }
     
     if (!isSessionReady || !user?.id) {
-      console.log('⏳ Bootstrap waiting for session...', { isSessionReady, hasUser: !!user });
+      if (import.meta.env.DEV) {
+        console.log('⏳ Bootstrap waiting for session...', { isSessionReady, hasUser: !!user });
+      }
       return;
     }
 
     // PREVENT MULTIPLE BOOTSTRAP RUNS
     if (hasBootstrappedRef.current) {
-      console.log('🔒 Bootstrap already completed, skipping...');
+      if (import.meta.env.DEV) {
+        console.log('🔒 Bootstrap already completed, skipping...');
+      }
       return;
     }
 
@@ -96,12 +104,18 @@ export const useBootstrap = () => {
         timestamp: new Date().toISOString()
       });
 
-      console.log('🚀 Bootstrap starting for user:', user.id);
+      if (import.meta.env.DEV) {
+        console.log('🚀 Bootstrap starting for user:', user.id);
+      }
       
       // Wait for auth token to prevent early fetch failures
-      console.log('🔑 Ensuring token...');
+      if (import.meta.env.DEV) {
+        console.log('🔑 Ensuring token...');
+      }
       await waitForAuthToken();
-      console.log('✅ Token ready');
+      if (import.meta.env.DEV) {
+        console.log('✅ Token ready');
+      }
 
       try {
         // Load all initial data in parallel with auth retry protection
