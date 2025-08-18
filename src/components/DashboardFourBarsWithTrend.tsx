@@ -2,11 +2,11 @@ import React from "react";
 import FourBarsWithTrend from "./FourBarsWithTrend";
 import { Droplet, Footprints, Pill } from "lucide-react";
 import { useSupplementData } from "@/hooks/useSupplementData";
-import { useTodaysFluids } from "@/hooks/useTodaysFluids";
 
 interface Props {
   meals: any[];
   dailyGoals: any;
+  todaysFluids: any[];
   todaysWorkout: any;
   currentDate?: Date;
 }
@@ -14,11 +14,10 @@ interface Props {
 export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   meals,
   dailyGoals,
+  todaysFluids,
   todaysWorkout,
   currentDate
 }) => {
-  // Get fluids directly from cached hook
-  const { data: todaysFluids } = useTodaysFluids();
   const { groupedSupplements, totalScheduled, totalTaken, completionPercent } = useSupplementData(currentDate);
   
   // Debug logs for supplement data
@@ -36,7 +35,7 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const totalFats = meals.reduce((sum, meal) => sum + (meal.fats || 0), 0);
 
   // Add fluid calories to total
-  const fluidCalories = (todaysFluids || []).reduce((sum, fluid) => {
+  const fluidCalories = todaysFluids.reduce((sum, fluid) => {
     const calories = (fluid.calories_per_100ml || 0) * (fluid.amount_ml / 100);
     return sum + calories;
   }, 0);
@@ -48,7 +47,7 @@ export const DashboardFourBarsWithTrend: React.FC<Props> = ({
   const caloriesGoal = dailyGoals?.calories || 2000;
 
   // Calculate fluid intake (non-alcoholic only)
-  const totalFluidMl = (todaysFluids || [])
+  const totalFluidMl = todaysFluids
     .filter(fluid => !fluid.has_alcohol)
     .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
   const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;

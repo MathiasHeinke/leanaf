@@ -1,26 +1,28 @@
 import React from "react";
 import HaloPair from "./HaloPair";
 import { Droplet, Footprints } from "lucide-react";
-import { useTodayFluids } from "@/hooks/useTodayFluids";
-import { useAuth } from "@/hooks/useAuth";
 
 interface Props {
+  todaysFluids: any[];
   todaysWorkout: any;
-  weightKg?: number;
+  dailyGoals: any;
 }
 
 export const DashboardHaloPair: React.FC<Props> = ({
+  todaysFluids,
   todaysWorkout,
-  weightKg
+  dailyGoals
 }) => {
-  const { user } = useAuth();
-  const { hydrationMl, goalMl, percent } = useTodayFluids(user?.id);
-  
-  const fluidProgress = percent / 100;
+  // Calculate fluid intake (non-alcoholic only)
+  const totalFluidMl = todaysFluids
+    .filter(fluid => !fluid.has_alcohol)
+    .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
+  const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
+  const fluidProgress = Math.min(totalFluidMl / fluidGoalMl, 1);
 
   // Calculate steps
   const todaysSteps = todaysWorkout?.steps || 0;
-  const stepsGoal = 10000; // Default goal
+  const stepsGoal = dailyGoals?.steps_goal || 10000;
   const stepsProgress = Math.min(todaysSteps / stepsGoal, 1);
 
   // Format values
@@ -36,7 +38,7 @@ export const DashboardHaloPair: React.FC<Props> = ({
     <HaloPair
       left={{
         label: "WASSER",
-        value: formatFluid(hydrationMl),
+        value: formatFluid(totalFluidMl),
         progress: fluidProgress,
         gradient: ["#67e8f9", "#3b82f6"],
         track: "rgba(59,130,246,0.15)",

@@ -1,6 +1,4 @@
 import { useEffect, useCallback } from 'react';
-import { clearFluidsCache } from '@/hooks/useTodaysFluids';
-import { clearFrequentFluidsCache } from '@/hooks/useFrequentFluids';
 
 // Event system for data refresh
 class DataRefreshEventBus {
@@ -28,23 +26,6 @@ export const useDataRefresh = (refreshCallback: () => void) => {
   }, [refreshCallback]);
 };
 
-// Debounce multiple refresh calls
-let refreshTimeout: NodeJS.Timeout | null = null;
-
 export const triggerDataRefresh = () => {
-  console.log('[DATA_REFRESH] Triggering global data refresh (debounced)');
-  
-  // Clear any pending refresh
-  if (refreshTimeout) {
-    clearTimeout(refreshTimeout);
-  }
-  
-  // Debounce to 500ms to handle rapid user interactions better
-  refreshTimeout = setTimeout(() => {
-    console.log('[DATA_REFRESH] Executing debounced refresh');
-    clearFluidsCache();
-    clearFrequentFluidsCache();
-    dataRefreshBus.emit();
-    refreshTimeout = null;
-  }, 500);
+  dataRefreshBus.emit();
 };

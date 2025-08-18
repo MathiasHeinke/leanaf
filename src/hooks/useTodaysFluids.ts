@@ -1,22 +1,15 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { loadTodaysFluids } from "@/data/queries";
 import { todayRangeISO, withWatchdog } from "@/utils/timeRange";
 import { useAuth } from "@/hooks/useAuth";
 import { runThrottled } from "@/lib/request-queue";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
 
-const FLUIDS_TTL = 30000; // 30s cache TTL for better stability
+const FLUIDS_TTL = 5000; // 5s cache TTL
 
 type FluidsCacheEntry = { data: any[]; error: string | null; ts: number; hash: string };
 const fluidsCache = new Map<string, FluidsCacheEntry>();
 const fluidsInflight = new Map<string, Promise<void>>();
-
-// Export cache clearing function for external use
-export const clearFluidsCache = () => {
-  console.log('[FLUIDS] Clearing cache, entries:', fluidsCache.size);
-  fluidsCache.clear();
-  fluidsInflight.clear();
-};
 
 export function useTodaysFluids() {
   const [data, setData] = useState<any[] | null>(null);
@@ -25,9 +18,6 @@ export function useTodaysFluids() {
   const acRef = useRef<AbortController | null>(null);
   const { user } = useAuth();
 
-  // Stable today start to prevent unnecessary re-renders
-  const todayStart = useMemo(() => todayRangeISO().start, []);
-  
   const fetchData = useCallback(async () => {
     if (!user?.id) return;
 
@@ -36,22 +26,19 @@ export function useTodaysFluids() {
     const ac = new AbortController();
     acRef.current = ac;
 
-    const key = `${user.id}:${todayStart}`;
+    const { start } = todayRangeISO();
+    const key = `${user.id}:${start}`;
     const now = Date.now();
 
-    // 1) Serve fresh cache immediately (only show loading for network requests)
+    // 1) Serve fresh cache immediately
     const cached = fluidsCache.get(key);
     if (cached && now - cached.ts < FLUIDS_TTL) {
       if (ac.signal.aborted) return;
-      console.log('[FLUIDS] Cache hit:', { key, dataLength: cached.data.length });
       setError(cached.error);
       setData(cached.data);
-      // Don't show loading for cache hits
-      if (loading) setLoading(false);
+      setLoading(false);
       return;
     }
-
-    console.log('[FLUIDS] Cache miss, loading fresh data:', { key, cached: !!cached });
 
     setLoading(true);
     setError(null);
@@ -71,17 +58,15 @@ export function useTodaysFluids() {
         }
 
         const list = res.data ?? [];
-        
-        // Update cache with fresh data
-        fluidsCache.set(key, { data: list, error: null, ts: Date.now(), hash: 'fresh' });
-        console.log('[FLUIDS] Cache updated:', { 
-          key, 
-          dataLength: list.length,
-          cached: true
-        });
+        const hash = JSON.stringify(list.map((f: any) => [f.id ?? f.created_at ?? f.date, f.amount_ml, f.created_at ?? f.date]));
+        const prevHash = cached?.hash;
 
-        // Always update state - let React's reconciliation handle unnecessary re-renders
-        setData(list);
+        fluidsCache.set(key, { data: list, error: null, ts: Date.now(), hash });
+
+        // Only update state if changed to prevent unnecessary re-renders
+        if (hash !== prevHash) {
+          setData(list);
+        }
         setError(null);
       } catch (e: any) {
         if (!ac.signal.aborted) {
@@ -104,7 +89,7 @@ export function useTodaysFluids() {
     await p.finally(() => {
       fluidsInflight.delete(key);
     });
-  }, [user?.id, todayStart]);
+  }, [user?.id, todayRangeISO().start]);
 
   // Initial and dependency-based load
   useEffect(() => {

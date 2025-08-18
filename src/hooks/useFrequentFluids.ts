@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useDataRefresh } from '@/hooks/useDataRefresh';
 
 export type FrequentFluids = {
   drinks: string[];
@@ -15,83 +14,46 @@ export type FrequentFluids = {
   }>;
 };
 
-const FREQUENT_FLUIDS_TTL = 60000; // 1 minute cache for frequent fluids
-type FrequentFluidsCacheEntry = { data: FrequentFluids; ts: number };
-const frequentFluidsCache = new Map<string, FrequentFluidsCacheEntry>();
-
-// Export cache clearing function for external use
-export const clearFrequentFluidsCache = () => {
-  console.log('[FREQUENT_FLUIDS] Clearing cache, entries:', frequentFluidsCache.size);
-  frequentFluidsCache.clear();
-};
-
 export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequent: FrequentFluids; loading: boolean } {
   const [frequent, setFrequent] = useState<FrequentFluids>({ drinks: [], amounts: [], databaseEntries: [] });
-  const [loading, setLoading] = useState(false);
-  const acRef = useRef<AbortController | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const fetchFrequentFluids = useCallback(async () => {
+  useEffect(() => {
     if (!userId) {
       setLoading(false);
       return;
     }
 
-    // Cancel any previous request
-    if (acRef.current) acRef.current.abort();
-    const ac = new AbortController();
-    acRef.current = ac;
+    const fetchFrequentFluids = async () => {
+      try {
+        setLoading(true);
+        
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - lookbackDays);
+        
+        const { data: userFluids, error } = await supabase
+          .from('user_fluids')
+          .select(`
+            custom_name,
+            amount_ml,
+            fluid_id,
+            fluid_database (
+              id,
+              name,
+              default_amount,
+              category,
+              icon_name
+            )
+          `)
+          .eq('user_id', userId)
+          .gte('date', cutoffDate.toISOString().split('T')[0])
+          .order('created_at', { ascending: false });
 
-    const cacheKey = `${userId}:${lookbackDays}`;
-    const now = Date.now();
-
-    // Check cache first
-    const cached = frequentFluidsCache.get(cacheKey);
-    if (cached && now - cached.ts < FREQUENT_FLUIDS_TTL) {
-      if (ac.signal.aborted) return;
-      console.log('[FREQUENT_FLUIDS] Cache hit:', { cacheKey, databaseEntriesLength: cached.data.databaseEntries.length });
-      setFrequent(cached.data);
-      setLoading(false);
-      return;
-    }
-
-    console.log('[FREQUENT_FLUIDS] Cache miss, loading fresh data:', { cacheKey, cached: !!cached });
-    try {
-      setLoading(true);
-      
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - lookbackDays);
-      
-      const { data: userFluids, error } = await supabase
-        .from('user_fluids')
-        .select(`
-          custom_name,
-          amount_ml,
-          fluid_id,
-          fluid_database (
-            id,
-            name,
-            default_amount,
-            category,
-            icon_name
-          )
-        `)
-        .eq('user_id', userId)
-        .gte('date', cutoffDate.toISOString().split('T')[0])
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('[FREQUENT_FLUIDS] Error fetching frequent fluids:', error);
-        if (!ac.signal.aborted) {
-          const emptyData = { drinks: [], amounts: [], databaseEntries: [] };
-          setFrequent(emptyData);
-          setLoading(false);
+        if (error) {
+          console.error('Error fetching frequent fluids:', error);
+          setFrequent({ drinks: [], amounts: [], databaseEntries: [] });
+          return;
         }
-        return;
-      }
-
-      if (ac.signal.aborted) return;
-
-      console.log('[FREQUENT_FLUIDS] Raw data:', userFluids?.length, 'entries');
 
         // Count drink names
         const drinkCounts: { [key: string]: number } = {};
@@ -143,50 +105,21 @@ export function useFrequentFluids(userId?: string, lookbackDays = 45): { frequen
             count
           }));
 
-      const result = {
-        drinks: topDrinks,
-        amounts: topAmounts,
-        databaseEntries: topDatabaseEntries
-      };
-
-      // Update cache
-      frequentFluidsCache.set(cacheKey, { data: result, ts: Date.now() });
-      
-      setFrequent(result);
-
-      console.log('[FREQUENT_FLUIDS] Processed results:', { 
-        drinks: topDrinks.length, 
-        amounts: topAmounts.length, 
-        databaseEntries: topDatabaseEntries.length 
-      });
-    } catch (error) {
-      if (!ac.signal.aborted) {
+        setFrequent({
+          drinks: topDrinks,
+          amounts: topAmounts,
+          databaseEntries: topDatabaseEntries
+        });
+      } catch (error) {
         console.error('Error in fetchFrequentFluids:', error);
-        const emptyData = { drinks: [], amounts: [], databaseEntries: [] };
-        setFrequent(emptyData);
-      }
-    } finally {
-      if (!ac.signal.aborted) {
+        setFrequent({ drinks: [], amounts: [], databaseEntries: [] });
+      } finally {
         setLoading(false);
       }
-    }
-  }, [userId, lookbackDays]);
-
-  // Initial load
-  useEffect(() => {
-    fetchFrequentFluids();
-    return () => {
-      acRef.current?.abort();
     };
-  }, [fetchFrequentFluids]);
 
-  // Respond to data refresh events
-  useDataRefresh(() => {
-    // Clear cache and refetch when data changes
-    const cacheKey = `${userId}:${lookbackDays}`;
-    frequentFluidsCache.delete(cacheKey);
     fetchFrequentFluids();
-  });
+  }, [userId, lookbackDays]);
 
   return { frequent, loading };
 }
