@@ -101,7 +101,7 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     
     textarea.style.height = 'auto';
     const scrollHeight = textarea.scrollHeight;
-    const lineHeight = 20; // Approximate line height
+    const lineHeight = 18; // Approximate line height
     const maxLines = 5;
     const maxHeight = lineHeight * maxLines;
     
@@ -320,23 +320,23 @@ const handleSubmit = useCallback(async () => {
               onChange={handleFileChange}
             />
             <div className="flex-1 relative">
-              <Textarea
-                ref={textareaRef}
-                placeholder="Beschreibe deine Mahlzeit…"
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit();
-                  }
-                }}
-                className="w-full min-h-[40px] h-10 px-4 py-2.5 bg-muted/50 border border-border rounded-full text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 resize-none"
-                style={{
-                  overflowY: 'hidden',
-                  lineHeight: '20px'
-                }}
-              />
+            <Textarea
+              ref={textareaRef}
+              placeholder="Mahlzeit eingeben"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              className="w-full h-10 px-4 py-2 bg-muted/50 border border-border rounded-full text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 resize-none"
+              style={{
+                overflowY: 'hidden',
+                lineHeight: '18px'
+              }}
+            />
             </div>
 
 
