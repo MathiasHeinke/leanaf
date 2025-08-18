@@ -13,9 +13,9 @@ export const DashboardHaloPair: React.FC<Props> = ({
   todaysWorkout,
   dailyGoals
 }) => {
-  // Calculate fluid intake (non-alcoholic, non-coffee)
+  // Calculate fluid intake (only water - exclude alcohol and non-alcoholic drinks)
   const totalFluidMl = todaysFluids
-    .filter(fluid => !fluid.has_alcohol && fluid.fluid_type !== 'kaffee')
+    .filter(fluid => !fluid.has_alcohol && fluid.fluid_type !== 'kaffee' && !fluid.is_non_alcoholic)
     .reduce((sum, fluid) => sum + (fluid.amount_ml || 0), 0);
   const fluidGoalMl = dailyGoals?.fluid_goal_ml || 2500;
   const fluidProgress = Math.min(totalFluidMl / fluidGoalMl, 1);
