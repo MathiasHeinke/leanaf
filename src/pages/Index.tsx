@@ -930,7 +930,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       case 'fluids':
         return (
           <SortableCard key="fluids" id="fluids">
-            <QuickFluidInput onFluidUpdate={() => loadTodaysData(currentDate)} currentDate={currentDate} />
+            <QuickFluidInput currentDate={currentDate} />
           </SortableCard>
         );
       case 'mindset':
@@ -992,7 +992,6 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         <DashboardFourBarsWithTrend 
           meals={meals}
           dailyGoals={dailyGoalsFresh}
-          todaysFluids={todaysFluidsFresh || []}
           todaysWorkout={todaysWorkout}
           currentDate={currentDate}
         />

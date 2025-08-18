@@ -71,34 +71,16 @@ export function useTodaysFluids() {
 
         const list = res.data ?? [];
         
-        // Improved hash calculation with all relevant fields, sorted for consistency
-        const sortedList = [...list].sort((a, b) => (a.id || '').localeCompare(b.id || ''));
-        const hash = JSON.stringify(sortedList.map((f: any) => [
-          f.id,
-          f.amount_ml,
-          f.consumed_at || f.created_at,
-          f.fluid_id,
-          f.custom_name,
-          f.notes
-        ]));
-        const prevHash = cached?.hash;
-
-        fluidsCache.set(key, { data: list, error: null, ts: Date.now(), hash });
+        // Simplified cache - always update state, let React handle re-renders
+        fluidsCache.set(key, { data: list, error: null, ts: Date.now(), hash: 'simplified' });
         console.log('[FLUIDS] Cache updated:', { 
           key, 
-          dataLength: list.length, 
-          newHash: hash.substring(0, 50) + '...', 
-          prevHash: prevHash?.substring(0, 50) + '...',
-          hashChanged: hash !== prevHash 
+          dataLength: list.length,
+          simplified: true
         });
 
-        // Only update state if changed to prevent unnecessary re-renders
-        if (hash !== prevHash) {
-          console.log('[FLUIDS] State updated due to hash change');
-          setData(list);
-        } else {
-          console.log('[FLUIDS] State NOT updated - hash unchanged');
-        }
+        // Always update state - let React's reconciliation handle unnecessary re-renders
+        setData(list);
         setError(null);
       } catch (e: any) {
         if (!ac.signal.aborted) {

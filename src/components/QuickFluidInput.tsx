@@ -82,11 +82,10 @@ const categoryLabels = {
 };
 
 interface QuickFluidInputProps {
-  onFluidUpdate?: () => void;
   currentDate?: Date;
 }
 
-export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputProps = {}) => {
+export const QuickFluidInput = ({ currentDate }: QuickFluidInputProps = {}) => {
   const { user } = useAuth();
   const { frequent: frequentFluids } = useFrequentFluids(user?.id, 45);
   const { data: todaysFluids, loading: fluidsLoading } = useTodaysFluids();
@@ -198,9 +197,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       
       toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
       
-      // Trigger parent update to refresh main page
-      onFluidUpdate?.();
-      
       // Global refresh for cached data
       triggerDataRefresh();
     } catch (error) {
@@ -241,9 +237,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setAmount('250');
       setNotes('');
       setShowAddForm(false);
-      
-      // Trigger parent update to refresh main page
-      onFluidUpdate?.();
       
       // Global refresh for cached data
       triggerDataRefresh();
@@ -297,9 +290,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       // Reload data
       loadAlcoholAbstinence();
       
-      // Trigger parent update to refresh main page
-      onFluidUpdate?.();
-      
     } catch (error) {
       console.error('Error setting abstinence:', error);
       toast.error('Fehler beim Eintragen der Abstinenz');
@@ -320,7 +310,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       if (error) throw error;
 
       toast.success('Getränk gelöscht');
-      onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
       console.error('Error deleting fluid:', error);
@@ -358,7 +347,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setEditingFluidId(null);
       setEditAmount('');
       setEditNotes('');
-      onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
       console.error('Error updating fluid:', error);
@@ -391,7 +379,6 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       if (error) throw error;
 
       toast.success('Getränk dupliziert');
-      onFluidUpdate?.();
       triggerDataRefresh();
     } catch (error) {
       console.error('Error duplicating fluid:', error);
