@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect } from "react";
 import { Camera, Mic, ArrowRight, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -45,6 +45,15 @@ export const DashboardMealComposer: React.FC = () => {
   const { sendEvent } = useOrchestrator();
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Auto-resize constants
+  const MIN_H = 40;             // 1-line start, good mobile target
+  const MAX_LINES = 5;          // max lines before scrolling
+  const LINE_H = 18;            // must match font-size/leading
+  const MAX_H = MIN_H + LINE_H * (MAX_LINES - 1);
+  
+  // State for dynamic height
+  const [textareaHeight, setTextareaHeight] = useState(MIN_H);
   
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
@@ -94,27 +103,30 @@ const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElemen
     }
   }, [handleVoiceRecord, inputText, uploadedImages, handleSubmitMeal]);
 
-  // Auto-resize textarea function
+  // Robust auto-resize function
   const adjustTextareaHeight = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     
+    // iOS Safari fix: set auto first, then read scrollHeight
     textarea.style.height = 'auto';
     const scrollHeight = textarea.scrollHeight;
-    const lineHeight = 18; // Approximate line height
-    const maxLines = 5;
-    const maxHeight = lineHeight * maxLines;
     
-    if (scrollHeight <= maxHeight) {
-      textarea.style.height = `${Math.max(scrollHeight, lineHeight)}px`;
-      textarea.style.overflowY = 'hidden';
-    } else {
-      textarea.style.height = `${maxHeight}px`;
-      textarea.style.overflowY = 'auto';
-    }
-  }, []);
+    // Clamp between min and max height
+    const newHeight = Math.max(Math.min(scrollHeight, MAX_H), MIN_H);
+    
+    textarea.style.height = `${newHeight}px`;
+    textarea.style.overflowY = newHeight >= MAX_H ? 'auto' : 'hidden';
+    
+    setTextareaHeight(newHeight);
+  }, [MIN_H, MAX_H]);
 
-  // Adjust height when text changes
+  // Initial height on mount (before first paint)
+  useLayoutEffect(() => {
+    adjustTextareaHeight();
+  }, [adjustTextareaHeight]);
+
+  // Adjust height when text changes  
   useEffect(() => {
     adjustTextareaHeight();
   }, [inputText, adjustTextareaHeight]);
@@ -322,18 +334,21 @@ const handleSubmit = useCallback(async () => {
             <div className="flex-1 relative">
             <Textarea
               ref={textareaRef}
+              rows={1}
               placeholder="Mahlzeit eingeben"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
+              onInput={adjustTextareaHeight}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSubmit();
                 }
               }}
-              className="w-full h-10 px-4 py-2 bg-muted/50 border border-border rounded-full text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 resize-none"
+              className="w-full px-4 py-2 bg-muted/50 border border-border rounded-full text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200 resize-none"
               style={{
-                overflowY: 'hidden',
+                minHeight: `${MIN_H}px`,
+                maxHeight: `${MAX_H}px`,
                 lineHeight: '18px'
               }}
             />
