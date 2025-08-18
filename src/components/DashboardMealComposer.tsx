@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { IMAGE_UPLOAD_MAX_DEFAULT } from "@/lib/constants";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
 import { SmartCardOverlay } from "@/components/SmartCardOverlay";
+import { UploadProgress } from "@/components/UploadProgress";
 
 const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 
@@ -22,12 +23,16 @@ export const DashboardMealComposer: React.FC = () => {
     inputText,
     setInputText,
     uploadedImages,
+    optimisticImages,
     isRecording,
     handleVoiceRecord,
     handlePhotoUpload,
     removeImage,
+    removeOptimisticImage,
     resetForm,
-    isAnalyzing
+    isAnalyzing,
+    isUploading,
+    uploadProgress
   } = useGlobalMealInput();
   const [quickMealSheetOpen, setQuickMealSheetOpen] = useState(false);
   const { isEnabled } = useFeatureFlags();
@@ -131,11 +136,50 @@ const handleSubmit = useCallback(async () => {
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
       >
         <div className="container mx-auto px-4 py-3 max-w-5xl">
-          {uploadedImages.length > 0 && (
+          {/* Upload Progress */}
+          <UploadProgress progress={uploadProgress} isVisible={isUploading} />
+          
+          {/* Combined Images Display: Optimistic + Uploaded */}
+          {(optimisticImages.length > 0 || uploadedImages.length > 0) && (
             <div className="mb-2">
               <div className="flex items-center gap-2 overflow-x-auto py-1">
+                {/* Optimistic images (instant preview) */}
+                {optimisticImages.map((img, idx) => (
+                  <div key={`optimistic-${idx}`} className="relative flex-shrink-0">
+                    <img
+                      src={img.blobUrl}
+                      alt={`Wird hochgeladen ${idx + 1}`}
+                      loading="lazy"
+                      className={`h-10 w-10 rounded-md object-cover border cursor-pointer transition-opacity ${
+                        img.status === 'uploading' ? 'opacity-60' : 
+                        img.status === 'error' ? 'opacity-40 border-red-500' : 'opacity-100'
+                      }`}
+                      onClick={() => setSelectedImageUrl(img.blobUrl)}
+                    />
+                    {img.status === 'uploading' && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                    {img.status === 'error' && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <X className="h-3 w-3 text-red-500" />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      aria-label="Entfernen"
+                      onClick={() => removeOptimisticImage(idx)}
+                      className="absolute -top-2 -right-2 rounded-full bg-background border border-border shadow p-1 hover:bg-muted transition z-10"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                
+                {/* Successfully uploaded images */}
                 {uploadedImages.map((url, idx) => (
-                  <div key={url + idx} className="relative flex-shrink-0">
+                  <div key={`uploaded-${url}-${idx}`} className="relative flex-shrink-0">
                     <img
                       src={url}
                       alt={`Hochgeladene Mahlzeit ${idx + 1}`}
@@ -170,9 +214,14 @@ const handleSubmit = useCallback(async () => {
             </Button>
             {/* Counter + hint */}
             <div className="flex items-center gap-2 -ml-2 mr-2">
-              <span className="text-xs text-muted-foreground tabular-nums">{uploadedImages.length}/{maxImages}</span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {optimisticImages.length + uploadedImages.length}/{maxImages}
+              </span>
               {lastDropIgnored && (
                 <span className="hidden sm:inline text-xs text-muted-foreground">Max. {maxImages} – überzählige ignoriert</span>
+              )}
+              {isUploading && (
+                <span className="text-xs text-primary">Lädt...</span>
               )}
             </div>
 

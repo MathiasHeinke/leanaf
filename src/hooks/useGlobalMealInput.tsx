@@ -46,6 +46,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [inputText, setInputText] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [thumbnailImages, setThumbnailImages] = useState<string[]>([]);
+  const [optimisticImages, setOptimisticImages] = useState<{ file: File; blobUrl: string; status: 'uploading' | 'completed' | 'error'; error?: string }[]>([]);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [analyzedMealData, setAnalyzedMealData] = useState<AnalyzedMealData | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<string>('other');
@@ -372,7 +373,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     });
   }, [cleanupMediaRecorder]);
 
-  // Upload function
+  // Upload function with optimistic UI
   const uploadImages = useCallback(async (files: File[]): Promise<string[]> => {
     if (!user || files.length === 0) return [];
     
@@ -380,9 +381,32 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     setIsUploading(true);
     setUploadProgress([]);
 
+    // Create optimistic images immediately for instant feedback
+    const newOptimisticImages = files.map(file => ({
+      file,
+      blobUrl: URL.createObjectURL(file),
+      status: 'uploading' as const
+    }));
+    
+    setOptimisticImages(prev => [...prev, ...newOptimisticImages]);
+
     try {
       const result = await uploadFilesWithProgress(files, user.id, (progress) => {
         setUploadProgress(progress);
+        
+        // Update optimistic images status based on progress
+        setOptimisticImages(prev => prev.map((img, idx) => {
+          const progressItem = progress.find(p => p.fileName === img.file.name);
+          if (progressItem) {
+            return {
+              ...img,
+              status: progressItem.status === 'completed' ? 'completed' : 
+                     progressItem.status === 'error' ? 'error' : 'uploading',
+              error: progressItem.error
+            };
+          }
+          return img;
+        }));
       });
 
       if (result.errors.length > 0) {
@@ -392,9 +416,21 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
       if (result.success && result.urls.length > 0) {
         console.log('✅ Upload completed successfully:', result.urls);
         toast.success(`${result.urls.length} Bild${result.urls.length > 1 ? 'er' : ''} erfolgreich hochgeladen`);
+        
+        // Replace optimistic images with real URLs after successful upload
+        setTimeout(() => {
+          // Cleanup blob URLs to prevent memory leaks
+          newOptimisticImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
+          setOptimisticImages(prev => prev.filter(img => !newOptimisticImages.some(newImg => newImg.file === img.file)));
+        }, 1000);
       } else if (result.urls.length === 0) {
         console.log('❌ Upload completed but no URLs returned');
         toast.error('Keine Bilder hochgeladen');
+        
+        // Mark optimistic images as error
+        setOptimisticImages(prev => prev.map(img => 
+          newOptimisticImages.some(newImg => newImg.file === img.file) ? { ...img, status: 'error' as const, error: 'Upload fehlgeschlagen' } : img
+        ));
       }
 
       // Store both full URLs and thumbnail URLs
@@ -406,9 +442,17 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     } catch (error: any) {
       console.error('❌ Upload error:', error);
       toast.error(ERROR_MESSAGES.UPLOAD_FAILED + ': ' + (error.message || 'Unbekannter Fehler'));
+      
+      // Mark optimistic images as error
+      setOptimisticImages(prev => prev.map(img => 
+        newOptimisticImages.some(newImg => newImg.file === img.file) ? { ...img, status: 'error' as const, error: error.message } : img
+      ));
+      
       return [];
     } finally {
       setIsUploading(false);
+      // Clear progress after delay
+      setTimeout(() => setUploadProgress([]), 3000);
     }
   }, [user]);
 
@@ -503,6 +547,16 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     setThumbnailImages(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  const removeOptimisticImage = useCallback((index: number) => {
+    setOptimisticImages(prev => {
+      const img = prev[index];
+      if (img) {
+        URL.revokeObjectURL(img.blobUrl); // Clean up blob URL
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  }, []);
+
   const appendUploadedImages = useCallback((urls: string[]) => {
     if (!urls || urls.length === 0) return;
     setUploadedImages(prev => [...prev, ...urls]);
@@ -513,12 +567,17 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     setInputText('');
     setUploadedImages([]);
     setThumbnailImages([]);
+    
+    // Clean up optimistic images blob URLs
+    optimisticImages.forEach(img => URL.revokeObjectURL(img.blobUrl));
+    setOptimisticImages([]);
+    
     setShowConfirmationDialog(false);
     setAnalyzedMealData(null);
     setSelectedMealType('other');
     setUploadProgress([]);
     setIsEditingMode(false);
-  }, []);
+  }, [optimisticImages]);
 
   const closeDialog = useCallback(() => {
     setShowConfirmationDialog(false);
@@ -572,6 +631,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     setInputText,
     uploadedImages,
     thumbnailImages,
+    optimisticImages,
     showConfirmationDialog,
     analyzedMealData,
     selectedMealType,
@@ -582,6 +642,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     handlePhotoUpload,
     handleVoiceRecord,
     removeImage,
+    removeOptimisticImage,
     appendUploadedImages,
     resetForm,
     closeDialog,

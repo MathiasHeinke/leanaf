@@ -9,6 +9,7 @@ import { triggerDataRefresh } from "@/hooks/useDataRefresh";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { getMealBasePoints } from "@/utils/mealPointsHelper";
 import { useGlobalMealInput } from "@/hooks/useGlobalMealInput";
+import { UploadProgress } from "@/components/UploadProgress";
 interface QuickMealSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -20,9 +21,13 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
     inputText,
     setInputText,
     uploadedImages,
+    optimisticImages,
     removeImage,
+    removeOptimisticImage,
     isAnalyzing,
     isRecording,
+    isUploading,
+    uploadProgress,
     handleVoiceRecord,
     handlePhotoUpload,
     handleSubmitMeal,
@@ -220,6 +225,9 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
         </SheetHeader>
 
         <div className="mt-3 space-y-3">
+          {/* Upload Progress */}
+          <UploadProgress progress={uploadProgress} isVisible={isUploading} />
+          
           {/* Text input */}
           <div className="rounded-2xl border border-border/40 bg-background/60 backdrop-blur p-3">
             <textarea
@@ -245,11 +253,43 @@ export const QuickMealSheet: React.FC<QuickMealSheetProps> = ({ open, onOpenChan
               </div>
             )}
 
-            {/* Images preview */}
-            {uploadedImages.length > 0 && (
+            {/* Combined Images preview: Optimistic + Uploaded */}
+            {(optimisticImages.length > 0 || uploadedImages.length > 0) && (
               <div className="mt-2 flex gap-2 overflow-x-auto">
+                {/* Optimistic images (instant preview) */}
+                {optimisticImages.map((img, idx) => (
+                  <div key={`opt-${idx}`} className="relative">
+                    <img 
+                      src={img.blobUrl} 
+                      alt={`Wird hochgeladen ${idx + 1}`} 
+                      className={`h-16 w-16 rounded-lg object-cover transition-opacity ${
+                        img.status === 'uploading' ? 'opacity-60' : 
+                        img.status === 'error' ? 'opacity-40 border-2 border-red-500' : 'opacity-100'
+                      }`} 
+                    />
+                    {img.status === 'uploading' && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                    {img.status === 'error' && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-red-500 text-xs">❌</div>
+                      </div>
+                    )}
+                    <button
+                      aria-label="Bild entfernen"
+                      onClick={() => removeOptimisticImage(idx)}
+                      className="absolute -top-2 -right-2 rounded-full bg-background/80 border border-border/40 p-1"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                
+                {/* Successfully uploaded images */}
                 {uploadedImages.map((url, idx) => (
-                  <div key={idx} className="relative">
+                  <div key={`up-${idx}`} className="relative">
                     <img src={url} alt={`Mahlzeit Foto ${idx + 1}`} className="h-16 w-16 rounded-lg object-cover" />
                     <button
                       aria-label="Bild entfernen"
