@@ -194,7 +194,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [lastRequest, setLastRequest] = useState<any>(null);
   const [lastResponse, setLastResponse] = useState<any>(null);
   const [selectedTraceForPrompt, setSelectedTraceForPrompt] = useState<string | null>(null);
-  const [promptViewerData, setPromptViewerData] = useState<PromptData | null>(null);
+  const [promptViewerData, setPromptViewerData] = useState<any>(null);
   const [deepDebug, setDeepDebug] = useState(false);
   
   const { sendEvent: sendEventWithDebug } = useOrchestratorWithDebug({
@@ -1046,15 +1046,15 @@ const handleInspectMessage = useCallback((traceId: string) => {
 }, []);
 
 // ============= DEEP DEBUG HANDLERS =============
-const handleInspectPrompt = useCallback((traceId?: string, promptData?: any) => {
-  if (promptData) {
-    // Direct prompt data from debug response
-    setPromptViewerData(promptData);
-    setSelectedTraceForPrompt('direct');
-  } else if (traceId) {
+const handleInspectPrompt = useCallback((traceIdOrData?: string | any) => {
+  if (typeof traceIdOrData === 'string') {
     // Traditional trace ID lookup
-    setSelectedTraceForPrompt(traceId);
+    setSelectedTraceForPrompt(traceIdOrData);
     setPromptViewerData(null);
+  } else if (traceIdOrData) {
+    // Direct prompt data from debug response
+    setPromptViewerData(traceIdOrData);
+    setSelectedTraceForPrompt('direct');
   }
 }, []);
 
@@ -1067,13 +1067,13 @@ const handlePromptNow = useCallback(async () => {
       text: "Zeige mir deinen aktuellen Status und deine letzten Überlegungen",
       clientEventId: crypto.randomUUID(),
       context: {
-        source: "debug",
-        coachMode: mode,
-        coachId: coach?.id || "ares",
-        debug_prompt: true
+        coachId: coach?.id || 'ares'
       }
     } as any);
-    renderOrchestratorReply(reply);
+    
+    if ((reply as any)?.meta?.debug) {
+      handleInspectPrompt((reply as any).meta.debug);
+    }
   } catch (error) {
     toast.error("Debug-Prompt fehlgeschlagen");
     console.error("Debug prompt error:", error);

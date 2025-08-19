@@ -31,7 +31,7 @@ export function useAresHealthCheck() {
       // 1. Edge Echo Test (Basic Connectivity)
       try {
         const echoStart = Date.now();
-        const { data, error } = await supabase.functions.invoke('echo', {
+        const { data, error } = await supabase.functions.invoke('edge-echo', {
           body: { ping: 'health-check' }
         });
         
@@ -54,8 +54,10 @@ export function useAresHealthCheck() {
         const orchestratorStart = Date.now();
         const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
           body: { 
-            event: { type: 'TEXT', text: 'health-check' },
-            context: { coachId: 'ares' }
+            action: 'health'
+          },
+          headers: {
+            'x-health-check': '1'
           }
         });
         
