@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { customAlphabet } from "https://esm.sh/nanoid@5";
+import { buildCorsHeaders, handleOptions } from "../_shared/cors.ts";
 
 import { loadCoachPersona } from "./persona.ts";
 import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries, loadCoachAnalytics7d } from "./memory.ts";
@@ -16,12 +18,7 @@ import { chooseModels, getModelParameters, shouldUseHighFidelity } from "./promp
 import { buildAresPromptV2, wantsExplanation, extractMetrics } from "./prompting/buildAresPromptV2.ts";
 import { logTurnDebug, logNameResolverEvent, logGoalGateEvent, logAntiRepeatEvent, logModelRouterEvent, logToSupabase } from "./prompting/telemetry.ts";
 import { loadMessageHistory, saveMessageHistory } from "./prompting/messageHistory.ts";
-// CORS
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-trace-id, x-source, x-client-event-id, x-retry, x-chat-mode, x-user-timezone, x-current-date, prefer, accept, x-supabase-api-version, x-ares-v2",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+const makeId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 12);
 
 // Types
 type CoachEvent =
@@ -32,7 +29,11 @@ type CoachEvent =
 type OrchestratorReply = { kind: "message"; text: string; end?: boolean; traceId?: string; meta?: any };
 
 // Helpers
-const getTraceId = (req: Request) => req.headers.get("x-trace-id") || crypto.randomUUID();
+const getTraceId = (req: Request, body: any) => {
+  const traceFromHeader = req.headers.get("x-trace-id");
+  const traceFromBody = body.trace_id || body.clientEventId || body.event?.clientEventId;
+  return traceFromHeader || traceFromBody || makeId();
+};
 
 // Centralized keyword gates
 const KEYWORDS = {
@@ -308,25 +309,14 @@ async function generateAresResponse(prompt: string, traceId: string) {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    const requestHeaders = req.headers.get("access-control-request-headers") || "";
-    const origin = req.headers.get("origin") || "unknown";
-    const userAgent = req.headers.get("user-agent") || "unknown";
-    console.log(`[ARES-PREFLIGHT] Origin: ${origin}, Request-Headers: ${requestHeaders}, UA: ${userAgent.substring(0, 50)}`);
-    return new Response(null, { headers: corsHeaders });
+    return handleOptions(req);
   }
 
-  const traceId = getTraceId(req);
   const authorization = req.headers.get("Authorization") ?? "";
   const origin = req.headers.get("origin") || "unknown";
   const userAgent = req.headers.get("user-agent") || "unknown";
   const useAresV2Header = req.headers.get("x-ares-v2");
   const useAresV2 = useAresV2Header === null ? true : (useAresV2Header === "1" || useAresV2Header === "true");
-  
-  console.log(`[ARES-ENHANCED-${traceId}] Request received from ${origin}`, {
-    hasAuth: !!authorization,
-    userAgent: userAgent.slice(0, 50),
-    useV2: useAresV2
-  });
 
   // Create Supabase client
   const supabase = createClient(
@@ -344,41 +334,64 @@ serve(async (req) => {
         body = JSON.parse(rawBody);
       }
     } catch (parseError) {
-      console.error(`[ARES-BODY-PARSE-${traceId}] JSON parse failed:`, parseError);
+      console.error(`[ARES-BODY-PARSE] JSON parse failed:`, parseError);
       // Try to recover from malformed JSON
       try {
         const rawBody = await req.text();
-        console.log(`[ARES-BODY-RAW-${traceId}] Raw body:`, rawBody);
+        console.log(`[ARES-BODY-RAW] Raw body:`, rawBody);
         if (rawBody.includes('"text"') || rawBody.includes('"message"')) {
           // Attempt basic text extraction
           const textMatch = rawBody.match(/"(?:text|message)"\s*:\s*"([^"]+)"/);
           if (textMatch) {
             body = { text: textMatch[1] };
-            console.log(`[ARES-BODY-RECOVERY-${traceId}] Recovered text: ${textMatch[1]}`);
+            console.log(`[ARES-BODY-RECOVERY] Recovered text: ${textMatch[1]}`);
           }
         }
       } catch (recoveryError) {
-        console.error(`[ARES-BODY-RECOVERY-${traceId}] Recovery failed:`, recoveryError);
+        console.error(`[ARES-BODY-RECOVERY] Recovery failed:`, recoveryError);
       }
     }
+
+    // Get trace ID from header or body after body is parsed
+    const traceId = getTraceId(req, body);
+    
     console.log(`[ARES-BODY-${traceId}] Parsed body:`, JSON.stringify(body, null, 2));
     
     // Debug mode flag (header or body)
     const debugMode = (req.headers.get('x-debug') === '1' || req.headers.get('x-debug') === 'true' || body?.debug === true);
     console.log(`[ARES-DEBUG-${traceId}] Debug mode: ${debugMode}`);
 
+    // Upsert start row in orchestrator_traces (idempotent per trace_id)
+    await supabase
+      .from("orchestrator_traces")
+      .upsert({
+        trace_id: traceId,
+        user_id: (await supabase.auth.getUser()).data.user?.id || '',
+        status: "started",
+        meta: {
+          path: new URL(req.url).pathname,
+          user_agent: req.headers.get("user-agent"),
+          origin,
+          useAresV2
+        },
+      }, { onConflict: "trace_id" });
+
     // Health check for debugging - simplified check
     if (req.headers.get('x-health-check') === '1' || body?.action === 'health') {
       console.log(`[ARES-HEALTH-${traceId}] Health check requested`);
       return new Response(JSON.stringify({
         ok: true,
-        traceId,
+        trace_id: traceId,
         timestamp: new Date().toISOString(),
         status: 'healthy',
         service: 'coach-orchestrator-enhanced'
       }), {
         status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
+        headers: { 
+          ...buildCorsHeaders(req), 
+          "Content-Type": "application/json",
+          "x-trace-id": traceId
+        }
       });
     }
     
@@ -390,7 +403,7 @@ serve(async (req) => {
       console.log(`[ARES-VALIDATION-${traceId}] Missing event structure. Body keys: ${Object.keys(body)}`);
       return new Response(JSON.stringify({ error: "Missing event or text/message field" }), { 
         status: 400, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: { ...buildCorsHeaders(req), "Content-Type": "application/json" } 
       });
     }
 
@@ -424,10 +437,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         kind: 'message', 
         text: 'Bitte logge dich ein, um mit ARES zu sprechen.', 
-        traceId 
+        trace_id: traceId 
       }), { 
         status: 401, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: { ...buildCorsHeaders(req), "Content-Type": "application/json", "x-trace-id": traceId } 
       });
     }
 
@@ -466,6 +479,13 @@ serve(async (req) => {
         loadUserProfile(supabase, userId).catch(() => ({})),
         loadUserMoodContext(supabase, userId).catch(() => ({}))
       ]);
+
+      // Update trace with persona and context data
+      await supabase.from("orchestrator_traces").update({
+        persona: { name: nameResult.name, archetype: v2Dial, version: "v2" },
+        user_context: { profile: userProfile, mood: moodCtx, dial: v2Dial },
+        updated_at: new Date().toISOString()
+      }).eq("trace_id", traceId);
       
       // Map legacy dial to v2
       const legacyDial = decideAresDial(moodCtx, userText);
@@ -484,6 +504,16 @@ serve(async (req) => {
       };
       
       const v2Prompt = buildAresPromptV2(promptCtx);
+
+      // Update trace with assembled prompt and LLM input
+      const systemPrompt = v2Prompt.system;
+      const messages = [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }];
+      
+      await supabase.from("orchestrator_traces").update({
+        assembled_prompt: systemPrompt,
+        llm_input: { messages },
+        updated_at: new Date().toISOString()
+      }).eq("trace_id", traceId);
       
       // Model selection (pin to stable gpt-4.1 for reliability)
       const models = { 
@@ -673,6 +703,19 @@ serve(async (req) => {
         console.warn(`[ARES-V2-${traceId}] Failed to persist prompt:`, promptPersistError);
       }
       
+      // Update trace with final LLM output
+      await supabase.from("orchestrator_traces").update({
+        status: "finished",
+        llm_output: {
+          text: responseText,
+          model: finalModel,
+          processing_time_ms: Date.now() - startTime,
+          anti_repeat_triggered: wasRedundant,
+          version: "v2"
+        },
+        updated_at: new Date().toISOString()
+      }).eq("trace_id", traceId);
+
       // Log telemetry
       logTurnDebug({
         personaVersion: "v2",
@@ -691,7 +734,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         kind: "message",
         text: responseText,
-        traceId,
+        trace_id: traceId,
         meta: {
           version: "v2",
           usedV1Fallback,
@@ -701,7 +744,13 @@ serve(async (req) => {
           archetype: v2Prompt.extra.archetype,
           ...(debugMode ? { debug: { v2Prompt, models, nameResult } } : {})
         }
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { 
+        headers: { 
+          ...buildCorsHeaders(req), 
+          "Content-Type": "application/json",
+          "x-trace-id": traceId
+        } 
+      });
     }
 
     // Legacy v1 implementation
@@ -709,6 +758,21 @@ serve(async (req) => {
     const prompt = built.prompt;
     const debugInfo = built.debug;
     console.log(`[ARES-PHASE1-${traceId}] Prompt built, length: ${prompt.length}`);
+    
+    // Update trace with v1 data
+    await supabase.from("orchestrator_traces").update({
+      persona: debugInfo.persona,
+      user_context: { 
+        profile: debugInfo.name, 
+        dial: debugInfo.dial, 
+        gates: debugInfo.gates,
+        facts: debugInfo.facts 
+      },
+      assembled_prompt: prompt,
+      llm_input: { messages: [{ role: 'user', content: prompt }] },
+      updated_at: new Date().toISOString()
+    }).eq("trace_id", traceId);
+    
     if (debugMode) {
       console.log(`[ARES-DEBUG-${traceId}] Prompt Built:\n${prompt}`);
       console.log(`[ARES-DEBUG-${traceId}] Facts:`, debugInfo.facts);
@@ -719,10 +783,21 @@ serve(async (req) => {
     // Generate response
     const responseText = await generateAresResponse(prompt, traceId);
     
+    // Update trace with v1 LLM output
+    await supabase.from("orchestrator_traces").update({
+      status: "finished",
+      llm_output: {
+        text: responseText,
+        model: 'gpt-4o-mini',
+        version: "v1"
+      },
+      updated_at: new Date().toISOString()
+    }).eq("trace_id", traceId);
+    
     const reply: OrchestratorReply = {
       kind: "message",
       text: responseText,
-      traceId,
+      trace_id: traceId,
        meta: { 
          version: 'v1', 
          model: 'gpt-4o-mini',
@@ -738,21 +813,41 @@ serve(async (req) => {
 
     console.log(`[ARES-PHASE1-${traceId}] Response generated successfully`);
     return new Response(JSON.stringify(reply), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: { 
+        ...buildCorsHeaders(req), 
+        "Content-Type": "application/json",
+        "x-trace-id": traceId
+      }
     });
 
   } catch (error) {
-    console.error(`[ARES-PHASE1-${traceId}] Error:`, error);
+    console.error(`[ARES-PHASE1] Error:`, error);
+    
+    // Update trace with error status if traceId exists
+    if (typeof traceId !== 'undefined') {
+      await supabase.from("orchestrator_traces").update({
+        status: "failed",
+        meta: { 
+          error: { message: error.message, stack: error.stack },
+          timestamp: new Date().toISOString()
+        },
+        updated_at: new Date().toISOString()
+      }).eq("trace_id", traceId).catch(() => {});
+    }
     
     const fallbackReply = {
       kind: "message",
       text: "ARES System: Unerwarteter Fehler aufgetreten. Versuche es nochmal.",
-      traceId
+      trace_id: traceId || 'unknown'
     };
     
     return new Response(JSON.stringify(fallbackReply), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: { 
+        ...buildCorsHeaders(req), 
+        "Content-Type": "application/json",
+        "x-trace-id": traceId || 'unknown'
+      }
     });
   }
 });

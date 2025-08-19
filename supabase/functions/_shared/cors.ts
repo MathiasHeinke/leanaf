@@ -7,6 +7,7 @@ export function buildCorsHeaders(req: Request) {
     'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
     'Access-Control-Allow-Headers':
       'authorization,apikey,content-type,x-client-info,x-supabase-api-version,prefer,x-trace-id,x-source,x-chat-mode',
+    'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
   };
 }
