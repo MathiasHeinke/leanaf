@@ -346,11 +346,8 @@ const handleSubmit = useCallback(async () => {
               </Button>
             </div>
 
-            {/* Center: Counter + Status */}
+            {/* Center: Status Info */}
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {optimisticImages.length + uploadedImages.length}/{maxImages}
-              </span>
               {lastDropIgnored && (
                 <span className="hidden sm:inline text-xs text-muted-foreground">Max. {maxImages} – überzählige ignoriert</span>
               )}
