@@ -8,11 +8,11 @@ export const useDebugChat = () => {
 
   const sendDebug = async ({ 
     message, 
-    coachId = "lucy", // Keep Lucy as default free coach
+    coachId, // No default - let caller decide
     model = "gpt-4.1-2025-04-14"
   }: {
     message: string; 
-    coachId?: string;
+    coachId: string; // Required now
     model?: string;
   }) => {
     if (!user?.id) {

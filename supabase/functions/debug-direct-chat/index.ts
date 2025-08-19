@@ -28,6 +28,8 @@ serve(async req => {
 
   try {
     const { userId, message, coachId = "lucy", model = "auto" } = await req.json();
+    
+    console.log(`🔧 Debug-Direct-Chat: Received request for coach=${coachId}, model=${model}`);
     if (!userId || !message) {
       return json(400, { error: "`userId` und `message` sind Pflicht." });
     }
@@ -181,8 +183,19 @@ serve(async req => {
         fullStream_ms: fullStreamTime,
         cost_usd: cost,
         sentiment: sentiment,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        traceId: traceId
       },
+      metadata: {
+        coachId: coachId,
+        model: effectiveModel,
+        source: 'debug',
+        pipeline: 'direct',
+        processingTime: fullStreamTime,
+        fallback: false,
+        retryCount: 0,
+        downgraded: false
+      }
     });
   } catch (e) {
     console.error("🔧 DBG-Direct-Chat ❌", e);
