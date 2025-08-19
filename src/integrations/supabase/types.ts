@@ -1038,6 +1038,36 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_runtime_state: {
+        Row: {
+          coach_id: string
+          created_at: string
+          id: string
+          state_key: string
+          state_value: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          state_key: string
+          state_value?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          state_key?: string
+          state_value?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       coach_specializations: {
         Row: {
           coach_id: string

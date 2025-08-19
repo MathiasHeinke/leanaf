@@ -5,10 +5,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { loadCoachPersona } from "./persona.ts";
 import { loadRollingSummary, loadUserProfile, loadRecentDailySummaries, loadCoachAnalytics7d } from "./memory.ts";
 import { loadUserMoodContext, decideAresDial, getRitualContext } from "./aresDial.ts";
+
+// ARES v2 imports
+import { resolveUserName, persistNameAsked, loadNameState } from "./prompting/nameResolver.ts";
+import { shouldRecallGoals, shouldRequestData } from "./prompting/gates.ts";
+import { isRedundant, generateAlternative } from "./prompting/antiRepeat.ts";
+import { pickVoiceLine, wantDeepFollowUp, detectTopic } from "./prompting/voice.ts";
+import { dialSettings, mapLegacyDial } from "./prompting/dials.ts";
+import { chooseModels, getModelParameters, shouldUseHighFidelity } from "./prompting/modelRouter.ts";
+import { buildAresPromptV2, wantsExplanation, extractMetrics } from "./prompting/buildAresPromptV2.ts";
+import { logTurnDebug, logNameResolverEvent, logGoalGateEvent, logAntiRepeatEvent, logModelRouterEvent, logToSupabase } from "./prompting/telemetry.ts";
 // CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-trace-id, x-source, x-client-event-id, x-retry, x-chat-mode, x-user-timezone, x-current-date, prefer, accept, x-supabase-api-version",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-trace-id, x-source, x-client-event-id, x-retry, x-chat-mode, x-user-timezone, x-current-date, prefer, accept, x-supabase-api-version, x-ares-v2",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -272,10 +282,12 @@ serve(async (req) => {
   const authorization = req.headers.get("Authorization") ?? "";
   const origin = req.headers.get("origin") || "unknown";
   const userAgent = req.headers.get("user-agent") || "unknown";
+  const useAresV2 = req.headers.get("x-ares-v2") === "1" || req.headers.get("x-ares-v2") === "true";
   
   console.log(`[ARES-ENHANCED-${traceId}] Request received from ${origin}`, {
     hasAuth: !!authorization,
-    userAgent: userAgent.slice(0, 50)
+    userAgent: userAgent.slice(0, 50),
+    useV2: useAresV2
   });
 
   // Create Supabase client
@@ -412,9 +424,100 @@ serve(async (req) => {
     const userText = event.type === "TEXT" ? event.text : "Bild hochgeladen";
     const coachId = (event as any)?.context?.coachId ?? 'ares';
     
-    console.log(`[ARES-PHASE1-${traceId}] Processing: user=${userId}, coach=${coachId}, text="${userText}"`);
+    console.log(`[ARES-PHASE1-${traceId}] Processing: user=${userId}, coach=${coachId}, text="${userText}", v2=${useAresV2}`);
 
-    // Build prompt with persona + memory
+    // Choose v1 or v2 implementation
+    if (useAresV2) {
+      // ARES v2 Implementation
+      const startTime = Date.now();
+      
+      // Name Resolution
+      const nameState = await loadNameState(supabase, userId, coachId);
+      const identity = { userId, name: nameState?.name, askedAt: nameState?.askedAt };
+      const nameResult = await resolveUserName(identity, async () => {
+        const profile = await loadUserProfile(supabase, userId);
+        return profile.preferred_name || profile.display_name || profile.first_name || null;
+      });
+      
+      if (nameResult.setAskedAt) {
+        await persistNameAsked(supabase, userId, coachId);
+      }
+      
+      // Load context for v2
+      const [userProfile, moodCtx] = await Promise.all([
+        loadUserProfile(supabase, userId).catch(() => ({})),
+        loadUserMoodContext(supabase, userId).catch(() => ({}))
+      ]);
+      
+      // Map legacy dial to v2
+      const legacyDial = decideAresDial(moodCtx, userText);
+      const v2Dial = mapLegacyDial(legacyDial.dial);
+      
+      // Extract metrics and build v2 prompt
+      const metrics = extractMetrics({ nutrition: {}, missed: {}, isReview: false });
+      const promptCtx = {
+        identity: { name: nameResult.name },
+        dial: v2Dial,
+        userMsg: userText,
+        metrics,
+        facts: { weight: userProfile.weight, goalWeight: userProfile.target_weight, tdee: userProfile.tdee },
+        goals: userProfile.goal ? [{ short: userProfile.goal }] : null,
+        personalityVersion: "v2"
+      };
+      
+      const v2Prompt = buildAresPromptV2(promptCtx);
+      
+      // Model selection
+      const models = chooseModels({ highFidelity: shouldUseHighFidelity(userText, promptCtx) });
+      const modelParams = getModelParameters(models.chat);
+      
+      // Generate response with v2 model
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: models.chat,
+          messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
+          ...modelParams
+        })
+      });
+      
+      const data = await response.json();
+      let responseText = data.choices?.[0]?.message?.content || "ARES v2 antwortet nicht.";
+      
+      // Apply voice and anti-repeat
+      const topic = detectTopic(userText);
+      const voiceLine = pickVoiceLine(v2Prompt.extra.archetype as any, topic);
+      const wantDeep = wantDeepFollowUp({ askedWhy: wantsExplanation(userText) });
+      
+      if (wantDeep) {
+        responseText = `${voiceLine} ${responseText}`;
+      }
+      
+      // Log telemetry
+      logTurnDebug({
+        personaVersion: "v2",
+        dial: v2Dial,
+        archetype: v2Prompt.extra.archetype,
+        nameKnown: !!nameResult.name,
+        recallGoals: v2Prompt.extra.recallGoals,
+        model: models.chat,
+        temp: v2Prompt.extra.temp,
+        maxWords: v2Prompt.extra.maxWords,
+        responseLength: responseText.length,
+        userMsgLength: userText.length,
+        processingTimeMs: Date.now() - startTime
+      });
+      
+      return new Response(JSON.stringify({
+        kind: "message",
+        text: responseText,
+        traceId,
+        meta: debugMode ? { debug: { v2Prompt, models, nameResult } } : undefined
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Legacy v1 implementation
     const built = await buildAresPrompt(supabase, userId, coachId, userText);
     const prompt = built.prompt;
     const debugInfo = built.debug;
