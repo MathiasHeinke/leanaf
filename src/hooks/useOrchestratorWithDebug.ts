@@ -133,24 +133,29 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       // Enhanced response with debug metadata
       const normalizedResult = normalizeReply(result.data);
       
+      // Force the client-visible traceId to the one we generated/sent so DB lookups align
+      (normalizedResult as any).traceId = currentTraceId;
+      
       // Add enhanced metadata for debugging via meta property (only for types that support it)
       if (normalizedResult.kind === 'message' || normalizedResult.kind === 'reflect' || normalizedResult.kind === 'choice_suggest') {
-        normalizedResult.meta = {
-          ...normalizedResult.meta,
-          traceId: currentTraceId, // CRITICAL: Pass through the correct trace ID
+        (normalizedResult as any).meta = {
+          ...(normalizedResult as any).meta,
+          // Keep both IDs for diagnostics
+          traceId: currentTraceId, // DB-aligned traceId (client-generated)
+          serverTraceId: (result.data as any)?.traceId, // what the server returned (may be UUID)
           source: 'orchestrator',
-          processingTime: result.data?.processingTime,
+          processingTime: (result.data as any)?.processingTime,
           rawResponse: result.data,
-          apiErrors: result.data?.apiErrors || [],
-          fallback: result.data?.fallback || false,
-          retryCount: result.data?.retryCount || 0,
-          downgraded: result.data?.downgraded || false,
-          error: result.data?.error || undefined,
+          apiErrors: (result.data as any)?.apiErrors || [],
+          fallback: (result.data as any)?.fallback || false,
+          retryCount: (result.data as any)?.retryCount || 0,
+          downgraded: (result.data as any)?.downgraded || false,
+          error: (result.data as any)?.error || undefined,
         };
       }
       
       // Debug log for trace ID tracking  
-      console.log(`🔧 TraceID flow: ${currentTraceId} → normalizedResult.meta.traceId: ${(normalizedResult as any).meta?.traceId}`);
+      console.log(`🔧 TraceID flow: client=${currentTraceId} server=${(result.data as any)?.traceId} → used=${(normalizedResult as any).traceId}`);
 
       return normalizedResult;
 
