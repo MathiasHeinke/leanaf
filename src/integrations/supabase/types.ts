@@ -257,6 +257,66 @@ export type Database = {
         }
         Relationships: []
       }
+      ares_traces: {
+        Row: {
+          client_event_id: string | null
+          coach_id: string
+          complete_prompt: string | null
+          context: Json | null
+          created_at: string
+          duration_ms: number | null
+          error: Json | null
+          images: Json | null
+          input_text: string | null
+          llm_input: Json | null
+          llm_output: Json | null
+          persona: Json | null
+          rag_sources: Json | null
+          status: string
+          system_prompt: string | null
+          trace_id: string
+          user_id: string
+        }
+        Insert: {
+          client_event_id?: string | null
+          coach_id: string
+          complete_prompt?: string | null
+          context?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: Json | null
+          images?: Json | null
+          input_text?: string | null
+          llm_input?: Json | null
+          llm_output?: Json | null
+          persona?: Json | null
+          rag_sources?: Json | null
+          status?: string
+          system_prompt?: string | null
+          trace_id: string
+          user_id: string
+        }
+        Update: {
+          client_event_id?: string | null
+          coach_id?: string
+          complete_prompt?: string | null
+          context?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: Json | null
+          images?: Json | null
+          input_text?: string | null
+          llm_input?: Json | null
+          llm_output?: Json | null
+          persona?: Json | null
+          rag_sources?: Json | null
+          status?: string
+          system_prompt?: string | null
+          trace_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       auth_debug_logs: {
         Row: {
           auth_event: string | null
