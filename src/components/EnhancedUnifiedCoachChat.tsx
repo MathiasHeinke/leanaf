@@ -1486,17 +1486,16 @@ chatInput={
         onClose={() => setConfirmMeal(prev => ({ ...prev, open: false }))}
       />
       
-      {/* Enhanced ARES Debug Panel for coach 'ares' */}
-      {isAres && (
-        <AresChatDebugPanel
-          isOpen={showDebugger}
-          onClose={() => setShowDebugger(false)}
-          debugSteps={debugSteps.steps}
-          lastRequest={lastRequest}
-          lastResponse={lastResponse}
-          onClearSteps={debugSteps.clearSteps}
-        />
-      )}
+      {/* Enhanced Debug Panel for all coaches */}
+      <AresChatDebugPanel
+        isOpen={showDebugger}
+        onClose={() => setShowDebugger(false)}
+        debugSteps={debugSteps.steps}
+        lastRequest={lastRequest}
+        lastResponse={lastResponse}
+        onClearSteps={debugSteps.clearSteps}
+        onInspectPrompt={(traceId) => setSelectedTraceForPrompt(traceId)}
+      />
       
       {/* Prompt Viewer for individual message inspection */}
       <PromptInspectionModal 
