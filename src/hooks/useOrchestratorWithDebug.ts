@@ -139,17 +139,20 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       // Enhanced response with debug metadata
       const normalizedResult = normalizeReply(result.data);
       
-      // Force the client-visible traceId to the one we generated/sent so DB lookups align
-      (normalizedResult as any).traceId = requestTraceId;
-      setCurrentTraceId(requestTraceId);
+      // Use server-provided traceId if available, fallback to client-generated
+      const serverTraceId = (result.data as any)?.traceId;
+      const finalTraceId = serverTraceId || requestTraceId;
+      (normalizedResult as any).traceId = finalTraceId;
+      setCurrentTraceId(finalTraceId);
       
       // Add enhanced metadata for debugging via meta property (only for types that support it)
       if (normalizedResult.kind === 'message' || normalizedResult.kind === 'reflect' || normalizedResult.kind === 'choice_suggest') {
         (normalizedResult as any).meta = {
           ...(normalizedResult as any).meta,
           // Keep both IDs for diagnostics
-          traceId: requestTraceId, // DB-aligned traceId (client-generated)
-          serverTraceId: (result.data as any)?.traceId, // what the server returned (may be UUID)
+          traceId: finalTraceId, // DB-aligned traceId (prioritizing server)
+          serverTraceId: serverTraceId, // what the server returned
+          clientTraceId: requestTraceId, // what the client generated
           source: 'orchestrator',
           processingTime: (result.data as any)?.processingTime,
           rawResponse: result.data,
@@ -162,7 +165,7 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       }
       
       // Debug log for trace ID tracking  
-      console.log(`🔧 TraceID flow: client=${requestTraceId} server=${(result.data as any)?.traceId} → used=${(normalizedResult as any).traceId}`);
+      console.log(`🔧 TraceID flow: client=${requestTraceId} server=${serverTraceId} → used=${finalTraceId}`);
 
       setLoading(false);
       return normalizedResult;

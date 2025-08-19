@@ -381,7 +381,7 @@ serve(async (req) => {
       console.log(`[ARES-HEALTH-${traceId}] Health check requested`);
       return new Response(JSON.stringify({
         ok: true,
-        trace_id: traceId,
+        traceId: traceId,
         timestamp: new Date().toISOString(),
         status: 'healthy',
         service: 'coach-orchestrator-enhanced'
@@ -437,8 +437,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         kind: 'message', 
         text: 'Bitte logge dich ein, um mit ARES zu sprechen.', 
-        trace_id: traceId 
-      }), { 
+        traceId: traceId 
+      }), {
         status: 401, 
         headers: { ...buildCorsHeaders(req), "Content-Type": "application/json", "x-trace-id": traceId } 
       });
@@ -734,7 +734,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         kind: "message",
         text: responseText,
-        trace_id: traceId,
+        traceId: traceId,
         meta: {
           version: "v2",
           usedV1Fallback,
@@ -797,8 +797,8 @@ serve(async (req) => {
     const reply: OrchestratorReply = {
       kind: "message",
       text: responseText,
-      trace_id: traceId,
-       meta: { 
+      traceId: traceId,
+       meta: {
          version: 'v1', 
          model: 'gpt-4o-mini',
          ...(debugMode ? { 
@@ -838,7 +838,7 @@ serve(async (req) => {
     const fallbackReply = {
       kind: "message",
       text: "ARES System: Unerwarteter Fehler aufgetreten. Versuche es nochmal.",
-      trace_id: traceId || 'unknown'
+      traceId: traceId || 'unknown'
     };
     
     return new Response(JSON.stringify(fallbackReply), {
