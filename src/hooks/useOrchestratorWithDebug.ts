@@ -36,20 +36,17 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
   const [currentTraceId, setCurrentTraceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  function beginUserAction(): string {
-    const id = Date.now().toString();
-    currentClientEventId.current = id;
-    return id;
+  function beginUserAction(): string | null {
+    // No longer generate client-side trace IDs
+    return null;
   }
 
   function endUserAction() {
-    currentClientEventId.current = null;
+    setCurrentTraceId(null);
   }
 
   const sendEvent = async (userId: string, ev: CoachEvent, traceId?: string, context?: CoachEventContext): Promise<OrchestratorReply> => {
-    const requestTraceId = traceId || newTraceId();
     setLoading(true);
-    const orchestratorFunction = 'coach-orchestrator-enhanced';
     let currentStepId: string | undefined;
 
     try {
@@ -61,68 +58,26 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
         throw new Error("No active session");
       }
       
-      debugCallbacks?.completeStep(currentStepId!, `Session valid (expires: ${new Date(session.expires_at! * 1000).toLocaleTimeString()})`);
+      debugCallbacks?.completeStep(currentStepId!, `Session valid`);
 
-      // Echo test for header debugging
-      currentStepId = debugCallbacks?.addStep("Reachability Test", "Testing edge function headers...");
-      try {
-        const echoResult = await supabase.functions.invoke('edge-echo', {
-          body: { test: 'headers', traceId: currentTraceId }
-        });
-        if (echoResult.data?.echo === 'success') {
-          debugCallbacks?.completeStep(currentStepId!, `Headers OK - Auth: ${echoResult.data.headers.authorization ? 'present' : 'missing'}`);
-        } else {
-          debugCallbacks?.errorStep(currentStepId!, `Echo failed: ${echoResult.error?.message || 'unknown'}`);
-        }
-      } catch (echoError: any) {
-        debugCallbacks?.errorStep(currentStepId!, `Echo error: ${echoError.message}`);
-      }
+      currentStepId = debugCallbacks?.addStep("Send Request", "Calling ARES enhanced orchestrator...");
 
-      // Health check
-      currentStepId = debugCallbacks?.addStep("Route Test", "Testing orchestrator route...");
-      try {
-        const healthResult = await withTimeout(
-          supabase.functions.invoke(orchestratorFunction, {
-            body: { userId, action: 'health', traceId: currentTraceId }
-          }),
-          5000
-        );
-        if (healthResult.data?.ok) {
-          debugCallbacks?.completeStep(currentStepId!, `Route OK - ${healthResult.data.status}`);
-        } else {
-          debugCallbacks?.errorStep(currentStepId!, `Health check failed: ${healthResult.error?.message || 'unknown'}`);
-        }
-      } catch (healthError: any) {
-        debugCallbacks?.errorStep(currentStepId!, `Route error: ${healthError.message}`);
-      }
-
-      currentStepId = debugCallbacks?.addStep("Send Request", `Calling ${orchestratorFunction}...`);
-
-      // Send with both event structure and direct fields for compatibility
+      // Build payload for new ARES system
       const payload = {
-        userId,
-        event: ev,
-        traceId: requestTraceId,
-        context,
-        // Also send as direct fields for fallback compatibility
+        coachId: 'ares',
         text: ev.type === 'TEXT' ? ev.text : undefined,
-        clientEventId: ev.clientEventId,
-        // Enable deep debugging if requested
-        debug: deepDebug
+        images: ev.type === 'IMAGE' ? (ev as any).images : undefined,
+        clientEventId: ev.clientEventId
       };
       
-      console.log("🔧 Sending payload:", JSON.stringify(payload, null, 2));
+      console.log("🔧 Sending to ARES:", payload);
       
       // Store request for debugging
       debugCallbacks?.setLastRequest?.(payload);
       
       const result = await withTimeout(
-        supabase.functions.invoke(orchestratorFunction, {
-          body: payload,
-          headers: {
-            ...(deepDebug ? { 'x-debug': '1' } : {}),
-            'x-trace-id': requestTraceId
-          }
+        supabase.functions.invoke('coach-orchestrator-enhanced', {
+          body: payload
         }),
         25000
       );
@@ -131,44 +86,33 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
         throw new Error(result.error.message || 'Unknown orchestrator error');
       }
 
+      if (!result.data?.ok) {
+        const errorMsg = result.data?.error?.message || 'Unknown orchestrator error';
+        throw new Error(errorMsg);
+      }
+
       // Store response for debugging
       debugCallbacks?.setLastResponse?.(result.data);
 
       debugCallbacks?.completeStep(currentStepId!, "Request completed successfully");
 
-      // Enhanced response with debug metadata
-      const normalizedResult = normalizeReply(result.data);
-      
-      // Use server-provided trace_id (single source of truth)
-      const serverTraceId = (result.data as any)?.trace_id || (result.data as any)?.traceId;
-      const finalTraceId = serverTraceId || requestTraceId;
-      (normalizedResult as any).traceId = finalTraceId;
-      setCurrentTraceId(finalTraceId);
-      
-      // Global debug access
-      (window as any).__ARES_TRACE_ID__ = finalTraceId;
-      
-      // Add enhanced metadata for debugging via meta property (only for types that support it)
-      if (normalizedResult.kind === 'message' || normalizedResult.kind === 'reflect' || normalizedResult.kind === 'choice_suggest') {
-        (normalizedResult as any).meta = {
-          ...(normalizedResult as any).meta,
-          // Keep both IDs for diagnostics
-          traceId: finalTraceId, // DB-aligned traceId (prioritizing server)
-          serverTraceId: serverTraceId, // what the server returned
-          clientTraceId: requestTraceId, // what the client generated
-          source: 'orchestrator',
-          processingTime: (result.data as any)?.processingTime,
-          rawResponse: result.data,
-          apiErrors: (result.data as any)?.apiErrors || [],
-          fallback: (result.data as any)?.fallback || false,
-          retryCount: (result.data as any)?.retryCount || 0,
-          downgraded: (result.data as any)?.downgraded || false,
-          error: (result.data as any)?.error || undefined,
-        };
+      // Extract trace ID from response (server-generated)
+      const serverTraceId = result.data.traceId;
+      if (serverTraceId) {
+        setCurrentTraceId(serverTraceId);
+        console.log(`🔧 Server trace ID: ${serverTraceId}`);
       }
-      
-      // Debug log for trace ID tracking  
-      console.log(`🔧 TraceID flow: client=${requestTraceId} server=${serverTraceId} → used=${finalTraceId}`);
+
+      // Enhanced response
+      const normalizedResult: OrchestratorReply = {
+        kind: 'message',
+        text: result.data.reply || 'No response from ARES',
+        meta: {
+          traceId: serverTraceId,
+          source: 'ares-enhanced',
+          rawResponse: result.data
+        }
+      };
 
       setLoading(false);
       return normalizedResult;

@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useTrace } from '@/hooks/useTrace';
+import { useTraceDebug } from '@/hooks/useTraceDebug';
 import { useState } from 'react';
 import { Copy, RefreshCw, X } from 'lucide-react';
 
@@ -10,7 +10,7 @@ interface DebugTraceInspectorProps {
 }
 
 export function DebugTraceInspector({ traceId, onClose }: DebugTraceInspectorProps) {
-  const { trace, loading, error, refetch } = useTrace(traceId);
+  const { data: trace, loading } = useTraceDebug(traceId);
   const [isMinimized, setIsMinimized] = useState(false);
 
   if (!traceId) return null;
@@ -50,7 +50,6 @@ export function DebugTraceInspector({ traceId, onClose }: DebugTraceInspectorPro
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={refetch}
                 disabled={loading}
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -75,13 +74,12 @@ export function DebugTraceInspector({ traceId, onClose }: DebugTraceInspectorPro
           </div>
 
           {loading && <div className="text-sm opacity-70">Lade Trace…</div>}
-          {error && <div className="text-sm text-destructive">Fehler: {error}</div>}
 
           {trace && (
             <div className="space-y-4 max-h-[60vh] overflow-y-auto">
               <div className="text-xs opacity-70">
                 Status: <span className="font-mono">{trace.status}</span> | 
-                Created: <span className="font-mono">{new Date(trace.created_at || trace.updated_at).toLocaleTimeString()}</span>
+                Created: <span className="font-mono">{new Date(trace.created_at).toLocaleTimeString()}</span>
               </div>
 
               {trace.persona && (
@@ -90,15 +88,15 @@ export function DebugTraceInspector({ traceId, onClose }: DebugTraceInspectorPro
                 </Section>
               )}
 
-              {trace.user_context && (
+              {trace.context && (
                 <Section title="User Context">
-                  <JsonView data={trace.user_context} />
+                  <JsonView data={trace.context} />
                 </Section>
               )}
 
-              {trace.rag_chunks && (
+              {trace.rag_sources && (
                 <Section title="RAG Sources">
-                  <JsonView data={trace.rag_chunks} />
+                  <JsonView data={trace.rag_sources} />
                 </Section>
               )}
 
@@ -120,10 +118,16 @@ export function DebugTraceInspector({ traceId, onClose }: DebugTraceInspectorPro
                 </Section>
               )}
 
-              {trace.meta && (
-                <Section title="Meta Information">
-                  <JsonView data={trace.meta} />
+              {trace.error && (
+                <Section title="Error Information">
+                  <JsonView data={trace.error} />
                 </Section>
+              )}
+
+              {trace.duration_ms && (
+                <div className="text-xs opacity-70">
+                  Duration: {trace.duration_ms}ms
+                </div>
               )}
             </div>
           )}
