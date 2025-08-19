@@ -194,7 +194,10 @@ serve(async req => {
         processingTime: fullStreamTime,
         fallback: false,
         retryCount: 0,
-        downgraded: false
+        downgraded: false,
+        traceId: traceId,
+        rawResponse: data,
+        apiErrors: []
       }
     });
   } catch (e) {

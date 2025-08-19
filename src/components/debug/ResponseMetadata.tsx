@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Clock, Brain, Route, Shuffle, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Clock, Brain, Route, Shuffle, AlertTriangle, Search, Eye } from 'lucide-react';
+import { PromptInspectionModal } from './PromptInspectionModal';
 
 interface ResponseMetadataProps {
   metadata?: {
@@ -14,11 +16,16 @@ interface ResponseMetadataProps {
     source?: 'v1' | 'v2' | 'debug' | 'orchestrator';
     downgraded?: boolean;
     error?: string;
+    traceId?: string;
+    rawResponse?: any;
+    apiErrors?: any[];
   };
   className?: string;
 }
 
 export function ResponseMetadata({ metadata, className }: ResponseMetadataProps) {
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  
   if (!metadata) return null;
 
   const {
@@ -30,16 +37,21 @@ export function ResponseMetadata({ metadata, className }: ResponseMetadataProps)
     processingTime,
     source = 'unknown',
     downgraded = false,
-    error
+    error,
+    traceId,
+    rawResponse,
+    apiErrors
   } = metadata;
 
   return (
-    <Card className={`p-2 bg-muted/20 border-l-4 ${
-      source === 'v1' ? 'border-l-red-500' : 
-      fallback ? 'border-l-yellow-500' : 
-      'border-l-green-500'
-    } ${className}`}>
-      <div className="flex flex-wrap gap-2 text-xs">
+    <>
+      <Card className={`p-2 bg-muted/20 border-l-4 ${
+        source === 'v1' ? 'border-l-red-500' : 
+        fallback ? 'border-l-yellow-500' : 
+        'border-l-green-500'
+      } ${className}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex flex-wrap gap-2 text-xs">
         {/* Coach & Source */}
         <Badge variant={source === 'v1' ? 'destructive' : 'secondary'} className="h-5">
           <Brain className="w-3 h-3 mr-1" />
@@ -85,13 +97,38 @@ export function ResponseMetadata({ metadata, className }: ResponseMetadataProps)
           </Badge>
         )}
 
-        {/* Error indicator */}
-        {error && (
-          <Badge variant="destructive" className="h-5">
-            <AlertTriangle className="w-3 h-3 mr-1" />
-            Error
-          </Badge>
-        )}
+          {/* Error indicator */}
+          {error && (
+            <Badge variant="destructive" className="h-5">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              Error
+            </Badge>
+          )}
+
+          {/* API Errors */}
+          {apiErrors && apiErrors.length > 0 && (
+            <Badge variant="destructive" className="h-5">
+              <AlertTriangle className="w-3 h-3 mr-1" />
+              {apiErrors.length} API Error{apiErrors.length > 1 ? 's' : ''}
+            </Badge>
+          )}
+        </div>
+
+        {/* Debug Actions */}
+        <div className="flex gap-1">
+          {traceId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPromptModal(true)}
+              className="h-6 px-2 text-xs hover:bg-primary/10"
+              title="Inspect full prompt and OpenAI response"
+            >
+              <Search className="w-3 h-3 mr-1" />
+              Debug
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Warning for V1 responses */}
@@ -101,12 +138,32 @@ export function ResponseMetadata({ metadata, className }: ResponseMetadataProps)
         </div>
       )}
 
-      {/* Error details */}
-      {error && (
-        <div className="mt-2 text-xs text-muted-foreground">
-          {error}
-        </div>
+        {/* Error details */}
+        {error && (
+          <div className="mt-2 text-xs text-muted-foreground">
+            {error}
+          </div>
+        )}
+
+        {/* API Error details */}
+        {apiErrors && apiErrors.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {apiErrors.map((apiError, idx) => (
+              <div key={idx} className="text-xs text-red-600 dark:text-red-400">
+                🚨 API Error: {apiError.message || JSON.stringify(apiError)}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      {/* Prompt Inspection Modal */}
+      {showPromptModal && traceId && (
+        <PromptInspectionModal
+          traceId={traceId}
+          onClose={() => setShowPromptModal(false)}
+        />
       )}
-    </Card>
+    </>
   );
 }

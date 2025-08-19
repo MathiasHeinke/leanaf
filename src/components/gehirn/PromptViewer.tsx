@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { JsonPanel } from '@/components/gehirn/JsonPanel';
-import { Copy, ExternalLink, Eye, Brain, User, Database, Lightbulb } from 'lucide-react';
+import { Copy, ExternalLink, Eye, Brain, User, Database, Lightbulb, AlertTriangle, Zap, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface PromptData {
@@ -65,6 +65,21 @@ export interface PromptData {
       total_tokens: number;
     };
   };
+  apiErrors?: Array<{
+    type: 'rate_limit' | 'context_length' | 'invalid_request' | 'internal_error' | 'unknown';
+    message: string;
+    details?: any;
+    timestamp?: number;
+    retryAfter?: number;
+  }>;
+  performance?: {
+    requestDuration?: number;
+    firstTokenMs?: number;
+    totalLatency?: number;
+    tokenThroughput?: number;
+    modelDowngrades?: string[];
+    fallbackChain?: string[];
+  };
 }
 
 interface PromptViewerProps {
@@ -121,30 +136,38 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
 
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="prompt" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Final Prompt
+          <TabsList className="grid w-full grid-cols-8">
+            <TabsTrigger value="prompt" className="gap-1 text-xs">
+              <Brain className="h-3 w-3" />
+              Prompt
             </TabsTrigger>
-            <TabsTrigger value="persona" className="gap-2">
-              <User className="h-4 w-4" />
+            <TabsTrigger value="persona" className="gap-1 text-xs">
+              <User className="h-3 w-3" />
               Persona
             </TabsTrigger>
-            <TabsTrigger value="context" className="gap-2">
-              <Database className="h-4 w-4" />
+            <TabsTrigger value="context" className="gap-1 text-xs">
+              <Database className="h-3 w-3" />
               Context
             </TabsTrigger>
-            <TabsTrigger value="rag" className="gap-2">
-              <Lightbulb className="h-4 w-4" />
-              RAG Sources
+            <TabsTrigger value="rag" className="gap-1 text-xs">
+              <Lightbulb className="h-3 w-3" />
+              RAG
             </TabsTrigger>
-            <TabsTrigger value="intent" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Intent & Tools
+            <TabsTrigger value="intent" className="gap-1 text-xs">
+              <Brain className="h-3 w-3" />
+              Intent
             </TabsTrigger>
-            <TabsTrigger value="response" className="gap-2">
-              <ExternalLink className="h-4 w-4" />
-              LLM Response
+            <TabsTrigger value="response" className="gap-1 text-xs">
+              <ExternalLink className="h-3 w-3" />
+              Response
+            </TabsTrigger>
+            <TabsTrigger value="errors" className="gap-1 text-xs">
+              <AlertTriangle className="h-3 w-3" />
+              Errors
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="gap-1 text-xs">
+              <Activity className="h-3 w-3" />
+              Performance
             </TabsTrigger>
           </TabsList>
 
@@ -483,6 +506,151 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 No LLM response data available for this trace
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="errors" className="space-y-4">
+            {data.apiErrors && data.apiErrors.length > 0 ? (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-destructive">OpenAI API Errors</h3>
+                {data.apiErrors.map((error, idx) => (
+                  <Card key={idx} className="p-4 border-destructive/20">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="destructive">{error.type.replace('_', ' ').toUpperCase()}</Badge>
+                          {error.timestamp && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(error.timestamp).toLocaleTimeString()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium mb-2">{error.message}</p>
+                        {error.retryAfter && (
+                          <div className="text-xs text-muted-foreground">
+                            Retry after: {error.retryAfter}s
+                          </div>
+                        )}
+                        {error.details && (
+                          <div className="mt-2">
+                            <JsonPanel data={error.details} maxHeight={100} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <AlertTriangle className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No API errors recorded for this trace</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="performance" className="space-y-4">
+            {data.performance || data.telemetryData ? (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold">Performance Analysis</h3>
+                
+                {/* Performance Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {data.performance?.requestDuration && (
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold text-primary">
+                        {data.performance.requestDuration}ms
+                      </div>
+                      <div className="text-sm text-muted-foreground">Request Duration</div>
+                    </div>
+                  )}
+                  {data.performance?.firstTokenMs && (
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold text-primary">
+                        {data.performance.firstTokenMs}ms
+                      </div>
+                      <div className="text-sm text-muted-foreground">First Token</div>
+                    </div>
+                  )}
+                  {data.telemetryData?.firstToken_ms && (
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold text-primary">
+                        {data.telemetryData.firstToken_ms}ms
+                      </div>
+                      <div className="text-sm text-muted-foreground">First Token</div>
+                    </div>
+                  )}
+                  {data.performance?.tokenThroughput && (
+                    <div className="text-center p-3 bg-muted rounded-lg">
+                      <div className="text-2xl font-bold text-primary">
+                        {data.performance.tokenThroughput.toFixed(1)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">Tokens/sec</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Model Downgrade Chain */}
+                {data.performance?.modelDowngrades && data.performance.modelDowngrades.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-yellow-500" />
+                      Model Downgrade Chain
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      {data.performance.modelDowngrades.map((model, idx) => (
+                        <React.Fragment key={idx}>
+                          <Badge variant={idx === 0 ? "destructive" : "secondary"}>
+                            {model}
+                          </Badge>
+                          {idx < data.performance!.modelDowngrades!.length - 1 && (
+                            <span className="text-muted-foreground">→</span>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback Chain */}
+                {data.performance?.fallbackChain && data.performance.fallbackChain.length > 0 && (
+                  <div>
+                    <h4 className="font-medium mb-2 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                      Fallback Chain
+                    </h4>
+                    <div className="flex items-center gap-2">
+                      {data.performance.fallbackChain.map((step, idx) => (
+                        <React.Fragment key={idx}>
+                          <Badge variant="outline">
+                            {step}
+                          </Badge>
+                          {idx < data.performance!.fallbackChain!.length - 1 && (
+                            <span className="text-muted-foreground">→</span>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Cost Analysis */}
+                {data.telemetryData?.cost_usd && (
+                  <div className="p-4 bg-muted/20 rounded-lg">
+                    <h4 className="font-medium mb-2">Cost Analysis</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>Total Cost: <span className="font-mono">${data.telemetryData.cost_usd.toFixed(6)}</span></div>
+                      <div>Model: <span className="font-mono">{data.telemetryData.model}</span></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Activity className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No performance data available for this trace</p>
               </div>
             )}
           </TabsContent>
