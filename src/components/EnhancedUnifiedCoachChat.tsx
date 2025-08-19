@@ -1062,23 +1062,40 @@ const handlePromptNow = useCallback(async () => {
   if (!user?.id) return;
   
   try {
-    const reply = await sendEventWithDebug(user.id, {
-      type: "TEXT",
-      text: "Zeige mir deinen aktuellen Status und deine letzten Überlegungen",
-      clientEventId: crypto.randomUUID(),
-      context: {
-        coachId: coach?.id || 'ares'
-      }
-    } as any);
+    toast.info("Triggering debug prompt...");
     
-    if ((reply as any)?.meta?.debug) {
-      handleInspectPrompt((reply as any).meta.debug);
+    // Direct debug call to coach orchestrator with debug flag
+    const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
+      body: { 
+        text: "Zeige mir deinen aktuellen Status und deine letzten Überlegungen",
+        coachId: coach?.id || 'ares',
+        userId: user.id,
+        debug: true
+      },
+      headers: {
+        'x-debug': '1'
+      }
+    });
+
+    if (error) {
+      console.error("Debug prompt error:", error);
+      toast.error("Debug-Prompt fehlgeschlagen");
+      return;
+    }
+    
+    console.log("Debug prompt response:", data);
+    
+    if (data?.meta?.debug) {
+      handleInspectPrompt(data.meta.debug);
+      toast.success("Debug-Daten erhalten!");
+    } else {
+      toast.error("Keine Debug-Daten in Response");
     }
   } catch (error) {
     toast.error("Debug-Prompt fehlgeschlagen");
     console.error("Debug prompt error:", error);
   }
-}, [user?.id, sendEventWithDebug, mode, coach?.id, renderOrchestratorReply]);
+}, [user?.id, coach?.id, handleInspectPrompt]);
 
 // ============= ENHANCED SEND MESSAGE HANDLER =============
 const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {

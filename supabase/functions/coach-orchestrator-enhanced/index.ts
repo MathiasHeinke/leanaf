@@ -315,8 +315,8 @@ serve(async (req) => {
     
     // Debug mode flag (header or body)
     const debugMode = (req.headers.get('x-debug') === '1' || req.headers.get('x-debug') === 'true' || body?.debug === true);
+    console.log(`[ARES-DEBUG-${traceId}] Debug mode: ${debugMode}`);
 
-    
     // Health check for debugging - simplified check
     if (req.headers.get('x-health-check') === '1' || body?.action === 'health') {
       console.log(`[ARES-HEALTH-${traceId}] Health check requested`);
@@ -324,7 +324,8 @@ serve(async (req) => {
         ok: true,
         traceId,
         timestamp: new Date().toISOString(),
-        status: 'healthy'
+        status: 'healthy',
+        service: 'coach-orchestrator-enhanced'
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -371,7 +372,14 @@ serve(async (req) => {
         kind: "message",
         text: responseText,
         traceId,
-        meta: debugMode ? { debug: { prompt, ...debugInfo } } : undefined
+        meta: debugMode ? { 
+          debug: { 
+            prompt, 
+            ...debugInfo,
+            model: 'gpt-4o-mini',
+            tokensUsed: responseText.length * 0.75 // Rough estimate
+          } 
+        } : undefined
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -425,7 +433,14 @@ serve(async (req) => {
       kind: "message",
       text: responseText,
       traceId,
-      meta: debugMode ? { debug: { prompt, ...debugInfo } } : undefined
+      meta: debugMode ? { 
+        debug: { 
+          prompt, 
+          ...debugInfo,
+          model: 'gpt-4o-mini',
+          tokensUsed: responseText.length * 0.75 // Rough estimate
+        } 
+      } : undefined
     };
 
     console.log(`[ARES-PHASE1-${traceId}] Response generated successfully`);

@@ -115,7 +115,8 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       
       const result = await withTimeout(
         supabase.functions.invoke(orchestratorFunction, {
-          body: payload
+          body: payload,
+          headers: deepDebug ? { 'x-debug': '1' } : undefined
         }),
         25000
       );
