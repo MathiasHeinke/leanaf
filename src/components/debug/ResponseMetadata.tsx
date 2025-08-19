@@ -158,9 +158,10 @@ export function ResponseMetadata({ metadata, className }: ResponseMetadataProps)
       </Card>
 
       {/* Prompt Inspection Modal */}
-      {showPromptModal && traceId && (
+      {showPromptModal && (
         <PromptInspectionModal
           traceId={traceId}
+          promptData={metadata}
           onClose={() => setShowPromptModal(false)}
         />
       )}

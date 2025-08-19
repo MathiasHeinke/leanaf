@@ -9,7 +9,11 @@ interface PromptInspectionModalProps {
 }
 
 export function PromptInspectionModal({ traceId, promptData: directPromptData, onClose }: PromptInspectionModalProps) {
-  const { promptData: fetchedPromptData, loading, error } = usePromptTraceData(traceId || undefined);
+  const resolvedTraceId = React.useMemo(() => {
+    const m = directPromptData || {};
+    return m?.serverTraceId || m?.traceId || traceId || undefined;
+  }, [directPromptData, traceId]);
+  const { promptData: fetchedPromptData, loading, error } = usePromptTraceData(resolvedTraceId);
   
   // Create fallback data from direct data if available
   const createFallbackData = (metadata: any) => {
