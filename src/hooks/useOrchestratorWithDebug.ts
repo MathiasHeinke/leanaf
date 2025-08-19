@@ -137,6 +137,7 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       if (normalizedResult.kind === 'message' || normalizedResult.kind === 'reflect' || normalizedResult.kind === 'choice_suggest') {
         normalizedResult.meta = {
           ...normalizedResult.meta,
+          traceId: currentTraceId, // CRITICAL: Pass through the correct trace ID
           source: 'orchestrator',
           processingTime: result.data?.processingTime,
           rawResponse: result.data,
@@ -147,6 +148,9 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
           error: result.data?.error || undefined,
         };
       }
+      
+      // Debug log for trace ID tracking  
+      console.log(`🔧 TraceID flow: ${currentTraceId} → normalizedResult.meta.traceId: ${(normalizedResult as any).meta?.traceId}`);
 
       return normalizedResult;
 
