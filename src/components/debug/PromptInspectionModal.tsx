@@ -11,8 +11,29 @@ interface PromptInspectionModalProps {
 export function PromptInspectionModal({ traceId, promptData: directPromptData, onClose }: PromptInspectionModalProps) {
   const { promptData: fetchedPromptData, loading, error } = usePromptTraceData(traceId || undefined);
   
-  // Use direct data if available, otherwise use fetched data
-  const promptData = directPromptData || fetchedPromptData;
+  // Create fallback data from direct data if available
+  const createFallbackData = (metadata: any) => {
+    if (!metadata) return null;
+    return {
+      traceId: metadata.traceId,
+      fallbackMetadata: {
+        coachId: metadata.coachId,
+        model: metadata.model,
+        pipeline: metadata.pipeline,
+        fallback: metadata.fallback,
+        retryCount: metadata.retryCount,
+        processingTime: metadata.processingTime,
+        source: metadata.source,
+        downgraded: metadata.downgraded,
+        error: metadata.error,
+        rawResponse: metadata.rawResponse,
+        apiErrors: metadata.apiErrors,
+      }
+    };
+  };
+
+  // Use direct data if available, otherwise use fetched data, or create fallback
+  const promptData = fetchedPromptData || createFallbackData(directPromptData);
 
   if (!traceId && !directPromptData) return null;
 
@@ -29,12 +50,15 @@ export function PromptInspectionModal({ traceId, promptData: directPromptData, o
     );
   }
 
-  if (error || !promptData) {
+  if (error && !promptData) {
     return (
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60 flex items-center justify-center p-4">
-        <div className="bg-background rounded-lg p-6">
+        <div className="bg-background rounded-lg p-6 max-w-md">
           <div className="text-center">
             <p className="text-destructive mb-4">Failed to load prompt data</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Error: {error}
+            </p>
             <button 
               onClick={onClose}
               className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90"
@@ -48,11 +72,12 @@ export function PromptInspectionModal({ traceId, promptData: directPromptData, o
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60 flex items-center justify-center p-4">
-      <div className="w-full max-w-7xl h-[95vh]">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60 flex items-center justify-center p-2 sm:p-4">
+      <div className="w-full max-w-7xl h-[98vh] sm:h-[95vh] rounded-lg overflow-hidden">
         <PromptViewer 
           data={promptData} 
           onClose={onClose} 
+          className="h-full"
         />
       </div>
     </div>

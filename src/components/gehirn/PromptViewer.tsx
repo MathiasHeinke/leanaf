@@ -10,7 +10,7 @@ import { Copy, ExternalLink, Eye, Brain, User, Database, Lightbulb, AlertTriangl
 import { toast } from 'sonner';
 
 export interface PromptData {
-  traceId: string;
+  traceId?: string;
   finalPrompt?: {
     system: string;
     user: string;
@@ -80,15 +80,54 @@ export interface PromptData {
     modelDowngrades?: string[];
     fallbackChain?: string[];
   };
+  // Fallback data when TraceId doesn't exist in DB
+  fallbackMetadata?: {
+    coachId?: string;
+    model?: string;
+    pipeline?: string;
+    fallback?: boolean;
+    retryCount?: number;
+    processingTime?: number;
+    source?: 'v1' | 'v2' | 'debug' | 'orchestrator';
+    downgraded?: boolean;
+    error?: string;
+    rawResponse?: any;
+    apiErrors?: any[];
+  };
 }
 
 interface PromptViewerProps {
-  data: PromptData;
+  data: PromptData | null;
   onClose?: () => void;
+  className?: string;
 }
 
-export function PromptViewer({ data, onClose }: PromptViewerProps) {
+export function PromptViewer({ data, onClose, className }: PromptViewerProps) {
   const [activeTab, setActiveTab] = useState('prompt');
+
+  // Handle no data case
+  if (!data) {
+    return (
+      <Card className={`w-full h-full bg-background ${className}`}>
+        <CardContent className="flex items-center justify-center h-full min-h-[400px]">
+          <div className="text-center space-y-4">
+            <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto" />
+            <div>
+              <h3 className="text-lg font-semibold mb-2">No Data Available</h3>
+              <p className="text-muted-foreground text-sm mb-4">
+                This trace ID doesn't exist in the database or no debug data was provided.
+              </p>
+              {onClose && (
+                <Button onClick={onClose} variant="outline">
+                  Close
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -103,159 +142,219 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
   };
 
   return (
-    <Card className="w-full max-w-6xl mx-auto">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-5 w-5 text-primary" />
+    <Card className={`w-full h-full bg-background ${className}`}>
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-4 px-4 sm:px-6">
+        <div className="min-w-0 flex-1">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Brain className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
             Prompt Analysis
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Trace ID: <code className="bg-muted px-1 py-0.5 rounded text-xs">{data.traceId}</code>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            {data.traceId ? (
+              <>
+                Trace ID: <code className="bg-muted px-1 py-0.5 rounded text-xs">{data.traceId}</code>
+              </>
+            ) : data.fallbackMetadata ? (
+              "Using fallback metadata (no trace data in DB)"
+            ) : (
+              "Debug data from response"
+            )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {data.finalPrompt && (
             <Button 
               variant="outline" 
               size="sm" 
               onClick={exportToPlayground}
-              className="gap-2"
+              className="gap-2 hidden sm:flex"
             >
               <ExternalLink className="h-4 w-4" />
               Playground
             </Button>
           )}
           {onClose && (
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="ghost" size="sm" onClick={onClose} className="px-2">
               <Eye className="h-4 w-4" />
             </Button>
           )}
         </div>
       </CardHeader>
 
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-8">
-            <TabsTrigger value="prompt" className="gap-1 text-xs">
-              <Brain className="h-3 w-3" />
-              Prompt
-            </TabsTrigger>
-            <TabsTrigger value="persona" className="gap-1 text-xs">
-              <User className="h-3 w-3" />
-              Persona
-            </TabsTrigger>
-            <TabsTrigger value="context" className="gap-1 text-xs">
-              <Database className="h-3 w-3" />
-              Context
-            </TabsTrigger>
-            <TabsTrigger value="rag" className="gap-1 text-xs">
-              <Lightbulb className="h-3 w-3" />
-              RAG
-            </TabsTrigger>
-            <TabsTrigger value="intent" className="gap-1 text-xs">
-              <Brain className="h-3 w-3" />
-              Intent
-            </TabsTrigger>
-            <TabsTrigger value="response" className="gap-1 text-xs">
-              <ExternalLink className="h-3 w-3" />
-              Response
-            </TabsTrigger>
-            <TabsTrigger value="errors" className="gap-1 text-xs">
-              <AlertTriangle className="h-3 w-3" />
-              Errors
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="gap-1 text-xs">
-              <Activity className="h-3 w-3" />
-              Performance
-            </TabsTrigger>
-          </TabsList>
+      <CardContent className="p-4 sm:p-6 h-[calc(100%-80px)] overflow-hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col">
+          <div className="overflow-x-auto mb-4">
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8 min-w-[600px] sm:min-w-0">
+              <TabsTrigger value="prompt" className="gap-1 text-xs px-2 py-2">
+                <Brain className="h-3 w-3" />
+                <span className="hidden sm:inline">Prompt</span>
+                <span className="sm:hidden">P</span>
+              </TabsTrigger>
+              <TabsTrigger value="persona" className="gap-1 text-xs px-2 py-2">
+                <User className="h-3 w-3" />
+                <span className="hidden sm:inline">Persona</span>
+                <span className="sm:hidden">Pe</span>
+              </TabsTrigger>
+              <TabsTrigger value="context" className="gap-1 text-xs px-2 py-2">
+                <Database className="h-3 w-3" />
+                <span className="hidden sm:inline">Context</span>
+                <span className="sm:hidden">C</span>
+              </TabsTrigger>
+              <TabsTrigger value="rag" className="gap-1 text-xs px-2 py-2">
+                <Lightbulb className="h-3 w-3" />
+                <span className="hidden sm:inline">RAG</span>
+                <span className="sm:hidden">R</span>
+              </TabsTrigger>
+              <TabsTrigger value="intent" className="gap-1 text-xs px-2 py-2">
+                <Brain className="h-3 w-3" />
+                <span className="hidden sm:inline">Intent</span>
+                <span className="sm:hidden">I</span>
+              </TabsTrigger>
+              <TabsTrigger value="response" className="gap-1 text-xs px-2 py-2">
+                <ExternalLink className="h-3 w-3" />
+                <span className="hidden sm:inline">Response</span>
+                <span className="sm:hidden">Res</span>
+              </TabsTrigger>
+              <TabsTrigger value="errors" className="gap-1 text-xs px-2 py-2">
+                <AlertTriangle className="h-3 w-3" />
+                <span className="hidden sm:inline">Errors</span>
+                <span className="sm:hidden">E</span>
+              </TabsTrigger>
+              <TabsTrigger value="performance" className="gap-1 text-xs px-2 py-2">
+                <Activity className="h-3 w-3" />
+                <span className="hidden sm:inline">Performance</span>
+                <span className="sm:hidden">Perf</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="prompt" className="space-y-4">
-            {data.finalPrompt ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Complete Prompt Sent to LLM</h3>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => copyToClipboard(data.finalPrompt!.full, 'Full prompt')}
-                    className="gap-2"
-                  >
-                    <Copy className="h-4 w-4" />
-                    Copy All
-                  </Button>
-                </div>
+          <div className="flex-1 overflow-y-auto">
+            <TabsContent value="prompt" className="space-y-4 h-full mt-0" data-state={activeTab === 'prompt' ? 'active' : 'inactive'}>
+              {data.finalPrompt ? (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <h3 className="text-base sm:text-lg font-semibold">Complete Prompt Sent to LLM</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => copyToClipboard(data.finalPrompt!.full, 'Full prompt')}
+                      className="gap-2 w-full sm:w-auto"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copy All
+                    </Button>
+                  </div>
 
-                <div className="grid gap-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-orange-600">System Prompt</h4>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => copyToClipboard(data.finalPrompt!.system, 'System prompt')}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
+                  <div className="grid gap-4">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-orange-600 text-sm sm:text-base">System Prompt</h4>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => copyToClipboard(data.finalPrompt!.system, 'System prompt')}
+                          className="px-2"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <ScrollArea className="h-48 w-full rounded-md border p-3">
+                        <pre className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+                          {data.finalPrompt.system}
+                        </pre>
+                      </ScrollArea>
                     </div>
-                    <ScrollArea className="h-48 w-full rounded-md border p-4">
-                      <pre className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {data.finalPrompt.system}
-                      </pre>
-                    </ScrollArea>
+
+                    <Separator />
+
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-blue-600 text-sm sm:text-base">User Prompt</h4>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => copyToClipboard(data.finalPrompt!.user, 'User prompt')}
+                          className="px-2"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <ScrollArea className="h-32 w-full rounded-md border p-3">
+                        <pre className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+                          {data.finalPrompt.user}
+                        </pre>
+                      </ScrollArea>
+                    </div>
                   </div>
 
-                  <Separator />
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-blue-600">User Prompt</h4>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => copyToClipboard(data.finalPrompt!.user, 'User prompt')}
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
+                  {(data.telemetryData || data.fallbackMetadata) && (
+                    <div className="flex flex-wrap gap-2 pt-4">
+                      {data.telemetryData?.prompt_tokens && (
+                        <Badge variant="secondary" className="text-xs">
+                          {data.telemetryData.prompt_tokens} prompt tokens
+                        </Badge>
+                      )}
+                      {data.telemetryData?.completion_tokens && (
+                        <Badge variant="secondary" className="text-xs">
+                          {data.telemetryData.completion_tokens} completion tokens
+                        </Badge>
+                      )}
+                      {data.telemetryData?.cost_usd && (
+                        <Badge variant="secondary" className="text-xs">
+                          ${data.telemetryData.cost_usd.toFixed(4)}
+                        </Badge>
+                      )}
+                      {(data.telemetryData?.model || data.fallbackMetadata?.model) && (
+                        <Badge variant="secondary" className="text-xs">
+                          {data.telemetryData?.model || data.fallbackMetadata?.model}
+                        </Badge>
+                      )}
+                      {data.fallbackMetadata?.processingTime && (
+                        <Badge variant="secondary" className="text-xs">
+                          {data.fallbackMetadata.processingTime}ms
+                        </Badge>
+                      )}
                     </div>
-                    <ScrollArea className="h-32 w-full rounded-md border p-4">
-                      <pre className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {data.finalPrompt.user}
-                      </pre>
-                    </ScrollArea>
+                  )}
+                </div>
+              ) : data.fallbackMetadata ? (
+                <div className="space-y-4">
+                  <div className="text-center py-6">
+                    <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
+                    <h3 className="text-lg font-semibold mb-2">No Prompt Data Available</h3>
+                    <p className="text-muted-foreground text-sm mb-4">
+                      This trace wasn't found in the database, but here's the available metadata:
+                    </p>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {data.fallbackMetadata.coachId && (
+                        <Badge variant="outline">{data.fallbackMetadata.coachId}</Badge>
+                      )}
+                      {data.fallbackMetadata.model && (
+                        <Badge variant="outline">{data.fallbackMetadata.model}</Badge>
+                      )}
+                      {data.fallbackMetadata.source && (
+                        <Badge variant={data.fallbackMetadata.source === 'v1' ? 'destructive' : 'secondary'}>
+                          {data.fallbackMetadata.source}
+                        </Badge>
+                      )}
+                      {data.fallbackMetadata.fallback && (
+                        <Badge variant="secondary">Fallback</Badge>
+                      )}
+                      {data.fallbackMetadata.downgraded && (
+                        <Badge variant="secondary">Downgraded</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No prompt data available for this trace</p>
+                </div>
+              )}
+            </TabsContent>
 
-                {data.telemetryData && (
-                  <div className="flex flex-wrap gap-2 pt-4">
-                    <Badge variant="secondary">
-                      {data.telemetryData.prompt_tokens} prompt tokens
-                    </Badge>
-                    <Badge variant="secondary">
-                      {data.telemetryData.completion_tokens} completion tokens
-                    </Badge>
-                    {data.telemetryData.cost_usd && (
-                      <Badge variant="secondary">
-                        ${data.telemetryData.cost_usd.toFixed(4)}
-                      </Badge>
-                    )}
-                    {data.telemetryData.model && (
-                      <Badge variant="secondary">
-                        {data.telemetryData.model}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No prompt data available for this trace
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="persona" className="space-y-4">
+            <TabsContent value="persona" className="space-y-4 mt-0" data-state={activeTab === 'persona' ? 'active' : 'inactive'}>
             {data.persona ? (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -454,16 +553,19 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
             )}
           </TabsContent>
 
-          <TabsContent value="response" className="space-y-4">
-            {data.llmResponse ? (
+          <TabsContent value="response" className="space-y-4 mt-0" data-state={activeTab === 'response' ? 'active' : 'inactive'}>
+            {data.llmResponse || data.fallbackMetadata?.rawResponse ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Raw LLM Response</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h3 className="text-base sm:text-lg font-semibold">Raw LLM Response</h3>
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => copyToClipboard(data.llmResponse!.raw_response, 'LLM response')}
-                    className="gap-2"
+                    onClick={() => copyToClipboard(
+                      data.llmResponse?.raw_response || JSON.stringify(data.fallbackMetadata?.rawResponse, null, 2), 
+                      'LLM response'
+                    )}
+                    className="gap-2 w-full sm:w-auto"
                   >
                     <Copy className="h-4 w-4" />
                     Copy Response
@@ -471,63 +573,88 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
                 </div>
 
                 <div>
-                  <h4 className="font-medium mb-2">Generated Content</h4>
-                  <ScrollArea className="h-64 w-full rounded-md border p-4">
-                    <pre className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {data.llmResponse.raw_response}
+                  <h4 className="font-medium mb-2 text-sm sm:text-base">Generated Content</h4>
+                  <ScrollArea className="h-64 w-full rounded-md border p-3">
+                    <pre className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+                      {data.llmResponse?.raw_response || JSON.stringify(data.fallbackMetadata?.rawResponse, null, 2)}
                     </pre>
                   </ScrollArea>
                 </div>
 
-                {data.llmResponse.usage && (
+                {data.llmResponse?.usage && (
                   <div>
-                    <h4 className="font-medium mb-2">Token Usage</h4>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">Token Usage</h4>
                     <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="text-xs">
                         {data.llmResponse.usage.prompt_tokens} prompt tokens
                       </Badge>
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="text-xs">
                         {data.llmResponse.usage.completion_tokens} completion tokens
                       </Badge>
-                      <Badge variant="secondary">
+                      <Badge variant="secondary" className="text-xs">
                         {data.llmResponse.usage.total_tokens} total tokens
                       </Badge>
                     </div>
                   </div>
                 )}
 
-                {data.llmResponse.choices && (
+                {data.llmResponse?.choices && (
                   <div>
-                    <h4 className="font-medium mb-2">API Response Structure</h4>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">API Response Structure</h4>
                     <JsonPanel data={data.llmResponse.choices} maxHeight={200} />
+                  </div>
+                )}
+
+                {data.fallbackMetadata?.rawResponse && !data.llmResponse && (
+                  <div>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">Fallback Response Data</h4>
+                    <JsonPanel data={data.fallbackMetadata.rawResponse} maxHeight={200} />
                   </div>
                 )}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                No LLM response data available for this trace
+                <ExternalLink className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No response data available for this trace</p>
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="errors" className="space-y-4">
-            {data.apiErrors && data.apiErrors.length > 0 ? (
+          <TabsContent value="errors" className="space-y-4 mt-0" data-state={activeTab === 'errors' ? 'active' : 'inactive'}>
+            {(data.apiErrors && data.apiErrors.length > 0) || (data.fallbackMetadata?.apiErrors && data.fallbackMetadata.apiErrors.length > 0) || data.fallbackMetadata?.error ? (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-destructive">OpenAI API Errors</h3>
-                {data.apiErrors.map((error, idx) => (
-                  <Card key={idx} className="p-4 border-destructive/20">
+                <h3 className="text-base sm:text-lg font-semibold text-destructive">API Errors & Issues</h3>
+                
+                {/* Fallback error */}
+                {data.fallbackMetadata?.error && (
+                  <Card className="p-3 sm:p-4 border-destructive/20">
                     <div className="flex items-start gap-3">
-                      <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="destructive">{error.type.replace('_', ' ').toUpperCase()}</Badge>
+                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge variant="destructive" className="text-xs">SYSTEM ERROR</Badge>
+                        </div>
+                        <p className="text-xs sm:text-sm font-medium mb-2 break-words">{data.fallbackMetadata.error}</p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
+                {/* API Errors from trace data */}
+                {data.apiErrors?.map((error, idx) => (
+                  <Card key={`trace-${idx}`} className="p-3 sm:p-4 border-destructive/20">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge variant="destructive" className="text-xs">{error.type.replace('_', ' ').toUpperCase()}</Badge>
                           {error.timestamp && (
                             <span className="text-xs text-muted-foreground">
                               {new Date(error.timestamp).toLocaleTimeString()}
                             </span>
                           )}
                         </div>
-                        <p className="text-sm font-medium mb-2">{error.message}</p>
+                        <p className="text-xs sm:text-sm font-medium mb-2 break-words">{error.message}</p>
                         {error.retryAfter && (
                           <div className="text-xs text-muted-foreground">
                             Retry after: {error.retryAfter}s
@@ -542,6 +669,23 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
                     </div>
                   </Card>
                 ))}
+
+                {/* Fallback API Errors */}
+                {data.fallbackMetadata?.apiErrors?.map((error, idx) => (
+                  <Card key={`fallback-${idx}`} className="p-3 sm:p-4 border-destructive/20">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <Badge variant="destructive" className="text-xs">API ERROR</Badge>
+                        </div>
+                        <div className="text-xs sm:text-sm">
+                          <JsonPanel data={error} maxHeight={100} />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
@@ -551,43 +695,51 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
             )}
           </TabsContent>
 
-          <TabsContent value="performance" className="space-y-4">
-            {data.performance || data.telemetryData ? (
+          <TabsContent value="performance" className="space-y-4 mt-0" data-state={activeTab === 'performance' ? 'active' : 'inactive'}>
+            {data.performance || data.telemetryData || data.fallbackMetadata?.processingTime ? (
               <div className="space-y-6">
-                <h3 className="text-lg font-semibold">Performance Analysis</h3>
+                <h3 className="text-base sm:text-lg font-semibold">Performance Analysis</h3>
                 
                 {/* Performance Metrics */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                   {data.performance?.requestDuration && (
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold text-primary">
+                    <div className="text-center p-2 sm:p-3 bg-muted rounded-lg">
+                      <div className="text-lg sm:text-2xl font-bold text-primary">
                         {data.performance.requestDuration}ms
                       </div>
-                      <div className="text-sm text-muted-foreground">Request Duration</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Request Duration</div>
                     </div>
                   )}
                   {data.performance?.firstTokenMs && (
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold text-primary">
+                    <div className="text-center p-2 sm:p-3 bg-muted rounded-lg">
+                      <div className="text-lg sm:text-2xl font-bold text-primary">
                         {data.performance.firstTokenMs}ms
                       </div>
-                      <div className="text-sm text-muted-foreground">First Token</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">First Token</div>
                     </div>
                   )}
                   {data.telemetryData?.firstToken_ms && (
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold text-primary">
+                    <div className="text-center p-2 sm:p-3 bg-muted rounded-lg">
+                      <div className="text-lg sm:text-2xl font-bold text-primary">
                         {data.telemetryData.firstToken_ms}ms
                       </div>
-                      <div className="text-sm text-muted-foreground">First Token</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">First Token</div>
+                    </div>
+                  )}
+                  {data.fallbackMetadata?.processingTime && (
+                    <div className="text-center p-2 sm:p-3 bg-muted rounded-lg">
+                      <div className="text-lg sm:text-2xl font-bold text-primary">
+                        {data.fallbackMetadata.processingTime}ms
+                      </div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Processing Time</div>
                     </div>
                   )}
                   {data.performance?.tokenThroughput && (
-                    <div className="text-center p-3 bg-muted rounded-lg">
-                      <div className="text-2xl font-bold text-primary">
+                    <div className="text-center p-2 sm:p-3 bg-muted rounded-lg">
+                      <div className="text-lg sm:text-2xl font-bold text-primary">
                         {data.performance.tokenThroughput.toFixed(1)}
                       </div>
-                      <div className="text-sm text-muted-foreground">Tokens/sec</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">Tokens/sec</div>
                     </div>
                   )}
                 </div>
@@ -654,6 +806,7 @@ export function PromptViewer({ data, onClose }: PromptViewerProps) {
               </div>
             )}
           </TabsContent>
+          </div>
         </Tabs>
       </CardContent>
     </Card>
