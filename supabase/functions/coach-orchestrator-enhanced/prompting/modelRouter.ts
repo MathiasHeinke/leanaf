@@ -43,19 +43,11 @@ export function chooseModels(flags: ModelFlags = {}): ModelChoice {
 }
 
 export function getModelParameters(model: string) {
-  // GPT-5 and newer models
-  if (model.includes('gpt-5') || model.includes('o3') || model.includes('o4') || model.includes('gpt-4.1')) {
-    return {
-      max_completion_tokens: 1000,
-      // Note: No temperature parameter for newer models
-    };
+  const params: any = { max_tokens: 1000 };
+  if (!(model.includes('gpt-5') || model.includes('o3') || model.includes('o4') || model.includes('gpt-4.1'))) {
+    params.temperature = 0.7;
   }
-  
-  // Legacy models
-  return {
-    max_tokens: 1000,
-    temperature: 0.7,
-  };
+  return params;
 }
 
 export function shouldUseHighFidelity(userMsg: string, context: any): boolean {

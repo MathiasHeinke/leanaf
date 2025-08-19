@@ -519,7 +519,12 @@ serve(async (req) => {
         chat: 'gpt-4.1-2025-04-14', 
         tools: 'gpt-4o-mini' 
       };
-      const modelParams = { max_completion_tokens: 1000 }; // GPT-4.1+ require max_completion_tokens, no temperature
+      const modelParams = { max_tokens: 1000 }; // Use max_tokens for broader compatibility
+
+      const defaultMessages = [
+        { role: 'system', content: v2Prompt.system },
+        { role: 'user', content: v2Prompt.user }
+      ];
       
       // Log model selection
       logModelRouterEvent({
@@ -532,18 +537,18 @@ serve(async (req) => {
       
       // Generate response with v2 model (with robust error handling and retry logic)
       let responseText = "ARES v2 antwortet nicht.";
-      let usedV1Fallback = false;
+      let usedFallbackModel = false;
       let finalModel = models.chat;
       
       // OpenAI API call with retry and downgrade chain
-      const callOpenAI = async (model: string, attempt: number = 1): Promise<string> => {
+      const callOpenAI = async (model: string, attempt: number = 1, messages = defaultMessages): Promise<string> => {
         try {
           const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
               model,
-              messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
+              messages,
               ...modelParams
             })
           });
@@ -588,31 +593,38 @@ serve(async (req) => {
       };
       
       try {
-        // Try primary model first
         finalModel = models.chat;
         responseText = await callOpenAI(finalModel);
-        
       } catch (primaryError) {
-        console.log(`[ARES-V2-${traceId}] Primary model ${models.chat} failed, trying fallback model`);
-        
-        // Try fallback to gpt-4.1 if not already using it
-        if (models.chat !== 'gpt-4.1-2025-04-14') {
+        console.log(`[ARES-V2-${traceId}] Primary model ${models.chat} failed:`, primaryError);
+        usedFallbackModel = true;
+        const fallbacks = ['gpt-4.1-2025-04-14', 'gpt-4o', 'gpt-4o-mini'];
+        let success = false;
+        for (const fb of fallbacks) {
+          if (fb === models.chat) continue;
           try {
-            finalModel = 'gpt-4.1-2025-04-14';
-            responseText = await callOpenAI(finalModel);
-            console.log(`[ARES-V2-${traceId}] Fallback model successful`);
-            
-          } catch (fallbackError) {
-            console.error(`[ARES-V2-${traceId}] Fallback model also failed, using v1 generator:`, fallbackError);
-            usedV1Fallback = true;
-            const legacyPrompt = `Du bist ARES - ein direkter Coach. Antworte klar auf: "${userText}"`;
-            responseText = await generateAresResponse(legacyPrompt, traceId);
+            finalModel = fb;
+            responseText = await callOpenAI(fb);
+            console.log(`[ARES-V2-${traceId}] Fallback model ${fb} successful`);
+            success = true;
+            break;
+          } catch (err) {
+            console.error(`[ARES-V2-${traceId}] Fallback model ${fb} failed`, err);
           }
-        } else {
-          console.error(`[ARES-V2-${traceId}] Already using stable model, falling back to v1:`, primaryError);
-          usedV1Fallback = true;
-          const legacyPrompt = `Du bist ARES - ein direkter Coach. Antworte klar auf: "${userText}"`;
-          responseText = await generateAresResponse(legacyPrompt, traceId);
+        }
+        if (!success) {
+          console.error(`[ARES-V2-${traceId}] All fallback models failed, using simplified prompt`);
+          const simpleMessages = [
+            { role: 'system', content: 'Du bist ARES - ein direkter Coach.' },
+            { role: 'user', content: userText }
+          ];
+          try {
+            finalModel = 'gpt-4o-mini';
+            responseText = await callOpenAI(finalModel, 1, simpleMessages);
+          } catch (finalError) {
+            console.error(`[ARES-V2-${traceId}] Simplified fallback failed`, finalError);
+            responseText = 'ARES System: Temporäre Verbindungsstörung. Bitte versuche es später erneut.';
+          }
         }
       }
       
@@ -706,7 +718,7 @@ serve(async (req) => {
         traceId,
         meta: {
           version: "v2",
-          usedV1Fallback,
+          usedFallbackModel,
           finalModel,
           antiRepeatTriggered: wasRedundant,
           dial: v2Dial,
