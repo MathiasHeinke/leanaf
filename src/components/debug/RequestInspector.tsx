@@ -20,14 +20,19 @@ export function RequestInspector({
           <h2 className="text-base font-semibold">Request Inspector</h2>
           <p className="text-sm text-muted-foreground">Zeigt den letzten Payload und die Roh-Antwort der Funktion.</p>
         </div>
-        {onInspectPrompt && response?.traceId && (
+        {onInspectPrompt && (response?.traceId || response?.meta?.debug) && (
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs">
-              {response.model || 'GPT-4'}
+              {response?.meta?.debug?.model || response.model || 'GPT-4'}
             </Badge>
-            {response.tokensUsed && (
+            {(response?.meta?.debug?.tokensUsed || response.tokensUsed) && (
               <Badge variant="secondary" className="text-xs">
-                {response.tokensUsed} tokens
+                {response?.meta?.debug?.tokensUsed || response.tokensUsed} tokens
+              </Badge>
+            )}
+            {response?.meta?.debug && (
+              <Badge variant="outline" className="text-xs bg-green-50">
+                Deep Debug
               </Badge>
             )}
             <Button

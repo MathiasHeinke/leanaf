@@ -3,14 +3,18 @@ import { PromptViewer } from '@/components/gehirn/PromptViewer';
 import { usePromptTraceData } from '@/hooks/usePromptTraceData';
 
 interface PromptInspectionModalProps {
-  traceId: string | null;
+  traceId?: string | null;
+  promptData?: any; // For direct debug data from response.meta.debug
   onClose: () => void;
 }
 
-export function PromptInspectionModal({ traceId, onClose }: PromptInspectionModalProps) {
-  const { promptData, loading, error } = usePromptTraceData(traceId || undefined);
+export function PromptInspectionModal({ traceId, promptData: directPromptData, onClose }: PromptInspectionModalProps) {
+  const { promptData: fetchedPromptData, loading, error } = usePromptTraceData(traceId || undefined);
+  
+  // Use direct data if available, otherwise use fetched data
+  const promptData = directPromptData || fetchedPromptData;
 
-  if (!traceId) return null;
+  if (!traceId && !directPromptData) return null;
 
   if (loading) {
     return (

@@ -195,12 +195,13 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [lastResponse, setLastResponse] = useState<any>(null);
   const [selectedTraceForPrompt, setSelectedTraceForPrompt] = useState<string | null>(null);
   const [promptViewerData, setPromptViewerData] = useState<PromptData | null>(null);
+  const [deepDebug, setDeepDebug] = useState(false);
   
   const { sendEvent: sendEventWithDebug } = useOrchestratorWithDebug({
     ...debugSteps,
     setLastRequest,
     setLastResponse
-  });
+  }, deepDebug);
 
   // Points & streaks
   const { awardPoints, updateStreak } = usePointsSystem();
@@ -1044,6 +1045,41 @@ const handleInspectMessage = useCallback((traceId: string) => {
   setSelectedTraceForPrompt(traceId);
 }, []);
 
+// ============= DEEP DEBUG HANDLERS =============
+const handleInspectPrompt = useCallback((traceId?: string, promptData?: any) => {
+  if (promptData) {
+    // Direct prompt data from debug response
+    setPromptViewerData(promptData);
+    setSelectedTraceForPrompt('direct');
+  } else if (traceId) {
+    // Traditional trace ID lookup
+    setSelectedTraceForPrompt(traceId);
+    setPromptViewerData(null);
+  }
+}, []);
+
+const handlePromptNow = useCallback(async () => {
+  if (!user?.id) return;
+  
+  try {
+    const reply = await sendEventWithDebug(user.id, {
+      type: "TEXT",
+      text: "Zeige mir deinen aktuellen Status und deine letzten Überlegungen",
+      clientEventId: crypto.randomUUID(),
+      context: {
+        source: "debug",
+        coachMode: mode,
+        coachId: coach?.id || "ares",
+        debug_prompt: true
+      }
+    } as any);
+    renderOrchestratorReply(reply);
+  } catch (error) {
+    toast.error("Debug-Prompt fehlgeschlagen");
+    console.error("Debug prompt error:", error);
+  }
+}, [user?.id, sendEventWithDebug, mode, coach?.id, renderOrchestratorReply]);
+
 // ============= ENHANCED SEND MESSAGE HANDLER =============
 const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
   if (!message.trim() || isOrchestratorLoading || !user?.id) return;
@@ -1494,13 +1530,20 @@ chatInput={
         lastRequest={lastRequest}
         lastResponse={lastResponse}
         onClearSteps={debugSteps.clearSteps}
-        onInspectPrompt={(traceId) => setSelectedTraceForPrompt(traceId)}
+        onInspectPrompt={handleInspectPrompt}
+        deepDebug={deepDebug}
+        onDeepDebugToggle={setDeepDebug}
+        onPromptNow={handlePromptNow}
       />
       
       {/* Prompt Viewer for individual message inspection */}
       <PromptInspectionModal 
-        traceId={selectedTraceForPrompt}
-        onClose={() => setSelectedTraceForPrompt(null)}
+        traceId={selectedTraceForPrompt !== 'direct' ? selectedTraceForPrompt : undefined}
+        promptData={promptViewerData}
+        onClose={() => {
+          setSelectedTraceForPrompt(null);
+          setPromptViewerData(null);
+        }}
       />
     </Card>
   );

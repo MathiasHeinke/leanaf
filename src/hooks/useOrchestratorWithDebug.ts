@@ -31,7 +31,7 @@ type DebugCallbacks = {
   setLastResponse?: (response: any) => void;
 };
 
-export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
+export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDebug?: boolean) {
   const currentClientEventId = useRef<string | null>(null);
 
   function beginUserAction(): string {
@@ -103,7 +103,9 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks) {
         context,
         // Also send as direct fields for fallback compatibility
         text: ev.type === 'TEXT' ? ev.text : undefined,
-        clientEventId: ev.clientEventId
+        clientEventId: ev.clientEventId,
+        // Enable deep debugging if requested
+        debug: deepDebug
       };
       
       console.log("🔧 Sending payload:", JSON.stringify(payload, null, 2));

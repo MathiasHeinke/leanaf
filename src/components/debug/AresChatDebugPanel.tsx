@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Bug, Terminal, Database, Clock, X, RefreshCw, Search, FileText, Filter } from 'lucide-react';
+import { Bug, Terminal, Database, Clock, X, RefreshCw, Search, FileText, Filter, Zap, ToggleLeft, ToggleRight } from 'lucide-react';
 import { UserChatDebugger } from '@/components/debug/UserChatDebugger';
 import { RequestInspector } from '@/components/debug/RequestInspector';
 import { PromptViewer, PromptData } from '@/components/gehirn/PromptViewer';
@@ -25,7 +25,10 @@ interface AresChatDebugPanelProps {
   lastRequest: any | null;
   lastResponse: any | null;
   onClearSteps: () => void;
-  onInspectPrompt?: (traceId: string) => void;
+  onInspectPrompt?: (traceId?: string, promptData?: any) => void;
+  deepDebug?: boolean;
+  onDeepDebugToggle?: (enabled: boolean) => void;
+  onPromptNow?: () => void;
 }
 
 export function AresChatDebugPanel({ 
@@ -35,7 +38,10 @@ export function AresChatDebugPanel({
   lastRequest, 
   lastResponse, 
   onClearSteps,
-  onInspectPrompt
+  onInspectPrompt,
+  deepDebug = false,
+  onDeepDebugToggle,
+  onPromptNow
 }: AresChatDebugPanelProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('steps');
@@ -71,9 +77,15 @@ export function AresChatDebugPanel({
     }
   }, [isOpen, refreshTraces]);
 
-  const handleInspectPrompt = (traceId: string) => {
-    setSelectedTraceId(traceId);
-    setShowPromptViewer(true);
+  const handleInspectPrompt = (traceId?: string, directPromptData?: any) => {
+    if (directPromptData) {
+      // Use direct prompt data from debug response
+      onInspectPrompt?.(undefined, directPromptData);
+    } else if (traceId) {
+      // Use trace ID to fetch data
+      setSelectedTraceId(traceId);
+      setShowPromptViewer(true);
+    }
   };
 
   if (!isOpen) return null;
@@ -90,6 +102,22 @@ export function AresChatDebugPanel({
             </Badge>
           </div>
           <div className="flex items-center gap-2">
+            {onDeepDebugToggle && (
+              <Button 
+                variant={deepDebug ? "default" : "outline"} 
+                size="sm" 
+                onClick={() => onDeepDebugToggle(!deepDebug)}
+              >
+                {deepDebug ? <ToggleRight className="h-4 w-4 mr-1" /> : <ToggleLeft className="h-4 w-4 mr-1" />}
+                Deep Debug
+              </Button>
+            )}
+            {onPromptNow && (
+              <Button variant="outline" size="sm" onClick={onPromptNow}>
+                <Zap className="h-4 w-4 mr-1" />
+                Prompt Now
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={onClearSteps}>
               <RefreshCw className="h-4 w-4 mr-1" />
               Clear
@@ -131,7 +159,8 @@ export function AresChatDebugPanel({
                 <RequestInspector 
                   request={lastRequest} 
                   response={lastResponse}
-                  onInspectPrompt={lastResponse?.traceId ? () => handleInspectPrompt(lastResponse.traceId) : undefined}
+                  onInspectPrompt={(lastResponse?.traceId || lastResponse?.meta?.debug) ? 
+                    () => handleInspectPrompt(lastResponse.traceId, lastResponse?.meta?.debug) : undefined}
                 />
               </TabsContent>
 
