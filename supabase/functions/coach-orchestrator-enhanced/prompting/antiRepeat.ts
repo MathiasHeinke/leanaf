@@ -1,6 +1,6 @@
-// Anti-Repeat Guard: Prevents robotic repetition
-const RECENT_WINDOW = 12; // Last 12 responses to check
-const SIM_THRESHOLD = 0.85; // Semantic similarity (0-1)
+// Anti-Repeat Guard: Prevents robotic repetition (TUNED FOR MORE VARIABILITY)
+const RECENT_WINDOW = 8; // Last 8 responses to check (reduced for more freshness)
+const SIM_THRESHOLD = 0.75; // Semantic similarity (0-1) - lowered for more variation
 
 export type HistoryItem = { 
   text: string; 
@@ -43,14 +43,29 @@ export function generateAlternative(
   originalCandidate: string,
   fallbackTexts: string[] = []
 ): string {
-  // Use fallback texts or truncate original
+  // Expanded fallback pool for more variety
+  const defaultAlternatives = [
+    "Was ist dein nächster konkreter Schritt?",
+    "Erzähl mir mehr über deine aktuelle Situation.",
+    "Worauf legst du heute den Fokus?",
+    "Wie fühlst du dich mit dem bisherigen Fortschritt?",
+    "Was brauchst du als nächstes von mir?",
+    "Lass uns spezifischer werden - welcher Bereich?",
+    "Womit kann ich dir am besten helfen?",
+    "Was steht heute auf deiner Prioritätenliste?"
+  ];
+  
+  // Use provided fallbacks first
   for (const fallback of fallbackTexts) {
     if (fallback && fallback !== originalCandidate) {
       return fallback;
     }
   }
   
+  // Use random alternative from expanded pool
+  const randomAlt = defaultAlternatives[Math.floor(Math.random() * defaultAlternatives.length)];
+  
   // Last resort: truncate and modify
   const truncated = originalCandidate.split('.')[0];
-  return truncated.length > 20 ? truncated : originalCandidate;
+  return randomAlt || (truncated.length > 20 ? truncated : originalCandidate);
 }

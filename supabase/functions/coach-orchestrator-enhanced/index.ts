@@ -230,6 +230,42 @@ function isGoalRelevant(userText: string, _userProfile: any, _recentSummaries: a
   return false;
 }
 
+// Apply "Predigt-Detox" filter to remove repetitive motivational phrases
+function applyPredigtDetox(text: string): string {
+  const predigtPhrases = [
+    /\b(dein ziel|das ziel|fokus auf|konzentrier|konzentriere dich|motivation|motiviert bleiben)\b/gi,
+    /\b(bleib dran|durchhalten|nicht aufgeben|am ball bleiben)\b/gi,
+    /\b(schritt für schritt|step by step|eins nach dem anderen)\b/gi,
+    /\b(du schaffst das|du packst das|ich glaube an dich)\b/gi,
+    /\b(gemeinsam|zusammen schaffen wir das|team)\b/gi
+  ];
+  
+  let cleaned = text;
+  
+  // Replace repetitive phrases with more natural alternatives
+  const alternatives = {
+    'dein ziel': 'was du erreichen willst',
+    'fokus auf': 'schau dir an',
+    'konzentriere dich': 'leg den schwerpunkt auf',
+    'motivation': 'antrieb',
+    'bleib dran': 'mach weiter',
+    'durchhalten': 'weitermachen',
+    'schritt für schritt': 'nach und nach',
+    'du schaffst das': 'das kriegst du hin',
+    'gemeinsam': 'lass uns'
+  };
+  
+  // Apply smart replacements (only if phrase appears more than once in conversation context)
+  for (const [phrase, replacement] of Object.entries(alternatives)) {
+    const regex = new RegExp(`\\b${phrase}\\b`, 'gi');
+    if ((cleaned.match(regex) || []).length > 1) {
+      cleaned = cleaned.replace(regex, replacement);
+    }
+  }
+  
+  return cleaned;
+}
+
 // Generate ARES response using OpenAI
 async function generateAresResponse(prompt: string, traceId: string) {
   const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -491,35 +527,90 @@ serve(async (req) => {
         highFidelity: shouldUseHighFidelity(userText, promptCtx)
       });
       
-      // Generate response with v2 model (with error handling)
+      // Generate response with v2 model (with robust error handling and retry logic)
       let responseText = "ARES v2 antwortet nicht.";
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: models.chat,
-            messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
-            ...modelParams
-          })
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error(`[ARES-V2-${traceId}] OpenAI API Error:`, response.status, errorData);
-          throw new Error(`OpenAI API returned ${response.status}`);
+      let usedV1Fallback = false;
+      let finalModel = models.chat;
+      
+      // OpenAI API call with retry and downgrade chain
+      const callOpenAI = async (model: string, attempt: number = 1): Promise<string> => {
+        try {
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
+              ...modelParams
+            })
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => 'No error body');
+            const errorSnippet = errorText.substring(0, 200);
+            console.error(`[ARES-V2-${traceId}] OpenAI API Error - Status: ${response.status}, Model: ${model}, Body: ${errorSnippet}`);
+            
+            // Handle rate limiting with retry
+            if (response.status === 429 && attempt <= 3) {
+              const delay = Math.pow(2, attempt) * 1000; // Exponential backoff
+              console.log(`[ARES-V2-${traceId}] Rate limited, retrying in ${delay}ms (attempt ${attempt})`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              return callOpenAI(model, attempt + 1);
+            }
+            
+            // Handle server errors with retry
+            if (response.status >= 500 && attempt <= 2) {
+              const delay = 1000 * attempt;
+              console.log(`[ARES-V2-${traceId}] Server error, retrying in ${delay}ms (attempt ${attempt})`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              return callOpenAI(model, attempt + 1);
+            }
+            
+            throw new Error(`OpenAI API returned ${response.status}: ${errorSnippet}`);
+          }
+          
+          const data = await response.json();
+          const content = data.choices?.[0]?.message?.content;
+          if (!content) {
+            throw new Error("No content in OpenAI response");
+          }
+          
+          console.log(`[ARES-V2-${traceId}] OpenAI response successful - Model: ${model}, Length: ${content.length}`);
+          return content;
+          
+        } catch (error) {
+          console.error(`[ARES-V2-${traceId}] OpenAI call failed - Model: ${model}, Attempt: ${attempt}, Error:`, error);
+          throw error;
         }
+      };
+      
+      try {
+        // Try primary model first
+        finalModel = models.chat;
+        responseText = await callOpenAI(finalModel);
         
-        const data = await response.json();
-        responseText = data.choices?.[0]?.message?.content || "ARES v2 konnte keine Antwort generieren.";
+      } catch (primaryError) {
+        console.log(`[ARES-V2-${traceId}] Primary model ${models.chat} failed, trying fallback model`);
         
-        console.log(`[ARES-V2-${traceId}] OpenAI response successful, length: ${responseText.length}`);
-        
-      } catch (openaiError) {
-        console.error(`[ARES-V2-${traceId}] OpenAI call failed, falling back to v1:`, openaiError);
-        // Fallback to v1 response generation
-        const legacyPrompt = `Du bist ARES - ein direkter Coach. Antworte klar auf: "${userText}"`;
-        responseText = await generateAresResponse(legacyPrompt, traceId);
+        // Try fallback to gpt-4.1 if not already using it
+        if (models.chat !== 'gpt-4.1-2025-04-14') {
+          try {
+            finalModel = 'gpt-4.1-2025-04-14';
+            responseText = await callOpenAI(finalModel);
+            console.log(`[ARES-V2-${traceId}] Fallback model successful`);
+            
+          } catch (fallbackError) {
+            console.error(`[ARES-V2-${traceId}] Fallback model also failed, using v1 generator:`, fallbackError);
+            usedV1Fallback = true;
+            const legacyPrompt = `Du bist ARES - ein direkter Coach. Antworte klar auf: "${userText}"`;
+            responseText = await generateAresResponse(legacyPrompt, traceId);
+          }
+        } else {
+          console.error(`[ARES-V2-${traceId}] Already using stable model, falling back to v1:`, primaryError);
+          usedV1Fallback = true;
+          const legacyPrompt = `Du bist ARES - ein direkter Coach. Antworte klar auf: "${userText}"`;
+          responseText = await generateAresResponse(legacyPrompt, traceId);
+        }
       }
       
       // Load recent message history for anti-repeat
@@ -541,6 +632,9 @@ serve(async (req) => {
           "Was ist der nächste wichtige Schritt für dich?"
         ]);
       }
+      
+      // Apply "Predigt-Detox" filter - remove generic motivational phrases
+      responseText = applyPredigtDetox(responseText);
       
       // Apply voice and anti-repeat
       const topic = detectTopic(userText);
@@ -607,7 +701,15 @@ serve(async (req) => {
         kind: "message",
         text: responseText,
         traceId,
-        meta: debugMode ? { debug: { v2Prompt, models, nameResult } } : undefined
+        meta: {
+          version: "v2",
+          usedV1Fallback,
+          finalModel,
+          antiRepeatTriggered: wasRedundant,
+          dial: v2Dial,
+          archetype: v2Prompt.extra.archetype,
+          ...(debugMode ? { debug: { v2Prompt, models, nameResult } } : {})
+        }
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
