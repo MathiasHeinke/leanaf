@@ -2,11 +2,49 @@
 const RECENT_WINDOW = 12; // Last 12 responses to check
 const SIM_THRESHOLD = 0.85; // Semantic similarity (0-1)
 
-export type HistoryItem = { 
-  text: string; 
-  ts: number; 
-  kind: "short" | "deep" | "goal" | "tip"; 
+export type HistoryItem = {
+  text: string;
+  ts: number;
+  kind: "short" | "deep" | "goal" | "tip";
 };
+
+// Persistent history helpers
+export async function loadMessageHistory(
+  supabase: any,
+  userId: string,
+  coachId: string
+): Promise<HistoryItem[]> {
+  try {
+    const { data } = await supabase
+      .from('coach_runtime_state')
+      .select('state_value')
+      .eq('user_id', userId)
+      .eq('coach_id', `${coachId}_history`)
+      .eq('state_key', 'message_history')
+      .single();
+    return data?.state_value?.history || [];
+  } catch {
+    return [];
+  }
+}
+
+export async function persistMessageHistory(
+  supabase: any,
+  userId: string,
+  coachId: string,
+  history: HistoryItem[]
+): Promise<void> {
+  try {
+    await supabase.from('coach_runtime_state').upsert({
+      user_id: userId,
+      coach_id: `${coachId}_history`,
+      state_key: 'message_history',
+      state_value: { history }
+    });
+  } catch (error) {
+    console.warn('Failed to persist message history:', error);
+  }
+}
 
 export function isRedundant(
   candidate: string, 

@@ -67,6 +67,14 @@ Erstelle eine `.env.local` Datei mit folgenden Variablen:
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+OPENAI_API_KEY=your_openai_api_key
+```
+
+`OPENAI_API_KEY` wird für die Edge Function `coach-orchestrator-enhanced` benötigt, damit ARES v2 mit OpenAI kommunizieren kann.
+Setze das Secret auch in Supabase:
+
+```bash
+supabase secrets set OPENAI_API_KEY=your_openai_api_key
 ```
 
 ### Supabase Setup

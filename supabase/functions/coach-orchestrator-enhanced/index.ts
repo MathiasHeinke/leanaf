@@ -9,7 +9,7 @@ import { loadUserMoodContext, decideAresDial, getRitualContext } from "./aresDia
 // ARES v2 imports
 import { resolveUserName, persistNameAsked, loadNameState } from "./prompting/nameResolver.ts";
 import { shouldRecallGoals, shouldRequestData } from "./prompting/gates.ts";
-import { isRedundant, generateAlternative } from "./prompting/antiRepeat.ts";
+import { isRedundant, generateAlternative, loadMessageHistory, persistMessageHistory } from "./prompting/antiRepeat.ts";
 import { pickVoiceLine, wantDeepFollowUp, detectTopic } from "./prompting/voice.ts";
 import { dialSettings, mapLegacyDial } from "./prompting/dials.ts";
 import { chooseModels, getModelParameters, shouldUseHighFidelity } from "./prompting/modelRouter.ts";
@@ -178,7 +178,7 @@ async function buildAresPrompt(supabase: any, userId: string, coachId: string, u
       `Du bist ARES - ein direkter, masculiner Mentor-Coach.`,
       `Dein Stil: klar, strukturiert, leicht fordernd aber unterstützend.`,
       `Sprich wie ein Bruder, der fordert aber auch beschützt.`,
-      `Nutze kurze, prägnante Sätze. Sei authentisch, nie künstlich.`,
+      `Sei authentisch, nie künstlich.`,
       userName ? `Sprich ${userName} mit Namen an wenn passend.` : `Frage einmal freundlich nach dem Namen.`,
       ``,
       `KONTEXT:`,
@@ -433,15 +433,27 @@ serve(async (req) => {
       
       // Name Resolution
       const nameState = await loadNameState(supabase, userId, coachId);
+      logNameResolverEvent({ userId, action: 'load', name: nameState?.name, success: true });
       const identity = { userId, name: nameState?.name, askedAt: nameState?.askedAt };
       const nameResult = await resolveUserName(identity, async () => {
         const profile = await loadUserProfile(supabase, userId);
         return profile.preferred_name || profile.display_name || profile.first_name || null;
       });
-      
+
       if (nameResult.setAskedAt) {
         await persistNameAsked(supabase, userId, coachId);
+        logNameResolverEvent({ userId, action: 'persist', success: true });
       }
+
+      if (nameResult.ask && nameResult.askText) {
+        logNameResolverEvent({ userId, action: 'ask', success: true });
+        return new Response(
+          JSON.stringify({ kind: 'message', text: nameResult.askText, traceId }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      logNameResolverEvent({ userId, action: 'found', name: nameResult.name, success: true });
       
       // Load context for v2
       const [userProfile, moodCtx] = await Promise.all([
@@ -468,29 +480,55 @@ serve(async (req) => {
       const v2Prompt = buildAresPromptV2(promptCtx);
       
       // Model selection
-      const models = chooseModels({ highFidelity: shouldUseHighFidelity(userText, promptCtx) });
+      const highFidelity = shouldUseHighFidelity(userText, promptCtx);
+      const models = chooseModels({ highFidelity });
+      logModelRouterEvent({
+        chatModel: models.chat,
+        toolsModel: models.tools,
+        reason: highFidelity ? 'high_fidelity' : 'default',
+        highFidelity
+      });
       const modelParams = getModelParameters(models.chat);
       
       // Generate response with v2 model
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: models.chat,
-          messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
-          ...modelParams
-        })
-      });
-      
-      const data = await response.json();
-      let responseText = data.choices?.[0]?.message?.content || "ARES v2 antwortet nicht.";
+      let responseText: string;
+      try {
+        const apiKey = Deno.env.get('OPENAI_API_KEY');
+        if (!apiKey) {
+          throw new Error('Missing OPENAI_API_KEY');
+        }
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: models.chat,
+            messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
+            ...modelParams
+          })
+        });
+        if (!response.ok) {
+          throw new Error(`OpenAI status ${response.status}`);
+        }
+        const data = await response.json();
+        responseText = data.choices?.[0]?.message?.content || "ARES v2 antwortet nicht.";
+      } catch (openAiError) {
+        console.error(`[ARES-V2-${traceId}] OpenAI call failed:`, openAiError);
+        // Fallback to legacy implementation
+        const builtFallback = await buildAresPrompt(supabase, userId, coachId, userText);
+        responseText = await generateAresResponse(builtFallback.prompt, traceId);
+      }
       
       // Load recent message history for anti-repeat
-      const historyState = await loadNameState(supabase, userId, `${coachId}_history`);
-      const history = historyState?.history || [];
-      
-      // Check for redundancy
-      if (isRedundant(responseText, history)) {
+      const history = await loadMessageHistory(supabase, userId, coachId);
+
+      const redundant = isRedundant(responseText, history);
+      logAntiRepeatEvent({
+        candidate: responseText,
+        isRedundant: redundant,
+        historySize: history.length,
+        fallbackUsed: redundant
+      });
+      if (redundant) {
         responseText = generateAlternative(responseText, [
           "Du fragst nach Details - lass uns spezifischer werden.",
           "Sag mir mehr über deine aktuelle Situation.",
@@ -516,12 +554,7 @@ serve(async (req) => {
       const updatedHistory = [...history, newHistoryItem].slice(-12); // Keep last 12
       
       // Persist updated history
-      await supabase.from('coach_runtime_state').upsert({
-        user_id: userId,
-        coach_id: `${coachId}_history`,
-        state_key: 'message_history',
-        state_value: { history: updatedHistory }
-      });
+      await persistMessageHistory(supabase, userId, coachId, updatedHistory);
       
       // Persist full prompt to trace events
       try {
@@ -554,6 +587,7 @@ serve(async (req) => {
         temp: v2Prompt.extra.temp,
         maxWords: v2Prompt.extra.maxWords,
         responseLength: responseText.length,
+        wasRedundant: redundant,
         userMsgLength: userText.length,
         processingTimeMs: Date.now() - startTime
       });
