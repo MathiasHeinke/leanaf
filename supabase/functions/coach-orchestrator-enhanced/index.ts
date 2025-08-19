@@ -472,18 +472,32 @@ serve(async (req) => {
       const modelParams = getModelParameters(models.chat);
       
       // Generate response with v2 model
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: models.chat,
-          messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
-          ...modelParams
-        })
-      });
-      
-      const data = await response.json();
-      let responseText = data.choices?.[0]?.message?.content || "ARES v2 antwortet nicht.";
+      let responseText: string;
+      try {
+        const apiKey = Deno.env.get('OPENAI_API_KEY');
+        if (!apiKey) {
+          throw new Error('Missing OPENAI_API_KEY');
+        }
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: models.chat,
+            messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
+            ...modelParams
+          })
+        });
+        if (!response.ok) {
+          throw new Error(`OpenAI status ${response.status}`);
+        }
+        const data = await response.json();
+        responseText = data.choices?.[0]?.message?.content || "ARES v2 antwortet nicht.";
+      } catch (openAiError) {
+        console.error(`[ARES-V2-${traceId}] OpenAI call failed:`, openAiError);
+        // Fallback to legacy implementation
+        const builtFallback = await buildAresPrompt(supabase, userId, coachId, userText);
+        responseText = await generateAresResponse(builtFallback.prompt, traceId);
+      }
       
       // Load recent message history for anti-repeat
       const historyState = await loadNameState(supabase, userId, `${coachId}_history`);
