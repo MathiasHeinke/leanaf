@@ -26,10 +26,20 @@ export default function AresWithDebug() {
         clientEventId: `msg_${Date.now()}`
       });
 
+      // Handle different response types correctly
+      let responseText = '';
+      if (response.kind === 'message') {
+        responseText = response.text;
+      } else if (response.kind === 'choice_suggest') {
+        responseText = `${response.prompt}\n\nOptionen:\n${response.options.join('\n• ')}`;
+      } else {
+        responseText = 'Unerwartete Antwort';
+      }
+
       setMessages(prev => [...prev, {
-        text: response.text,
+        text: responseText,
         isUser: false,
-        trace_id: response.trace_id
+        trace_id: response.traceId || currentTraceId
       }]);
     } catch (error) {
       console.error('Chat error:', error);

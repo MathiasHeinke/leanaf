@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { newTraceId } from '@/utils/trace';
 import { pingAuth } from '@/utils/authDiagnostics';
@@ -33,6 +33,8 @@ type DebugCallbacks = {
 
 export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDebug?: boolean) {
   const currentClientEventId = useRef<string | null>(null);
+  const [currentTraceId, setCurrentTraceId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   function beginUserAction(): string {
     const id = Date.now().toString();
@@ -45,7 +47,8 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
   }
 
   const sendEvent = async (userId: string, ev: CoachEvent, traceId?: string, context?: CoachEventContext): Promise<OrchestratorReply> => {
-    const currentTraceId = traceId || newTraceId();
+    const requestTraceId = traceId || newTraceId();
+    setLoading(true);
     const orchestratorFunction = 'coach-orchestrator-enhanced';
     let currentStepId: string | undefined;
 
@@ -99,7 +102,7 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       const payload = {
         userId,
         event: ev,
-        traceId: currentTraceId,
+        traceId: requestTraceId,
         context,
         // Also send as direct fields for fallback compatibility
         text: ev.type === 'TEXT' ? ev.text : undefined,
@@ -116,7 +119,10 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       const result = await withTimeout(
         supabase.functions.invoke(orchestratorFunction, {
           body: payload,
-          headers: deepDebug ? { 'x-debug': '1' } : undefined
+          headers: {
+            ...(deepDebug ? { 'x-debug': '1' } : {}),
+            'x-trace-id': requestTraceId
+          }
         }),
         25000
       );
@@ -134,14 +140,15 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       const normalizedResult = normalizeReply(result.data);
       
       // Force the client-visible traceId to the one we generated/sent so DB lookups align
-      (normalizedResult as any).traceId = currentTraceId;
+      (normalizedResult as any).traceId = requestTraceId;
+      setCurrentTraceId(requestTraceId);
       
       // Add enhanced metadata for debugging via meta property (only for types that support it)
       if (normalizedResult.kind === 'message' || normalizedResult.kind === 'reflect' || normalizedResult.kind === 'choice_suggest') {
         (normalizedResult as any).meta = {
           ...(normalizedResult as any).meta,
           // Keep both IDs for diagnostics
-          traceId: currentTraceId, // DB-aligned traceId (client-generated)
+          traceId: requestTraceId, // DB-aligned traceId (client-generated)
           serverTraceId: (result.data as any)?.traceId, // what the server returned (may be UUID)
           source: 'orchestrator',
           processingTime: (result.data as any)?.processingTime,
@@ -155,8 +162,9 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       }
       
       // Debug log for trace ID tracking  
-      console.log(`🔧 TraceID flow: client=${currentTraceId} server=${(result.data as any)?.traceId} → used=${(normalizedResult as any).traceId}`);
+      console.log(`🔧 TraceID flow: client=${requestTraceId} server=${(result.data as any)?.traceId} → used=${(normalizedResult as any).traceId}`);
 
+      setLoading(false);
       return normalizedResult;
 
     } catch (error: any) {
@@ -230,12 +238,14 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       }
 
       if (fallbackResponse) {
+        setLoading(false);
         return fallbackResponse;
       }
 
+      setLoading(false);
       throw error;
     }
   };
 
-  return { sendEvent, beginUserAction, endUserAction };
+  return { sendEvent, beginUserAction, endUserAction, currentTraceId, loading };
 }
