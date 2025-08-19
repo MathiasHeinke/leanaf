@@ -15,6 +15,7 @@ import { dialSettings, mapLegacyDial } from "./prompting/dials.ts";
 import { chooseModels, getModelParameters, shouldUseHighFidelity } from "./prompting/modelRouter.ts";
 import { buildAresPromptV2, wantsExplanation, extractMetrics } from "./prompting/buildAresPromptV2.ts";
 import { logTurnDebug, logNameResolverEvent, logGoalGateEvent, logAntiRepeatEvent, logModelRouterEvent, logToSupabase } from "./prompting/telemetry.ts";
+import { loadMessageHistory, saveMessageHistory } from "./prompting/messageHistory.ts";
 // CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -439,6 +440,13 @@ serve(async (req) => {
         return profile.preferred_name || profile.display_name || profile.first_name || null;
       });
       
+      logNameResolverEvent({
+        userId,
+        action: nameResult.ask ? 'ask' : (nameResult.name ? 'found' : 'load'),
+        name: nameResult.name,
+        success: true
+      });
+      
       if (nameResult.setAskedAt) {
         await persistNameAsked(supabase, userId, coachId);
       }
@@ -467,30 +475,66 @@ serve(async (req) => {
       
       const v2Prompt = buildAresPromptV2(promptCtx);
       
-      // Model selection
-      const models = chooseModels({ highFidelity: shouldUseHighFidelity(userText, promptCtx) });
-      const modelParams = getModelParameters(models.chat);
+      // Model selection (pin to stable gpt-4.1 for reliability)
+      const models = { 
+        chat: 'gpt-4.1-2025-04-14', 
+        tools: 'gpt-4o-mini' 
+      };
+      const modelParams = { max_tokens: 1000, temperature: 0.7 }; // Use legacy parameters for gpt-4.1
       
-      // Generate response with v2 model
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: models.chat,
-          messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
-          ...modelParams
-        })
+      // Log model selection
+      logModelRouterEvent({
+        chatModel: models.chat,
+        toolsModel: models.tools,
+        reason: 'stable_pinned_for_v2',
+        costSensitive: false,
+        highFidelity: shouldUseHighFidelity(userText, promptCtx)
       });
       
-      const data = await response.json();
-      let responseText = data.choices?.[0]?.message?.content || "ARES v2 antwortet nicht.";
+      // Generate response with v2 model (with error handling)
+      let responseText = "ARES v2 antwortet nicht.";
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: models.chat,
+            messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
+            ...modelParams
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error(`[ARES-V2-${traceId}] OpenAI API Error:`, response.status, errorData);
+          throw new Error(`OpenAI API returned ${response.status}`);
+        }
+        
+        const data = await response.json();
+        responseText = data.choices?.[0]?.message?.content || "ARES v2 konnte keine Antwort generieren.";
+        
+        console.log(`[ARES-V2-${traceId}] OpenAI response successful, length: ${responseText.length}`);
+        
+      } catch (openaiError) {
+        console.error(`[ARES-V2-${traceId}] OpenAI call failed, falling back to v1:`, openaiError);
+        // Fallback to v1 response generation
+        const legacyPrompt = `Du bist ARES - ein direkter Coach. Antworte klar auf: "${userText}"`;
+        responseText = await generateAresResponse(legacyPrompt, traceId);
+      }
       
       // Load recent message history for anti-repeat
-      const historyState = await loadNameState(supabase, userId, `${coachId}_history`);
-      const history = historyState?.history || [];
+      const history = await loadMessageHistory(supabase, userId, coachId);
       
       // Check for redundancy
-      if (isRedundant(responseText, history)) {
+      const wasRedundant = isRedundant(responseText, history);
+      logAntiRepeatEvent({
+        candidate: responseText,
+        isRedundant: wasRedundant,
+        historySize: history.length,
+        fallbackUsed: wasRedundant
+      });
+      
+      if (wasRedundant) {
         responseText = generateAlternative(responseText, [
           "Du fragst nach Details - lass uns spezifischer werden.",
           "Sag mir mehr über deine aktuelle Situation.",
@@ -507,21 +551,22 @@ serve(async (req) => {
         responseText = `${voiceLine} ${responseText}`;
       }
       
+      // Integrate name resolver UX
+      if (nameResult.ask && nameResult.askText) {
+        responseText = `${nameResult.askText} ${responseText}`;
+        await persistNameAsked(supabase, userId, coachId);
+      }
+      
       // Update message history
       const newHistoryItem = { 
         text: responseText, 
         ts: Date.now(), 
         kind: (wantDeep ? "deep" : "short") as any
       };
-      const updatedHistory = [...history, newHistoryItem].slice(-12); // Keep last 12
+      const updatedHistory = [...history, newHistoryItem];
       
       // Persist updated history
-      await supabase.from('coach_runtime_state').upsert({
-        user_id: userId,
-        coach_id: `${coachId}_history`,
-        state_key: 'message_history',
-        state_value: { history: updatedHistory }
-      });
+      await saveMessageHistory(supabase, userId, updatedHistory, coachId);
       
       // Persist full prompt to trace events
       try {
