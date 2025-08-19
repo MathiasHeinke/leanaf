@@ -113,7 +113,7 @@ export default function FourBarsWithTrend({ bars, waterHalo, stepsHalo, suppleme
             const grad = isOverTarget
               ? ["#ef4444", "#dc2626"] // Red gradient when over target
               : b.key === "C"
-                ? ["#f59e0b", "#d97706"] // warm orange-yellow gradient
+                ? ["#0891b2", "#0e7490"] // blue-turquoise gradient
                 : b.gradient ??
                   (b.key === "P"
                     ? ["#22c55e", "#16a34a"]
