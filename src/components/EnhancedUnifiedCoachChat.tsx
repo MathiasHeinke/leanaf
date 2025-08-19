@@ -40,6 +40,17 @@ interface EnhancedChatMessage {
     hasMemory?: boolean;
     hasRag?: boolean;
     hasDaily?: boolean;
+    coachId?: string;
+    model?: string;
+    pipeline?: string;
+    fallback?: boolean;
+    retryCount?: number;
+    processingTime?: number;
+    source?: 'v1' | 'v2' | 'debug' | 'orchestrator';
+    downgraded?: boolean;
+    error?: string;
+    rawResponse?: any;
+    apiErrors?: any[];
   };
 }
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -66,6 +77,7 @@ import { PromptInspectionModal } from '@/components/debug/PromptInspectionModal'
 import { PromptViewer, PromptData } from '@/components/gehirn/PromptViewer';
 import { useDebugSteps } from '@/hooks/useDebugSteps';
 import { usePromptTraceData } from '@/hooks/usePromptTraceData';
+import { ResponseMetadata } from '@/components/debug/ResponseMetadata';
 import { Bug, Search } from 'lucide-react';
 import ChoiceBar from '@/components/ChoiceBar';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
@@ -261,7 +273,10 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
       coach_accent_color: coach?.accentColor,
-      metadata: (res as any).traceId ? { traceId: (res as any).traceId } : undefined,
+      metadata: (res as any).traceId ? { 
+        traceId: (res as any).traceId,
+        ...(res as any).meta 
+      } : undefined,
     };
     setMessages(prev => [...prev, assistantMessage]);
     persistConversation('assistant', text);
@@ -293,7 +308,10 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
       coach_accent_color: coach?.accentColor,
-      metadata: res.traceId ? { traceId: res.traceId } : undefined,
+      metadata: res.traceId ? { 
+        traceId: res.traceId,
+        ...(res as any).meta 
+      } : undefined,
     };
     setMessages(prev => [...prev, assistantMessage]);
 
@@ -323,7 +341,10 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
       coach_accent_color: coach?.accentColor,
-      metadata: res.traceId ? { traceId: res.traceId } : undefined,
+      metadata: res.traceId ? { 
+        traceId: res.traceId,
+        ...(res as any).meta 
+      } : undefined,
     };
     setMessages(prev => [...prev, assistantMessage]);
     persistConversation('assistant', text);
@@ -982,9 +1003,32 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
                         </TooltipContent>
                       </Tooltip>
                     )}
-                  </TooltipProvider>
+                   </TooltipProvider>
                 </div>
               )}
+            </div>
+          )}
+          
+          {/* Response Metadata - Only for assistant messages */}
+          {!isUser && message.metadata && (
+            <div className="mt-2">
+              <ResponseMetadata 
+                metadata={{
+                  coachId: message.metadata.coachId || coach?.id,
+                  model: message.metadata.model,
+                  pipeline: message.metadata.pipeline,
+                  fallback: message.metadata.fallback,
+                  retryCount: message.metadata.retryCount,
+                  processingTime: message.metadata.processingTime,
+                  source: message.metadata.source,
+                  downgraded: message.metadata.downgraded,
+                  error: message.metadata.error,
+                  traceId: message.metadata.traceId,
+                  rawResponse: message.metadata.rawResponse,
+                  apiErrors: message.metadata.apiErrors,
+                }}
+                className="max-w-[75%]"
+              />
             </div>
           )}
           

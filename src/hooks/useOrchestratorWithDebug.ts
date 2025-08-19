@@ -130,7 +130,25 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
 
       debugCallbacks?.completeStep(currentStepId!, "Request completed successfully");
 
-      return normalizeReply(result.data);
+      // Enhanced response with debug metadata
+      const normalizedResult = normalizeReply(result.data);
+      
+      // Add enhanced metadata for debugging via meta property (only for types that support it)
+      if (normalizedResult.kind === 'message' || normalizedResult.kind === 'reflect' || normalizedResult.kind === 'choice_suggest') {
+        normalizedResult.meta = {
+          ...normalizedResult.meta,
+          source: 'orchestrator',
+          processingTime: result.data?.processingTime,
+          rawResponse: result.data,
+          apiErrors: result.data?.apiErrors || [],
+          fallback: result.data?.fallback || false,
+          retryCount: result.data?.retryCount || 0,
+          downgraded: result.data?.downgraded || false,
+          error: result.data?.error || undefined,
+        };
+      }
+
+      return normalizedResult;
 
     } catch (error: any) {
       console.error("🔧 Orchestrator error:", error);
