@@ -178,6 +178,8 @@ export function VoiceOverlay({ onTextGenerated, onClose }: VoiceOverlayProps) {
   const handleRetry = async () => {
     if (!fileId) return;
     
+    setPhase('processing'); // Reset to processing state
+    
     try {
       const transcribedText = await transcribeAudio(fileId);
       onTextGenerated(transcribedText);
