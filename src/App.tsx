@@ -39,6 +39,7 @@ import TransformationJourneyPage from "./pages/TransformationJourney";
 import TestSummaryPage from "./pages/TestSummary";
 import { MealInputProvider } from "@/hooks/useGlobalMealInput";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FireBusProvider } from "@/components/FireBackdrop";
 
 const queryClient = new QueryClient();
 
@@ -53,14 +54,15 @@ const App = () => (
       >
         <TranslationProvider>
           <BrowserRouter>
-            <AuthProvider>
-              <DebugProvider>
-                <MealInputProvider>
-                    <EnhancedSecurityManager>
-                    <Sonner />
-                    <SidebarProvider>
-                      <Layout>
-                        <Routes>
+              <AuthProvider>
+                <DebugProvider>
+                  <MealInputProvider>
+                    <FireBusProvider>
+                      <EnhancedSecurityManager>
+                      <Sonner />
+                      <SidebarProvider>
+                        <Layout>
+                          <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/account" element={<Account />} />
@@ -96,6 +98,7 @@ const App = () => (
                      </Layout>
                    </SidebarProvider>
                     </EnhancedSecurityManager>
+                    </FireBusProvider>
                   </MealInputProvider>
                 </DebugProvider>
               </AuthProvider>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useFireBus } from '@/components/FireBackdrop';
 
 import { toast } from 'sonner';
 
@@ -32,6 +33,7 @@ interface UserStreak {
 
 export const usePointsSystem = () => {
   const { user } = useAuth();
+  const firebus = useFireBus();
   const trialMultiplier = 1.0; // No special multipliers in credit system
   const [userPoints, setUserPoints] = useState<UserPoints | null>(null);
   const [departmentProgress, setDepartmentProgress] = useState<DepartmentProgress[]>([]);
@@ -168,6 +170,9 @@ export const usePointsSystem = () => {
           position: "top-center",
         });
         
+        // Trigger fire animation for level up
+        firebus.emit('xp:levelup');
+        
         // Trigger badge check for level achievements
         setTimeout(async () => {
           try {
@@ -180,6 +185,11 @@ export const usePointsSystem = () => {
         }, 1000);
       } else if (result.points_earned > 0) {
         console.log(`🎉 Points earned: ${result.points_earned}`);
+        
+        // Fire animation for big point rewards (>= 10 points)
+        if (result.points_earned >= 10) {
+          firebus.emit('points:big_reward');
+        }
       }
 
       return result;
@@ -217,6 +227,17 @@ export const usePointsSystem = () => {
 
       // Reload streaks to get updated data
       await loadStreaks();
+      
+      // Trigger fire for streak milestones (data is a number representing current streak)
+      if (data && typeof data === 'number') {
+        if (data === 7) {
+          firebus.emit('streak:7');
+        } else if (data === 30) {
+          firebus.emit('streak:30');
+        } else if (data >= 7) {
+          firebus.emit('streak:milestone');
+        }
+      }
       
       return data;
     } catch (error) {

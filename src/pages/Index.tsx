@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -61,6 +61,7 @@ import { useTodaysWorkout } from "@/hooks/useTodaysWorkout";
 import { useDailyGoals } from "@/hooks/useDailyGoals";
 import { EmptyCard } from "@/components/EmptyCard";
 import { pingAuth, debugAuthStatus } from "@/utils/authDiagnostics";
+import FireBackdrop, { FireBackdropHandle, useAchievementFire, useGlassIgnitePulse } from "@/components/FireBackdrop";
 
 // Global diagnostics for browser console
 if (typeof window !== "undefined") {
@@ -70,10 +71,15 @@ if (typeof window !== "undefined") {
   window.debugAuthStatus = debugAuthStatus;
 }
 
-// Main wrapper component to handle authentication state
+  // Main wrapper component to handle authentication state
 const Index = () => {
   const { user, loading: authLoading, isSessionReady } = useAuth();
   const navigate = useNavigate();
+
+  // FireBackdrop integration
+  const fireBackdropRef = useRef<FireBackdropHandle>(null);
+  useAchievementFire(fireBackdropRef);
+  useGlassIgnitePulse(".glass-card");
 
   // STABILIZED AUTH CHECK - Prevent render flickering
   const isUserConfirmed = useMemo(() => {
@@ -160,12 +166,19 @@ const Index = () => {
   });
   
   return (
-    <BootstrapController>
-      <DashboardErrorBoundary>
-        <AuthenticatedDashboard user={user} />
-      </DashboardErrorBoundary>
-      {/* <DebugBadge show={true} compact={true} /> */} {/* Removed for production */}
-    </BootstrapController>
+    <>
+      <FireBackdrop 
+        ref={fireBackdropRef} 
+        defaultIntensity={0.15}
+        devFastCycle={false}
+      />
+      <BootstrapController>
+        <DashboardErrorBoundary>
+          <AuthenticatedDashboard user={user} />
+        </DashboardErrorBoundary>
+        {/* <DebugBadge show={true} compact={true} /> */} {/* Removed for production */}
+      </BootstrapController>
+    </>
   );
 };
 
@@ -240,6 +253,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
     const savedOrder = localStorage.getItem('quickInputCardOrder');
     return savedOrder ? JSON.parse(savedOrder) : ['sleep', 'weight', 'measurements', 'workout', 'supplements', 'fluids', 'mindset'];
   });
+
 
   // SIMPLIFIED DATA LOADING - Single effect triggered by bootstrap completion
   useEffect(() => {
