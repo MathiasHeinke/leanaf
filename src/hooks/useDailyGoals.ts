@@ -20,6 +20,7 @@ export function useDailyGoals() {
     (async () => {
       setLoading(true); 
       setError(null);
+      const todayStr = new Date().toISOString().slice(0,10);
       try {
         const query = loadDailyGoals(user.id);
         const res = await withWatchdog(query, 6000);
@@ -27,11 +28,29 @@ export function useDailyGoals() {
         if (res.error) { 
           console.error('[useDailyGoals] RPC failed, trying profile fallback:', res.error.message);
           
+          // Fallback order: 1) today's daily_goals row 2) profile targets
+          try {
+            const { data: todayGoal } = await supabase
+              .from('daily_goals')
+              .select('id, user_id, goal_date, calories, protein, carbs, fats, fluids, fluid_goal_ml, steps_goal')
+              .eq('user_id', user.id)
+              .eq('goal_date', todayStr)
+              .maybeSingle();
+            if (todayGoal) {
+              console.log('[useDailyGoals] Using daily_goals fallback for today:', todayGoal);
+              setData(todayGoal);
+              setError(null);
+              return;
+            }
+          } catch (dgErr) {
+            console.error('[useDailyGoals] daily_goals fallback failed:', dgErr);
+          }
+
           // Fallback: Try to get profile targets instead of hardcoded values
           try {
             const { data: profileData } = await supabase
               .from('profiles')
-              .select('daily_calorie_target, protein_target_g, carbs_target_g, fats_target_g')
+              .select('daily_calorie_target, protein_target_g, carbs_target_g, fats_target_g, fluid_goal_ml, steps_goal')
               .eq('user_id', user.id)
               .maybeSingle();
             
@@ -44,9 +63,9 @@ export function useDailyGoals() {
                 protein: profileData.protein_target_g || 150,
                 carbs: profileData.carbs_target_g || 250,
                 fats: profileData.fats_target_g || 65,
-                fluids: 2500,
-                fluid_goal_ml: 2500,
-                steps_goal: 10000
+                fluids: profileData.fluid_goal_ml || 2500,
+                fluid_goal_ml: profileData.fluid_goal_ml || 2500,
+                steps_goal: profileData.steps_goal || 10000
               };
               console.log('[useDailyGoals] Using profile fallback:', profileFallback);
               setData(profileFallback);
@@ -61,7 +80,27 @@ export function useDailyGoals() {
           setData(null); 
         } else { 
           console.log('[useDailyGoals] Successfully loaded daily goals:', res.data);
-          setData(res.data ?? null); 
+          if (res.data && res.data.goal_date !== todayStr) {
+            console.warn('[useDailyGoals] RPC returned stale goal_date. Attempting to fetch today\'s row.', { returnedDate: res.data.goal_date, today: todayStr });
+            try {
+              const { data: todayGoal } = await supabase
+                .from('daily_goals')
+                .select('id, user_id, goal_date, calories, protein, carbs, fats, fluids, fluid_goal_ml, steps_goal')
+                .eq('user_id', user.id)
+                .eq('goal_date', todayStr)
+                .maybeSingle();
+              if (todayGoal) {
+                setData(todayGoal);
+              } else {
+                setData(res.data ?? null);
+              }
+            } catch (dgErr) {
+              console.error('[useDailyGoals] Fetching today\'s daily_goals failed:', dgErr);
+              setData(res.data ?? null);
+            }
+          } else {
+            setData(res.data ?? null);
+          }
         }
       } catch (e: any) {
         if (!ac.signal.aborted) { 
