@@ -291,54 +291,8 @@ const handleSubmit = useCallback(async () => {
               </div>
             </div>
           )}
-          <div className="flex items-center gap-3">
-            {/* Photo Button */}
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={handlePhotoTap}
-              className="flex-shrink-0 h-10 w-10"
-              aria-label="Foto hinzufügen"
-            >
-              <Camera className="h-5 w-5" />
-            </Button>
-            {/* Counter + hint */}
-            <div className="flex items-center gap-2 -ml-2 mr-2">
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {optimisticImages.length + uploadedImages.length}/{maxImages}
-              </span>
-              {lastDropIgnored && (
-                <span className="hidden sm:inline text-xs text-muted-foreground">Max. {maxImages} – überzählige ignoriert</span>
-              )}
-              {isUploading && (
-                <span className="text-xs text-primary">Lädt...</span>
-              )}
-            </div>
-
-            {/* Voice Button */}
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={handleVoiceTap}
-              className="flex-shrink-0 h-10 w-10"
-              aria-label={isRecording ? "Aufnahme stoppen" : "Sprachaufnahme"}
-            >
-              {isRecording ? (
-                <Square className="h-5 w-5" />
-              ) : (
-                <Mic className="h-5 w-5" />
-              )}
-            </Button>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={handleFileChange}
-            />
-            <div className="flex-1 relative">
+          {/* Textarea Input */}
+          <div className="mb-3">
             <Textarea
               ref={textareaRef}
               rows={1}
@@ -359,10 +313,53 @@ const handleSubmit = useCallback(async () => {
                 lineHeight: '18px'
               }}
             />
+          </div>
+
+          {/* Bottom Button Row */}
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: Photo & Voice Buttons */}
+            <div className="flex items-center gap-3">
+              {/* Photo Button */}
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handlePhotoTap}
+                className="flex-shrink-0 h-10 w-10"
+                aria-label="Foto hinzufügen"
+              >
+                <Camera className="h-5 w-5" />
+              </Button>
+
+              {/* Voice Button */}
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={handleVoiceTap}
+                className="flex-shrink-0 h-10 w-10"
+                aria-label={isRecording ? "Aufnahme stoppen" : "Sprachaufnahme"}
+              >
+                {isRecording ? (
+                  <Square className="h-5 w-5" />
+                ) : (
+                  <Mic className="h-5 w-5" />
+                )}
+              </Button>
             </div>
 
+            {/* Center: Counter + Status */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground tabular-nums">
+                {optimisticImages.length + uploadedImages.length}/{maxImages}
+              </span>
+              {lastDropIgnored && (
+                <span className="hidden sm:inline text-xs text-muted-foreground">Max. {maxImages} – überzählige ignoriert</span>
+              )}
+              {isUploading && (
+                <span className="text-xs text-primary">Lädt...</span>
+              )}
+            </div>
 
-            {/* Submit Button */}
+            {/* Right: Submit Button */}
             <Button
               size="icon"
               onClick={handleSubmit}
@@ -372,6 +369,15 @@ const handleSubmit = useCallback(async () => {
             >
               <ArrowRight className="h-5 w-5" />
             </Button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </div>
         </div>
       </div>
