@@ -37,8 +37,8 @@ export function chooseModels(flags: ModelFlags = {}): ModelChoice {
   
   // Default balanced selection
   return { 
-    chat: "gpt-5-2025-08-07", 
-    tools: "gpt-4.1-2025-04-14" 
+    chat: "gpt-4.1-2025-04-14", 
+    tools: "gpt-4o-mini" 
   };
 }
 

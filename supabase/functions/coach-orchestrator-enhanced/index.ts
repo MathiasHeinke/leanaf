@@ -421,14 +421,17 @@ serve(async (req) => {
         kind: "message",
         text: responseText,
         traceId,
-        meta: debugMode ? { 
-          debug: { 
-            prompt, 
-            ...debugInfo,
-            model: 'gpt-4o-mini',
-            tokensUsed: responseText.length * 0.75 // Rough estimate
-          } 
-        } : undefined
+         meta: {
+           version: "v1",
+           model: 'gpt-4o-mini',
+           ...(debugMode ? { 
+             debug: { 
+               prompt, 
+               ...debugInfo,
+               tokensUsed: responseText.length * 0.75 // Rough estimate
+             } 
+           } : {})
+         }
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
@@ -516,7 +519,7 @@ serve(async (req) => {
         chat: 'gpt-4.1-2025-04-14', 
         tools: 'gpt-4o-mini' 
       };
-      const modelParams = { max_tokens: 1000, temperature: 0.7 }; // Use legacy parameters for gpt-4.1
+      const modelParams = { max_completion_tokens: 1000 }; // GPT-4.1+ require max_completion_tokens, no temperature
       
       // Log model selection
       logModelRouterEvent({
@@ -732,14 +735,17 @@ serve(async (req) => {
       kind: "message",
       text: responseText,
       traceId,
-      meta: debugMode ? { 
-        debug: { 
-          prompt, 
-          ...debugInfo,
-          model: 'gpt-4o-mini',
-          tokensUsed: responseText.length * 0.75 // Rough estimate
-        } 
-      } : undefined
+       meta: { 
+         version: 'v1', 
+         model: 'gpt-4o-mini',
+         ...(debugMode ? { 
+           debug: { 
+             prompt, 
+             ...debugInfo,
+             tokensUsed: responseText.length * 0.75 // Rough estimate
+           } 
+         } : {})
+       }
     };
 
     console.log(`[ARES-PHASE1-${traceId}] Response generated successfully`);
