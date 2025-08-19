@@ -40,11 +40,22 @@ export function PromptInspectionModal({ traceId, promptData: directPromptData, o
   // Always prioritize fetchedPromptData if available, then create fallback from directPromptData
   const promptData = fetchedPromptData || createFallbackData(directPromptData);
   
+  // Enhanced trace ID debugging
+  console.log(`🔍 [PromptInspectionModal] Debug status:`, {
+    traceId,
+    hasFetchedData: !!fetchedPromptData,
+    hasDirectData: !!directPromptData,
+    hasFallbackData: !!promptData,
+    error,
+    loading
+  });
+  
   // Debug trace ID mismatch issues
   if (traceId && !fetchedPromptData && !error) {
     console.warn(`[PromptInspectionModal] TraceId lookup failed for: ${traceId}. Using fallback data.`);
   }
 
+  // Only return null if we have absolutely no data to show
   if (!traceId && !directPromptData) return null;
 
   if (loading) {
@@ -60,12 +71,13 @@ export function PromptInspectionModal({ traceId, promptData: directPromptData, o
     );
   }
 
+  // Show fallback data even if there's an error, only show error if no data at all
   if (error && !promptData) {
     return (
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60 flex items-center justify-center p-4">
         <div className="bg-background rounded-lg p-6 max-w-md">
           <div className="text-center">
-            <p className="text-destructive mb-4">Trace data not found</p>
+            <p className="text-destructive mb-4">No trace data available</p>
             <p className="text-sm text-muted-foreground mb-4">
               TraceId: <code className="bg-muted px-2 py-1 rounded text-xs">{traceId}</code>
             </p>
@@ -75,7 +87,9 @@ export function PromptInspectionModal({ traceId, promptData: directPromptData, o
             <div className="text-xs text-left bg-muted p-3 rounded mb-4">
               <strong>Debug Info:</strong><br/>
               Error: {error}<br/>
-              TraceId format: {traceId?.includes('-') ? 'UUID' : 'Legacy'}
+              TraceId format: {traceId?.includes('-') ? 'UUID' : 'Legacy'}<br/>
+              Has direct data: {directPromptData ? 'Yes' : 'No'}<br/>
+              DB lookup: {fetchedPromptData ? 'Success' : 'Failed'}
             </div>
             <button 
               onClick={onClose}

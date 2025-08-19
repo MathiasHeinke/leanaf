@@ -3,7 +3,9 @@ import { mark } from '@/lib/metrics';
 import { supabase } from '@/integrations/supabase/client';
 
 export function newTraceId(): string {
-  return `t_${nanoid(10)}`;
+  const id = `t_${nanoid(10)}`;
+  console.log(`🆔 Generated new trace ID: ${id}`);
+  return id;
 }
 
 export function newMessageId(): string {
