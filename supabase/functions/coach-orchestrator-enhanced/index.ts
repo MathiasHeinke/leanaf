@@ -319,7 +319,8 @@ serve(async (req) => {
   const authorization = req.headers.get("Authorization") ?? "";
   const origin = req.headers.get("origin") || "unknown";
   const userAgent = req.headers.get("user-agent") || "unknown";
-  const useAresV2 = req.headers.get("x-ares-v2") === "1" || req.headers.get("x-ares-v2") === "true";
+  const useAresV2Header = req.headers.get("x-ares-v2");
+  const useAresV2 = useAresV2Header === null ? true : (useAresV2Header === "1" || useAresV2Header === "true");
   
   console.log(`[ARES-ENHANCED-${traceId}] Request received from ${origin}`, {
     hasAuth: !!authorization,
@@ -402,39 +403,9 @@ serve(async (req) => {
         text: userText,
         clientEventId: body.clientEventId || crypto.randomUUID()
       };
-      // Process the synthetic event
-      const coachId = body.coachId || 'ares';
-      console.log(`[ARES-SYNTHETIC-${traceId}] Processing synthetic event: "${userText}"`);
-      
-      const built = await buildAresPrompt(supabase, providedUserId || 'anonymous', coachId, userText);
-      const prompt = built.prompt;
-      const debugInfo = built.debug;
-      if (debugMode) {
-        console.log(`[ARES-DEBUG-${traceId}] Prompt Built (synthetic):\n${prompt}`);
-        console.log(`[ARES-DEBUG-${traceId}] Facts:`, debugInfo.facts);
-        console.log(`[ARES-DEBUG-${traceId}] Gates:`, debugInfo.gates);
-        console.log(`[ARES-DEBUG-${traceId}] Name:`, debugInfo.name);
-      }
-      const responseText = await generateAresResponse(prompt, traceId);
-      
-      return new Response(JSON.stringify({
-        kind: "message",
-        text: responseText,
-        traceId,
-         meta: {
-           version: "v1",
-           model: 'gpt-4o-mini',
-           ...(debugMode ? { 
-             debug: { 
-               prompt, 
-               ...debugInfo,
-               tokensUsed: responseText.length * 0.75 // Rough estimate
-             } 
-           } : {})
-         }
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
+      // Attach event to body and continue to unified pipeline (no early return, no v1)
+      body.event = syntheticEvent;
+      console.log(`[ARES-SYNTHETIC-${traceId}] Synthetic event attached; continuing with pipeline`);
     }
 
     // Get user ID
@@ -460,9 +431,9 @@ serve(async (req) => {
       });
     }
 
-    // Extract user text
-    const userText = event.type === "TEXT" ? event.text : "Bild hochgeladen";
-    const coachId = (event as any)?.context?.coachId ?? 'ares';
+    // Extract user text (support synthetic/direct body too)
+    const userText = (event?.type === "TEXT" ? event.text : undefined) ?? body.text ?? body.message ?? "Bild hochgeladen";
+    const coachId = (event as any)?.context?.coachId ?? body?.coachId ?? 'ares';
     
     console.log(`[ARES-PHASE1-${traceId}] Processing: user=${userId}, coach=${coachId}, text="${userText}", v2=${useAresV2}`);
 
@@ -541,11 +512,11 @@ serve(async (req) => {
           const response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model,
-              messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
-              ...modelParams
-            })
+              body: JSON.stringify({
+                model,
+                messages: [{ role: 'system', content: v2Prompt.system }, { role: 'user', content: v2Prompt.user }],
+                ...getModelParameters(model)
+              })
           });
           
           if (!response.ok) {
@@ -593,26 +564,43 @@ serve(async (req) => {
         responseText = await callOpenAI(finalModel);
         
       } catch (primaryError) {
-        console.log(`[ARES-V2-${traceId}] Primary model ${models.chat} failed, trying fallback model`);
-        
-        // Try fallback to gpt-4.1 if not already using it
-        if (models.chat !== 'gpt-4.1-2025-04-14') {
+        console.log(`[ARES-V2-${traceId}] Primary model ${models.chat} failed, trying downgrade to gpt-4o`);
+        try {
+          finalModel = 'gpt-4o';
+          responseText = await callOpenAI(finalModel);
+          console.log(`[ARES-V2-${traceId}] Downgrade to gpt-4o successful`);
+        } catch (fallback1Error) {
+          console.log(`[ARES-V2-${traceId}] gpt-4o failed, trying gpt-4o-mini`);
           try {
-            finalModel = 'gpt-4.1-2025-04-14';
+            finalModel = 'gpt-4o-mini';
             responseText = await callOpenAI(finalModel);
-            console.log(`[ARES-V2-${traceId}] Fallback model successful`);
-            
-          } catch (fallbackError) {
-            console.error(`[ARES-V2-${traceId}] Fallback model also failed, using v1 generator:`, fallbackError);
-            usedV1Fallback = true;
-            const legacyPrompt = `Du bist ARES - ein direkter Coach. Antworte klar auf: "${userText}"`;
-            responseText = await generateAresResponse(legacyPrompt, traceId);
+            console.log(`[ARES-V2-${traceId}] Downgrade to gpt-4o-mini successful`);
+          } catch (fallback2Error) {
+            console.error(`[ARES-V2-${traceId}] All model attempts failed, trying simplified prompt on gpt-4o-mini`);
+            try {
+              const simpleSystem = "Du bist ARES. Antworte knapp, konkret, hilfreich. Deutsch.";
+              const simpleUser = `${v2Prompt.user}\n\nRegel: Keine Allgemeinplätze, direkt auf die Frage antworten.`;
+              const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: 'gpt-4o-mini',
+                  messages: [{ role: 'system', content: simpleSystem }, { role: 'user', content: simpleUser }],
+                  ...getModelParameters('gpt-4o-mini')
+                })
+              });
+              if (!response.ok) {
+                const errBody = await response.text().catch(() => 'No body');
+                throw new Error(`Simplified prompt failed ${response.status}: ${errBody.substring(0,200)}`);
+              }
+              const data = await response.json();
+              responseText = data.choices?.[0]?.message?.content || "Ich habe gerade Probleme mit der Antwortgenerierung. Versuch es bitte gleich erneut.";
+              finalModel = 'gpt-4o-mini';
+            } catch (simplifiedError) {
+              console.error(`[ARES-V2-${traceId}] Simplified attempt failed:`, simplifiedError);
+              responseText = "ARES System: Aktuell Probleme mit dem Sprachmodell. Bitte in 1-2 Minuten erneut senden.";
+            }
           }
-        } else {
-          console.error(`[ARES-V2-${traceId}] Already using stable model, falling back to v1:`, primaryError);
-          usedV1Fallback = true;
-          const legacyPrompt = `Du bist ARES - ein direkter Coach. Antworte klar auf: "${userText}"`;
-          responseText = await generateAresResponse(legacyPrompt, traceId);
         }
       }
       
