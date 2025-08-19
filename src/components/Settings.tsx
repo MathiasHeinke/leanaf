@@ -88,6 +88,7 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
           protein: dailyGoal.protein,
           carbs: dailyGoal.carbs,
           fats: dailyGoal.fats,
+          fluid_goal_ml: 2000,
         });
 
       if (error) throw error;

@@ -563,6 +563,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         calories: targetCalories,
         protein: macroGrams.protein,
         carbs: macroGrams.carbs,
+        fluid_goal_ml: 2000,
         fats: macroGrams.fats,
         calorie_deficit: deficitData?.daily || dailyGoals.calorieDeficit,
         protein_percentage: dailyGoals.protein,
