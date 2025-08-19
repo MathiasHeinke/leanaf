@@ -118,6 +118,15 @@ export function AresChatDebugPanel({
                 Prompt Now
               </Button>
             )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleInspectPrompt(bundles[0]?.traceId)}
+              disabled={!bundles.length}
+            >
+              <FileText className="h-4 w-4 mr-1" />
+              Last Prompt
+            </Button>
             <Button variant="outline" size="sm" onClick={onClearSteps}>
               <RefreshCw className="h-4 w-4 mr-1" />
               Clear

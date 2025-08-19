@@ -47,7 +47,8 @@ export async function traceEvent(
   conversationId?: string,
   messageId?: string,
   duration?: number,
-  error?: string
+  error?: string,
+  fullPrompt?: string
 ): Promise<void> {
   try {
     // Log to new detailed trace events table
@@ -59,7 +60,8 @@ export async function traceEvent(
       status,
       data,
       duration_ms: duration,
-      error_message: error
+      error_message: error,
+      full_prompt: fullPrompt
     });
   } catch (err) {
     console.warn('Trace event logging failed:', err);

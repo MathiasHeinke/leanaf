@@ -1132,6 +1132,7 @@ export type Database = {
           data: Json | null
           duration_ms: number | null
           error_message: string | null
+          full_prompt: string | null
           id: string
           message_id: string | null
           status: string
@@ -1145,6 +1146,7 @@ export type Database = {
           data?: Json | null
           duration_ms?: number | null
           error_message?: string | null
+          full_prompt?: string | null
           id?: string
           message_id?: string | null
           status?: string
@@ -1158,6 +1160,7 @@ export type Database = {
           data?: Json | null
           duration_ms?: number | null
           error_message?: string | null
+          full_prompt?: string | null
           id?: string
           message_id?: string | null
           status?: string
@@ -1409,6 +1412,7 @@ export type Database = {
           days_to_goal: number | null
           fats: number | null
           fats_percentage: number | null
+          fluid_goal_ml: number
           fluids: number | null
           goal_date: string | null
           goal_type: string | null
@@ -1417,12 +1421,14 @@ export type Database = {
           is_realistic_goal: boolean | null
           protein: number | null
           protein_percentage: number | null
+          steps_goal: number | null
           target_date: string | null
           tdee: number | null
           total_calories_needed: number | null
           updated_at: string
           user_id: string
           warning_message: string | null
+          water_goal_ml: number | null
           weekly_calorie_deficit: number | null
           weekly_fat_loss_g: number | null
           weeks_to_goal: number | null
@@ -1438,6 +1444,7 @@ export type Database = {
           days_to_goal?: number | null
           fats?: number | null
           fats_percentage?: number | null
+          fluid_goal_ml: number
           fluids?: number | null
           goal_date?: string | null
           goal_type?: string | null
@@ -1446,12 +1453,14 @@ export type Database = {
           is_realistic_goal?: boolean | null
           protein?: number | null
           protein_percentage?: number | null
+          steps_goal?: number | null
           target_date?: string | null
           tdee?: number | null
           total_calories_needed?: number | null
           updated_at?: string
           user_id: string
           warning_message?: string | null
+          water_goal_ml?: number | null
           weekly_calorie_deficit?: number | null
           weekly_fat_loss_g?: number | null
           weeks_to_goal?: number | null
@@ -1467,6 +1476,7 @@ export type Database = {
           days_to_goal?: number | null
           fats?: number | null
           fats_percentage?: number | null
+          fluid_goal_ml?: number
           fluids?: number | null
           goal_date?: string | null
           goal_type?: string | null
@@ -1475,12 +1485,14 @@ export type Database = {
           is_realistic_goal?: boolean | null
           protein?: number | null
           protein_percentage?: number | null
+          steps_goal?: number | null
           target_date?: string | null
           tdee?: number | null
           total_calories_needed?: number | null
           updated_at?: string
           user_id?: string
           warning_message?: string | null
+          water_goal_ml?: number | null
           weekly_calorie_deficit?: number | null
           weekly_fat_loss_g?: number | null
           weeks_to_goal?: number | null
@@ -3753,6 +3765,7 @@ export type Database = {
           fats_percentage: number | null
           fats_target_g: number | null
           first_name: string | null
+          fluid_goal_ml: number | null
           gender: string | null
           goal: string | null
           goal_type: string | null
@@ -3773,6 +3786,7 @@ export type Database = {
           protein_target_g: number | null
           start_bmi: number | null
           start_weight: number | null
+          steps_goal: number | null
           subscription_id: string | null
           subscription_status: string | null
           target_bmi: number | null
@@ -3804,6 +3818,7 @@ export type Database = {
           fats_percentage?: number | null
           fats_target_g?: number | null
           first_name?: string | null
+          fluid_goal_ml?: number | null
           gender?: string | null
           goal?: string | null
           goal_type?: string | null
@@ -3824,6 +3839,7 @@ export type Database = {
           protein_target_g?: number | null
           start_bmi?: number | null
           start_weight?: number | null
+          steps_goal?: number | null
           subscription_id?: string | null
           subscription_status?: string | null
           target_bmi?: number | null
@@ -3855,6 +3871,7 @@ export type Database = {
           fats_percentage?: number | null
           fats_target_g?: number | null
           first_name?: string | null
+          fluid_goal_ml?: number | null
           gender?: string | null
           goal?: string | null
           goal_type?: string | null
@@ -3875,6 +3892,7 @@ export type Database = {
           protein_target_g?: number | null
           start_bmi?: number | null
           start_weight?: number | null
+          steps_goal?: number | null
           subscription_id?: string | null
           subscription_status?: string | null
           target_bmi?: number | null

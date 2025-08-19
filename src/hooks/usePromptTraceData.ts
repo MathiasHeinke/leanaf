@@ -10,6 +10,7 @@ interface TraceEvent {
   data: any;
   duration_ms?: number;
   created_at: string;
+  full_prompt?: string;
 }
 
 export function usePromptTraceData(traceId?: string) {
@@ -31,12 +32,12 @@ export function usePromptTraceData(traceId?: string) {
       switch (event.step) {
         case 'prompt_building':
         case 'llm_request':
-          // Extract final prompt
-          if (eventData.system_prompt || eventData.user_prompt || eventData.full_prompt) {
+          // Extract final prompt - prioritize saved full_prompt from database
+          if (event.full_prompt || eventData.system_prompt || eventData.user_prompt || eventData.full_prompt) {
             data.finalPrompt = {
               system: eventData.system_prompt || '',
               user: eventData.user_prompt || eventData.prompt || '',
-              full: eventData.full_prompt || `${eventData.system_prompt || ''}\n\n${eventData.user_prompt || eventData.prompt || ''}`
+              full: event.full_prompt || eventData.full_prompt || `${eventData.system_prompt || ''}\n\n${eventData.user_prompt || eventData.prompt || ''}`
             };
           }
           
@@ -168,7 +169,8 @@ export function usePromptTraceData(traceId?: string) {
           status: event.status,
           data: event.data,
           duration_ms: event.duration_ms,
-          created_at: event.created_at
+          created_at: event.created_at,
+          full_prompt: event.full_prompt
         })),
         ...(coachTracesResponse.data || []).map(trace => ({
           id: trace.id.toString(),
@@ -177,7 +179,8 @@ export function usePromptTraceData(traceId?: string) {
           status: 'OK',
           data: trace.data,
           duration_ms: undefined,
-          created_at: trace.ts
+          created_at: trace.ts,
+          full_prompt: undefined
         }))
       ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
