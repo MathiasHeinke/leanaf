@@ -1084,6 +1084,7 @@ const handlePromptNow = useCallback(async () => {
     }
     
     console.log("Debug prompt response:", data);
+    console.log("ARES_DEBUG_PROMPT_DUMP", JSON.stringify(data?.meta?.debug || {}, null, 2));
     
     if (data?.meta?.debug) {
       handleInspectPrompt(data.meta.debug);
