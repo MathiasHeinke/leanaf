@@ -175,89 +175,32 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
         notes: notes || null
       };
 
-      if (hasWeightToday && todaysWeight?.id) {
-        // Update existing weight entry - no points awarded
-        const { error } = await supabase
-          .from('weight_history')
-          .update({
-            weight: weightValue,
-            body_fat_percentage: bodyFatValue,
-            muscle_percentage: muscleMassValue,
-            photo_urls: allPhotoUrls,
-            notes: notes || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', todaysWeight.id);
+      // Use database RPC for idempotent upsert to avoid unique constraint conflicts
+      const { data: upsertResult, error: rpcError } = await supabase.rpc('upsert_weight_entry', {
+        p_user_id: user.id,
+        p_weight: weightValue,
+        p_date: today,
+        p_body_fat_percentage: bodyFatValue,
+        p_muscle_percentage: muscleMassValue,
+        p_photo_urls: allPhotoUrls.length ? allPhotoUrls : null,
+        p_notes: notes || null,
+      });
 
-        if (error) {
-          console.error('🔄 [QuickWeightInput] Update failed:', error);
-          throw error;
-        }
-      } else {
-        // Create new weight entry with fallback strategy
+      if (rpcError) {
+        console.error('🧰 [QuickWeightInput] RPC upsert_weight_entry failed:', rpcError);
+        throw rpcError;
+      }
+
+      // Award points only when a new entry was created
+      if (upsertResult?.operation === 'created') {
         try {
-          // Try upsert first (preferred method with unique constraint)
-          const { error: upsertError } = await supabase
-            .from('weight_history')
-            .upsert(weightData, { 
-              onConflict: 'user_id, date'
-            });
-
-          if (upsertError) {
-            console.warn('⚠️ [QuickWeightInput] Upsert failed, trying insert/update fallback:', upsertError);
-            
-            // Fallback: Try insert first, then update if constraint violation
-            try {
-              const { error: insertError } = await supabase
-                .from('weight_history')
-                .insert(weightData);
-
-              if (insertError) {
-                // If insert fails due to duplicate, try update
-                if (insertError.code === '23505' || insertError.message?.includes('duplicate')) {
-                  const { error: updateError } = await supabase
-                    .from('weight_history')
-                    .update({
-                      weight: weightValue,
-                      body_fat_percentage: bodyFatValue,
-                      muscle_percentage: muscleMassValue,
-                      photo_urls: allPhotoUrls,
-                      notes: notes || null,
-                      updated_at: new Date().toISOString()
-                    })
-                    .eq('user_id', user.id)
-                    .eq('date', today);
-
-                  if (updateError) {
-                    console.error('🔄 [QuickWeightInput] Fallback update failed:', updateError);
-                    throw updateError;
-                  }
-                } else {
-                  console.error('🆕 [QuickWeightInput] Insert failed with non-duplicate error:', insertError);
-                  throw insertError;
-                }
-              }
-            } catch (fallbackError) {
-              console.error('💥 [QuickWeightInput] All fallback strategies failed:', fallbackError);
-              throw fallbackError;
-            }
-          }
-
-          // Award points for weight tracking (only for new entries)
-          try {
-            const clientEventId = uuidv4();
-            await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen', 1.0, undefined, undefined, clientEventId);
-            await updateStreak('weight_tracking');
-
-            // Show points animation
-            setShowPointsAnimation(true);
-            setTimeout(() => setShowPointsAnimation(false), 3000);
-          } catch (pointsError) {
-            console.error('🎯 [QuickWeightInput] Points award failed (non-critical):', pointsError);
-          }
-        } catch (saveError) {
-          console.error('💥 [QuickWeightInput] All save strategies failed:', saveError);
-          throw saveError;
+          const clientEventId = uuidv4();
+          await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen', 1.0, undefined, undefined, clientEventId);
+          await updateStreak('weight_tracking');
+          setShowPointsAnimation(true);
+          setTimeout(() => setShowPointsAnimation(false), 3000);
+        } catch (pointsError) {
+          console.error('🎯 [QuickWeightInput] Points award failed (non-critical):', pointsError);
         }
       }
 

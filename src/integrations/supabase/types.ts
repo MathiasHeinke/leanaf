@@ -3256,13 +3256,6 @@ export type Database = {
             referencedRelation: "meals"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "meal_images_meal_id_fkey"
-            columns: ["meal_id"]
-            isOneToOne: false
-            referencedRelation: "v_today_meals"
-            referencedColumns: ["id"]
-          },
         ]
       }
       meals: {
@@ -6319,14 +6312,6 @@ export type Database = {
         }
         Relationships: []
       }
-      v_orchestrator_metrics_60m: {
-        Row: {
-          avg_latency_ms: number | null
-          error_rate: number | null
-          stage: string | null
-        }
-        Relationships: []
-      }
       v_recent_unmet: {
         Row: {
           confidence: number | null
@@ -6340,63 +6325,10 @@ export type Database = {
         }
         Relationships: []
       }
-      v_summary_rolling_30: {
-        Row: {
-          completeness_score: number | null
-          date: string | null
-          hydration_ml: number | null
-          hydration_score: number | null
-          kcal: number | null
-          mood: string | null
-          sleep_hours: number | null
-          sleep_score: number | null
-          supplement_compliance: number | null
-          user_id: string | null
-          volume_kg: number | null
-        }
-        Relationships: []
-      }
-      v_supplement_flags: {
-        Row: {
-          compliance_pct: number | null
-          date: string | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
       v_today_fluids: {
         Row: {
           date_key: string | null
           today_ml: number | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
-      v_today_meals: {
-        Row: {
-          carbs: number | null
-          fat: number | null
-          id: string | null
-          image_url: string | null
-          kcal: number | null
-          protein: number | null
-          quality_score: number | null
-          title: string | null
-          ts: string | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
-      v_today_meals_union: {
-        Row: {
-          carbs: number | null
-          fat: number | null
-          id: string | null
-          kcal: number | null
-          protein: number | null
-          quality_score: number | null
-          title: string | null
-          ts: string | null
           user_id: string | null
         }
         Relationships: []
@@ -6409,15 +6341,6 @@ export type Database = {
           errors: number | null
           handler_name: string | null
           p90_latency_ms: number | null
-        }
-        Relationships: []
-      }
-      v_unmet_tool_stats: {
-        Row: {
-          avg_confidence: number | null
-          day: string | null
-          intent_guess: string | null
-          unmet_count: number | null
         }
         Relationships: []
       }
@@ -6481,15 +6404,6 @@ export type Database = {
           search_hits_last_30_days?: never
           title?: string | null
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      v_workout_totals: {
-        Row: {
-          d: string | null
-          user_id: string | null
-          volume_kg: number | null
-          workouts: Json | null
         }
         Relationships: []
       }
@@ -6915,6 +6829,18 @@ export type Database = {
           p_user_id: string
         }
         Returns: number
+      }
+      upsert_weight_entry: {
+        Args: {
+          p_body_fat_percentage?: number
+          p_date: string
+          p_muscle_percentage?: number
+          p_notes?: string
+          p_photo_urls?: Json
+          p_user_id: string
+          p_weight: number
+        }
+        Returns: Json
       }
       validate_admin_access: {
         Args: { p_resource?: string }
