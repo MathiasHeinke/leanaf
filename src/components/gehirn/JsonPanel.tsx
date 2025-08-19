@@ -1,15 +1,10 @@
 import React from 'react';
+import { safeStringify } from '@/utils/safeJsonHelpers';
 
 type Props = { data: any; maxHeight?: number };
 
 export function JsonPanel({ data, maxHeight = 300 }: Props) {
-  const pretty = (() => {
-    try {
-      return JSON.stringify(data, null, 2);
-    } catch {
-      return String(data);
-    }
-  })();
+  const pretty = safeStringify(data, String(data));
 
   return (
     <div className="mt-3 rounded-2xl border bg-muted/30 p-3">

@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { JsonPanel } from '@/components/gehirn/JsonPanel';
 import { Copy, ExternalLink, Eye, Brain, User, Database, Lightbulb, AlertTriangle, Zap, Activity } from 'lucide-react';
 import { toast } from 'sonner';
+import { safeStringify } from '@/utils/safeJsonHelpers';
 
 export interface PromptData {
   traceId?: string;
@@ -562,7 +563,7 @@ export function PromptViewer({ data, onClose, className }: PromptViewerProps) {
                     variant="outline" 
                     size="sm" 
                     onClick={() => copyToClipboard(
-                      data.llmResponse?.raw_response || JSON.stringify(data.fallbackMetadata?.rawResponse, null, 2), 
+                      data.llmResponse?.raw_response || safeStringify(data.fallbackMetadata?.rawResponse, 'No response data'), 
                       'LLM response'
                     )}
                     className="gap-2 w-full sm:w-auto"
@@ -576,7 +577,7 @@ export function PromptViewer({ data, onClose, className }: PromptViewerProps) {
                   <h4 className="font-medium mb-2 text-sm sm:text-base">Generated Content</h4>
                   <ScrollArea className="h-64 w-full rounded-md border p-3">
                     <pre className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
-                      {data.llmResponse?.raw_response || JSON.stringify(data.fallbackMetadata?.rawResponse, null, 2)}
+                      {data.llmResponse?.raw_response || safeStringify(data.fallbackMetadata?.rawResponse, 'No response data available')}
                     </pre>
                   </ScrollArea>
                 </div>
