@@ -91,8 +91,23 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       debugCallbacks?.setLastResponse?.(result);
 
       if (!result?.ok) {
-        const errorMsg = result?.error?.message || result?.message || 'Unknown orchestrator error';
-        throw new Error(errorMsg);
+        const status = result?.status || 500;
+        const code = result?.code;
+        
+        // Map specific error codes to user-friendly messages
+        let errorMsg = 'Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.';
+        if (status === 401) {
+          errorMsg = 'Bitte erneut anmelden.';
+        } else if (status === 422 || code === 'NO_INPUT') {
+          errorMsg = 'Bitte Text oder Bild senden.';
+        } else if (code === 'CONFIG_MISSING') {
+          errorMsg = 'Server-Konfigurationsfehler. Bitte Admin benachrichtigen.';
+        }
+        
+        const error = new Error(errorMsg);
+        (error as any).status = status;
+        (error as any).code = code;
+        throw error;
       }
 
       debugCallbacks?.completeStep(currentStepId!, "Request completed successfully");

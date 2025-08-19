@@ -1,9 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'); // <- must exist
-const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -130,13 +130,12 @@ Guidelines:
 User message: ${text}`;
 
   const llmInput = {
-    model: 'gpt-4o-mini',
+    model: 'gpt-5-2025-08-07',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: text }
     ],
-    max_tokens: 500,
-    temperature: 0.7
+    max_completion_tokens: 1000
   };
 
   return { systemPrompt, completePrompt, llmInput };
@@ -165,16 +164,21 @@ Deno.serve(async (req) => {
 
   // Health check endpoint
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
-    return respond({ ok: true, env: { svc: !!SVC } });
+    return respond({ ok: true, env: { svc: !!SVC, openai: !!OPENAI_API_KEY } });
   }
 
   const started = performance.now();
   const traceId = makeTraceId();
 
-  // Check secrets early → return 500 with traceId (front-end can surface real reason for admin only)
+  // Check secrets early → return 500 with traceId
   if (!SVC) {
     console.error('[ARES-ERROR] Missing SUPABASE_SERVICE_ROLE_KEY');
     return respond({ ok: false, code: 'CONFIG_MISSING', message: 'Server misconfigured', traceId }, { status: 500, headers: { 'X-Trace-Id': traceId } });
+  }
+
+  if (!OPENAI_API_KEY) {
+    console.error('[ARES-ERROR] Missing OPENAI_API_KEY');
+    return respond({ ok: false, code: 'CONFIG_MISSING', message: 'OpenAI API key not configured', traceId }, { status: 500, headers: { 'X-Trace-Id': traceId } });
   }
 
   const supaUser = createClient(SUPABASE_URL, ANON, {
