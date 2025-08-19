@@ -151,6 +151,7 @@ export function useOrchestrator() {
           p_data: { source: headers['x-source'] }
         });
       } catch (_) { /* non-fatal */ }
+      
       // Try enhanced with timeout, retry once on error/timeout
       try {
         const response = await supabase.functions.invoke('coach-orchestrator-enhanced', {
@@ -160,16 +161,39 @@ export function useOrchestrator() {
         
         // Handle potential 409 in_progress status through response data
         if (response.data?.reason === 'in_progress') {
-          // Still processing - show typing or do nothing
           return { kind: 'message', text: '...' };
         }
         
-        if (response.error) throw response.error;
+        // Enhanced error handling with trace ID extraction
+        if (response.error) {
+          const errorText = response.error?.message || String(response.error);
+          const isServerError = errorText.includes('500') || errorText.includes('Internal');
+          const traceFromHeader = response.headers?.['x-trace-id'];
+          
+          console.warn('Enhanced orchestrator error:', {
+            error: errorText,
+            traceId: traceFromHeader,
+            statusCode: response.status
+          });
+          
+          // Extract structured error info if available
+          if (response.data?.code) {
+            const error = new Error(response.data.error || errorText);
+            (error as any).code = response.data.code;
+            (error as any).traceId = response.data.traceId || traceFromHeader;
+            throw error;
+          }
+          
+          throw response.error;
+        }
+        
         endUserAction();
         return normalizeReply(response.data);
+        
       } catch (e1) {
+        console.warn('Enhanced orchestrator attempt 1 failed:', e1);
+        
         if (e1 instanceof Error && e1.message === 'timeout') {
-          console.warn('orchestrator TIMEOUT', { cutoffMs: 15000 });
           try {
             await supabase.rpc('log_trace_event', {
               p_trace_id: headers['x-trace-id'],
@@ -178,26 +202,69 @@ export function useOrchestrator() {
             });
           } catch (_) { /* non-fatal */ }
         }
-        // mark retry so the server can log it in traces
+        
+        // Retry with enhanced error handling
         headers['x-retry'] = '1';
-        const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-          body: payload,
-          headers,
-        });
-        if (error) throw error;
-        endUserAction();
-        return normalizeReply(data);
+        try {
+          const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
+            body: payload,
+            headers,
+          });
+          
+          if (error) {
+            // Check if this is a server error that should trigger fallback
+            const errorText = error?.message || String(error);
+            const isServerError = errorText.includes('500') || errorText.includes('502') || errorText.includes('503');
+            
+            if (isServerError && legacyEnabled) {
+              console.info('Enhanced orchestrator server error, trying legacy fallback...');
+              throw error; // This will trigger the legacy fallback below
+            }
+            
+            throw error;
+          }
+          
+          endUserAction();
+          return normalizeReply(data);
+        } catch (e2) {
+          // If retry also fails, try legacy if enabled
+          if (legacyEnabled) {
+            console.info('Enhanced orchestrator retry failed, trying legacy fallback...');
+            throw e2; // This will trigger the legacy fallback below
+          }
+          throw e2;
+        }
       }
     } catch (e) {
       if (legacyEnabled) {
         try {
+          console.info('Attempting legacy fallback for:', coachId);
           const data = await withTimeout(invokeLegacy(), 7000);
           return normalizeReply(data);
-        } catch (e2) { /* fall through */ }
-      } else {
-        console.info('Legacy fallback disabled via flag; returning friendly error.');
+        } catch (e2) {
+          console.warn('Legacy fallback also failed:', e2);
+        }
       }
-      return { kind: 'message', text: `Hey! Ich bin kurz beschäftigt – versuch\'s bitte nochmal. (${coachId === 'ares' ? 'ARES System wird geladen...' : 'Netzwerk/Timeout'})` };
+      
+      // Enhanced error message based on error type
+      const errorMsg = (e as any)?.message || String(e);
+      const traceId = (e as any)?.traceId || headers['x-trace-id'];
+      
+      if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
+        return { kind: 'message', text: 'Bitte erneut anmelden und dann nochmal versuchen.' };
+      }
+      if (errorMsg.includes('422') || errorMsg.includes('NO_INPUT')) {
+        return { kind: 'message', text: 'Bitte Text oder Bild senden.' };
+      }
+      if (errorMsg.includes('CONFIG_MISSING')) {
+        return { kind: 'message', text: 'Server-Konfigurationsfehler. Bitte Admin kontaktieren.' };
+      }
+      
+      return { 
+        kind: 'message', 
+        text: `Hey! Ich bin kurz beschäftigt – versuch's bitte nochmal. (${coachId === 'ares' ? 'ARES System wird geladen...' : 'Netzwerk/Timeout'})`,
+        traceId
+      };
     }
   }
 
