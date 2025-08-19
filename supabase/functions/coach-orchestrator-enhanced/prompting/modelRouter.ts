@@ -14,7 +14,7 @@ export function chooseModels(flags: ModelFlags = {}): ModelChoice {
   // High fidelity for complex conversations
   if (flags.highFidelity) {
     return { 
-      chat: "gpt-5-2025-08-07", 
+      chat: "gpt-4.1-2025-04-14", 
       tools: "gpt-4o-mini" 
     };
   }
@@ -30,14 +30,14 @@ export function chooseModels(flags: ModelFlags = {}): ModelChoice {
   // Cost sensitive mode
   if (flags.costSensitive) {
     return { 
-      chat: "gpt-4.1-2025-04-14", 
+      chat: "gpt-4o-mini", 
       tools: "gpt-4o-mini" 
     };
   }
   
   // Default balanced selection
   return { 
-    chat: "gpt-4.1-2025-04-14", 
+    chat: "gpt-4o-mini", 
     tools: "gpt-4o-mini" 
   };
 }

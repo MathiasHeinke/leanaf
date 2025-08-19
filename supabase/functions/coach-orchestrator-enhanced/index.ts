@@ -130,12 +130,13 @@ Guidelines:
 User message: ${text}`;
 
   const llmInput = {
-    model: 'gpt-5-2025-08-07',
+    model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: text }
     ],
-    max_completion_tokens: 1000
+    max_tokens: 1000,
+    temperature: 0.7
   };
 
   return { systemPrompt, completePrompt, llmInput };

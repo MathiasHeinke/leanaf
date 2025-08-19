@@ -137,11 +137,23 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       console.error("🔧 Orchestrator error:", error);
       
       if (currentStepId) {
-        debugCallbacks?.errorStep(currentStepId, `Error: ${error.message}`);
+        debugCallbacks?.errorStep(currentStepId, `Error: ${error?.message || 'Unbekannter Fehler'}`);
       }
 
+      // Map common server errors to user-friendly messages
+      let msg = error?.message || 'Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.';
+      const raw = String(error?.message || '').toUpperCase();
+      if (raw.includes('NO_INPUT') || raw.includes('422')) {
+        msg = 'Bitte Text oder Bild senden.';
+      } else if (raw.includes('UNAUTHORIZED') || raw.includes('401')) {
+        msg = 'Bitte erneut anmelden.';
+      } else if (raw.includes('CONFIG_MISSING')) {
+        msg = 'Server-Konfigurationsfehler. Bitte Admin benachrichtigen.';
+      }
+      const friendly = new Error(msg);
+      (friendly as any).code = /NO_INPUT/.test(raw) ? 'NO_INPUT' : error?.code;
       setLoading(false);
-      throw error;
+      throw friendly;
     }
   };
 
