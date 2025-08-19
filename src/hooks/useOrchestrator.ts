@@ -178,7 +178,7 @@ export function useOrchestrator() {
           if (response.data?.code) {
             const error = new Error(response.data.error || errorText);
             (error as any).code = response.data.code;
-            (error as any).traceId = response.data.traceId || headers['x-trace-id'];
+            (error as any).traceId = response.data.traceId;
             throw error;
           }
           
