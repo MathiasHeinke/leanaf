@@ -168,19 +168,17 @@ export function useOrchestrator() {
         if (response.error) {
           const errorText = response.error?.message || String(response.error);
           const isServerError = errorText.includes('500') || errorText.includes('Internal');
-          const traceFromHeader = response.headers?.['x-trace-id'];
-          
+          // Note: FunctionsResponse doesn't have headers/status properties
           console.warn('Enhanced orchestrator error:', {
             error: errorText,
-            traceId: traceFromHeader,
-            statusCode: response.status
+            response: response
           });
           
           // Extract structured error info if available
           if (response.data?.code) {
             const error = new Error(response.data.error || errorText);
             (error as any).code = response.data.code;
-            (error as any).traceId = response.data.traceId || traceFromHeader;
+            (error as any).traceId = response.data.traceId || headers['x-trace-id'];
             throw error;
           }
           

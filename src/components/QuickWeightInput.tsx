@@ -192,7 +192,7 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
       }
 
       // Award points only when a new entry was created
-      if (upsertResult?.operation === 'created') {
+      if (upsertResult && typeof upsertResult === 'object' && 'operation' in upsertResult && upsertResult.operation === 'created') {
         try {
           const clientEventId = uuidv4();
           await awardPoints('weight_measured', getPointsForActivity('weight_measured'), 'Gewicht eingetragen', 1.0, undefined, undefined, clientEventId);

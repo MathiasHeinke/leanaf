@@ -28,7 +28,7 @@ export function useIndexSnapshot(date: Date = new Date()) {
         // Meals
         if (isToday) {
           const { data, error } = await supabase
-            .from('v_today_meals_union')
+            .from('meals')
             .select('*')
             .eq('user_id', user.id)
             .order('ts', { ascending: false });
