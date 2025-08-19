@@ -1,15 +1,11 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { createClient } from '@supabase/supabase-js';
 
-// Environment variables
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
+const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'); // <- must exist
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY')!;
 
-// CORS headers (bulletproof)
-const corsHeaders = {
+const cors = {
   'Access-Control-Allow-Origin': '*',
   'Vary': 'Origin',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
@@ -19,141 +15,99 @@ const corsHeaders = {
   'Access-Control-Allow-Credentials': 'true'
 };
 
-function json(body: any, init: ResponseInit = {}) {
+function respond(body: unknown, init: ResponseInit = {}) {
   const headers = new Headers(init.headers || {});
-  Object.entries(corsHeaders).forEach(([k, v]) => headers.set(k, String(v)));
-  headers.set('Content-Type', 'application/json');
+  Object.entries(cors).forEach(([k, v]) => headers.set(k, String(v)));
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   return new Response(JSON.stringify(body), { ...init, headers });
 }
 
-// Helper: Server-side Trace ID
-function makeTraceId(): string {
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `t_${rand}${Date.now().toString(36).slice(-4)}`;
+function makeTraceId() {
+  return `t_${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}${Date.now().toString(36).slice(-4)}`;
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders as any });
-  }
+function serializeErr(e: unknown) {
+  const any = e as any;
+  return { message: any?.message ?? String(e), stack: any?.stack ?? null, code: any?.code ?? null };
+}
 
-  let traceId: string;
-  let user: any;
+async function safeJson(req: Request) {
+  try { return await req.json(); } catch { return {}; }
+}
 
-  try {
-    // Supabase clients
-    const supaUser = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: req.headers.get('Authorization') || '' } }
-    });
+async function buildUserContext({ userId }: { userId: string }) {
+  const supaUser = createClient(SUPABASE_URL, ANON, {
+    auth: { persistSession: false }
+  });
 
-    // Service Role for Inserts/Updates in ares_traces
-    const supaSvc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { persistSession: false }
-    });
+  const { data: profile } = await supaUser
+    .from('profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
 
-    // Request handling
-    const body = await req.json().catch(() => ({}));
-    const userResponse = await supaUser.auth.getUser();
-    user = userResponse.data.user;
-    
-    if (!user) {
-      return json({ ok: false, error: 'Unauthorized' }, { status: 401 });
-    }
+  const { data: recentMeals } = await supaUser
+    .from('meals')
+    .select('title, calories, protein, carbs, fat')
+    .eq('user_id', userId)
+    .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    .order('date', { ascending: false })
+    .limit(5);
 
-    const coachId = body?.coachId || 'ares';
-    const clientEventId = body?.clientEventId || null;
-    const text = body?.text ?? '';
-    const images = body?.images ?? null;
+  const { data: recentWorkouts } = await supaUser
+    .from('workouts')
+    .select('workout_type, duration_minutes, notes')
+    .eq('user_id', userId)
+    .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    .order('date', { ascending: false })
+    .limit(3);
 
-    // Generate server-side trace ID
-    traceId = makeTraceId();
-    const startedAt = performance.now();
+  return {
+    profile: profile || {},
+    recent_meals: recentMeals || [],
+    recent_workouts: recentWorkouts || [],
+    user_preferences: profile?.preferences || {}
+  };
+}
 
-    console.log(`[ARES-PHASE1-${traceId}] Request received`);
-    console.log(`[ARES-PHASE1-${traceId}] Processing: user=${user.id}, coach=${coachId}, text="${text}"`);
+async function loadPersona({ coachId }: { coachId: string }) {
+  const supaUser = createClient(SUPABASE_URL, ANON, {
+    auth: { persistSession: false }
+  });
 
-    // Trace initial write
-    await supaSvc.from('ares_traces').insert({
-      trace_id: traceId,
-      user_id: user.id,
-      coach_id: coachId,
-      status: 'started',
-      client_event_id: clientEventId,
-      input_text: text,
-      images
-    });
+  const { data: personaData } = await supaUser
+    .from('coach_personas')
+    .select('*')
+    .eq('id', coachId)
+    .single();
 
-    // Phase: Load context
-    console.log(`[ARES-PROMPT] Loading context for user ${user.id}`);
-    
-    // Get user profile and recent data
-    const { data: profile } = await supaUser
-      .from('profiles')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
+  return personaData || {
+    id: coachId,
+    name: 'ARES',
+    title: 'AI Fitness Coach',
+    bio_short: 'Your AI-powered fitness and nutrition coach',
+    voice: 'motivational',
+    style_rules: ['Be direct and actionable', 'Focus on results', 'Provide specific guidance']
+  };
+}
 
-    const { data: recentMeals } = await supaUser
-      .from('meals')
-      .select('title, calories, protein, carbs, fat')
-      .eq('user_id', user.id)
-      .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-      .order('date', { ascending: false })
-      .limit(5);
+async function fetchRagSources({ text, context }: { text: string; context: any }) {
+  // Simplified RAG for now
+  return {
+    knowledge_chunks: [],
+    relevance_scores: [],
+    total_chunks: 0
+  };
+}
 
-    const { data: recentWorkouts } = await supaUser
-      .from('workouts')
-      .select('workout_type, duration_minutes, notes')
-      .eq('user_id', user.id)
-      .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-      .order('date', { ascending: false })
-      .limit(3);
-
-    const context = {
-      profile: profile || {},
-      recent_meals: recentMeals || [],
-      recent_workouts: recentWorkouts || [],
-      user_preferences: profile?.preferences || {}
-    };
-
-    console.log(`[ARES-PROMPT] Memory loaded: profile=${!!profile}, meals=${recentMeals?.length || 0}, workouts=${recentWorkouts?.length || 0}`);
-
-    // Phase: Load persona
-    const { data: personaData } = await supaUser
-      .from('coach_personas')
-      .select('*')
-      .eq('id', 'ares')
-      .single();
-
-    const persona = personaData || {
-      id: 'ares',
-      name: 'ARES',
-      title: 'AI Fitness Coach',
-      bio_short: 'Your AI-powered fitness and nutrition coach',
-      voice: 'motivational',
-      style_rules: ['Be direct and actionable', 'Focus on results', 'Provide specific guidance']
-    };
-
-    console.log(`[ARES-PROMPT] Persona loaded: ${persona.name}`);
-
-    // Phase: RAG sources (simplified for this implementation)
-    const ragSources = {
-      knowledge_chunks: [],
-      relevance_scores: [],
-      total_chunks: 0
-    };
-
-    await supaSvc.from('ares_traces')
-      .update({ 
-        status: 'context_loaded', 
-        context, 
-        persona, 
-        rag_sources: ragSources 
-      })
-      .eq('trace_id', traceId);
-
-    // Phase: Build prompts
-    const systemPrompt = `You are ${persona.name}, ${persona.title}.
+function buildPrompts({ persona, context, ragSources, text, images }: {
+  persona: any;
+  context: any;
+  ragSources: any;
+  text: string;
+  images: any;
+}) {
+  const systemPrompt = `You are ${persona.name}, ${persona.title}.
 
 ${persona.bio_short}
 
@@ -171,98 +125,142 @@ Guidelines:
 - Provide specific, personalized recommendations
 - Keep responses concise but helpful`;
 
-    const completePrompt = `${systemPrompt}
+  const completePrompt = `${systemPrompt}
 
 User message: ${text}`;
 
-    const llmInput = {
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: text }
-      ],
-      max_tokens: 500,
-      temperature: 0.7
-    };
+  const llmInput = {
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: text }
+    ],
+    max_tokens: 500,
+    temperature: 0.7
+  };
 
-    console.log(`[ARES-PHASE1-${traceId}] Prompt built, length: ${systemPrompt.length}`);
+  return { systemPrompt, completePrompt, llmInput };
+}
 
-    await supaSvc.from('ares_traces')
-      .update({ 
-        status: 'prompt_built', 
-        system_prompt: systemPrompt, 
-        complete_prompt: completePrompt, 
-        llm_input: llmInput 
-      })
-      .eq('trace_id', traceId);
+async function callLLM(llmInput: any) {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(llmInput),
+  });
 
-    // Phase: LLM call
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(llmInput),
+  if (!response.ok) {
+    throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+  }
+
+  const llmResponse = await response.json();
+  return llmResponse.choices[0].message.content;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors as any });
+
+  // Health check endpoint
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+    return respond({ ok: true, env: { svc: !!SVC } });
+  }
+
+  const started = performance.now();
+  const traceId = makeTraceId();
+
+  // Check secrets early → return 500 with traceId (front-end can surface real reason for admin only)
+  if (!SVC) {
+    console.error('[ARES-ERROR] Missing SUPABASE_SERVICE_ROLE_KEY');
+    return respond({ ok: false, code: 'CONFIG_MISSING', message: 'Server misconfigured', traceId }, { status: 500, headers: { 'X-Trace-Id': traceId } });
+  }
+
+  const supaUser = createClient(SUPABASE_URL, ANON, {
+    global: { headers: { Authorization: req.headers.get('Authorization') || '' } }
+  });
+  const supaSvc = createClient(SUPABASE_URL, SVC, { auth: { persistSession: false } });
+
+  try {
+    // Auth
+    const { data: authData } = await supaUser.auth.getUser();
+    const user = authData?.user;
+    if (!user) {
+      return respond({ ok: false, code: 'UNAUTHORIZED', message: 'No user session', traceId }, { status: 401, headers: { 'X-Trace-Id': traceId } });
+    }
+
+    // Parse payload (tolerant)
+    const b = await safeJson(req);
+    const event = b?.event ?? null;
+    const text =
+      event?.text ??
+      b?.text ??
+      b?.message ??
+      (typeof b === 'string' ? b : '') ?? '';
+    const images = event?.images ?? b?.images ?? null;
+    const coachId = b?.coachId || 'ares';
+    const clientEventId = b?.clientEventId ?? null;
+
+    if (!text && (!images || (Array.isArray(images) && images.length === 0))) {
+      // Use 422 to indicate client input problem (not 400 ambiguous)
+      return respond({ ok: false, code: 'NO_INPUT', message: 'Provide text or images', traceId }, { status: 422, headers: { 'X-Trace-Id': traceId } });
+    }
+
+    // Create trace row immediately
+    await supaSvc.from('ares_traces').insert({
+      trace_id: traceId,
+      user_id: user.id,
+      coach_id: coachId,
+      status: 'started',
+      client_event_id: clientEventId,
+      input_text: text || null,
+      images: images || null
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-    }
-
-    const llmResponse = await response.json();
-    const reply = llmResponse.choices[0].message.content;
-
-    console.log(`[ARES-RESPONSE] Generated response length: ${reply.length}`);
-
-    const duration_ms = Math.round(performance.now() - startedAt);
+    // === BUSINESS LOGIC ===
+    const context = await buildUserContext({ userId: user.id }).catch((e) => {
+      console.error('[ARES-ERROR] buildUserContext', traceId, e);
+      throw e;
+    });
+    const persona = await loadPersona({ coachId }).catch((e) => {
+      console.error('[ARES-ERROR] loadPersona', traceId, e);
+      throw e;
+    });
+    const ragSources = await fetchRagSources({ text, context }).catch((e) => {
+      console.error('[ARES-ERROR] fetchRagSources', traceId, e);
+      throw e;
+    });
 
     await supaSvc.from('ares_traces')
-      .update({ 
-        status: 'completed', 
-        llm_output: llmResponse, 
-        duration_ms 
-      })
+      .update({ status: 'context_loaded', context, persona, rag_sources: ragSources })
       .eq('trace_id', traceId);
 
-    console.log(`[ARES-PHASE1-${traceId}] Response generated successfully`);
+    const { systemPrompt, completePrompt, llmInput } = buildPrompts({ persona, context, ragSources, text, images });
 
-    // Response with Trace-ID (also in header)
-    return json(
-      { ok: true, traceId, reply },
-      { headers: { 'X-Trace-Id': traceId } }
-    );
+    await supaSvc.from('ares_traces')
+      .update({ status: 'prompt_built', system_prompt: systemPrompt, complete_prompt: completePrompt, llm_input: llmInput })
+      .eq('trace_id', traceId);
 
-  } catch (error) {
-    console.error(`[ARES-ERROR-${traceId || 'unknown'}]`, error);
-    
-    const err = { 
-      message: (error as any)?.message || String(error), 
-      stack: (error as any)?.stack 
-    };
-    
-    if (traceId && user) {
-      try {
-        const supaSvc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-          auth: { persistSession: false }
-        });
-        
-        await supaSvc.from('ares_traces')
-          .upsert({ 
-            trace_id: traceId, 
-            user_id: user.id, 
-            status: 'failed', 
-            error: err 
-          })
-          .eq('trace_id', traceId);
-      } catch (dbError) {
-        console.error('Failed to update trace with error:', dbError);
-      }
+    const llmOutput = await callLLM(llmInput);
+
+    const duration_ms = Math.round(performance.now() - started);
+    await supaSvc.from('ares_traces')
+      .update({ status: 'completed', llm_output: llmOutput, duration_ms })
+      .eq('trace_id', traceId);
+
+    return respond({ ok: true, traceId, reply: llmOutput }, { headers: { 'X-Trace-Id': traceId } });
+
+  } catch (e) {
+    const err = serializeErr(e);
+    try {
+      await createClient(SUPABASE_URL, SVC!, { auth: { persistSession: false } })
+        .from('ares_traces')
+        .upsert({ trace_id: traceId, status: 'failed', error: err });
+    } catch {
+      // swallow
     }
-
-    return json(
-      { ok: false, traceId: traceId || null, error: err }, 
-      { status: 500, headers: { 'X-Trace-Id': traceId || 'unknown' } }
-    );
+    console.error('[ARES-ERROR]', traceId, err);
+    return respond({ ok: false, code: 'INTERNAL_ERROR', traceId, error: err }, { status: 500, headers: { 'X-Trace-Id': traceId } });
   }
 });
