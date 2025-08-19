@@ -1233,7 +1233,8 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
       await handleSendMessage(msg, mediaUrls);
       return;
     }
-    toast.error('Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.');
+    // Error handling now done by useOrchestratorWithDebug
+    toast.error((e as any)?.message || 'Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.');
     return;
   }
 }, [coach, user?.id, mode, sendEvent, renderOrchestratorReply, handleSendMessage, legacyEnabled, pendingSupplement]);
