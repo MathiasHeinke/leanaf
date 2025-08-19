@@ -92,12 +92,32 @@ export const ActiveWorkoutPlan: React.FC<ActiveWorkoutPlanProps> = ({
     });
   };
 
-  const handleSaveWorkout = async () => {
+  const handleSaveWorkout = async (retryCount = 0) => {
+    // Validation: Check required data before attempting save
+    if (!user?.id) {
+      toast.error('Benutzer nicht authentifiziert');
+      return;
+    }
+    
+    if (completedExercises.size === 0) {
+      toast.error('Mindestens eine Übung muss abgeschlossen sein');
+      return;
+    }
+
     setSaving(true);
+    const maxRetries = 3;
+
     try {
+      console.log('🏋️ Saving workout session...', { 
+        userId: user.id,
+        planId: workoutPlan.id,
+        exercisesCount: exercises.length,
+        completedCount: completedExercises.size 
+      });
+
       // Create exercise session
       const sessionData = {
-        user_id: user?.id,
+        user_id: user.id, // Ensure user_id is properly set
         session_name: workoutPlan.name,
         workout_plan_id: workoutPlan.id,
         date: getCurrentDateString(),
@@ -113,13 +133,22 @@ export const ActiveWorkoutPlan: React.FC<ActiveWorkoutPlanProps> = ({
         .select()
         .maybeSingle();
 
-      if (sessionError) throw sessionError;
+      if (sessionError) {
+        console.error('❌ Session creation error:', sessionError);
+        throw new Error(`Session speichern fehlgeschlagen: ${sessionError.message}`);
+      }
+
+      if (!session) {
+        throw new Error('Keine Session-Daten erhalten');
+      }
+
+      console.log('✅ Session created:', session.id);
 
       // Create exercise sets for completed exercises
       const completedSets = exercises
         .filter((_, index) => completedExercises.has(`${index}`))
         .map((exercise, exerciseIndex) => ({
-          user_id: user?.id,
+          user_id: user.id, // Ensure user_id is set here too
           session_id: session.id,
           exercise_id: exercise.id,
           set_number: 1,
@@ -127,37 +156,85 @@ export const ActiveWorkoutPlan: React.FC<ActiveWorkoutPlanProps> = ({
           reps: exercise.reps || null,
           rpe: exercise.rpe || null,
           rest_seconds: exercise.rest_seconds || null,
-          notes: exercise.notes || null
+          notes: exercise.notes || null,
+          date: getCurrentDateString()
         }));
 
       if (completedSets.length > 0) {
+        console.log('💪 Inserting exercise sets:', completedSets.length);
+        
         const { error: setsError } = await supabase
           .from('exercise_sets')
           .insert(completedSets);
 
-        if (setsError) throw setsError;
+        if (setsError) {
+          console.error('❌ Exercise sets error:', setsError);
+          throw new Error(`Übungen speichern fehlgeschlagen: ${setsError.message}`);
+        }
+        
+        console.log('✅ Exercise sets created successfully');
       }
-
-      toast.success('Training erfolgreich gespeichert!');
 
       // Mirror to workouts table
       const endTime = new Date();
       const startTime = isTimerRunning
         ? new Date(Date.now() - (timerDuration || 0) * 1000)
         : new Date(endTime.getTime() - 10 * 60 * 1000); // fallback 10min
+      
+      console.log('🔄 Mirroring to daily overview...');
       await mirrorWorkoutToDailyOverview({
-        userId: user!.id,
+        userId: user.id,
         workoutType: 'strength',
         startTime,
         endTime,
         rpeValues: exercises.map(e => e.rpe ?? null),
       });
 
+      toast.success('Training erfolgreich gespeichert!');
       onComplete();
 
-    } catch (error) {
-      console.error('Error saving workout:', error);
-      toast.error('Fehler beim Speichern des Trainings');
+    } catch (error: any) {
+      console.error('💥 Workout save error:', error);
+      
+      // Retry logic for transient errors
+      if (retryCount < maxRetries && (
+        error?.message?.includes('network') ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('connection')
+      )) {
+        console.log(`🔄 Retrying save attempt ${retryCount + 1}/${maxRetries}`);
+        setTimeout(() => handleSaveWorkout(retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+
+      // User-friendly error messages
+      let friendlyMessage = 'Fehler beim Speichern des Trainings';
+      
+      if (error?.message?.includes('row-level security')) {
+        friendlyMessage = 'Zugriffsberechtigung fehlt. Bitte erneut anmelden.';
+      } else if (error?.message?.includes('foreign key')) {
+        friendlyMessage = 'Trainingsplan-Referenz ungültig. Bitte Plan neu laden.';
+      } else if (error?.message?.includes('not authenticated')) {
+        friendlyMessage = 'Anmeldung erforderlich. Bitte erneut anmelden.';
+      } else if (error?.message) {
+        friendlyMessage = `Speichern fehlgeschlagen: ${error.message}`;
+      }
+
+      // Local storage backup for recovery
+      try {
+        const backupData = {
+          workoutPlan: workoutPlan,
+          exercises: exercises,
+          completedExercises: Array.from(completedExercises),
+          timestamp: Date.now()
+        };
+        localStorage.setItem('workout_backup', JSON.stringify(backupData));
+        console.log('💾 Workout data backed up locally');
+      } catch (backupError) {
+        console.warn('⚠️ Could not backup workout data:', backupError);
+      }
+
+      toast.error(friendlyMessage);
     } finally {
       setSaving(false);
     }
@@ -308,7 +385,7 @@ export const ActiveWorkoutPlan: React.FC<ActiveWorkoutPlanProps> = ({
         </Button>
         
         <Button
-          onClick={handleSaveWorkout}
+          onClick={() => handleSaveWorkout()}
           disabled={saving || completedExercises.size === 0}
           className="flex-1"
         >

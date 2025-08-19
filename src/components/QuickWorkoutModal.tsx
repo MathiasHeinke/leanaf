@@ -61,16 +61,35 @@ export const QuickWorkoutModal = ({ isOpen, onClose, contextData }: QuickWorkout
     }
   }, [contextData]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, retryCount = 0) => {
     e.preventDefault();
-    if (!user) return;
+    
+    // Validation: Check required data
+    if (!user?.id) {
+      toast.error('Benutzer nicht authentifiziert. Bitte erneut anmelden.');
+      return;
+    }
+
+    if (!workoutType) {
+      toast.error('Bitte Trainingsart auswählen');
+      return;
+    }
 
     setIsSubmitting(true);
+    const maxRetries = 3;
+
     try {
+      console.log('💾 Saving quick workout...', { 
+        userId: user.id,
+        workoutType,
+        duration: duration[0],
+        intensity: intensity[0]
+      });
+
       const todayDateString = getCurrentDateString();
 
       const workoutData = {
-        user_id: user.id,
+        user_id: user.id, // Ensure user_id is properly set
         workout_type: workoutType,
         duration_minutes: workoutType === 'pause' ? 0 : duration[0],
         intensity: workoutType === 'pause' ? 0 : intensity[0],
@@ -85,20 +104,73 @@ export const QuickWorkoutModal = ({ isOpen, onClose, contextData }: QuickWorkout
         .from('workouts')
         .insert(workoutData);
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Quick workout insert error:', error);
+        throw new Error(`Workout speichern fehlgeschlagen: ${error.message}`);
+      }
+
+      console.log('✅ Quick workout saved successfully');
 
       // Award points for actual workouts
       if (workoutType !== 'pause') {
-        await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen');
-        await updateStreak('workout');
+        try {
+          await awardPoints('workout_completed', getPointsForActivity('workout_completed'), 'Workout abgeschlossen');
+          await updateStreak('workout');
+        } catch (pointsError) {
+          console.warn('⚠️ Points/streak update failed:', pointsError);
+          // Don't fail the whole operation for points errors
+        }
       }
 
       toast.success('Workout erfolgreich eingetragen!');
       triggerDataRefresh();
       onClose();
-    } catch (error) {
-      console.error('Error saving workout:', error);
-      toast.error('Fehler beim Speichern des Workouts');
+
+    } catch (error: any) {
+      console.error('💥 Quick workout error:', error);
+      
+      // Retry logic for transient errors
+      if (retryCount < maxRetries && (
+        error?.message?.includes('network') ||
+        error?.message?.includes('timeout') ||
+        error?.message?.includes('connection')
+      )) {
+        console.log(`🔄 Retrying quick workout save ${retryCount + 1}/${maxRetries}`);
+        setTimeout(() => handleSubmit(e, retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+
+      // User-friendly error messages
+      let friendlyMessage = 'Fehler beim Speichern des Workouts';
+      
+      if (error?.message?.includes('row-level security')) {
+        friendlyMessage = 'Zugriffsberechtigung fehlt. Bitte erneut anmelden.';
+      } else if (error?.message?.includes('not authenticated')) {
+        friendlyMessage = 'Anmeldung erforderlich. Bitte erneut anmelden.';
+      } else if (error?.message?.includes('duplicate key')) {
+        friendlyMessage = 'Workout für heute bereits vorhanden. Bitte bestehenden Eintrag bearbeiten.';
+      } else if (error?.message) {
+        friendlyMessage = `Speichern fehlgeschlagen: ${error.message}`;
+      }
+
+      // Local storage backup for recovery
+      try {
+        const backupData = {
+          workoutType,
+          duration: duration[0],
+          intensity: intensity[0],
+          distanceKm,
+          steps,
+          notes,
+          timestamp: Date.now()
+        };
+        localStorage.setItem('quick_workout_backup', JSON.stringify(backupData));
+        console.log('💾 Quick workout data backed up locally');
+      } catch (backupError) {
+        console.warn('⚠️ Could not backup quick workout data:', backupError);
+      }
+
+      toast.error(friendlyMessage);
     } finally {
       setIsSubmitting(false);
     }
