@@ -169,8 +169,9 @@ const Index = () => {
     <>
       <FireBackdrop 
         ref={fireBackdropRef} 
-        defaultIntensity={0.15}
+        defaultIntensity={0.3}
         devFastCycle={false}
+        className="fixed inset-0 z-[1]"
       />
       <BootstrapController>
         <DashboardErrorBoundary>
