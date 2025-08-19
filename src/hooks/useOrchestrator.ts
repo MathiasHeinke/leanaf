@@ -98,6 +98,7 @@ export function useOrchestrator() {
       'x-trace-id': traceId ?? crypto.randomUUID(),
       'x-chat-mode': finalContext?.coachMode ?? '',
       'x-source': finalContext?.source ?? 'chat',
+      'x-ares-v2': '1', // Enable ARES v2 by default
     };
 
     const payload = { userId, event: ev, context: finalContext };

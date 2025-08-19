@@ -485,6 +485,19 @@ serve(async (req) => {
       const data = await response.json();
       let responseText = data.choices?.[0]?.message?.content || "ARES v2 antwortet nicht.";
       
+      // Load recent message history for anti-repeat
+      const historyState = await loadNameState(supabase, userId, `${coachId}_history`);
+      const history = historyState?.history || [];
+      
+      // Check for redundancy
+      if (isRedundant(responseText, history)) {
+        responseText = generateAlternative(responseText, [
+          "Du fragst nach Details - lass uns spezifischer werden.",
+          "Sag mir mehr über deine aktuelle Situation.",
+          "Was ist der nächste wichtige Schritt für dich?"
+        ]);
+      }
+      
       // Apply voice and anti-repeat
       const topic = detectTopic(userText);
       const voiceLine = pickVoiceLine(v2Prompt.extra.archetype as any, topic);
@@ -492,6 +505,42 @@ serve(async (req) => {
       
       if (wantDeep) {
         responseText = `${voiceLine} ${responseText}`;
+      }
+      
+      // Update message history
+      const newHistoryItem = { 
+        text: responseText, 
+        ts: Date.now(), 
+        kind: (wantDeep ? "deep" : "short") as any
+      };
+      const updatedHistory = [...history, newHistoryItem].slice(-12); // Keep last 12
+      
+      // Persist updated history
+      await supabase.from('coach_runtime_state').upsert({
+        user_id: userId,
+        coach_id: `${coachId}_history`,
+        state_key: 'message_history',
+        state_value: { history: updatedHistory }
+      });
+      
+      // Persist full prompt to trace events
+      try {
+        await supabase.from('coach_trace_events').insert({
+          trace_id: traceId,
+          step: 'ares_v2_prompt',
+          status: 'complete',
+          data: {
+            user_message: userText,
+            response_text: responseText,
+            model: models.chat,
+            archetype: v2Prompt.extra.archetype,
+            dial: v2Dial,
+            processing_time_ms: Date.now() - startTime
+          },
+          full_prompt: `SYSTEM:\n${v2Prompt.system}\n\nUSER:\n${v2Prompt.user}`
+        });
+      } catch (promptPersistError) {
+        console.warn(`[ARES-V2-${traceId}] Failed to persist prompt:`, promptPersistError);
       }
       
       // Log telemetry
