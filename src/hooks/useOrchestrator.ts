@@ -119,148 +119,105 @@ export function useOrchestrator() {
       } catch (_) { /* non-fatal */ }
     }
 
-    const invokeEnhanced = async () => {
-      const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-        body: payload,
-        headers,
-      });
-      if (error) throw error;
-      return data;
-    };
-
-    const invokeLegacy = async () => {
-      const { data } = await supabase.functions.invoke('coach-orchestrator', {
-        body: payload,
-        headers,
-      });
-      return data;
-    };
-
-    const withTimeout = <T,>(p: Promise<T>, ms = 15000) =>
-      Promise.race<T>([
-        p,
-        new Promise<T>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)) as Promise<T>,
-      ]);
-
     try {
-      // Emit early client ack so UI feels responsive
-      try {
-        await supabase.rpc('log_trace_event', {
-          p_trace_id: headers['x-trace-id'],
-          p_stage: 'client_ack',
-          p_data: { source: headers['x-source'] }
-        });
-      } catch (_) { /* non-fatal */ }
+      // Use the improved orchestrator client with enhanced error handling
+      const response = await supabase.functions.invoke('coach-orchestrator-enhanced', {
+        body: payload,
+        headers,
+      });
       
-      // Try enhanced with timeout, retry once on error/timeout
-      try {
-        const response = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-          body: payload,
-          headers,
+      // Handle structured response errors with detailed status extraction
+      if (response.error) {
+        const errorText = response.error?.message || String(response.error);
+        // @ts-ignore - accessing internal error structure for better debugging
+        const status = response.error?.context?.response?.status;
+        
+        console.warn('ARES Orchestrator error:', {
+          status,
+          error: errorText,
+          traceId: headers['x-trace-id'],
+          coachId,
+          response: response
         });
         
-        // Handle potential 409 in_progress status through response data
-        if (response.data?.reason === 'in_progress') {
-          return { kind: 'message', text: '...' };
+        // Extract structured error info if available from server
+        if (response.data?.code) {
+          const error = new Error(response.data.message || errorText);
+          (error as any).code = response.data.code;
+          (error as any).traceId = response.data.traceId;
+          (error as any).status = status;
+          throw error;
         }
         
-        // Enhanced error handling with trace ID extraction
-        if (response.error) {
-          const errorText = response.error?.message || String(response.error);
-          const isServerError = errorText.includes('500') || errorText.includes('Internal');
-          // Note: FunctionsResponse doesn't have headers/status properties
-          console.warn('Enhanced orchestrator error:', {
-            error: errorText,
-            response: response
-          });
-          
-          // Extract structured error info if available
-          if (response.data?.code) {
-            const error = new Error(response.data.error || errorText);
-            (error as any).code = response.data.code;
-            (error as any).traceId = response.data.traceId;
-            throw error;
-          }
-          
-          throw response.error;
-        }
-        
-        endUserAction();
-        return normalizeReply(response.data);
-        
-      } catch (e1) {
-        console.warn('Enhanced orchestrator attempt 1 failed:', e1);
-        
-        if (e1 instanceof Error && e1.message === 'timeout') {
-          try {
-            await supabase.rpc('log_trace_event', {
-              p_trace_id: headers['x-trace-id'],
-              p_stage: 'client_timeout',
-              p_data: { cutoffMs: 15000 }
-            });
-          } catch (_) { /* non-fatal */ }
-        }
-        
-        // Retry with enhanced error handling
-        headers['x-retry'] = '1';
-        try {
-          const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-            body: payload,
-            headers,
-          });
-          
-          if (error) {
-            // Check if this is a server error that should trigger fallback
-            const errorText = error?.message || String(error);
-            const isServerError = errorText.includes('500') || errorText.includes('502') || errorText.includes('503');
-            
-            if (isServerError && legacyEnabled) {
-              console.info('Enhanced orchestrator server error, trying legacy fallback...');
-              throw error; // This will trigger the legacy fallback below
-            }
-            
-            throw error;
-          }
-          
-          endUserAction();
-          return normalizeReply(data);
-        } catch (e2) {
-          // If retry also fails, try legacy if enabled
-          if (legacyEnabled) {
-            console.info('Enhanced orchestrator retry failed, trying legacy fallback...');
-            throw e2; // This will trigger the legacy fallback below
-          }
-          throw e2;
-        }
+        // Enhance error with status for better categorization
+        const enhancedError = new Error(errorText);
+        (enhancedError as any).status = status;
+        (enhancedError as any).traceId = headers['x-trace-id'];
+        throw enhancedError;
       }
+      
+      // Handle potential 409 in_progress status through response data
+      if (response.data?.reason === 'in_progress') {
+        return { kind: 'message', text: '...' };
+      }
+      
+      endUserAction();
+      return normalizeReply(response.data);
+      
     } catch (e) {
       if (legacyEnabled) {
         try {
           console.info('Attempting legacy fallback for:', coachId);
-          const data = await withTimeout(invokeLegacy(), 7000);
+          const { data } = await supabase.functions.invoke('coach-orchestrator', {
+            body: payload,
+            headers,
+          });
           return normalizeReply(data);
         } catch (e2) {
           console.warn('Legacy fallback also failed:', e2);
         }
       }
       
-      // Enhanced error message based on error type
+      // Enhanced error message based on error type and HTTP status
       const errorMsg = (e as any)?.message || String(e);
       const traceId = (e as any)?.traceId || headers['x-trace-id'];
+      const status = (e as any)?.status;
+      const code = (e as any)?.code;
       
-      if (errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
-        return { kind: 'message', text: 'Bitte erneut anmelden und dann nochmal versuchen.' };
+      console.error('Final orchestrator error:', { 
+        status, 
+        code, 
+        errorMsg, 
+        traceId,
+        coachId 
+      });
+      
+      // Categorize errors by HTTP status for precise user messaging
+      if (status === 401 || errorMsg.includes('401') || errorMsg.includes('Unauthorized')) {
+        return { kind: 'message', text: 'Bitte erneut anmelden und dann nochmal versuchen.', traceId };
       }
-      if (errorMsg.includes('422') || errorMsg.includes('NO_INPUT')) {
-        return { kind: 'message', text: 'Bitte Text oder Bild senden.' };
+      if (status === 403 || errorMsg.includes('403') || errorMsg.includes('Forbidden')) {
+        return { kind: 'message', text: 'Zugriff verweigert. Bitte Admin kontaktieren.', traceId };
       }
-      if (errorMsg.includes('CONFIG_MISSING')) {
-        return { kind: 'message', text: 'Server-Konfigurationsfehler. Bitte Admin kontaktieren.' };
+      if (status === 404 || errorMsg.includes('404') || errorMsg.includes('Not Found')) {
+        return { kind: 'message', text: 'ARES Service nicht verfügbar. Bitte später versuchen.', traceId };
+      }
+      if (status === 422 || errorMsg.includes('422') || code === 'NO_INPUT') {
+        return { kind: 'message', text: 'Bitte Text oder Bild senden.', traceId };
+      }
+      if (code === 'CONFIG_MISSING' || errorMsg.includes('CONFIG_MISSING')) {
+        return { kind: 'message', text: 'Server-Konfigurationsfehler. Bitte Admin kontaktieren.', traceId };
+      }
+      if (code === 'MISSING_EVENT' || errorMsg.includes('MISSING_EVENT')) {
+        return { kind: 'message', text: 'Ungültiges Nachrichtenformat. Bitte nochmal versuchen.', traceId };
+      }
+      if (status >= 500 || errorMsg.includes('500') || errorMsg.includes('Internal')) {
+        return { kind: 'message', text: 'ARES Server-Fehler. Bitte später versuchen.', traceId };
       }
       
       return { 
         kind: 'message', 
-        text: `Hey! Ich bin kurz beschäftigt – versuch's bitte nochmal. (${coachId === 'ares' ? 'ARES System wird geladen...' : 'Netzwerk/Timeout'})`,
+        text: `Hey! Ich bin kurz beschäftigt – versuch's bitte nochmal. ${status ? `(HTTP ${status})` : '(Netzwerk-Timeout)'}`,
         traceId
       };
     }
