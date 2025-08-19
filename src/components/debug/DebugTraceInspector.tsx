@@ -1,6 +1,6 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useTraceInspector } from '@/hooks/useTraceInspector';
+import { useTrace } from '@/hooks/useTrace';
 import { useState } from 'react';
 import { Copy, RefreshCw, X } from 'lucide-react';
 
@@ -10,7 +10,7 @@ interface DebugTraceInspectorProps {
 }
 
 export function DebugTraceInspector({ traceId, onClose }: DebugTraceInspectorProps) {
-  const { trace, loading, error, refetch } = useTraceInspector(traceId);
+  const { trace, loading, error, refetch } = useTrace(traceId);
   const [isMinimized, setIsMinimized] = useState(false);
 
   if (!traceId) return null;
@@ -81,7 +81,7 @@ export function DebugTraceInspector({ traceId, onClose }: DebugTraceInspectorPro
             <div className="space-y-4 max-h-[60vh] overflow-y-auto">
               <div className="text-xs opacity-70">
                 Status: <span className="font-mono">{trace.status}</span> | 
-                Updated: <span className="font-mono">{new Date(trace.updated_at).toLocaleTimeString()}</span>
+                Created: <span className="font-mono">{new Date(trace.created_at || trace.updated_at).toLocaleTimeString()}</span>
               </div>
 
               {trace.persona && (
@@ -96,15 +96,15 @@ export function DebugTraceInspector({ traceId, onClose }: DebugTraceInspectorPro
                 </Section>
               )}
 
-              {trace.rag_sources && (
+              {trace.rag_chunks && (
                 <Section title="RAG Sources">
-                  <JsonView data={trace.rag_sources} />
+                  <JsonView data={trace.rag_chunks} />
                 </Section>
               )}
 
-              {trace.assembled_prompt && (
+              {trace.system_prompt && (
                 <Section title="System Prompt (assembled)">
-                  <CodeBlock text={trace.assembled_prompt} />
+                  <CodeBlock text={trace.system_prompt} />
                 </Section>
               )}
 

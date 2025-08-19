@@ -139,11 +139,14 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
       // Enhanced response with debug metadata
       const normalizedResult = normalizeReply(result.data);
       
-      // Use server-provided traceId if available, fallback to client-generated
-      const serverTraceId = (result.data as any)?.traceId;
+      // Use server-provided trace_id (single source of truth)
+      const serverTraceId = (result.data as any)?.trace_id || (result.data as any)?.traceId;
       const finalTraceId = serverTraceId || requestTraceId;
       (normalizedResult as any).traceId = finalTraceId;
       setCurrentTraceId(finalTraceId);
+      
+      // Global debug access
+      (window as any).__ARES_TRACE_ID__ = finalTraceId;
       
       // Add enhanced metadata for debugging via meta property (only for types that support it)
       if (normalizedResult.kind === 'message' || normalizedResult.kind === 'reflect' || normalizedResult.kind === 'choice_suggest') {

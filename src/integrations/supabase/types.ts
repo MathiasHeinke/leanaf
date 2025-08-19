@@ -3561,42 +3561,72 @@ export type Database = {
       }
       orchestrator_traces: {
         Row: {
+          client_event_id: string | null
           coach_id: string | null
+          created_at: string
           error_message: string | null
           handler_name: string | null
-          id: number
+          id: string
           latency_ms: number | null
+          llm_input: Json | null
+          llm_output: Json | null
+          meta: Json | null
+          model: string | null
           payload_json: Json | null
+          persona: Json | null
+          rag_chunks: Json | null
+          request_payload: Json | null
           stage: string
           status: string
-          timestamp: string
+          system_prompt: string | null
           trace_id: string
+          user_context: Json | null
           user_id: string | null
         }
         Insert: {
+          client_event_id?: string | null
           coach_id?: string | null
+          created_at?: string
           error_message?: string | null
           handler_name?: string | null
-          id?: number
+          id?: string
           latency_ms?: number | null
+          llm_input?: Json | null
+          llm_output?: Json | null
+          meta?: Json | null
+          model?: string | null
           payload_json?: Json | null
+          persona?: Json | null
+          rag_chunks?: Json | null
+          request_payload?: Json | null
           stage: string
-          status: string
-          timestamp?: string
+          status?: string
+          system_prompt?: string | null
           trace_id: string
+          user_context?: Json | null
           user_id?: string | null
         }
         Update: {
+          client_event_id?: string | null
           coach_id?: string | null
+          created_at?: string
           error_message?: string | null
           handler_name?: string | null
-          id?: number
+          id?: string
           latency_ms?: number | null
+          llm_input?: Json | null
+          llm_output?: Json | null
+          meta?: Json | null
+          model?: string | null
           payload_json?: Json | null
+          persona?: Json | null
+          rag_chunks?: Json | null
+          request_payload?: Json | null
           stage?: string
           status?: string
-          timestamp?: string
+          system_prompt?: string | null
           trace_id?: string
+          user_context?: Json | null
           user_id?: string | null
         }
         Relationships: []
@@ -6234,64 +6264,6 @@ export type Database = {
           avg_latency_ms: number | null
           error_rate: number | null
           stage: string | null
-        }
-        Relationships: []
-      }
-      v_orchestrator_traces_open_errors: {
-        Row: {
-          coach_id: string | null
-          error_message: string | null
-          handler_name: string | null
-          id: number | null
-          latency_ms: number | null
-          payload_json: Json | null
-          stage: string | null
-          status: string | null
-          timestamp: string | null
-          trace_id: string | null
-          user_id: string | null
-        }
-        Relationships: []
-      }
-      v_orchestrator_traces_recent: {
-        Row: {
-          coach_id: string | null
-          error_message: string | null
-          handler_name: string | null
-          id: number | null
-          latency_ms: number | null
-          payload_json: Json | null
-          stage: string | null
-          status: string | null
-          timestamp: string | null
-          trace_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          coach_id?: string | null
-          error_message?: string | null
-          handler_name?: string | null
-          id?: number | null
-          latency_ms?: number | null
-          payload_json?: Json | null
-          stage?: string | null
-          status?: string | null
-          timestamp?: string | null
-          trace_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          coach_id?: string | null
-          error_message?: string | null
-          handler_name?: string | null
-          id?: number | null
-          latency_ms?: number | null
-          payload_json?: Json | null
-          stage?: string | null
-          status?: string | null
-          timestamp?: string | null
-          trace_id?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
