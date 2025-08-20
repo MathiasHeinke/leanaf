@@ -320,6 +320,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ares_trace_steps: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: number
+          stage: string
+          trace_id: string
+          ts: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: number
+          stage: string
+          trace_id: string
+          ts?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: number
+          stage?: string
+          trace_id?: string
+          ts?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ares_traces: {
         Row: {
           client_event_id: string | null
