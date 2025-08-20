@@ -1,17 +1,22 @@
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 
-const sb = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
-);
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function ARESDebugPanel({ lastTraceId }: { lastTraceId: string | null }) {
   const [row, setRow] = useState<any | null>(null);
 
   useEffect(() => {
     if (!lastTraceId) { setRow(null); return; }
-    sb.from('ares_traces').select('*').eq('trace_id', lastTraceId).single().then(({ data }) => setRow(data || null));
+    // Secure debug read via edge function (respects RLS)
+    supabase.functions.invoke('ares-get-trace', { body: { traceId: lastTraceId } })
+      .then(({ data, error }) => {
+        if (error) {
+          console.warn('[ARES-Debug] trace fetch error:', error);
+          setRow(null);
+          return;
+        }
+        setRow((data as any)?.data || null);
+      });
   }, [lastTraceId]);
 
   if (!import.meta.env.VITE_ARES_DEBUG || !lastTraceId) return null;

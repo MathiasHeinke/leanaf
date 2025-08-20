@@ -1,30 +1,25 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { cors } from '../_shared/ares/cors.ts';
+import { newTraceId } from '../_shared/ares/ids.ts';
+import { traceStart, traceUpdate, traceDone, traceFail } from '../_shared/ares/trace.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
-const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'); // <- must exist
+const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Vary': 'Origin',
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization,apikey,content-type,x-client-info,x-supabase-api-version,x-trace-id,x-source,x-chat-mode,x-retry',
-  'Access-Control-Max-Age': '86400'
-};
 
 const json = (status: number, body: any) =>
   new Response(JSON.stringify(body), { 
     status, 
     headers: { 
-      ...corsHeaders, 
+      ...cors.headers(), 
       'Content-Type': 'application/json' 
     } 
   });
 
 function respond(body: unknown, init: ResponseInit = {}) {
   const headers = new Headers(init.headers || {});
-  Object.entries(corsHeaders).forEach(([k, v]) => headers.set(k, String(v)));
+  Object.entries(cors.headers()).forEach(([k, v]) => headers.set(k, String(v)));
   if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   return new Response(JSON.stringify(body), { ...init, headers });
 }
@@ -228,25 +223,28 @@ async function callLLM(llmInput: any) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders as any });
+  const pre = cors.preflight(req);
+  if (pre) return pre;
 
+  const headers = cors.headers();
   const started = performance.now();
-  const traceId = req.headers.get('x-trace-id') ?? makeTraceId();
+  const incomingTrace = req.headers.get('x-trace-id');
+  const traceId = incomingTrace || newTraceId();
 
   // Health check endpoint
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
-    return json(200, { ok: true, env: { svc: !!SVC, openai: !!OPENAI_API_KEY }, traceId });
+    return new Response(JSON.stringify({ ok: true, env: { svc: !!SVC, openai: !!OPENAI_API_KEY }, traceId }), {
+      status: 200, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
+    });
   }
 
-  // Check secrets early → return 500 with traceId
-  if (!SVC) {
-    console.error('[ARES-ERROR] Missing SUPABASE_SERVICE_ROLE_KEY');
-    return json(500, { ok: false, code: 'CONFIG_MISSING', message: 'Server misconfigured', traceId });
-  }
-
-  if (!OPENAI_API_KEY) {
-    console.error('[ARES-ERROR] Missing OPENAI_API_KEY');
-    return json(500, { ok: false, code: 'CONFIG_MISSING', message: 'OpenAI API key not configured', traceId });
+  // Check secrets early
+  if (!SVC || !OPENAI_API_KEY) {
+    const code = 'CONFIG_MISSING';
+    const msg = !SVC ? 'Server misconfigured (SVC missing)' : 'OpenAI API key not configured';
+    return new Response(JSON.stringify({ ok: false, code, message: msg, traceId }), {
+      status: 500, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
+    });
   }
 
   const supaUser = createClient(SUPABASE_URL, ANON, {
@@ -259,89 +257,82 @@ Deno.serve(async (req) => {
     const { data: authData } = await supaUser.auth.getUser();
     const user = authData?.user;
     if (!user) {
-      return respond({ ok: false, code: 'UNAUTHORIZED', message: 'No user session', traceId }, { status: 401, headers: { 'X-Trace-Id': traceId } });
-    }
-
-    // Parse payload (tolerant)
-    const body = await safeJson(req);
-    
-    // Normalize event structure - accept various client formats
-    let event = body?.event;
-    if (!event && (body?.text || body?.message)) {
-      event = { 
-        type: 'TEXT', 
-        text: body.text ?? body.message ?? '',
-        images: body.images ?? null
-      };
-    }
-
-    if (!event || typeof event !== 'object') {
-      return json(400, { 
-        ok: false, 
-        code: 'MISSING_EVENT', 
-        hint: 'Send {event:{type:"TEXT",text:"..."}} or {text:"..."}', 
-        traceId 
+      return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'No user session', traceId }), {
+        status: 401, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       });
     }
 
-    const text = event.text ?? '';
-    const images = event.images ?? body?.images ?? null;
+    // Parse payload
+    const body = await (async () => {
+      const ct = req.headers.get('content-type') || '';
+      try {
+        if (ct.includes('application/json')) return await req.json();
+        if (ct.includes('text/plain')) return { text: await req.text() };
+        return {};
+      } catch { return {}; }
+    })();
+
+    let event = body?.event;
+    if (!event && (body?.text || body?.message)) {
+      event = { type: 'TEXT', text: body.text ?? body.message ?? '', images: body.images ?? null };
+    }
+
+    const text = event?.text ?? '';
+    const images = event?.images ?? body?.images ?? null;
     const coachId = body?.coachId || event?.coachId || 'ares';
     const clientEventId = body?.clientEventId ?? event?.clientEventId ?? null;
 
-    if (!text && (!images || (Array.isArray(images) && images.length === 0))) {
-      return json(422, { 
-        ok: false, 
-        code: 'NO_INPUT', 
-        message: 'Provide text or images', 
-        hint: 'Send non-empty text or image URLs',
-        traceId 
+    if (!event || (event.type === 'TEXT' && !text && (!images || (Array.isArray(images) && images.length === 0)))) {
+      return new Response(JSON.stringify({ ok: false, code: 'ARES_E_BAD_INPUT', message: 'Provide text or images', traceId }), {
+        status: 400, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       });
     }
 
-    // Create trace row immediately
-    await supaSvc.from('ares_traces').insert({
-      trace_id: traceId,
-      user_id: user.id,
-      coach_id: coachId,
-      status: 'started',
-      client_event_id: clientEventId,
-      input_text: text || null,
-      images: images || null
-    });
+    // Start trace in DB (unified)
+    await traceStart(traceId, user.id, coachId, { input_text: text || null, images: images || null });
+    await traceUpdate(traceId, { status: 'started' });
 
-    // === BUSINESS LOGIC ===
-    const context = await buildUserContext({ userId: user.id }).catch((e) => {
+    const context = await (async () => {
+      // reuse existing buildUserContext
+      // @ts-ignore
+      return await buildUserContext({ userId: user.id });
+    })().catch((e) => {
       console.error('[ARES-ERROR] buildUserContext', traceId, e);
       throw e;
     });
-    const persona = await loadPersona({ coachId }).catch((e) => {
+
+    const persona = await (async () => {
+      // reuse existing loadPersona
+      // @ts-ignore
+      return await loadPersona({ coachId });
+    })().catch((e) => {
       console.error('[ARES-ERROR] loadPersona', traceId, e);
       throw e;
     });
-    const ragSources = await fetchRagSources({ text, context }).catch((e) => {
+
+    const ragSources = await (async () => {
+      // reuse existing fetchRagSources
+      // @ts-ignore
+      return await fetchRagSources({ text, context });
+    })().catch((e) => {
       console.error('[ARES-ERROR] fetchRagSources', traceId, e);
       throw e;
     });
 
-    await supaSvc.from('ares_traces')
-      .update({ status: 'context_loaded', context, persona, rag_sources: ragSources })
-      .eq('trace_id', traceId);
+    await traceUpdate(traceId, { status: 'context_loaded', context, persona, rag_sources: ragSources });
 
+    // @ts-ignore
     const { systemPrompt, completePrompt, llmInput } = buildAresPrompt({ persona, context, ragSources, text, images });
 
-    await supaSvc.from('ares_traces')
-      .update({ status: 'prompt_built', system_prompt: systemPrompt, complete_prompt: completePrompt, llm_input: llmInput })
-      .eq('trace_id', traceId);
+    await traceUpdate(traceId, { status: 'prompt_built', system_prompt: systemPrompt, complete_prompt: completePrompt, llm_input: llmInput });
 
+    // @ts-ignore
     const llmOutput = await callLLM(llmInput);
 
     const duration_ms = Math.round(performance.now() - started);
-    await supaSvc.from('ares_traces')
-      .update({ status: 'completed', llm_output: llmOutput, duration_ms })
-      .eq('trace_id', traceId);
+    await traceUpdate(traceId, { status: 'llm_called', llm_output: llmOutput, duration_ms });
 
-    // Save response to coach_conversations for chat persistence
+    // Save response to coach_conversations (best-effort)
     try {
       await supaSvc.from('coach_conversations').insert({
         user_id: user.id,
@@ -354,41 +345,21 @@ Deno.serve(async (req) => {
       console.warn('[ARES-WARN] Failed to save conversation:', convError);
     }
 
-    return new Response(JSON.stringify({ 
-      reply: llmOutput, 
-      traceId 
-    }), {
+    await traceDone(traceId, duration_ms);
+
+    return new Response(JSON.stringify({ reply: typeof llmOutput === 'string' ? llmOutput : llmOutput, traceId }), {
       status: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-        'X-Trace-Id': traceId
-      }
+      headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
     });
 
   } catch (e) {
-    const err = serializeErr(e);
     const duration_ms = Math.round(performance.now() - started);
-    
-    try {
-      await supaSvc.from('ares_traces')
-        .upsert({ 
-          trace_id: traceId, 
-          status: 'failed', 
-          error: err,
-          duration_ms 
-        });
-    } catch {
-      // swallow trace errors
-    }
-    
-    console.error('[ARES-ERROR]', traceId, err);
-    return json(500, { 
-      ok: false, 
-      code: 'INTERNAL_ERROR', 
-      message: 'Server error occurred',
-      traceId, 
-      error: err 
+    const err = serializeErr(e);
+    await traceFail(traceId, err, duration_ms);
+
+    return new Response(JSON.stringify({ ok: false, code: 'ARES_E_INTERNAL', message: 'Server error occurred', traceId, error: err }), {
+      status: 500,
+      headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
     });
   }
 });

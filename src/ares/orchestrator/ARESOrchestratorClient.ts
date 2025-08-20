@@ -1,34 +1,29 @@
+
 import { ARESClientTrace } from '../trace/ARESClientTrace';
 import type { ARESEvent, ARESContext, ARESReply } from './ARESPayload';
+import { supabase } from '@/integrations/supabase/client';
 
 export class ARESOrchestratorClient {
   private trace = new ARESClientTrace();
 
   async send(event: ARESEvent, context: ARESContext): Promise<ARESReply> {
-    const response = await fetch(`https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/coach-orchestrator-enhanced`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY
-      },
-      body: JSON.stringify({ event, context, coachId: 'ares' })
-    });
+    const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
+      body: { event, context, coachId: 'ares' }
+    } as any);
 
-    // Extract trace ID from response headers
-    this.trace.setFromResponse(response);
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const traceId = this.trace.id ?? errorData?.traceId ?? null;
-      throw Object.assign(new Error(errorData?.message || 'ARES edge error'), { 
-        traceId, 
-        status: response.status,
-        code: errorData?.code 
-      });
+    if (error) {
+      // Try to propagate traceId if present in data payload
+      const traceId = (data as any)?.traceId ?? null;
+      throw Object.assign(new Error(error?.message || 'ARES edge error'), { traceId, code: (error as any)?.code, status: (error as any)?.status });
     }
 
-    const data = await response.json();
-    return { ...data, traceId: this.trace.id ?? data?.traceId ?? null };
+    const payload = data as any;
+    // Prefer JSON body traceId (headers not available via invoke)
+    const traceId = payload?.traceId ?? null;
+    if (traceId && (this.trace as any)?.setId) {
+      try { (this.trace as any).setId(traceId); } catch {}
+    }
+
+    return { ...payload, traceId };
   }
 }
