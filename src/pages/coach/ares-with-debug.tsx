@@ -1,52 +1,86 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useOrchestratorWithDebug } from '@/hooks/useOrchestratorWithDebug';
+import { sendToAres } from '@/lib/orchestratorClient';
 import { DebugTraceInspector } from '@/components/debug/DebugTraceInspector';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AresWithDebug() {
   const { user } = useAuth();
-  const { sendEvent, currentTraceId, loading } = useOrchestratorWithDebug();
+  const { toast } = useToast();
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Array<{text: string, isUser: boolean, trace_id?: string}>>([]);
+  const [loading, setLoading] = useState(false);
+  const [currentTraceId, setCurrentTraceId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Array<{text: string, isUser: boolean, trace_id?: string, error_details?: any}>>([]);
 
   const handleSend = async () => {
     if (!input.trim() || !user) return;
     
     const userMessage = { text: input, isUser: true };
     setMessages(prev => [...prev, userMessage]);
+    const messageText = input;
     setInput('');
+    setLoading(true);
 
     try {
-      const response = await sendEvent(user.id, {
-        type: 'TEXT',
-        text: input,
-        clientEventId: `msg_${Date.now()}`
+      console.log('🔧 ARES Debug: Sending message via sendToAres...');
+      const response = await sendToAres({
+        text: messageText,
+        coachId: 'ares'
       });
 
-      // Handle different response types correctly
+      console.log('🔧 ARES Debug: Response received:', response);
+      setCurrentTraceId(response.traceId);
+
+      // Handle response data
       let responseText = '';
-      if (response.kind === 'message') {
-        responseText = response.text;
-      } else if (response.kind === 'choice_suggest') {
-        responseText = `${response.prompt}\n\nOptionen:\n${response.options.join('\n• ')}`;
+      if (response.data?.kind === 'message') {
+        responseText = response.data.text;
+      } else if (response.data?.kind === 'choice_suggest') {
+        responseText = `${response.data.prompt}\n\nOptionen:\n${response.data.options.join('\n• ')}`;
+      } else if (response.data?.role === 'assistant' && response.data?.content) {
+        responseText = response.data.content;
       } else {
-        responseText = 'Unerwartete Antwort';
+        responseText = JSON.stringify(response.data, null, 2);
       }
 
       setMessages(prev => [...prev, {
         text: responseText,
         isUser: false,
-        trace_id: response.traceId || currentTraceId
+        trace_id: response.traceId
       }]);
-    } catch (error) {
-      console.error('Chat error:', error);
+
+      toast({
+        title: "Message sent successfully",
+        description: `Trace ID: ${response.traceId}`,
+        duration: 3000
+      });
+    } catch (error: any) {
+      console.error('🔧 ARES Debug: Error details:', error);
+      
+      const errorDetails = {
+        message: error.message,
+        status: error.status,
+        traceId: error.traceId,
+        raw: error.raw
+      };
+
       setMessages(prev => [...prev, {
-        text: 'Fehler beim Senden der Nachricht.',
-        isUser: false
+        text: `❌ Fehler: ${error.message}${error.status ? ` (HTTP ${error.status})` : ''}${error.traceId ? `\nTrace: ${error.traceId}` : ''}`,
+        isUser: false,
+        error_details: errorDetails
       }]);
+
+      toast({
+        title: "Error sending message",
+        description: `${error.message}${error.status ? ` (${error.status})` : ''}`,
+        variant: "destructive",
+        duration: 5000
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
