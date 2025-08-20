@@ -6586,6 +6586,17 @@ export type Database = {
           volume_kg: number
         }[]
       }
+      get_trace_kpis_24h: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          avg_latency_ms: number | null
+          calls: number | null
+          error_rate: number | null
+          errors: number | null
+          handler_name: string | null
+          p90_latency_ms: number | null
+        }[]
+      }
       has_admin_access: {
         Args: { user_uuid?: string }
         Returns: boolean
