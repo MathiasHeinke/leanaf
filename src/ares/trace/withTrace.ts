@@ -65,5 +65,5 @@ async function logTraceStep(traceId: string, stage: string, data: any) {
   }
 }
 
-// Re-export existing hooks with enhanced tracing
-export { useComponentTrace, useActionTrace } from './withTrace';
+// Re-export existing hooks (they remain in the original withTrace.tsx file)
+export { useComponentTrace, useActionTrace } from './withTrace.tsx';

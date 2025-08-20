@@ -86,6 +86,7 @@ export async function saveMeal(
   
   const { error } = await supabase.from('meals').insert({
     ...legacy,
+    text: meal.name, // Required field
     user_id: userId,
     client_event_id: traceId || `meal_${Date.now()}`
   });
