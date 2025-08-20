@@ -354,13 +354,15 @@ Deno.serve(async (req) => {
       console.warn('[ARES-WARN] Failed to save conversation:', convError);
     }
 
-    return json(200, { 
-      ok: true, 
-      traceId, 
-      data: {
-        role: 'assistant',
-        content: llmOutput,
-        type: 'message'
+    return new Response(JSON.stringify({ 
+      reply: llmOutput, 
+      traceId 
+    }), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+        'X-Trace-Id': traceId
       }
     });
 
