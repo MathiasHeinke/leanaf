@@ -18,6 +18,7 @@ import { Textarea } from './ui/textarea';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { getCurrentDateString } from "@/utils/dateHelpers";
+import { toLegacyFluid, toModernFluid, type FluidModern } from "@/ares/adapters/fluids";
 
 import { de } from 'date-fns/locale';
 import { useFrequentFluids } from '@/hooks/useFrequentFluids';
@@ -217,12 +218,21 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
     setTodaysFluids(prev => [tempFluid, ...prev]);
 
     try {
+      // Use ARES adapter for consistent data shape
+      const modernFluid: FluidModern = {
+        volume_ml: amountMl,
+        intake_date: new Date().toISOString(),
+        fluid_type: fluidId ? fluids.find(f => f.id === fluidId)?.name || 'water' : customFluidName || 'water',
+        has_alcohol: fluidId ? fluids.find(f => f.id === fluidId)?.has_alcohol || false : false,
+        timestamp: new Date().toISOString()
+      };
+
+      const legacyData = toLegacyFluid(modernFluid);
       const fluidData = {
+        ...legacyData,
         user_id: user.id,
         fluid_id: fluidId,
         custom_name: customFluidName,
-        amount_ml: amountMl,
-        notes: null
       };
 
       const { error } = await supabase

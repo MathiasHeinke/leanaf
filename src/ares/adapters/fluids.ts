@@ -1,6 +1,8 @@
 // ARES Adapter: Legacy Fluids <-> Modern Shape
 // Provides clean interface between old user_fluids schema and new ARES expectations
 
+import { supabase } from '@/integrations/supabase/client';
+
 export type FluidLegacy = {
   amount_ml: number;
   date: string;
@@ -32,6 +34,39 @@ export const toModernFluid = (legacy: FluidLegacy): FluidModern => ({
   has_alcohol: legacy.has_alcohol || false,
   timestamp: legacy.created_at || new Date().toISOString()
 });
+
+// Unified fluid saving (with ARES tracing)
+export async function saveFluid(
+  fluid: FluidModern,
+  userId: string,
+  fluidId?: string | null,
+  customName?: string | null,
+  traceId?: string
+): Promise<void> {
+  const { withTrace } = await import('../trace/withTrace');
+  
+  return withTrace(traceId, 'save_fluid', async () => {
+    const legacyData = toLegacyFluid(fluid);
+    const fluidData = {
+      ...legacyData,
+      user_id: userId,
+      fluid_id: fluidId,
+      custom_name: customName,
+    };
+
+    const { error } = await supabase
+      .from('user_fluids')
+      .insert([fluidData]);
+
+    if (error) {
+      throw new Error(`Failed to save fluid: ${error.message}`);
+    }
+  }, { 
+    volume_ml: fluid.volume_ml, 
+    fluid_type: fluid.fluid_type,
+    has_alcohol: fluid.has_alcohol 
+  });
+}
 
 // Aggregate fluid data for ARES context
 export const aggregateFluidContext = (fluids: FluidLegacy[]): any => {

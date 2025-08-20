@@ -3,9 +3,10 @@ import { loadDailyGoals } from "@/data/queries";
 import { withWatchdog } from "@/utils/timeRange";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { extractGoalsFromProfile, type ARESGoalContext } from "@/ares/adapters/goals";
 
 export function useDailyGoals() {
-  const [data, setData] = useState<any | null>(null);
+  const [data, setData] = useState<ARESGoalContext | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const acRef = useRef<AbortController | null>(null);
@@ -38,7 +39,16 @@ export function useDailyGoals() {
               .maybeSingle();
             if (todayGoal) {
               console.log('[useDailyGoals] Using daily_goals fallback for today:', todayGoal);
-              setData(todayGoal);
+              // Convert to ARES format
+              const goals: ARESGoalContext = {
+                calories: todayGoal.calories || 2000,
+                protein: todayGoal.protein || 150,
+                carbs: todayGoal.carbs || 250,
+                fats: todayGoal.fats || 65,
+                hydration: todayGoal.fluid_goal_ml || 2500,
+                steps: todayGoal.steps_goal || 10000
+              };
+              setData(goals);
               setError(null);
               return;
             }
@@ -46,32 +56,19 @@ export function useDailyGoals() {
             console.error('[useDailyGoals] daily_goals fallback failed:', dgErr);
           }
 
-          // Fallback: Try to get profile targets instead of hardcoded values
+          // Fallback: Use ARES adapter to extract goals from profile
           try {
             const { data: profileData } = await supabase
               .from('profiles')
-              .select('daily_calorie_target, protein_target_g, carbs_target_g, fats_target_g, fluid_goal_ml, steps_goal')
+              .select('*')
               .eq('user_id', user.id)
               .maybeSingle();
             
-            if (profileData && profileData.daily_calorie_target) {
-              const profileFallback = {
-                id: null,
-                user_id: user.id,
-                goal_date: new Date().toISOString().slice(0,10),
-                calories: profileData.daily_calorie_target,
-                protein: profileData.protein_target_g || 150,
-                carbs: profileData.carbs_target_g || 250,
-                fats: profileData.fats_target_g || 65,
-                fluids: profileData.fluid_goal_ml || 2500,
-                fluid_goal_ml: profileData.fluid_goal_ml || 2500,
-                steps_goal: profileData.steps_goal || 10000
-              };
-              console.log('[useDailyGoals] Using profile fallback:', profileFallback);
-              setData(profileFallback);
-              setError(null);
-              return;
-            }
+            const goals = extractGoalsFromProfile(profileData);
+            console.log('[useDailyGoals] Using ARES goals adapter:', goals);
+            setData(goals);
+            setError(null);
+            return;
           } catch (profileError) {
             console.error('[useDailyGoals] Profile fallback failed:', profileError);
           }
@@ -80,26 +77,12 @@ export function useDailyGoals() {
           setData(null); 
         } else { 
           console.log('[useDailyGoals] Successfully loaded daily goals:', res.data);
-          if (res.data && res.data.goal_date !== todayStr) {
-            console.warn('[useDailyGoals] RPC returned stale goal_date. Attempting to fetch today\'s row.', { returnedDate: res.data.goal_date, today: todayStr });
-            try {
-              const { data: todayGoal } = await supabase
-                .from('daily_goals')
-                .select('id, user_id, goal_date, calories, protein, carbs, fats, fluids, fluid_goal_ml, steps_goal')
-                .eq('user_id', user.id)
-                .eq('goal_date', todayStr)
-                .maybeSingle();
-              if (todayGoal) {
-                setData(todayGoal);
-              } else {
-                setData(res.data ?? null);
-              }
-            } catch (dgErr) {
-              console.error('[useDailyGoals] Fetching today\'s daily_goals failed:', dgErr);
-              setData(res.data ?? null);
-            }
+          // Convert legacy goals to ARES format using adapter
+          if (res.data) {
+            const goals = extractGoalsFromProfile(res.data);
+            setData(goals);
           } else {
-            setData(res.data ?? null);
+            setData(null);
           }
         }
       } catch (e: any) {

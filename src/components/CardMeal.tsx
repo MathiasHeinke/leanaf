@@ -1,10 +1,11 @@
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { saveMeal, type MealModern } from '@/ares/adapters/meals';
 import { Progress } from '@/components/ui/progress';
 import { Utensils } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
 
 interface CardMealProps {
   payload: {
@@ -32,20 +33,25 @@ export const CardMeal = ({ payload }: CardMealProps) => {
       const action = payload.actions?.find(a => a.type === 'save_meal');
       if (!action) return;
 
-      const { error } = await supabase
-        .from('meals')
-        .insert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          date: action.data.date,
-          meal_type: payload.meal_type || 'snack',
-          text: `${action.data.amount || ''} ${action.data.unit || ''} ${action.data.food_name}`.trim(),
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user) return;
+
+      // Use ARES adapter for consistent meal saving
+      const meal: MealModern = {
+        name: `${action.data.amount || ''} ${action.data.unit || ''} ${action.data.food_name}`.trim(),
+        nutrition: {
           calories: action.data.calories || 0,
           protein: action.data.protein || 0,
           carbs: action.data.carbs || 0,
           fats: action.data.fats || 0
-        });
+        },
+        meal_date: action.data.date,
+        meal_type: payload.meal_type || 'snack',
+        timestamp: new Date().toISOString(),
+        confidence: 0.8
+      };
 
-      if (error) throw error;
+      await saveMeal(meal, user.id, `meal_${Date.now()}`);
 
       toast({
         title: "Mahlzeit gespeichert",

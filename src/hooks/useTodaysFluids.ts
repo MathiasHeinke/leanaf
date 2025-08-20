@@ -4,6 +4,7 @@ import { todayRangeISO, withWatchdog } from "@/utils/timeRange";
 import { useAuth } from "@/hooks/useAuth";
 import { runThrottled } from "@/lib/request-queue";
 import { useDataRefresh } from "@/hooks/useDataRefresh";
+import { toModernFluid, type FluidModern } from "@/ares/adapters/fluids";
 
 const FLUIDS_TTL = 5000; // 5s cache TTL
 
@@ -12,7 +13,7 @@ const fluidsCache = new Map<string, FluidsCacheEntry>();
 const fluidsInflight = new Map<string, Promise<void>>();
 
 export function useTodaysFluids() {
-  const [data, setData] = useState<any[] | null>(null);
+  const [data, setData] = useState<FluidModern[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const acRef = useRef<AbortController | null>(null);
@@ -57,15 +58,17 @@ export function useTodaysFluids() {
           return;
         }
 
-        const list = res.data ?? [];
-        const hash = JSON.stringify(list.map((f: any) => [f.id ?? f.created_at ?? f.date, f.amount_ml, f.created_at ?? f.date]));
+        const legacyList = res.data ?? [];
+        // Convert to modern shape using adapter
+        const modernList = legacyList.map((fluid: any) => toModernFluid(fluid));
+        const hash = JSON.stringify(legacyList.map((f: any) => [f.id ?? f.created_at ?? f.date, f.amount_ml, f.created_at ?? f.date]));
         const prevHash = cached?.hash;
 
-        fluidsCache.set(key, { data: list, error: null, ts: Date.now(), hash });
+        fluidsCache.set(key, { data: modernList, error: null, ts: Date.now(), hash });
 
         // Only update state if changed to prevent unnecessary re-renders
         if (hash !== prevHash) {
-          setData(list);
+          setData(modernList);
         }
         setError(null);
       } catch (e: any) {

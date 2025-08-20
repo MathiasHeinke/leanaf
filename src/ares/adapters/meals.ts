@@ -60,20 +60,24 @@ export async function analyzeMeal(
   images?: string[],
   traceId?: string
 ): Promise<MealModern> {
-  const { data, error } = await supabase.functions.invoke('analyze-meal', {
-    body: { 
-      input, 
-      images: images || [], 
-      traceId,
-      version: 'ares-v1' 
+  const { withTrace } = await import('../trace/withTrace');
+  
+  return withTrace(traceId, 'analyze_meal', async () => {
+    const { data, error } = await supabase.functions.invoke('analyze-meal', {
+      body: { 
+        input, 
+        images: images || [], 
+        traceId,
+        version: 'ares-v1' 
+      }
+    });
+    
+    if (error) {
+      throw new Error(`Meal analysis failed: ${error.message}`);
     }
-  });
-  
-  if (error) {
-    throw new Error(`Meal analysis failed: ${error.message}`);
-  }
-  
-  return toModernMeal(data);
+    
+    return toModernMeal(data);
+  }, { input_length: input.length, image_count: images?.length || 0 });
 }
 
 // Unified meal saving (Chat & Dashboard use same path)
@@ -82,18 +86,22 @@ export async function saveMeal(
   userId: string,
   traceId?: string
 ): Promise<void> {
-  const legacy = toLegacyMeal(meal);
+  const { withTrace } = await import('../trace/withTrace');
   
-  const { error } = await supabase.from('meals').insert({
-    ...legacy,
-    text: meal.name, // Required field
-    user_id: userId,
-    client_event_id: traceId || `meal_${Date.now()}`
-  });
-  
-  if (error) {
-    throw new Error(`Failed to save meal: ${error.message}`);
-  }
+  return withTrace(traceId, 'save_meal', async () => {
+    const legacy = toLegacyMeal(meal);
+    
+    const { error } = await supabase.from('meals').insert({
+      ...legacy,
+      text: meal.name, // Required field
+      user_id: userId,
+      client_event_id: traceId || `meal_${Date.now()}`
+    });
+    
+    if (error) {
+      throw new Error(`Failed to save meal: ${error.message}`);
+    }
+  }, { meal_name: meal.name, calories: meal.nutrition.calories });
 }
 
 // Aggregate meal context for ARES

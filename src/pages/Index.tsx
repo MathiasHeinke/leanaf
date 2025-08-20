@@ -18,7 +18,7 @@ import { QuickWeightInput } from "@/components/QuickWeightInput";
 import { QuickWorkoutInput } from "@/components/QuickWorkoutInput";
 import { QuickSleepInput } from "@/components/QuickSleepInput";
 import { QuickSupplementInput } from "@/components/QuickSupplementInput";
-import { QuickFluidInput } from "@/components/QuickFluidInput";
+import { QuickFluidInput } from "@/components/fluids/QuickFluidInput";
 import { QuickMindsetInput } from "@/components/QuickMindsetInput";
 import { BodyMeasurements } from "@/components/BodyMeasurements";
 import { SmartCoachInsights } from "@/components/SmartCoachInsights";
@@ -894,8 +894,8 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
       plannedWorkouts: 1, // Assuming 1 planned workout per day for now
       
       // Fluids data
-      fluidsMl: todaysFluids.reduce((sum, fluid) => sum + fluid.amount_ml, 0),
-      targetFluidsMl: dailyGoalsFresh?.fluids || 2000,
+      fluidsMl: todaysFluids.reduce((sum, fluid) => sum + (fluid.volume_ml || fluid.amount_ml), 0),
+      targetFluidsMl: dailyGoalsFresh?.hydration || 2000,
       
       // Mindset data
       journalEntries: todaysMindset?.length || 0,
