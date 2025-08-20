@@ -70,7 +70,7 @@ import { WeightEntryModal } from '@/components/WeightEntryModal';
 import { v4 as uuidv4 } from 'uuid';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useOrchestrator, OrchestratorReply, CoachEvent } from '@/hooks/useOrchestrator';
-import { useOrchestratorWithDebug } from '@/hooks/useOrchestratorWithDebug';
+import { sendToAres, AresCallOptions } from '@/lib/orchestratorClient';
 import { UserChatDebugger } from '@/components/debug/UserChatDebugger';
 import { AresChatDebugPanel } from '@/components/debug/AresChatDebugPanel';
 import { PromptInspectionModal } from '@/components/debug/PromptInspectionModal';
@@ -209,11 +209,67 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const [promptViewerData, setPromptViewerData] = useState<any>(null);
   const [deepDebug, setDeepDebug] = useState(false);
   
-  const { sendEvent: sendEventWithDebug } = useOrchestratorWithDebug({
-    ...debugSteps,
-    setLastRequest,
-    setLastResponse
-  }, deepDebug);
+  // Enhanced ARES integration using standardized client
+  const sendEventWithDebug = async (userId: string, ev: CoachEvent, traceId?: string, context?: any): Promise<OrchestratorReply> => {
+    let currentStepId: string | undefined;
+    
+    try {
+      currentStepId = debugSteps.addStep("Send Request", "Calling ARES enhanced orchestrator...");
+      
+      const aresOptions: AresCallOptions = {
+        text: ev.type === 'TEXT' ? ev.text : undefined,
+        attachments: ev.type === 'IMAGE' ? (ev as any).images : undefined,
+        coachId: coach?.id || 'ares',
+        context
+      };
+
+      setLastRequest(aresOptions);
+      const result = await sendToAres(aresOptions);
+      setLastResponse(result);
+
+      debugSteps.completeStep(currentStepId!, "Request completed successfully");
+
+      // Handle different response formats
+      let responseText = '';
+      let responseKind: OrchestratorReply['kind'] = 'message';
+      
+      if (result.data?.kind === 'message') {
+        responseText = result.data.text;
+        responseKind = 'message';
+      } else if (result.data?.kind === 'choice_suggest') {
+        responseText = result.data.prompt;
+        responseKind = 'choice_suggest';
+      } else if (result.data?.role === 'assistant' && result.data?.content) {
+        responseText = result.data.content;
+      } else if (result.data?.reply) {
+        responseText = result.data.reply;
+      } else {
+        responseText = 'No response from ARES';
+      }
+
+      return {
+        kind: responseKind,
+        text: responseText,
+        options: result.data?.options,
+        traceId: result.traceId,
+        meta: { rawResponse: result }
+      } as OrchestratorReply;
+
+    } catch (error: any) {
+      console.error("🔧 ARES Orchestrator error:", error);
+      
+      if (currentStepId) {
+        debugSteps.errorStep(currentStepId, `Error: ${error?.message || 'Unbekannter Fehler'}`);
+      }
+
+      // Enhanced error handling with trace ID
+      const errorMessage = error?.message || 'Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.';
+      const enhancedError = new Error(errorMessage);
+      (enhancedError as any).traceId = error?.traceId;
+      (enhancedError as any).status = error?.status;
+      throw enhancedError;
+    }
+  };
 
   // Points & streaks
   const { awardPoints, updateStreak } = usePointsSystem();

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { sendToAres, AresCallOptions, AresResponse } from '@/lib/orchestratorClient';
 import type { CoachEvent, OrchestratorReply, CoachEventContext } from '@/hooks/useOrchestrator';
 
 type DebugCallbacks = {
@@ -9,32 +10,6 @@ type DebugCallbacks = {
   setLastRequest?: (request: any) => void;
   setLastResponse?: (response: any) => void;
 };
-
-export async function sendAresEvent({ text, images, clientEventId }: {
-  text?: string; 
-  images?: any[]; 
-  clientEventId?: string;
-}) {
-  const payload = { coachId: 'ares', text, images, clientEventId };
-
-  const attempt = async () => {
-    const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-      body: payload
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  let lastErr: any;
-  for (let i = 0; i < 2; i++) {           // up to 2 retries
-    try { return await attempt(); } 
-    catch (e: any) {
-      lastErr = e;
-      await new Promise(r => setTimeout(r, 300 * (i + 1))); // 300ms, 600ms
-    }
-  }
-  throw lastErr;
-}
 
 function normalizeReply(raw: any): OrchestratorReply {
   if (!raw) return { kind: 'message', text: 'Kurz hake ich – versuch\'s bitte nochmal. (Netzwerk/Timeout)' };
@@ -74,41 +49,18 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
 
       currentStepId = debugCallbacks?.addStep("Send Request", "Calling ARES enhanced orchestrator...");
 
-      // Use the new simplified approach
-      const result = await sendAresEvent({
+      // Use the standardized orchestratorClient
+      const aresOptions: AresCallOptions = {
         text: ev.type === 'TEXT' ? ev.text : undefined,
-        images: ev.type === 'IMAGE' ? (ev as any).images : undefined,
-        clientEventId: ev.clientEventId
-      });
+        attachments: ev.type === 'IMAGE' ? (ev as any).images : undefined,
+        coachId: 'ares'
+      };
+
+      const result: AresResponse = await sendToAres(aresOptions);
       
       // Store request/response for debugging
-      debugCallbacks?.setLastRequest?.({
-        coachId: 'ares',
-        text: ev.type === 'TEXT' ? ev.text : undefined,
-        images: ev.type === 'IMAGE' ? (ev as any).images : undefined,
-        clientEventId: ev.clientEventId
-      });
+      debugCallbacks?.setLastRequest?.(aresOptions);
       debugCallbacks?.setLastResponse?.(result);
-
-      if (!result?.ok) {
-        const status = result?.status || 500;
-        const code = result?.code;
-        
-        // Map specific error codes to user-friendly messages
-        let errorMsg = 'Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.';
-        if (status === 401) {
-          errorMsg = 'Bitte erneut anmelden.';
-        } else if (status === 422 || code === 'NO_INPUT') {
-          errorMsg = 'Bitte Text oder Bild senden.';
-        } else if (code === 'CONFIG_MISSING') {
-          errorMsg = 'Server-Konfigurationsfehler. Bitte Admin benachrichtigen.';
-        }
-        
-        const error = new Error(errorMsg);
-        (error as any).status = status;
-        (error as any).code = code;
-        throw error;
-      }
 
       debugCallbacks?.completeStep(currentStepId!, "Request completed successfully");
 
@@ -119,10 +71,23 @@ export function useOrchestratorWithDebug(debugCallbacks?: DebugCallbacks, deepDe
         console.log(`🔧 Server trace ID: ${serverTraceId}`);
       }
 
-      // Enhanced response
+      // Enhanced response - handle different response formats
+      let responseText = '';
+      if (result.data?.kind === 'message') {
+        responseText = result.data.text;
+      } else if (result.data?.kind === 'choice_suggest') {
+        responseText = `${result.data.prompt}\n\nOptionen:\n${result.data.options.join('\n• ')}`;
+      } else if (result.data?.role === 'assistant' && result.data?.content) {
+        responseText = result.data.content;
+      } else if (result.data?.reply) {
+        responseText = result.data.reply;
+      } else {
+        responseText = 'No response from ARES';
+      }
+
       const normalizedResult: OrchestratorReply = {
         kind: 'message',
-        text: result.reply || 'No response from ARES',
+        text: responseText,
         meta: {
           traceId: serverTraceId,
           source: 'ares-enhanced',
