@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { ARESOrchestratorClient } from '../orchestrator/ARESOrchestratorClient';
 import type { useARESMessageStore } from '../state/ARESMessageStore';
 import { logOnce } from '../util/ARESLogger';
+import { useComponentTrace, useActionTrace } from '../trace/withTrace';
 
 export default function ARESComposer({
   store, client, userId
@@ -12,6 +13,10 @@ export default function ARESComposer({
 }) {
   const [text, setText] = useState('');
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const trace = useActionTrace();
+  
+  // Component tracing
+  useComponentTrace('ARES:Composer', store.s.lastTraceId);
 
   function autoresize() {
     const ta = taRef.current;
@@ -23,17 +28,32 @@ export default function ARESComposer({
 
   async function send() {
     if (!text.trim()) return;
+    
     const id = crypto.randomUUID();
+    trace('ARES:Composer', 'send.start', { textLength: text.length }, store.s.lastTraceId);
+    
     store.dispatch({ type:'ADD', msg:{ id, role:'user', content:text, ts:Date.now() }});
     store.dispatch({ type:'SENDING', val:true });
 
     try {
       const res = await client.send({ type:'TEXT', text }, { userId, coachId:'ares' });
+      
+      trace('ARES:Composer', 'send.ok', { 
+        replyLength: res.reply?.length || 0,
+        traceId: res.traceId 
+      }, res.traceId);
+      
       store.dispatch({ type:'ADD', msg:{ id: `${id}-a`, role:'assistant', content:res.reply, ts:Date.now(), traceId:res.traceId }});
       store.dispatch({ type:'TRACE', traceId: res.traceId ?? null });
       setText('');
       autoresize();
     } catch (e: any) {
+      trace('ARES:Composer', 'send.error', { 
+        error: e?.message,
+        status: e?.status,
+        traceId: e?.traceId 
+      }, e?.traceId || store.s.lastTraceId);
+      
       logOnce('invoke', 'send failed', { status: e?.status, traceId: e?.traceId });
       store.dispatch({ type:'ERROR', message: e?.message || 'Fehler' });
     } finally {

@@ -257,6 +257,69 @@ export type Database = {
         }
         Relationships: []
       }
+      ares_events: {
+        Row: {
+          component: string
+          event: string
+          id: number
+          meta: Json | null
+          trace_id: string | null
+          ts: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component: string
+          event: string
+          id?: number
+          meta?: Json | null
+          trace_id?: string | null
+          ts?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component?: string
+          event?: string
+          id?: number
+          meta?: Json | null
+          trace_id?: string | null
+          ts?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      ares_feature_flags: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          email_domain: string | null
+          enabled: boolean
+          flag: string
+          id: number
+          note: string | null
+          role: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          email_domain?: string | null
+          enabled?: boolean
+          flag: string
+          id?: number
+          note?: string | null
+          role?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          email_domain?: string | null
+          enabled?: boolean
+          flag?: string
+          id?: number
+          note?: string | null
+          role?: string | null
+        }
+        Relationships: []
+      }
       ares_traces: {
         Row: {
           client_event_id: string | null
