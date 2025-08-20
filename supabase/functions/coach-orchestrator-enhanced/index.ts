@@ -117,46 +117,96 @@ async function fetchRagSources({ text, context }: { text: string; context: any }
   };
 }
 
-function buildPrompts({ persona, context, ragSources, text, images }: {
+function buildAresPrompt({ persona, context, ragSources, text, images }: {
   persona: any;
   context: any;
   ragSources: any;
   text: string;
   images: any;
 }) {
-  const systemPrompt = `You are ${persona.name}, ${persona.title}.
+  // Build ARES v2 context
+  const promptContext = {
+    identity: { 
+      name: context.profile?.preferred_name || context.profile?.first_name || null 
+    },
+    dial: 3 as const, // Medium intensity
+    userMsg: text,
+    metrics: {
+      kcalDeviation: 0, // Could be calculated from recent meals vs targets
+      missedMissions: 0,
+      dailyReview: false
+    },
+    facts: {
+      weight: context.profile?.weight,
+      goalWeight: context.profile?.target_weight,
+      tdee: context.profile?.tdee
+    },
+    goals: context.profile?.goals ? [{ short: context.profile.goals }] : null,
+    timeOfDay: "day" as const
+  };
 
-${persona.bio_short}
+  // Get dial settings
+  const dial = {
+    temp: 0.8,
+    maxWords: 200,
+    archetype: "ULTIMATE MENTOR",
+    style: "Direct, powerful, action-oriented"
+  };
 
-Voice: ${persona.voice}
-Style rules: ${persona.style_rules?.join(', ') || 'Be helpful and supportive'}
+  // Build ARES system prompt
+  const systemPrompt = `# ARES - ULTIMATE COACHING INTELLIGENCE
+Du bist ARES - die ultimative Coaching-Intelligence für totale menschliche Optimierung.
 
-User Context:
-- Profile: ${JSON.stringify(context.profile, null, 2)}
-- Recent meals: ${JSON.stringify(context.recent_meals, null, 2)}
-- Recent workouts: ${JSON.stringify(context.recent_workouts, null, 2)}
+## CORE IDENTITY
+- **Intensität**: Maximale Energie, ansteckende Motivation
+- **Autorität**: Sprichst mit Gewissheit eines Masters  
+- **Synthese**: Verbindest alle Coaching-Bereiche zu einem System
+- **Unerbittlichkeit**: Kein Stillstand, immer vorwärts
 
-Guidelines:
-- Be direct and actionable
-- Focus on fitness and nutrition advice
-- Provide specific, personalized recommendations
-- Keep responses concise but helpful`;
+## COMMUNICATION STYLE
+- Direkt und kraftvoll, ohne unnötige Höflichkeit
+- Power-Begriffe: "DOMINATION", "ULTIMATE", "MAXIMUM"  
+- Motivation durch Herausforderung und hohe Standards
+- Klare Aktionspläne mit messbaren Zielen
 
-  const completePrompt = `${systemPrompt}
+## EXPERTISE DOMAINS
+1. **TRAINING**: Old-School Mass Building + Evidence-Based Periodization
+2. **NUTRITION**: Aggressive Optimization + Precision Timing  
+3. **RECOVERY**: Elite Regeneration + HRV Optimization
+4. **MINDSET**: Mental Toughness + Performance Psychology
+5. **LIFESTYLE**: Total Life Optimization + Habit Mastery
 
-User message: ${text}`;
+${promptContext.identity.name ? `Nutze den Namen sparsam: ${promptContext.identity.name}` : ""}
+
+## USER CONTEXT
+${promptContext.facts?.weight ? `Gewicht: ${promptContext.facts.weight} kg` : ""}
+${promptContext.facts?.goalWeight ? `Zielgewicht: ${promptContext.facts.goalWeight} kg` : ""}
+${promptContext.facts?.tdee ? `TDEE: ${promptContext.facts.tdee} kcal` : ""}
+
+Recent meals: ${JSON.stringify(context.recent_meals?.slice(0, 3) || [], null, 2)}
+Recent workouts: ${JSON.stringify(context.recent_workouts?.slice(0, 2) || [], null, 2)}
+
+## RESPONSE RULES
+- Antworte in ≤${dial.maxWords} Wörtern
+- Stil: ${dial.archetype} - ${dial.style}
+- Analysiere verfügbare Daten
+- Identifiziere limitierende Faktoren
+- Erstelle aggressiven aber realisierbaren Plan
+- Fordere maximales Commitment
+
+**ARES = MAXIMUM HUMAN POTENTIAL REALIZED**`;
 
   const llmInput = {
-    model: 'gpt-4o-mini',
+    model: 'gpt-5-mini-2025-08-07',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: text }
     ],
-    max_tokens: 1000,
-    temperature: 0.7
+    max_completion_tokens: 800,
+    // No temperature for GPT-5 models
   };
 
-  return { systemPrompt, completePrompt, llmInput };
+  return { systemPrompt, completePrompt: systemPrompt + "\n\nUser: " + text, llmInput };
 }
 
 async function callLLM(llmInput: any) {
@@ -278,7 +328,7 @@ Deno.serve(async (req) => {
       .update({ status: 'context_loaded', context, persona, rag_sources: ragSources })
       .eq('trace_id', traceId);
 
-    const { systemPrompt, completePrompt, llmInput } = buildPrompts({ persona, context, ragSources, text, images });
+    const { systemPrompt, completePrompt, llmInput } = buildAresPrompt({ persona, context, ragSources, text, images });
 
     await supaSvc.from('ares_traces')
       .update({ status: 'prompt_built', system_prompt: systemPrompt, complete_prompt: completePrompt, llm_input: llmInput })
@@ -291,7 +341,28 @@ Deno.serve(async (req) => {
       .update({ status: 'completed', llm_output: llmOutput, duration_ms })
       .eq('trace_id', traceId);
 
-    return json(200, { ok: true, traceId, reply: llmOutput });
+    // Save response to coach_conversations for chat persistence
+    try {
+      await supaSvc.from('coach_conversations').insert({
+        user_id: user.id,
+        coach_id: coachId,
+        message: text,
+        response: llmOutput,
+        trace_id: traceId
+      });
+    } catch (convError) {
+      console.warn('[ARES-WARN] Failed to save conversation:', convError);
+    }
+
+    return json(200, { 
+      ok: true, 
+      traceId, 
+      data: {
+        role: 'assistant',
+        content: llmOutput,
+        type: 'message'
+      }
+    });
 
   } catch (e) {
     const err = serializeErr(e);
