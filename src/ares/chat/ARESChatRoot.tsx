@@ -15,8 +15,8 @@ export default function ARESChatRoot({ userId }: { userId: string }) {
   // Component tracing
   useComponentTrace('ARES:ChatRoot', store.s.lastTraceId);
   
-  // Feature flag based debug panel
-  const showDebug = has('ares.debug') || import.meta.env.VITE_ARES_DEBUG === '1';
+  // Feature flag based debug panel - no ENV fallback
+  const showDebug = has('ares.debug');
 
   return (
     <div className="flex h-full w-full flex-col">
