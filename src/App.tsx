@@ -17,6 +17,7 @@ import Profile from "./pages/Profile";
 import Credits from "./pages/Credits";
 import CreditsSuccess from "./pages/CreditsSuccess";
 import CoachPage from "./pages/Coach";
+import AresWithDebug from "./pages/coach/ares-with-debug";
 import TrainingPlus from "./pages/TrainingPlus";
 // Momentum page removed - functionality migrated to Index
 import HistoryPage from "./pages/History";
@@ -68,6 +69,7 @@ const App = () => (
                       <Route path="/credits" element={<Credits />} />
                       <Route path="/credits/success" element={<CreditsSuccess />} />
                       <Route path="/coach" element={<CoachPage />} />
+                      <Route path="/coach/ares-with-debug" element={<AresWithDebug />} />
                       <Route path="/coach/:coachId" element={<CoachPage />} />
                       <Route path="/training" element={<TrainingPlus />} />
                       <Route path="/plus" element={<Navigate to="/" replace />} />
