@@ -2,7 +2,6 @@
 import { useEffect } from "react";
 import { ExtendedBadgeManager } from "@/utils/extendedBadgeManager";
 import { useAuth } from "@/hooks/useAuth";
-import { useFireBus } from "@/components/FireBackdrop";
 import { toast } from "sonner";
 
 // Global lock to prevent parallel badge checks across all instances
@@ -10,7 +9,6 @@ let badgeCheckInProgress = false;
 
 export const useBadgeChecker = () => {
   const { user } = useAuth();
-  const firebus = useFireBus();
 
   const checkBadges = async () => {
     if (!user) return;
@@ -44,11 +42,6 @@ export const useBadgeChecker = () => {
             duration: 6000,
           });
         });
-
-        // Trigger fire animation for achievements
-        if (actualNewBadges.length > 0) {
-          firebus.emit('achievement:unlocked');
-        }
       } else {
         console.log('📝 No new badges to display toasts for');
       }

@@ -1247,7 +1247,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
         {isAres && (
           <FireBackdrop 
             ref={fireBackdropRef}
-            defaultIntensity={0.3}
+            chatMode={true}
             devFastCycle={false}
           />
         )}
