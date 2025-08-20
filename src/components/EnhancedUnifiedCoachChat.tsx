@@ -11,6 +11,7 @@ import { Send, Loader2, Brain, Database, Clock, Zap, Users } from 'lucide-react'
 import ReactMarkdown from 'react-markdown';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAuth } from '@/hooks/useAuth';
+import ARESChatRoot from '@/ares/chat/ARESChatRoot';
 interface EnhancedChatInputProps {
   inputText: string;
   setInputText: (text: string) => void;
@@ -174,6 +175,11 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         </div>
       </div>
     );
+  }
+
+  // ARES Integration - Early exit for new modular architecture
+  if (coach?.id === 'ares') {
+    return <ARESChatRoot userId={user.id} />;
   }
   
   // FireBackdrop for ARES
