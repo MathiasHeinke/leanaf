@@ -186,19 +186,21 @@ export default async function handleCycleAssessment(conv: any[], userId: string)
   };
 }
 
+type CyclePhase = 'menstrual' | 'follicular' | 'ovulatory' | 'luteal' | 'unknown';
+
 function getPhaseDescription(phase: string): string {
-  const descriptions = {
+  const descriptions: Record<CyclePhase, string> = {
     'menstrual': 'Menstruationsphase: Dein Körper regeneriert sich. Zeit für sanfte Bewegung und Selbstfürsorge.',
     'follicular': 'Follikelphase: Deine Energie steigt! Perfekt für Krafttraining und neue Herausforderungen.',
     'ovulatory': 'Ovulationsphase: Du bist auf dem Höhepunkt deiner Kraft! Nutze diese Zeit für intensive Workouts.',
     'luteal': 'Lutealphase: Dein Körper bereitet sich vor. Fokussiere dich auf Stabilität und Regeneration.',
     'unknown': 'Um deine Zyklusphase zu bestimmen, teile mir dein letztes Periodenstart-Datum mit.'
   };
-  return descriptions[phase] || descriptions['unknown'];
+  return descriptions[phase as CyclePhase] || descriptions['unknown'];
 }
 
 function getTrainingRecommendations(phase: string, energyLevel: number): string[] {
-  const baseRecommendations = {
+  const baseRecommendations: Record<CyclePhase, string[]> = {
     'menstrual': [
       'Sanftes Yoga oder Pilates',
       'Leichte Spaziergänge',
@@ -230,11 +232,11 @@ function getTrainingRecommendations(phase: string, energyLevel: number): string[
     ]
   };
   
-  let recommendations = baseRecommendations[phase] || baseRecommendations['unknown'];
+  let recommendations = baseRecommendations[phase as CyclePhase] || baseRecommendations['unknown'];
   
   // Adjust based on energy level
   if (energyLevel <= 3) {
-    recommendations = recommendations.filter(rec => 
+    recommendations = recommendations.filter((rec: string) => 
       rec.includes('sanft') || rec.includes('leicht') || rec.includes('regenerativ')
     );
     recommendations.push('Extra Ruhetag einlegen');

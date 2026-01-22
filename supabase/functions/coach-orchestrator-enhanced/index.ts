@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cors } from '../_shared/ares/cors.ts';
 import { newTraceId } from '../_shared/ares/ids.ts';
 import { traceStart, traceUpdate, traceDone, traceFail } from '../_shared/ares/trace.ts';
-import { decideAresDial, loadUserMoodContext, getRitualContext, type UserMoodContext, type AresDialResult } from './aresDial.ts';
+import { decideAresDial, loadUserMoodContext, getRitualContext, getModeDescription, type UserMoodContext, type AresDialResult, type AresMode } from './aresDial.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -893,81 +893,119 @@ async function fetchRagSources({ text, context }: { text: string; context: any }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PROMPT BUILDING WITH MEMORY INTEGRATION
+// PROMPT BUILDING WITH MEMORY INTEGRATION - Phase 2 Simplified
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext }: {
+// Generate current German date string
+function getCurrentGermanDate(): string {
+  const now = new Date();
+  const germanDays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  const germanMonths = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
+                        'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  return `${germanDays[now.getDay()]}, ${now.getDate()}. ${germanMonths[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+// Pair conversation messages from separate user/assistant rows into {message, response} format
+function pairConversationMessages(rawMessages: any[]): { message: string; response: string; created_at: string }[] {
+  if (!rawMessages || rawMessages.length === 0) return [];
+  
+  // Sort chronologically (oldest first)
+  const chronological = [...rawMessages].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  
+  const pairs: { message: string; response: string; created_at: string }[] = [];
+  
+  for (let i = 0; i < chronological.length - 1; i++) {
+    const current = chronological[i];
+    const next = chronological[i + 1];
+    
+    // Look for user message followed by assistant message
+    if (current.message_role === 'user' && next.message_role === 'assistant') {
+      pairs.push({
+        message: current.message_content || '',
+        response: next.message_content || '',
+        created_at: current.created_at
+      });
+      i++; // Skip the assistant message in next iteration
+    }
+  }
+  
+  // Return newest first (for limit purposes)
+  return pairs.reverse();
+}
+
+// Format conversation history for prompt
+function formatConversationHistory(conversations: any[]): string {
+  if (!conversations || conversations.length === 0) return '';
+  
+  // Reverse to get chronological order (oldest first)
+  const chronological = [...conversations].reverse();
+  
+  const formatted = chronological.map(c => {
+    const date = new Date(c.created_at).toLocaleString('de-DE', { 
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+    });
+    return `[${date}] User: ${c.message}\n[${date}] ARES: ${c.response?.substring(0, 200)}${c.response?.length > 200 ? '...' : ''}`;
+  }).join('\n\n');
+  
+  return formatted;
+}
+
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory }: {
   persona: any;
   context: any;
   ragSources: any;
   text: string;
   images: any;
   userMoodContext?: UserMoodContext;
+  conversationHistory?: any[];
 }) {
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
   const ritualContext = getRitualContext();
-  const finalDial = ritualContext?.dial || dialResult.dial;
-  const finalArchetype = ritualContext?.archetype || dialResult.archetype;
+  const finalMode = (ritualContext?.mode || dialResult.mode) as AresMode;
+  const finalTemperature = ritualContext?.temperature || dialResult.temperature;
   
-  console.log(`[ARES] Dial selected: ${finalDial}, Archetype: ${finalArchetype}, Reason: ${dialResult.reason}`);
+  console.log(`[ARES] Mode selected: ${finalMode}, Temp: ${finalTemperature}, Reason: ${dialResult.reason}`);
   
-  const promptContext = {
-    identity: { 
-      name: context.profile?.preferred_name || context.profile?.first_name || null 
-    },
-    dial: finalDial,
-    archetype: finalArchetype,
-    userMsg: text,
-    metrics: {
-      kcalDeviation: 0,
-      missedMissions: userMoodContext?.missed_tasks || 0,
-      dailyReview: false,
-      streak: userMoodContext?.streak || 0,
-      noWorkoutDays: userMoodContext?.no_workout_days || 0
-    },
-    facts: {
-      weight: context.profile?.weight,
-      goalWeight: context.profile?.target_weight,
-      tdee: context.profile?.tdee
-    },
-    goals: context.profile?.goals ? [{ short: context.profile.goals }] : null,
-    timeOfDay: getTimeOfDay(),
-    ritual: ritualContext?.ritual || null
-  };
-
-  const dialSettings: Record<number, { temp: number; maxWords: number; archetype: string; style: string }> = {
-    1: { temp: 0.7, maxWords: 400, archetype: "COMRADE", style: "Supportive, motivating, encouraging" },
-    2: { temp: 0.75, maxWords: 450, archetype: "SMITH", style: "Steady, methodical, progressive" },
-    3: { temp: 0.8, maxWords: 500, archetype: "FATHER", style: "Nurturing, grounded, protective" },
-    4: { temp: 0.85, maxWords: 550, archetype: "COMMANDER", style: "Direct, structured, no-excuses" },
-    5: { temp: 0.9, maxWords: 600, archetype: "DRILL", style: "Intense, demanding, transformative" }
+  const userName = context.profile?.preferred_name || context.profile?.first_name || null;
+  const currentDate = getCurrentGermanDate();
+  const timeOfDay = getTimeOfDay();
+  
+  // Mode-specific style instruction
+  const modeStyle = {
+    supportive: 'Sei verständnisvoll und ermutigend. Erkenne Herausforderungen an, ohne zu urteilen.',
+    balanced: 'Sei freundlich und klar. Balance zwischen Support und konkreten Handlungsschritten.',
+    direct: 'Sei direkt und fordernd. Keine Ausreden, klare Erwartungen.'
   };
   
-  const dial = dialSettings[finalDial] || dialSettings[3];
+  // Build conversation history section
+  const historySection = conversationHistory && conversationHistory.length > 0 
+    ? `\n## LETZTE GESPRÄCHE (Kontext)
+${formatConversationHistory(conversationHistory)}`
+    : '';
 
-  const archetypeInstructions: Record<string, string> = {
-    COMRADE: `Du bist ein unterstützender Kamerad. Motiviere durch Verständnis und geteilte Erfahrung. 
-              Feiere kleine Siege. Betone den Weg, nicht nur das Ziel. Sprich natürlich und authentisch.`,
-    SMITH: `Du bist ein methodischer Handwerker. Fokus auf Prozess und stetige Verbesserung.
-            Gib konkrete, umsetzbare Schritte. Bleib praktisch und lösungsorientiert.`,
-    FATHER: `Du bist ein weiser Mentor. Biete Halt und Perspektive ohne zu urteilen.
-             Erkenne Emotionen an, aber führe sanft zurück zum Fokus. Sei warm aber nicht kitschig.`,
-    COMMANDER: `Du bist ein strukturierter Anführer. Klare Ansagen, keine Ausreden.
-                Setze klare Erwartungen. Direkt aber respektvoll.`,
-    DRILL: `Du bist ein fordernder Trainer. Maximale Intensität, transformative Energie.
-            Akzeptiere nur Exzellenz. Push ohne zu beleidigen.`
-  };
-
-  // Build memory context string
-  const memory = context.memory || {};
-  const memoryContext = memory.trust_level > 0 || memory.relationship_stage !== 'new' ? `
-## BEZIEHUNGS-KONTEXT (Memory)
-- Vertrauenslevel: ${memory.trust_level}/10
-- Beziehungsphase: ${memory.relationship_stage}
-${memory.conversation_context?.topics_discussed?.length > 0 ? `- Besprochene Themen: ${memory.conversation_context.topics_discussed.slice(-5).join(', ')}` : ''}
-${memory.conversation_context?.success_moments?.length > 0 ? `- Erfolgsmomente: ${memory.conversation_context.success_moments.slice(-3).join(', ')}` : ''}
-${memory.conversation_context?.struggles_mentioned?.length > 0 ? `- Herausforderungen: ${memory.conversation_context.struggles_mentioned.slice(-3).join(', ')}` : ''}
+  // Build relationship/memory context section
+  const memory = context.memory;
+  const memorySection = memory && memory.trust_level !== undefined ? `
+## BEZIEHUNGS-KONTEXT
+- Trust Level: ${Math.round(memory.trust_level)}/100 (${memory.relationship_stage || 'new'})
+${memory.conversation_context?.topics_discussed?.length > 0 
+  ? `- Besprochene Themen: ${memory.conversation_context.topics_discussed.join(', ')}`
+  : ''}
+${memory.conversation_context?.struggles_mentioned?.length > 0 
+  ? `- Letzte Herausforderungen: ${memory.conversation_context.struggles_mentioned.slice(-3).map((s: any) => typeof s === 'string' ? s : s.struggle).join('; ')}`
+  : ''}
+${memory.conversation_context?.success_moments?.length > 0
+  ? `- Letzte Erfolge: ${memory.conversation_context.success_moments.slice(-3).map((s: any) => typeof s === 'string' ? s : s.achievement).join('; ')}`
+  : ''}
+${memory.conversation_context?.mood_history?.length > 0
+  ? `- Letzte Stimmung: ${memory.conversation_context.mood_history.slice(-3).map((m: any) => m.mood).join(', ')}`
+  : ''}
 ` : '';
+  
+  // Compact system prompt - natural language, no verbose sections
+  const systemPrompt = `Du bist ARES, ein erfahrener Fitness- und Lifestyle-Coach.
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // CRITICAL FIX: Build conversation history context from recent conversations
@@ -1053,52 +1091,59 @@ ${promptContext.metrics.noWorkoutDays > 0 ? `- Tage ohne Training: ${promptConte
 ${context.recent_meals?.length > 0 
   ? context.recent_meals.slice(0, 5).map((m: any) => `- ${m.title || 'Mahlzeit'}: ${m.calories || 0} kcal, ${m.protein || 0}g Protein, ${m.carbs || 0}g Carbs, ${m.fat || 0}g Fett`).join('\n')
   : "- Keine Mahlzeiten geloggt"}
+**AKTUELLES DATUM: ${currentDate}**
+**TAGESZEIT: ${timeOfDay}**
 
-### Letzte Workouts (letzte 7 Tage):
+${userName ? `Du sprichst mit ${userName}.` : ''}
+
+## DEIN STIL HEUTE
+${modeStyle[finalMode]}
+
+## USER-DATEN
+${context.profile?.weight ? `Gewicht: ${context.profile.weight}kg` : ''}${context.profile?.target_weight ? ` → Ziel: ${context.profile.target_weight}kg` : ''}
+${context.profile?.tdee ? `TDEE: ${context.profile.tdee} kcal` : ''}
+${userMoodContext?.streak ? `🔥 Streak: ${userMoodContext.streak} Tage` : ''}
+${userMoodContext?.no_workout_days && userMoodContext.no_workout_days > 0 ? `⚠️ ${userMoodContext.no_workout_days} Tage ohne Training` : ''}
+
+### Letzte Aktivitäten
+${context.recent_meals?.length > 0 
+  ? `Mahlzeiten: ${context.recent_meals.slice(0, 3).map((m: any) => `${m.title || 'Mahlzeit'} (${m.calories || 0}kcal)`).join(', ')}`
+  : 'Keine Mahlzeiten geloggt'}
 ${context.recent_workouts?.length > 0
-  ? context.recent_workouts.slice(0, 3).map((w: any) => `- ${w.workout_type || 'Training'}: ${w.duration_minutes || 0} min${w.notes ? ` - ${w.notes}` : ''}`).join('\n')
-  : "- Keine Workouts geloggt"}
+  ? `\nWorkouts: ${context.recent_workouts.slice(0, 2).map((w: any) => `${w.workout_type || 'Training'} (${w.duration_minutes || 0}min)`).join(', ')}`
+  : ''}
+${historySection}
+${memorySection}
+${ragSources?.knowledge_chunks?.length > 0 ? `\n## WISSEN\n${ragSources.knowledge_chunks.slice(0, 2).join('\n')}` : ''}
 
-### Schlaf (letzte Woche):
-${context.recent_sleep?.length > 0
-  ? `Durchschnittlich ${(context.recent_sleep.reduce((sum: number, s: any) => sum + (s.hours || 0), 0) / context.recent_sleep.length).toFixed(1)}h pro Nacht`
-  : "- Keine Schlafdaten"}
+## TOOLS (bei Bedarf automatisch nutzen)
+- get_meta_analysis: Ganzheitliche Analyse
+- create_workout_plan / create_nutrition_plan / create_supplement_plan: Pläne erstellen
+- get_user_plans / update_plan: Bestehende Pläne
 
-### Aktive Supplements:
-${context.active_supplements?.length > 0
-  ? context.active_supplements.map((s: any) => `- ${s.supplement_database?.name || 'Supplement'}: ${s.dosage || ''} (${s.timing || 'timing not set'})`).join('\n')
-  : "- Keine aktiven Supplements"}
+## DEIN GEDÄCHTNIS (KRITISCH WICHTIG!)
+Du HAST Zugriff auf den Gesprächsverlauf - er steht oben unter "LETZTE GESPRÄCHE".
+Du HAST Zugriff auf Langzeit-Infos unter "BEZIEHUNGS-KONTEXT" (z.B. user_notes).
+Du KANNST dich an alles erinnern was dort steht!
+Wenn der User "merk dir X" sagt → bestätige es, es wird automatisch gespeichert.
+Wenn der User nach etwas fragt das oben steht → NUTZE es und antworte korrekt!
+SAGE NIEMALS "Ich kann mich nicht erinnern" oder "Als KI habe ich kein Gedächtnis" wenn die Info verfügbar ist!
+${memory?.conversation_context?.user_notes?.length > 0 
+  ? `\n### VOM USER ZUM MERKEN:\n${memory.conversation_context.user_notes.map((n: any) => `- "${n.note}" (${new Date(n.timestamp).toLocaleDateString('de-DE')})`).join('\n')}`
+  : ''}
 
-${ragSources.knowledge_chunks?.length > 0 ? `## KNOWLEDGE BASE CONTEXT
-${ragSources.knowledge_chunks.slice(0, 3).join('\n\n')}` : ""}
-
-## TOOL-NUTZUNG
-Du hast Zugriff auf folgende Tools die du bei Bedarf automatisch aufrufen kannst:
-- **get_meta_analysis**: Ganzheitliche Analyse der User-Daten
-- **create_workout_plan**: Trainingsplan erstellen und in DB speichern
-- **create_nutrition_plan**: Ernährungsplan erstellen und in DB speichern
-- **create_supplement_plan**: Supplement-Stack erstellen und in DB speichern
-- **create_peptide_protocol**: Peptid-Protokoll erstellen (nur bei expliziter Nachfrage)
-- **get_user_plans**: Aktive Pläne des Users abrufen
-- **update_plan**: Bestehenden Plan aktualisieren
-
-Nutze Tools wenn der User explizit nach Plänen fragt oder wenn eine detaillierte Analyse nötig ist.
-
-## RESPONSE RULES
-- Antworte so ausführlich wie nötig (ca. ${dial.maxWords} Wörter als Richtwert, aber flexibel)
-- Wende den ${dial.archetype}-Stil natürlich an - keine roboterhaften Floskeln
-- Zeitkontext: ${promptContext.timeOfDay}
-${promptContext.ritual ? `- Aktuelles Ritual: ${promptContext.ritual.type} - nutze entsprechende Prompts` : ""}
-- Bei Plan-Erstellung: Fasse den erstellten Plan zusammen und bestätige die Speicherung
-- WICHTIG: Sprich wie ein echter Mensch - keine übertriebene Motivation oder Coaching-Floskeln
-
-**ARES = ADAPTIVE RESPONSE EXCELLENCE SYSTEM**`;
+## WICHTIG
+- Sprich natürlich, wie ein echter Mensch - keine Coaching-Floskeln
+- Antworte prägnant (100-400 Wörter), nicht mehr als nötig
+- Nutze das aktuelle Datum wenn nach Zeit gefragt wird
+- Beziehe dich auf frühere Gespräche wenn relevant`;
 
   return { 
     systemPrompt, 
     completePrompt: systemPrompt + "\n\nUser: " + text, 
-    dial,
-    temperature: dial.temp 
+    dial: { temp: finalTemperature, archetype: finalMode },
+    temperature: finalTemperature,
+    mode: finalMode
   };
 }
 
@@ -1226,6 +1271,8 @@ async function updateCoachMemory(
     const memory = currentMemory?.memory_data || {
       trust_level: 0,
       relationship_stage: 'new',
+      communication_style_preference: 'balanced',
+      user_preferences: [],
       conversation_context: {
         mood_history: [],
         success_moments: [],
@@ -1233,6 +1280,45 @@ async function updateCoachMemory(
         struggles_mentioned: []
       }
     };
+
+    // Ensure all required arrays exist
+    if (!memory.conversation_context) {
+      memory.conversation_context = { mood_history: [], success_moments: [], topics_discussed: [], struggles_mentioned: [] };
+    }
+    if (!Array.isArray(memory.conversation_context.mood_history)) memory.conversation_context.mood_history = [];
+    if (!Array.isArray(memory.conversation_context.success_moments)) memory.conversation_context.success_moments = [];
+    if (!Array.isArray(memory.conversation_context.struggles_mentioned)) memory.conversation_context.struggles_mentioned = [];
+    if (!Array.isArray(memory.conversation_context.topics_discussed)) memory.conversation_context.topics_discussed = [];
+    if (!Array.isArray(memory.conversation_context.user_notes)) memory.conversation_context.user_notes = [];
+
+    // Detect "merk dir" / "remember" pattern - explicit user request to remember something
+    const rememberPatterns = [
+      /merk(?:e)?\s*dir\s+(.+)/i,
+      /merke?\s+dir\s*(?:bitte\s+)?(.+)/i,
+      /remember\s+(?:this[:\s]+)?(.+)/i,
+      /speicher(?:e)?\s*(?:dir\s+)?(.+)/i,
+      /notier(?:e)?\s*(?:dir\s+)?(.+)/i
+    ];
+    
+    for (const pattern of rememberPatterns) {
+      const match = userMessage.match(pattern);
+      if (match) {
+        const itemToRemember = match[1].trim().replace(/[.!?]$/, '');
+        if (itemToRemember.length > 0 && itemToRemember.length < 200) {
+          memory.conversation_context.user_notes.push({
+            timestamp: new Date().toISOString(),
+            note: itemToRemember,
+            type: 'user_requested'
+          });
+          console.log(`[ARES-MEMORY] User note saved: "${itemToRemember}"`);
+          // Keep only last 20 notes
+          if (memory.conversation_context.user_notes.length > 20) {
+            memory.conversation_context.user_notes = memory.conversation_context.user_notes.slice(-20);
+          }
+        }
+        break;
+      }
+    }
 
     // Update conversation context
     const lowercaseMsg = userMessage.toLowerCase();
@@ -1255,55 +1341,116 @@ async function updateCoachMemory(
       }
     }
 
-    // Detect struggles
-    const struggleKeywords = ['schwer', 'problem', 'hilfe', 'nicht geschafft', 'aufgeben', 'überfordert'];
+    // Detect struggles - store as objects with timestamp
+    const struggleKeywords = ['schwer', 'problem', 'hilfe', 'nicht geschafft', 'aufgeben', 'überfordert', 'frustrier', 'stuck', 'kämpfe'];
     if (struggleKeywords.some(k => lowercaseMsg.includes(k))) {
-      const struggle = userMessage.slice(0, 100);
-      if (!memory.conversation_context.struggles_mentioned.includes(struggle)) {
-        memory.conversation_context.struggles_mentioned.push(struggle);
-        // Keep only last 10
-        if (memory.conversation_context.struggles_mentioned.length > 10) {
-          memory.conversation_context.struggles_mentioned.shift();
-        }
+      memory.conversation_context.struggles_mentioned.push({
+        timestamp: new Date().toISOString(),
+        struggle: userMessage.slice(0, 100),
+        support_given: true
+      });
+      // Keep only last 15
+      if (memory.conversation_context.struggles_mentioned.length > 15) {
+        memory.conversation_context.struggles_mentioned = memory.conversation_context.struggles_mentioned.slice(-15);
       }
     }
 
-    // Detect success moments
-    const successKeywords = ['geschafft', 'erreicht', 'stolz', 'pr', 'personal record', 'durchgehalten'];
+    // Detect success moments - store as objects with timestamp
+    const successKeywords = ['geschafft', 'erreicht', 'stolz', 'pr', 'personal record', 'durchgehalten', 'super', 'geil', 'hammer', 'stark'];
     if (successKeywords.some(k => lowercaseMsg.includes(k))) {
-      const success = userMessage.slice(0, 100);
-      memory.conversation_context.success_moments.push(success);
-      // Keep only last 10
-      if (memory.conversation_context.success_moments.length > 10) {
-        memory.conversation_context.success_moments.shift();
+      memory.conversation_context.success_moments.push({
+        timestamp: new Date().toISOString(),
+        achievement: userMessage.slice(0, 100),
+        celebration_given: true
+      });
+      // Keep only last 15
+      if (memory.conversation_context.success_moments.length > 15) {
+        memory.conversation_context.success_moments = memory.conversation_context.success_moments.slice(-15);
       }
     }
 
-    // Increase trust level based on interaction
+    // Detect mood and add to history
+    const moodKeywords: Record<string, { mood: string; intensity: number }> = {
+      'super': { mood: 'excited', intensity: 9 },
+      'motiviert': { mood: 'motivated', intensity: 8 },
+      'gut': { mood: 'positive', intensity: 7 },
+      'okay': { mood: 'neutral', intensity: 5 },
+      'müde': { mood: 'tired', intensity: 6 },
+      'erschöpft': { mood: 'exhausted', intensity: 7 },
+      'frustriert': { mood: 'frustrated', intensity: 7 },
+      'gestresst': { mood: 'stressed', intensity: 7 },
+      'down': { mood: 'low', intensity: 6 },
+      'demotiviert': { mood: 'demotivated', intensity: 7 }
+    };
+
+    for (const [keyword, moodData] of Object.entries(moodKeywords)) {
+      if (lowercaseMsg.includes(keyword)) {
+        memory.conversation_context.mood_history.push({
+          timestamp: new Date().toISOString(),
+          mood: moodData.mood,
+          intensity: moodData.intensity
+        });
+        break; // Only capture first detected mood
+      }
+    }
+    // Keep only last 20 mood entries
+    if (memory.conversation_context.mood_history.length > 20) {
+      memory.conversation_context.mood_history = memory.conversation_context.mood_history.slice(-20);
+    }
+
+    // Increase trust level based on interaction (0-100 scale)
+    // Convert old 0-10 scale to 0-100 if needed
+    if (memory.trust_level <= 10) {
+      memory.trust_level = memory.trust_level * 10;
+    }
+    
     if (toolResults.length > 0) {
-      memory.trust_level = Math.min(10, memory.trust_level + 0.5);
+      memory.trust_level = Math.min(100, memory.trust_level + 5); // Tool usage = higher trust gain
     } else {
-      memory.trust_level = Math.min(10, memory.trust_level + 0.1);
+      memory.trust_level = Math.min(100, memory.trust_level + 1); // Normal conversation
     }
 
-    // Update relationship stage
-    if (memory.trust_level >= 7) {
-      memory.relationship_stage = 'trusted';
-    } else if (memory.trust_level >= 4) {
+    // Update relationship stage based on trust level (matching frontend expectations)
+    if (memory.trust_level >= 80) {
+      memory.relationship_stage = 'close';
+    } else if (memory.trust_level >= 60) {
       memory.relationship_stage = 'established';
-    } else if (memory.trust_level >= 1) {
-      memory.relationship_stage = 'developing';
+    } else if (memory.trust_level >= 20) {
+      memory.relationship_stage = 'getting_familiar';
+    } else {
+      memory.relationship_stage = 'new';
     }
 
-    // Upsert memory
-    await supaClient.from('coach_memory').upsert({
+    // Upsert memory - use delete + insert pattern for unique index compatibility
+    const { error: deleteError } = await supaClient
+      .from('coach_memory')
+      .delete()
+      .eq('user_id', userId)
+      .eq('coach_id', 'ares');
+    
+    if (deleteError) {
+      console.warn('[ARES-MEMORY] Delete before upsert failed:', deleteError);
+    }
+    
+    const { error: insertError } = await supaClient.from('coach_memory').insert({
       user_id: userId,
       coach_id: 'ares',
       memory_data: memory,
       updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id,coach_id' });
+    });
 
-    console.log('[ARES-MEMORY] Updated memory:', { trust_level: memory.trust_level, stage: memory.relationship_stage });
+    if (insertError) {
+      console.warn('[ARES-MEMORY] Insert failed:', insertError);
+    }
+
+    console.log('[ARES-MEMORY] Updated memory:', { 
+      trust_level: Math.round(memory.trust_level), 
+      stage: memory.relationship_stage,
+      topics: memory.conversation_context.topics_discussed?.length || 0,
+      struggles: memory.conversation_context.struggles_mentioned?.length || 0,
+      successes: memory.conversation_context.success_moments?.length || 0,
+      moods: memory.conversation_context.mood_history?.length || 0
+    });
   } catch (err) {
     console.warn('[ARES-MEMORY] Failed to update memory:', err);
   }
@@ -1344,14 +1491,32 @@ Deno.serve(async (req) => {
   const supaSvc = createClient(SUPABASE_URL, SVC, { auth: { persistSession: false } });
 
   try {
-    // Auth
-    const { data: authData } = await supaUser.auth.getUser();
-    const user = authData?.user;
-    if (!user) {
-      return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'No user session', traceId }), {
+    // Auth - Use getClaims() for fast JWT validation (recommended over getUser())
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.warn(`[ARES-AUTH] Missing or invalid Authorization header`);
+      return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'No authorization header', traceId }), {
         status: 401, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       });
     }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supaUser.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.warn(`[ARES-AUTH] JWT validation failed:`, claimsError?.message || 'No sub claim');
+      return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'Invalid or expired token', traceId }), {
+        status: 401, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
+      });
+    }
+    
+    // Build minimal user object from claims
+    const user = {
+      id: claimsData.claims.sub as string,
+      email: claimsData.claims.email as string | undefined,
+      role: claimsData.claims.role as string | undefined
+    };
+    console.log(`[ARES-AUTH] Authenticated user: ${user.id}`);
 
     // Parse payload
     const body = await (async () => {
@@ -1405,6 +1570,24 @@ Deno.serve(async (req) => {
       return {} as UserMoodContext;
     });
 
+    // Load conversation history (last 20 raw messages = ~10 pairs) for context
+    // Schema uses: message_content, message_role, coach_personality (NOT message, response, coach_id)
+    const { data: rawConversations, error: convLoadError } = await supaSvc
+      .from('coach_conversations')
+      .select('message_content, message_role, created_at')
+      .eq('user_id', user.id)
+      .eq('coach_personality', coachId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    if (convLoadError) {
+      console.warn(`[ARES] Failed to load conversations:`, convLoadError.message);
+    }
+    
+    // Convert raw user/assistant rows to paired {message, response} format
+    const conversationHistory = pairConversationMessages(rawConversations || []);
+    console.log(`[ARES] Loaded ${rawConversations?.length || 0} raw messages → ${conversationHistory.length} conversation pairs`);
+
     // Store full context in trace for debugging
     await traceUpdate(traceId, { 
       status: 'context_loaded', 
@@ -1413,9 +1596,9 @@ Deno.serve(async (req) => {
       rag_sources: ragSources 
     } as any);
 
-    // Build prompt with memory
+    // Build prompt with memory and conversation history
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
-      persona, context, ragSources, text, images, userMoodContext 
+      persona, context, ragSources, text, images, userMoodContext, conversationHistory: conversationHistory ?? undefined 
     });
 
     // Store system prompt AND user input for full LLM tracing
@@ -1423,7 +1606,7 @@ Deno.serve(async (req) => {
       status: 'prompt_built', 
       system_prompt: systemPrompt, 
       complete_prompt: completePrompt,
-      llm_input: { user_message: text, temperature, model: 'gpt-4o-mini' }
+      llm_input: { user_message: text, temperature, model: 'gpt-4o' }
     } as any);
 
     // Call LLM with Function Calling
@@ -1449,16 +1632,32 @@ Deno.serve(async (req) => {
     // Update memory based on conversation
     await updateCoachMemory(user.id, supaSvc, text, llmOutput, toolResults);
 
-    // Save response to coach_conversations
+    // Save conversation to coach_conversations (correct schema: message_content, message_role, coach_personality)
+    // Insert TWO separate rows: one for user message, one for assistant response
     try {
+      const conversationDate = new Date().toISOString().split('T')[0];
+      
+      // Insert user message
       await supaSvc.from('coach_conversations').insert({
         user_id: user.id,
-        coach_id: coachId,
-        message: text,
-        response: llmOutput,
-        trace_id: traceId,
-        metadata: { tool_results: toolResults }
+        coach_personality: coachId,
+        message_role: 'user',
+        message_content: text,
+        conversation_date: conversationDate,
+        context_data: { trace_id: traceId }
       });
+      
+      // Insert assistant response
+      await supaSvc.from('coach_conversations').insert({
+        user_id: user.id,
+        coach_personality: coachId,
+        message_role: 'assistant',
+        message_content: llmOutput,
+        conversation_date: conversationDate,
+        context_data: { trace_id: traceId, tool_results: toolResults.length > 0 ? toolResults : null }
+      });
+      
+      console.log(`[ARES] Saved conversation pair (user + assistant) for trace ${traceId}`);
     } catch (convError) {
       console.warn('[ARES-WARN] Failed to save conversation:', convError);
     }

@@ -46,6 +46,30 @@ export const extractGoalsFromProfile = (profile: any): ARESGoalContext => {
   };
 };
 
+// Universal adapter that supports BOTH daily_goals columns AND profile columns
+export const extractGoalsFromData = (data: any): ARESGoalContext => {
+  const defaults = {
+    calories: 2000,
+    protein: 150,
+    carbs: 250,
+    fats: 65,
+    hydration: 2500,
+    steps: 10000
+  };
+
+  return {
+    // Support both daily_goals columns (calories) AND profile columns (daily_calorie_target)
+    calories: data?.calories || data?.daily_calorie_target || defaults.calories,
+    protein: data?.protein || data?.protein_target_g || defaults.protein,
+    carbs: data?.carbs || data?.carbs_target_g || defaults.carbs,
+    fats: data?.fats || data?.fats_target_g || defaults.fats,
+    hydration: data?.fluid_goal_ml || defaults.hydration,
+    steps: data?.steps_goal || defaults.steps,
+    weight_target: data?.target_weight || undefined,
+    weight_loss_rate: data?.weekly_weight_loss_target || undefined
+  };
+};
+
 // Calculate goal achievement percentages
 export const calculateGoalAchievement = (
   goals: ARESGoalContext, 

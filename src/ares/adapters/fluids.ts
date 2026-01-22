@@ -46,21 +46,31 @@ export async function saveFluid(
   const { withTrace } = await import('../trace/withTrace');
   
   return withTrace(traceId, 'save_fluid', async () => {
-    const legacyData = toLegacyFluid(fluid);
+    // Only include columns that exist in user_fluids table:
+    // id, user_id, fluid_id, custom_name, amount_ml, consumed_at, date, notes, created_at, updated_at
+    const today = new Date().toISOString().slice(0, 10);
+    
     const fluidData = {
-      ...legacyData,
       user_id: userId,
-      fluid_id: fluidId,
-      custom_name: customName,
+      fluid_id: fluidId || null,
+      custom_name: customName || null,
+      amount_ml: fluid.volume_ml,
+      date: today,
+      consumed_at: fluid.timestamp || new Date().toISOString(),
     };
+
+    console.log('[saveFluid] Inserting:', fluidData);
 
     const { error } = await supabase
       .from('user_fluids')
       .insert([fluidData]);
 
     if (error) {
+      console.error('[saveFluid] Insert failed:', error);
       throw new Error(`Failed to save fluid: ${error.message}`);
     }
+    
+    console.log('[saveFluid] Success');
   }, { 
     volume_ml: fluid.volume_ml, 
     fluid_type: fluid.fluid_type,

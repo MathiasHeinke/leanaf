@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { format, startOfWeek, startOfMonth, differenceInCalendarDays, subDays } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { JsonPanel } from '@/components/gehirn/JsonPanel';
 import { useIndexSnapshot } from '@/hooks/useIndexSnapshot';
 
 function toDate(d: string) {
@@ -13,6 +12,24 @@ function toDate(d: string) {
 
 function toISODate(dt: Date) {
   return format(dt, 'yyyy-MM-dd');
+}
+
+// Simple JSON display component
+function JsonDisplay({ data, maxHeight = 240 }: { data: any; maxHeight?: number }) {
+  let pretty: string;
+  try {
+    pretty = JSON.stringify(data, null, 2);
+  } catch {
+    pretty = String(data);
+  }
+
+  return (
+    <div className="mt-3 rounded-2xl border bg-muted/30 p-3">
+      <pre className="overflow-auto text-xs leading-5" style={{ maxHeight }}>
+        {pretty}
+      </pre>
+    </div>
+  );
 }
 
 export function DayDetailsPanel({ date }: { date: string | null }) {
@@ -194,7 +211,7 @@ export function DayDetailsPanel({ date }: { date: string | null }) {
             })()}
             <article className="rounded-xl border p-3">
               <h3 className="text-sm font-medium mb-2">Strukturierte Daten (JSON)</h3>
-              <JsonPanel data={summary.summary_struct_json || summary} maxHeight={240} />
+              <JsonDisplay data={summary.summary_struct_json || summary} maxHeight={240} />
             </article>
           </div>
         )}

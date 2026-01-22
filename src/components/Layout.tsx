@@ -5,12 +5,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { DebugFloatingButton } from "@/components/debug/DebugFloatingButton";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-
-
-
-
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,7 +14,6 @@ interface LayoutProps {
 export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
   const location = useLocation();
-  const [showSubscriptionDebug, setShowSubscriptionDebug] = useState(false);
   
   // Check if navigating to dashboard from coach chat
   const isDashboard = location.pathname === '/';
@@ -29,25 +23,11 @@ export const Layout = ({ children }: LayoutProps) => {
   // Detect if running in Lovable Preview mode
   const isPreviewMode = window.location.hostname.includes('lovable.app');
   
-  // Keyboard shortcut for subscription debug panel
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.shiftKey && event.key === 'S') {
-        event.preventDefault();
-        setShowSubscriptionDebug(prev => !prev);
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-  
   // Don't show header on auth page - early return AFTER hook calls
   // In preview mode, show full layout even without user
   if (location.pathname === '/auth' || (!user && !isPreviewMode)) {
     return <>{children}</>;
   }
-
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -66,14 +46,11 @@ export const Layout = ({ children }: LayoutProps) => {
         
         {/* Main Content with proper SidebarInset */}
         <SidebarInset className="flex-1 flex flex-col min-w-0">
-          <GlobalHeader 
-            onRefresh={() => setShowSubscriptionDebug(true)}
-          />
+          <GlobalHeader />
           <main className={`container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1 ${shouldSlideIn ? 'animate-slide-in-right' : ''}`}>
             {children}
           </main>
           <Footer />
-          <DebugFloatingButton />
         </SidebarInset>
       </div>
     </SidebarProvider>
