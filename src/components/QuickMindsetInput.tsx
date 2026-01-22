@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -232,9 +232,25 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
     }
   ];
 
+  const cardRef = useRef<HTMLDivElement>(null);
+
   return (
-    <Card className="p-4">
-      <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+    <Card ref={cardRef} className="p-4">
+      <Collapsible 
+        open={!isCollapsed} 
+        onOpenChange={(open) => {
+          setIsCollapsed(!open);
+          // Auto-scroll to show full content when opening
+          if (open) {
+            setTimeout(() => {
+              cardRef.current?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'end' 
+              });
+            }, 150);
+          }
+        }}
+      >
         <CollapsibleTrigger asChild>
           <div className="flex items-center justify-between cursor-pointer">
             <div className="flex items-center gap-2">

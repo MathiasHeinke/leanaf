@@ -1185,7 +1185,7 @@ const AuthenticatedDashboard = ({ user }: { user: any }) => {
         */}
         
          {/* Unterer Abstand für DashboardMealComposer */}
-        <div className="pb-28"></div>
+        <div className="pb-52"></div>
         
       </div>
 
