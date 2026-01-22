@@ -1387,14 +1387,32 @@ Deno.serve(async (req) => {
   const supaSvc = createClient(SUPABASE_URL, SVC, { auth: { persistSession: false } });
 
   try {
-    // Auth
-    const { data: authData } = await supaUser.auth.getUser();
-    const user = authData?.user;
-    if (!user) {
-      return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'No user session', traceId }), {
+    // Auth - Use getClaims() for fast JWT validation (recommended over getUser())
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      console.warn(`[ARES-AUTH] Missing or invalid Authorization header`);
+      return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'No authorization header', traceId }), {
         status: 401, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       });
     }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supaUser.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.warn(`[ARES-AUTH] JWT validation failed:`, claimsError?.message || 'No sub claim');
+      return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'Invalid or expired token', traceId }), {
+        status: 401, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
+      });
+    }
+    
+    // Build minimal user object from claims
+    const user = {
+      id: claimsData.claims.sub as string,
+      email: claimsData.claims.email as string | undefined,
+      role: claimsData.claims.role as string | undefined
+    };
+    console.log(`[ARES-AUTH] Authenticated user: ${user.id}`);
 
     // Parse payload
     const body = await (async () => {
