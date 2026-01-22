@@ -17,6 +17,8 @@ import { SmartCardOverlay } from "@/components/SmartCardOverlay";
 import { SimpleProgressBar } from "@/components/SimpleProgressBar";
 import { useFrequentMeals, type Daypart } from "@/hooks/useFrequentMeals";
 import { SmartChip } from "@/components/ui/smart-chip";
+import { useSidebar } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 // Commented out for now - will be removed later once this is working perfectly
 // const QuickMealSheet = lazy(() => import("@/components/quick/QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
@@ -45,6 +47,8 @@ export const DashboardMealComposer: React.FC = () => {
   const { sendEvent } = useOrchestrator();
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { state } = useSidebar();
+  const isSidebarCollapsed = state === "collapsed";
   
   // Auto-resize constants
   const MIN_H = 40;             // 1-line start, good mobile target
@@ -197,11 +201,14 @@ const handleSubmit = useCallback(async () => {
     <>
       {/* Bottom Composer Bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-t border-border w-full"
+        className={cn(
+          "fixed bottom-0 right-0 z-50 bg-background/80 backdrop-blur-md border-t border-border transition-[left] duration-200",
+          isSidebarCollapsed 
+            ? "left-0 md:left-[--sidebar-width-icon]" 
+            : "left-0 md:left-[--sidebar-width]"
+        )}
         style={{ 
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
-          position: "fixed",
-          bottom: 0
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)"
         }}
       >
         {/* Simple Upload Progress Bar */}
