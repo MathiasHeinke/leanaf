@@ -5,9 +5,6 @@ export { default as ARESChatRoot } from './chat/ARESChatRoot';
 export { default as ARESMessageList } from './chat/ARESMessageList';
 export { default as ARESComposer } from './chat/ARESComposer';
 
-// Debug & Monitoring
-export { default as ARESDebugPanel } from './chat/ARESDebugPanel';
-
 // Orchestrator & Client
 export { ARESOrchestratorClient } from './orchestrator/ARESOrchestratorClient';
 export type { ARESEvent, ARESContext, ARESReply } from './orchestrator/ARESPayload';

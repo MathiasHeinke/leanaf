@@ -1,8 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useUserProfile } from '@/hooks/useUserProfile';
 import { supabase } from '@/integrations/supabase/client';
-import { useDebug } from '@/contexts/DebugContext';
 
 interface BootstrapState {
   isBootstrapping: boolean;
@@ -17,7 +15,6 @@ export const useBootstrap = () => {
     console.log('🔍 useBootstrap mounted');
   }
   const { isSessionReady, user } = useAuth();
-  const { addDebugEvent } = useDebug();
   const hasBootstrappedRef = useRef(false);
   const [bootstrapState, setBootstrapState] = useState<BootstrapState>({
     isBootstrapping: false,
@@ -99,11 +96,6 @@ export const useBootstrap = () => {
         bootstrapStartTime: startTime,
         bootstrapDuration: null,
         error: null
-      });
-
-      addDebugEvent('info', 'BOOTSTRAP_START', { 
-        userId: user.id,
-        timestamp: new Date().toISOString()
       });
 
       if (import.meta.env.DEV) {
@@ -226,13 +218,6 @@ export const useBootstrap = () => {
           error: failed > 0 ? `${failed} operations failed` : null
         });
 
-        addDebugEvent('info', 'BOOTSTRAP_COMPLETE', {
-          duration: `${duration.toFixed(1)}ms`,
-          successful,
-          failed,
-          timestamp: new Date().toISOString()
-        });
-
       } catch (error) {
         const endTime = performance.now();
         const duration = endTime - startTime;
@@ -250,12 +235,6 @@ export const useBootstrap = () => {
           bootstrapDuration: duration,
           error: errorMessage
         });
-
-        addDebugEvent('error', 'BOOTSTRAP_ERROR', {
-          error: errorMessage,
-          duration: `${duration.toFixed(1)}ms`,
-          timestamp: new Date().toISOString()
-        });
       }
     };
 
@@ -263,7 +242,7 @@ export const useBootstrap = () => {
     const timeoutId = setTimeout(performBootstrap, 10);
     
     return () => clearTimeout(timeoutId);
-  }, [isSessionReady, user?.id, addDebugEvent]);
+  }, [isSessionReady, user?.id]);
 
   return bootstrapState;
 };
