@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { useCredits } from "@/hooks/useCredits";
 import { useLocation, useNavigate } from "react-router-dom";
 import { PointsDebugPanel } from "./PointsDebugPanel";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { COACH_REGISTRY } from "@/lib/coachRegistry";
+import { cn } from "@/lib/utils";
 
 interface GlobalHeaderProps {
   onRefresh?: () => void;
@@ -23,6 +24,8 @@ export const GlobalHeader = ({
   const { status: creditsStatus } = useCredits();
   const location = useLocation();
   const navigate = useNavigate();
+  const { state } = useSidebar();
+  const isSidebarCollapsed = state === "collapsed";
 
   // Get ARES coach data
   const aresCoach = COACH_REGISTRY.ares;
@@ -104,7 +107,14 @@ export const GlobalHeader = ({
   return (
     <div className="relative">
       {/* Fixed Minimalist Header with Glassmorphism */}
-      <div className="fixed top-0 left-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60">
+      <div 
+        className={cn(
+          "fixed top-0 right-0 z-50 border-b border-border/20 bg-background/70 backdrop-blur-md backdrop-saturate-150 supports-[backdrop-filter]:bg-background/60 transition-[left] duration-200",
+          isSidebarCollapsed 
+            ? "left-0 md:left-[--sidebar-width-icon]" 
+            : "left-0 md:left-[--sidebar-width]"
+        )}
+      >
         <div className="container mx-auto px-4 py-3 max-w-4xl flex items-center justify-between">
           {/* Left: Sidebar Toggle */}
           <SidebarTrigger className="p-2 hover:bg-accent/60 rounded-lg transition-colors">

@@ -7,6 +7,8 @@ import { DailyResetDialog } from './DailyResetDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { useSidebar } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 
 interface CollapsibleCoachHeaderProps {
   coach: {
@@ -36,6 +38,8 @@ export const CollapsibleCoachHeader = ({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [showCoachInfo, setShowCoachInfo] = useState(false);
   const navigate = useNavigate();
+  const { state } = useSidebar();
+  const isSidebarCollapsed = state === "collapsed";
 
   // Get actual chat history from Supabase
   const getChatHistory = async () => {
@@ -178,14 +182,13 @@ export const CollapsibleCoachHeader = ({
       {/* Coach Banner mit Glass-Effekt */}
       <header 
         id="coachBanner"
-        className={`
-          fixed left-0 right-0 h-16 px-4 
-          flex items-center gap-3 
-          backdrop-blur-md bg-background/70 border-b border-border/20
-          shadow-md
-          transition-transform duration-300 ease-out z-40
-          ${collapsed ? '-translate-y-full' : 'translate-y-0'}
-        `}
+        className={cn(
+          "fixed right-0 h-16 px-4 flex items-center gap-3 backdrop-blur-md bg-background/70 border-b border-border/20 shadow-md transition-all duration-300 ease-out z-40",
+          collapsed ? '-translate-y-full' : 'translate-y-0',
+          isSidebarCollapsed 
+            ? "left-0 md:left-[--sidebar-width-icon]" 
+            : "left-0 md:left-[--sidebar-width]"
+        )}
         style={{ 
           top: 'var(--global-header-height)',
           willChange: 'transform'
