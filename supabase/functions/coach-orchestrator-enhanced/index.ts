@@ -676,45 +676,87 @@ async function handleUpdatePlan(userId: string, supaClient: any, args: any) {
 // USER CONTEXT & MEMORY LOADING
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function buildUserContext({ userId }: { userId: string }) {
-  const supaUser = createClient(SUPABASE_URL, ANON, {
-    auth: { persistSession: false }
-  });
+async function buildUserContext({ userId, supaClient }: { userId: string; supaClient: any }) {
+  // CRITICAL FIX: Use the service role client to bypass RLS and reliably load user data
+  // Previously used ANON key without auth token which caused RLS to block access
+  
+  console.log(`[ARES-CONTEXT] Loading user context for user: ${userId}`);
 
-  const { data: profile } = await supaUser
+  const { data: profile, error: profileError } = await supaClient
     .from('profiles')
     .select('*')
     .eq('user_id', userId)
     .single();
 
-  const { data: recentMeals } = await supaUser
+  if (profileError) {
+    console.warn(`[ARES-CONTEXT] Profile load error:`, profileError.message);
+  } else {
+    console.log(`[ARES-CONTEXT] Profile loaded: ${profile?.first_name || 'no name'}, weight: ${profile?.weight || 'not set'}`);
+  }
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  
+  const { data: recentMeals, error: mealsError } = await supaClient
     .from('meals')
-    .select('title, calories, protein, carbs, fat')
+    .select('title, calories, protein, carbs, fat, date')
     .eq('user_id', userId)
-    .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    .gte('date', sevenDaysAgo)
     .order('date', { ascending: false })
     .limit(5);
 
-  const { data: recentWorkouts } = await supaUser
+  if (mealsError) {
+    console.warn(`[ARES-CONTEXT] Meals load error:`, mealsError.message);
+  } else {
+    console.log(`[ARES-CONTEXT] Meals loaded: ${recentMeals?.length || 0} entries`);
+  }
+
+  const { data: recentWorkouts, error: workoutsError } = await supaClient
     .from('workouts')
-    .select('workout_type, duration_minutes, notes')
+    .select('workout_type, duration_minutes, notes, date')
     .eq('user_id', userId)
-    .gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+    .gte('date', sevenDaysAgo)
     .order('date', { ascending: false })
     .limit(3);
 
+  if (workoutsError) {
+    console.warn(`[ARES-CONTEXT] Workouts load error:`, workoutsError.message);
+  } else {
+    console.log(`[ARES-CONTEXT] Workouts loaded: ${recentWorkouts?.length || 0} entries`);
+  }
+
   // Load coach memory for personalization
-  const { data: memoryData } = await supaUser
+  const { data: memoryData, error: memoryError } = await supaClient
     .from('coach_memory')
     .select('memory_data')
     .eq('user_id', userId)
     .eq('coach_id', 'ares')
     .single();
 
-  return {
+  if (memoryError && memoryError.code !== 'PGRST116') { // PGRST116 = not found (expected for new users)
+    console.warn(`[ARES-CONTEXT] Memory load error:`, memoryError.message);
+  }
+
+  // Load sleep data for recovery context
+  const { data: sleepData } = await supaClient
+    .from('sleep_logs')
+    .select('hours, quality, date')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+    .limit(7);
+
+  // Load active supplements
+  const { data: supplements } = await supaClient
+    .from('user_supplements')
+    .select('supplement_id, dosage, timing, supplement_database(name)')
+    .eq('user_id', userId)
+    .eq('is_active', true);
+
+  const contextResult = {
     profile: profile || {},
     recent_meals: recentMeals || [],
     recent_workouts: recentWorkouts || [],
+    recent_sleep: sleepData || [],
+    active_supplements: supplements || [],
     user_preferences: profile?.preferences || {},
     memory: memoryData?.memory_data || {
       trust_level: 0,
@@ -727,6 +769,10 @@ async function buildUserContext({ userId }: { userId: string }) {
       }
     }
   };
+
+  console.log(`[ARES-CONTEXT] Context summary: Profile=${!!profile}, Meals=${recentMeals?.length || 0}, Workouts=${recentWorkouts?.length || 0}, Sleep=${sleepData?.length || 0}, Supplements=${supplements?.length || 0}`);
+  
+  return contextResult;
 }
 
 async function loadPersona({ coachId }: { coachId: string }) {
@@ -934,15 +980,32 @@ ${promptContext.dial >= 4 ? "- Direkt und fordernd, keine Ausreden" : ""}
 ${promptContext.identity.name ? `User-Name: ${promptContext.identity.name}` : ""}
 ${memoryContext}
 
-## USER CONTEXT
-${promptContext.facts?.weight ? `Gewicht: ${promptContext.facts.weight} kg` : ""}
-${promptContext.facts?.goalWeight ? `Zielgewicht: ${promptContext.facts.goalWeight} kg` : ""}
-${promptContext.facts?.tdee ? `TDEE: ${promptContext.facts.tdee} kcal` : ""}
-${promptContext.metrics.streak > 0 ? `Aktuelle Streak: ${promptContext.metrics.streak} Tage 🔥` : ""}
-${promptContext.metrics.noWorkoutDays > 0 ? `Tage ohne Training: ${promptContext.metrics.noWorkoutDays}` : ""}
+## USER CONTEXT (DEINE DATEN - DU KENNST DIESE!)
+${promptContext.facts?.weight ? `- Aktuelles Gewicht: ${promptContext.facts.weight} kg` : ""}
+${promptContext.facts?.goalWeight ? `- Zielgewicht: ${promptContext.facts.goalWeight} kg` : ""}
+${promptContext.facts?.tdee ? `- Täglicher Kalorienbedarf (TDEE): ${promptContext.facts.tdee} kcal` : ""}
+${promptContext.metrics.streak > 0 ? `- Aktuelle Streak: ${promptContext.metrics.streak} Tage 🔥` : ""}
+${promptContext.metrics.noWorkoutDays > 0 ? `- Tage ohne Training: ${promptContext.metrics.noWorkoutDays}` : ""}
 
-Recent meals: ${JSON.stringify(context.recent_meals?.slice(0, 3) || [], null, 2)}
-Recent workouts: ${JSON.stringify(context.recent_workouts?.slice(0, 2) || [], null, 2)}
+### Letzte Mahlzeiten (letzte 7 Tage):
+${context.recent_meals?.length > 0 
+  ? context.recent_meals.slice(0, 5).map((m: any) => `- ${m.title || 'Mahlzeit'}: ${m.calories || 0} kcal, ${m.protein || 0}g Protein, ${m.carbs || 0}g Carbs, ${m.fat || 0}g Fett`).join('\n')
+  : "- Keine Mahlzeiten geloggt"}
+
+### Letzte Workouts (letzte 7 Tage):
+${context.recent_workouts?.length > 0
+  ? context.recent_workouts.slice(0, 3).map((w: any) => `- ${w.workout_type || 'Training'}: ${w.duration_minutes || 0} min${w.notes ? ` - ${w.notes}` : ''}`).join('\n')
+  : "- Keine Workouts geloggt"}
+
+### Schlaf (letzte Woche):
+${context.recent_sleep?.length > 0
+  ? `Durchschnittlich ${(context.recent_sleep.reduce((sum: number, s: any) => sum + (s.hours || 0), 0) / context.recent_sleep.length).toFixed(1)}h pro Nacht`
+  : "- Keine Schlafdaten"}
+
+### Aktive Supplements:
+${context.active_supplements?.length > 0
+  ? context.active_supplements.map((s: any) => `- ${s.supplement_database?.name || 'Supplement'}: ${s.dosage || ''} (${s.timing || 'timing not set'})`).join('\n')
+  : "- Keine aktiven Supplements"}
 
 ${ragSources.knowledge_chunks?.length > 0 ? `## KNOWLEDGE BASE CONTEXT
 ${ragSources.knowledge_chunks.slice(0, 3).join('\n\n')}` : ""}
@@ -1257,8 +1320,8 @@ Deno.serve(async (req) => {
     await traceStart(traceId, user.id, coachId, { input_text: text || null, images: images || null });
     await traceUpdate(traceId, { status: 'started' });
 
-    // Load context with memory
-    const context = await buildUserContext({ userId: user.id }).catch((e) => {
+    // Load context with memory - CRITICAL: Use supaSvc (service role) to bypass RLS
+    const context = await buildUserContext({ userId: user.id, supaClient: supaSvc }).catch((e) => {
       console.error('[ARES-ERROR] buildUserContext', traceId, e);
       throw e;
     });
@@ -1279,14 +1342,26 @@ Deno.serve(async (req) => {
       return {} as UserMoodContext;
     });
 
-    await traceUpdate(traceId, { status: 'context_loaded', context, persona, rag_sources: ragSources } as any);
+    // Store full context in trace for debugging
+    await traceUpdate(traceId, { 
+      status: 'context_loaded', 
+      context, // This will be stored as user_context by trace.ts
+      persona, 
+      rag_sources: ragSources 
+    } as any);
 
     // Build prompt with memory
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
       persona, context, ragSources, text, images, userMoodContext 
     });
 
-    await traceUpdate(traceId, { status: 'prompt_built', system_prompt: systemPrompt, complete_prompt: completePrompt });
+    // Store system prompt AND user input for full LLM tracing
+    await traceUpdate(traceId, { 
+      status: 'prompt_built', 
+      system_prompt: systemPrompt, 
+      complete_prompt: completePrompt,
+      llm_input: { user_message: text, temperature, model: 'gpt-4o-mini' }
+    } as any);
 
     // Call LLM with Function Calling
     const { content: llmOutput, toolResults } = await callLLMWithTools(
@@ -1299,9 +1374,12 @@ Deno.serve(async (req) => {
     );
 
     const duration_ms = Math.round(performance.now() - started);
+    
+    // Store complete LLM response and tool calls
     await traceUpdate(traceId, { 
       status: 'llm_called', 
-      llm_output: llmOutput, 
+      llm_output: llmOutput,
+      tool_calls: toolResults.length > 0 ? toolResults : null,
       duration_ms 
     } as any);
 

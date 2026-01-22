@@ -73,11 +73,11 @@ export function getRitualPrompt(ritual: RitualConfig, userState?: any): string {
   const prompts = RITUAL_PROMPTS[ritual.prompt_key as keyof typeof RITUAL_PROMPTS];
   if (!prompts) return '';
 
-  const archetypePrompt = prompts[ritual.archetype as keyof typeof prompts];
+  const archetypePrompt = (prompts as Record<string, string>)[ritual.archetype];
   if (!archetypePrompt) return '';
 
   // Add contextual elements based on user state
-  let contextualPrompt = archetypePrompt;
+  let contextualPrompt: string = archetypePrompt;
 
   if (userState?.streak >= 7) {
     contextualPrompt += ` Übrigens – ${userState.streak} Tage in Folge. Respekt.`;
