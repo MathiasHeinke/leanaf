@@ -885,6 +885,36 @@ function getCurrentGermanDate(): string {
   return `${germanDays[now.getDay()]}, ${now.getDate()}. ${germanMonths[now.getMonth()]} ${now.getFullYear()}`;
 }
 
+// Pair conversation messages from separate user/assistant rows into {message, response} format
+function pairConversationMessages(rawMessages: any[]): { message: string; response: string; created_at: string }[] {
+  if (!rawMessages || rawMessages.length === 0) return [];
+  
+  // Sort chronologically (oldest first)
+  const chronological = [...rawMessages].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+  
+  const pairs: { message: string; response: string; created_at: string }[] = [];
+  
+  for (let i = 0; i < chronological.length - 1; i++) {
+    const current = chronological[i];
+    const next = chronological[i + 1];
+    
+    // Look for user message followed by assistant message
+    if (current.message_role === 'user' && next.message_role === 'assistant') {
+      pairs.push({
+        message: current.message_content || '',
+        response: next.message_content || '',
+        created_at: current.created_at
+      });
+      i++; // Skip the assistant message in next iteration
+    }
+  }
+  
+  // Return newest first (for limit purposes)
+  return pairs.reverse();
+}
+
 // Format conversation history for prompt
 function formatConversationHistory(conversations: any[]): string {
   if (!conversations || conversations.length === 0) return '';
@@ -1285,16 +1315,23 @@ Deno.serve(async (req) => {
       return {} as UserMoodContext;
     });
 
-    // Load conversation history (last 10 messages) for context
-    const { data: conversationHistory } = await supaSvc
+    // Load conversation history (last 20 raw messages = ~10 pairs) for context
+    // Schema uses: message_content, message_role, coach_personality (NOT message, response, coach_id)
+    const { data: rawConversations, error: convLoadError } = await supaSvc
       .from('coach_conversations')
-      .select('message, response, created_at')
+      .select('message_content, message_role, created_at')
       .eq('user_id', user.id)
-      .eq('coach_id', 'ares')
+      .eq('coach_personality', coachId)
       .order('created_at', { ascending: false })
-      .limit(10);
+      .limit(20);
     
-    console.log(`[ARES] Loaded ${conversationHistory?.length || 0} previous conversations`);
+    if (convLoadError) {
+      console.warn(`[ARES] Failed to load conversations:`, convLoadError.message);
+    }
+    
+    // Convert raw user/assistant rows to paired {message, response} format
+    const conversationHistory = pairConversationMessages(rawConversations || []);
+    console.log(`[ARES] Loaded ${rawConversations?.length || 0} raw messages → ${conversationHistory.length} conversation pairs`);
 
     // Store full context in trace for debugging
     await traceUpdate(traceId, { 
@@ -1340,16 +1377,32 @@ Deno.serve(async (req) => {
     // Update memory based on conversation
     await updateCoachMemory(user.id, supaSvc, text, llmOutput, toolResults);
 
-    // Save response to coach_conversations
+    // Save conversation to coach_conversations (correct schema: message_content, message_role, coach_personality)
+    // Insert TWO separate rows: one for user message, one for assistant response
     try {
+      const conversationDate = new Date().toISOString().split('T')[0];
+      
+      // Insert user message
       await supaSvc.from('coach_conversations').insert({
         user_id: user.id,
-        coach_id: coachId,
-        message: text,
-        response: llmOutput,
-        trace_id: traceId,
-        metadata: { tool_results: toolResults }
+        coach_personality: coachId,
+        message_role: 'user',
+        message_content: text,
+        conversation_date: conversationDate,
+        context_data: { trace_id: traceId }
       });
+      
+      // Insert assistant response
+      await supaSvc.from('coach_conversations').insert({
+        user_id: user.id,
+        coach_personality: coachId,
+        message_role: 'assistant',
+        message_content: llmOutput,
+        conversation_date: conversationDate,
+        context_data: { trace_id: traceId, tool_results: toolResults.length > 0 ? toolResults : null }
+      });
+      
+      console.log(`[ARES] Saved conversation pair (user + assistant) for trace ${traceId}`);
     } catch (convError) {
       console.warn('[ARES-WARN] Failed to save conversation:', convError);
     }
