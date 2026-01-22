@@ -11,7 +11,7 @@ export const cors = {
       'Access-Control-Allow-Origin': '*',
       'Vary': 'Origin',
       'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-      'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-supabase-api-version, prefer, x-trace-id',
+      'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-supabase-api-version, prefer, x-trace-id, x-source, accept',
       'Access-Control-Max-Age': '86400',
       ...extra,
     };
