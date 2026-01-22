@@ -12,13 +12,13 @@ export async function callOpenAI({ system, user }: { system: string; user: strin
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-5-mini-2025-08-07',
+          model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: system },
             { role: 'user', content: user }
           ],
-          max_completion_tokens: 800
-          // No temperature for GPT-5 models
+          max_tokens: 800,
+          temperature: 0.7
         })
       });
       
