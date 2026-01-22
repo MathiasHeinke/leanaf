@@ -17,6 +17,8 @@ import { de } from 'date-fns/locale';
 import type { DebugStep } from '@/components/debug/UserChatDebugger';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
+import { useSidebar } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 
 interface AresChatDebugPanelProps {
   isOpen: boolean;
@@ -48,6 +50,8 @@ export function AresChatDebugPanel({
   const [traceFilter, setTraceFilter] = useState('');
   const [showPromptViewer, setShowPromptViewer] = useState(false);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const { state } = useSidebar();
+  const isSidebarCollapsed = state === "collapsed";
   
   // Trace feed for live updates
   const { bundles, isLoading: tracesLoading, refresh: refreshTraces } = useTraceFeed({
@@ -91,7 +95,14 @@ export function AresChatDebugPanel({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div 
+      className={cn(
+        "fixed top-0 bottom-0 right-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4 transition-[left] duration-200",
+        isSidebarCollapsed 
+          ? "left-0 md:left-[--sidebar-width-icon]" 
+          : "left-0 md:left-[--sidebar-width]"
+      )}
+    >
       <Card className="w-full max-w-6xl h-[90vh] flex flex-col">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div className="flex items-center gap-2">
@@ -346,7 +357,14 @@ export function AresChatDebugPanel({
       
       {/* Prompt Viewer Modal */}
       {showPromptViewer && promptData && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-60 flex items-center justify-center p-4">
+        <div 
+          className={cn(
+            "fixed top-0 bottom-0 right-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4 transition-[left] duration-200",
+            isSidebarCollapsed 
+              ? "left-0 md:left-[--sidebar-width-icon]" 
+              : "left-0 md:left-[--sidebar-width]"
+          )}
+        >
           <div className="w-full max-w-7xl h-[95vh]">
             <PromptViewer 
               data={promptData} 
