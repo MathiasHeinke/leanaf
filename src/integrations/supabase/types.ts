@@ -355,7 +355,6 @@ export type Database = {
           client_event_id: string | null
           coach_id: string
           complete_prompt: string | null
-          context: Json | null
           created_at: string
           duration_ms: number | null
           error: Json | null
@@ -367,14 +366,16 @@ export type Database = {
           rag_sources: Json | null
           status: string
           system_prompt: string | null
+          tool_calls: Json | null
           trace_id: string
+          updated_at: string | null
+          user_context: Json | null
           user_id: string
         }
         Insert: {
           client_event_id?: string | null
           coach_id: string
           complete_prompt?: string | null
-          context?: Json | null
           created_at?: string
           duration_ms?: number | null
           error?: Json | null
@@ -386,14 +387,16 @@ export type Database = {
           rag_sources?: Json | null
           status?: string
           system_prompt?: string | null
+          tool_calls?: Json | null
           trace_id: string
+          updated_at?: string | null
+          user_context?: Json | null
           user_id: string
         }
         Update: {
           client_event_id?: string | null
           coach_id?: string
           complete_prompt?: string | null
-          context?: Json | null
           created_at?: string
           duration_ms?: number | null
           error?: Json | null
@@ -405,7 +408,10 @@ export type Database = {
           rag_sources?: Json | null
           status?: string
           system_prompt?: string | null
+          tool_calls?: Json | null
           trace_id?: string
+          updated_at?: string | null
+          user_context?: Json | null
           user_id?: string
         }
         Relationships: []
@@ -986,6 +992,7 @@ export type Database = {
       }
       coach_memory: {
         Row: {
+          coach_id: string | null
           created_at: string
           id: string
           memory_data: Json
@@ -993,6 +1000,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          coach_id?: string | null
           created_at?: string
           id?: string
           memory_data?: Json
@@ -1000,6 +1008,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          coach_id?: string | null
           created_at?: string
           id?: string
           memory_data?: Json
