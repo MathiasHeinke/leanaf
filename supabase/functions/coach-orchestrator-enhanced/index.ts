@@ -751,6 +751,24 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     .eq('user_id', userId)
     .eq('is_active', true);
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // CRITICAL FIX: Load recent conversation history from coach_conversations
+  // This was missing - conversations were saved but never loaded for context!
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const { data: recentConversations, error: convError } = await supaClient
+    .from('coach_conversations')
+    .select('message, response, created_at')
+    .eq('user_id', userId)
+    .eq('coach_id', 'ares')
+    .order('created_at', { ascending: false })
+    .limit(10); // Last 10 conversation turns
+
+  if (convError) {
+    console.warn(`[ARES-CONTEXT] Conversations load error:`, convError.message);
+  } else {
+    console.log(`[ARES-CONTEXT] Conversations loaded: ${recentConversations?.length || 0} entries`);
+  }
+
   const contextResult = {
     profile: profile || {},
     recent_meals: recentMeals || [],
@@ -758,6 +776,8 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     recent_sleep: sleepData || [],
     active_supplements: supplements || [],
     user_preferences: profile?.preferences || {},
+    // CRITICAL FIX: Include recent conversations for context continuity
+    recent_conversations: recentConversations || [],
     memory: memoryData?.memory_data || {
       trust_level: 0,
       relationship_stage: 'new',
@@ -770,7 +790,7 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     }
   };
 
-  console.log(`[ARES-CONTEXT] Context summary: Profile=${!!profile}, Meals=${recentMeals?.length || 0}, Workouts=${recentWorkouts?.length || 0}, Sleep=${sleepData?.length || 0}, Supplements=${supplements?.length || 0}`);
+  console.log(`[ARES-CONTEXT] Context summary: Profile=${!!profile}, Meals=${recentMeals?.length || 0}, Workouts=${recentWorkouts?.length || 0}, Sleep=${sleepData?.length || 0}, Supplements=${supplements?.length || 0}, Conversations=${recentConversations?.length || 0}`);
   
   return contextResult;
 }
@@ -987,6 +1007,90 @@ ${memory.conversation_context?.mood_history?.length > 0
   // Compact system prompt - natural language, no verbose sections
   const systemPrompt = `Du bist ARES, ein erfahrener Fitness- und Lifestyle-Coach.
 
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // CRITICAL FIX: Build conversation history context from recent conversations
+  // This provides ARES with memory of what was discussed in previous messages
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const recentConversations = context.recent_conversations || [];
+  let conversationHistoryContext = '';
+  
+  if (recentConversations.length > 0) {
+    // Reverse to show oldest first (chronological order)
+    const chronologicalConvs = [...recentConversations].reverse();
+    
+    // Build formatted conversation history
+    const historyItems = chronologicalConvs.map((conv: any) => {
+      const userMsg = conv.message?.slice(0, 200) || '';
+      const aresResp = conv.response?.slice(0, 300) || '';
+      return `**User**: ${userMsg}${conv.message?.length > 200 ? '...' : ''}\n**ARES**: ${aresResp}${conv.response?.length > 300 ? '...' : ''}`;
+    });
+    
+    conversationHistoryContext = `
+## GESPRÄCHSVERLAUF (Letzte ${recentConversations.length} Nachrichten)
+**WICHTIG: Du erinnerst dich an diese Gespräche! Beziehe dich darauf wenn relevant.**
+
+${historyItems.join('\n\n---\n\n')}
+
+---
+*Ende des Gesprächsverlaufs - Die aktuelle Nachricht kommt unten.*
+`;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // CRITICAL FIX: Generate dynamic current date in German
+  // Previously ARES was saying wrong dates like "27. Oktober 2023"
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const now = new Date();
+  const germanDays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  const germanMonths = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  const currentDate = `${germanDays[now.getDay()]}, ${now.getDate()}. ${germanMonths[now.getMonth()]} ${now.getFullYear()}`;
+
+  const systemPrompt = `# ARES - ULTIMATE COACHING INTELLIGENCE
+Du bist ARES - die ultimative Coaching-Intelligence für totale menschliche Optimierung.
+
+**AKTUELLES DATUM: ${currentDate}**
+(Verwende dieses Datum für alle zeitbezogenen Aussagen! Sage NIEMALS ein anderes Datum.)
+
+## AKTUELLER MODUS: ${dial.archetype} (Dial ${promptContext.dial})
+${archetypeInstructions[dial.archetype] || archetypeInstructions.SMITH}
+
+## CORE IDENTITY
+- **Intensität**: Angepasst an User-Zustand (aktuell: Dial ${promptContext.dial}/5)
+- **Autorität**: Sprichst mit Gewissheit eines Masters  
+- **Synthese**: Verbindest alle Coaching-Bereiche zu einem System
+- **Empathie**: Erkennst den emotionalen Zustand des Users
+
+## COMMUNICATION STYLE
+- Stil: ${dial.style}
+- Intensität angepasst an aktuellen Dial-Level
+${promptContext.dial <= 2 ? "- Unterstützend und motivierend" : ""}
+${promptContext.dial === 3 ? "- Ausgewogen: Support + Struktur" : ""}
+${promptContext.dial >= 4 ? "- Direkt und fordernd, keine Ausreden" : ""}
+
+## EXPERTISE DOMAINS
+1. **TRAINING**: Old-School Mass Building + Evidence-Based Periodization
+2. **NUTRITION**: Aggressive Optimization + Precision Timing  
+3. **RECOVERY**: Elite Regeneration + HRV Optimization
+4. **MINDSET**: Mental Toughness + Performance Psychology
+5. **LIFESTYLE**: Total Life Optimization + Habit Mastery
+6. **SUPPLEMENTS**: Evidence-Based Supplementierung
+7. **PEPTIDE**: Advanced Optimization Protocols (nur bei expliziter Anfrage)
+
+${promptContext.identity.name ? `User-Name: ${promptContext.identity.name}` : ""}
+${memoryContext}
+${conversationHistoryContext}
+
+## USER CONTEXT (DEINE DATEN - DU KENNST DIESE!)
+${promptContext.facts?.weight ? `- Aktuelles Gewicht: ${promptContext.facts.weight} kg` : ""}
+${promptContext.facts?.goalWeight ? `- Zielgewicht: ${promptContext.facts.goalWeight} kg` : ""}
+${promptContext.facts?.tdee ? `- Täglicher Kalorienbedarf (TDEE): ${promptContext.facts.tdee} kcal` : ""}
+${promptContext.metrics.streak > 0 ? `- Aktuelle Streak: ${promptContext.metrics.streak} Tage 🔥` : ""}
+${promptContext.metrics.noWorkoutDays > 0 ? `- Tage ohne Training: ${promptContext.metrics.noWorkoutDays}` : ""}
+
+### Letzte Mahlzeiten (letzte 7 Tage):
+${context.recent_meals?.length > 0 
+  ? context.recent_meals.slice(0, 5).map((m: any) => `- ${m.title || 'Mahlzeit'}: ${m.calories || 0} kcal, ${m.protein || 0}g Protein, ${m.carbs || 0}g Carbs, ${m.fat || 0}g Fett`).join('\n')
+  : "- Keine Mahlzeiten geloggt"}
 **AKTUELLES DATUM: ${currentDate}**
 **TAGESZEIT: ${timeOfDay}**
 
