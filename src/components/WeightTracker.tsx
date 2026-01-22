@@ -314,8 +314,8 @@ export const WeightTracker = ({ weightHistory, onWeightAdded }: WeightTrackerPro
           {weightHistory.length > 0 && (
             <div className="mt-4">
               <CoachFeedbackCard 
-                coachName="Lucy"
-                coachAvatar="/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
+                coachName="ARES"
+                coachAvatar="/lovable-uploads/1b6ddc34-604a-4356-a46f-07208c77c35f.png"
                 weightData={weightHistory[0]}
                 userId={user?.id}
                 type="weight"

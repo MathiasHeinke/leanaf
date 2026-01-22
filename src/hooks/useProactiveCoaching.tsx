@@ -325,9 +325,9 @@ export const useProactiveCoaching = () => {
 
         setLastMessage(proactiveMessage);
 
-        // Show toast notification with coach personality
-        const coachName = personality === 'hart' ? 'Sascha' : personality === 'soft' ? 'Lucy' : 'Kai';
-        const icon = personality === 'hart' ? '🎯' : personality === 'soft' ? '❤️' : '💪';
+        // ARES-Only: Single coach system
+        const coachName = 'ARES';
+        const icon = '⚡';
         
         toast(message, {
           description: `${icon} ${coachName}`,
