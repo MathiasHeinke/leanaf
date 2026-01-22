@@ -60,11 +60,14 @@ const App = () => (
                 <MealInputProvider>
                     <EnhancedSecurityManager>
                     <Sonner />
+                    <Routes>
+                      {/* Auth route outside of Layout/SidebarProvider for proper centering */}
+                      <Route path="/auth" element={<Auth />} />
+                    </Routes>
                     <SidebarProvider>
                       <Layout>
                         <Routes>
                       <Route path="/" element={<Index />} />
-                      <Route path="/auth" element={<Auth />} />
                       <Route path="/account" element={<Account />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/credits" element={<Credits />} />
