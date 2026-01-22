@@ -48,6 +48,634 @@ async function safeJson(req: Request) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// OPENAI FUNCTION DEFINITIONS FOR ARES TOOLS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ARES_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "get_meta_analysis",
+      description: "Führt eine ganzheitliche Meta-Analyse der User-Daten durch (Ernährung, Training, Recovery, Mindset). Nutze dies wenn der User einen Überblick oder eine umfassende Bewertung möchte.",
+      parameters: {
+        type: "object",
+        properties: {
+          focus_area: {
+            type: "string",
+            enum: ["all", "nutrition", "training", "recovery", "mindset"],
+            description: "Fokusbereich der Analyse"
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_workout_plan",
+      description: "Erstellt einen personalisierten Trainingsplan basierend auf User-Profil und Zielen. Nutze dies wenn der User nach einem Trainingsplan fragt.",
+      parameters: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            enum: ["muscle_building", "fat_loss", "strength", "endurance", "general_fitness"],
+            description: "Hauptziel des Trainingsplans"
+          },
+          days_per_week: {
+            type: "number",
+            description: "Trainingstage pro Woche (2-6)"
+          },
+          duration_weeks: {
+            type: "number",
+            description: "Dauer des Plans in Wochen"
+          }
+        },
+        required: ["goal"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_nutrition_plan",
+      description: "Erstellt einen personalisierten Ernährungsplan. Nutze dies wenn der User nach einem Ernährungsplan oder Makros fragt.",
+      parameters: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            enum: ["muscle_building", "fat_loss", "maintenance", "performance"],
+            description: "Ernährungsziel"
+          },
+          daily_calories: {
+            type: "number",
+            description: "Tägliche Kalorien (optional, wird sonst berechnet)"
+          },
+          meal_count: {
+            type: "number",
+            description: "Anzahl der Mahlzeiten pro Tag (3-6)"
+          },
+          diet_type: {
+            type: "string",
+            enum: ["standard", "low_carb", "keto", "vegetarian", "vegan"],
+            description: "Ernährungsform"
+          }
+        },
+        required: ["goal"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_supplement_plan",
+      description: "Erstellt einen personalisierten Supplement-Plan. Nutze dies wenn der User nach Supplements, Nahrungsergänzungen oder Vitaminen fragt.",
+      parameters: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            enum: ["muscle_building", "fat_loss", "health", "performance", "recovery"],
+            description: "Hauptziel der Supplementierung"
+          },
+          budget: {
+            type: "string",
+            enum: ["low", "medium", "high"],
+            description: "Budget-Level"
+          },
+          experience_level: {
+            type: "string",
+            enum: ["beginner", "intermediate", "advanced"],
+            description: "Erfahrungslevel mit Supplements"
+          }
+        },
+        required: ["goal"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_peptide_protocol",
+      description: "Erstellt ein Peptid-Protokoll für fortgeschrittene Optimierung. Nutze dies NUR wenn der User explizit nach Peptiden fragt und entsprechendes Wissen zeigt.",
+      parameters: {
+        type: "object",
+        properties: {
+          goal: {
+            type: "string",
+            enum: ["muscle_growth", "fat_loss", "recovery", "anti_aging", "cognitive"],
+            description: "Ziel des Peptid-Protokolls"
+          },
+          experience_level: {
+            type: "string",
+            enum: ["beginner", "intermediate", "advanced"],
+            description: "Erfahrung mit Peptiden"
+          }
+        },
+        required: ["goal"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_user_plans",
+      description: "Holt alle aktiven Pläne des Users (Training, Ernährung, Supplements, Peptide). Nutze dies um zu sehen was der User bereits hat.",
+      parameters: {
+        type: "object",
+        properties: {
+          plan_type: {
+            type: "string",
+            enum: ["all", "workout", "nutrition", "supplement", "peptide"],
+            description: "Welche Pläne abgerufen werden sollen"
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_plan",
+      description: "Aktualisiert einen bestehenden Plan. Nutze dies wenn der User Änderungen an einem existierenden Plan möchte.",
+      parameters: {
+        type: "object",
+        properties: {
+          plan_id: {
+            type: "string",
+            description: "ID des zu aktualisierenden Plans"
+          },
+          plan_type: {
+            type: "string",
+            enum: ["workout", "nutrition", "supplement", "peptide"],
+            description: "Typ des Plans"
+          },
+          updates: {
+            type: "object",
+            description: "Änderungen die vorgenommen werden sollen"
+          }
+        },
+        required: ["plan_id", "plan_type", "updates"]
+      }
+    }
+  }
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TOOL EXECUTION HANDLERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function executeToolCall(
+  toolName: string, 
+  toolArgs: any, 
+  userId: string, 
+  supaClient: any,
+  context: any
+): Promise<{ success: boolean; result: any; error?: string }> {
+  console.log(`[ARES-TOOL] Executing: ${toolName}`, toolArgs);
+  
+  try {
+    switch (toolName) {
+      case 'get_meta_analysis':
+        return await handleMetaAnalysis(userId, supaClient, toolArgs, context);
+      
+      case 'create_workout_plan':
+        return await handleCreateWorkoutPlan(userId, supaClient, toolArgs, context);
+      
+      case 'create_nutrition_plan':
+        return await handleCreateNutritionPlan(userId, supaClient, toolArgs, context);
+      
+      case 'create_supplement_plan':
+        return await handleCreateSupplementPlan(userId, supaClient, toolArgs, context);
+      
+      case 'create_peptide_protocol':
+        return await handleCreatePeptideProtocol(userId, supaClient, toolArgs, context);
+      
+      case 'get_user_plans':
+        return await handleGetUserPlans(userId, supaClient, toolArgs);
+      
+      case 'update_plan':
+        return await handleUpdatePlan(userId, supaClient, toolArgs);
+      
+      default:
+        return { success: false, result: null, error: `Unknown tool: ${toolName}` };
+    }
+  } catch (err: any) {
+    console.error(`[ARES-TOOL] Error executing ${toolName}:`, err);
+    return { success: false, result: null, error: err.message };
+  }
+}
+
+async function handleMetaAnalysis(userId: string, supaClient: any, args: any, context: any) {
+  // Use existing aresMetaCoach handler if available, otherwise do inline analysis
+  const focusArea = args.focus_area || 'all';
+  
+  // Fetch comprehensive user data
+  const [mealsRes, workoutsRes, sleepRes, supplementsRes] = await Promise.all([
+    supaClient.from('meals').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }),
+    supaClient.from('workouts').select('*').eq('user_id', userId).gte('date', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]).order('date', { ascending: false }),
+    supaClient.from('sleep_logs').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(7),
+    supaClient.from('user_supplements').select('*, supplement_database(*)').eq('user_id', userId)
+  ]);
+
+  const analysis = {
+    focus: focusArea,
+    nutrition: {
+      meals_logged: mealsRes.data?.length || 0,
+      avg_calories: mealsRes.data?.length ? Math.round(mealsRes.data.reduce((sum: number, m: any) => sum + (m.calories || 0), 0) / mealsRes.data.length) : 0,
+      avg_protein: mealsRes.data?.length ? Math.round(mealsRes.data.reduce((sum: number, m: any) => sum + (m.protein || 0), 0) / mealsRes.data.length) : 0,
+    },
+    training: {
+      workouts_logged: workoutsRes.data?.length || 0,
+      total_duration: workoutsRes.data?.reduce((sum: number, w: any) => sum + (w.duration_minutes || 0), 0) || 0,
+      workout_types: [...new Set(workoutsRes.data?.map((w: any) => w.workout_type) || [])]
+    },
+    recovery: {
+      sleep_entries: sleepRes.data?.length || 0,
+      avg_sleep_hours: sleepRes.data?.length ? (sleepRes.data.reduce((sum: number, s: any) => sum + (s.hours || 0), 0) / sleepRes.data.length).toFixed(1) : 0
+    },
+    supplements: {
+      active_supplements: supplementsRes.data?.length || 0,
+      supplement_names: supplementsRes.data?.map((s: any) => s.supplement_database?.name).filter(Boolean) || []
+    },
+    profile: context.profile
+  };
+
+  return { success: true, result: analysis };
+}
+
+async function handleCreateWorkoutPlan(userId: string, supaClient: any, args: any, context: any) {
+  const goal = args.goal || 'muscle_building';
+  const daysPerWeek = args.days_per_week || 4;
+  const durationWeeks = args.duration_weeks || 8;
+  
+  // Build personalized workout plan
+  const workoutPlan = {
+    user_id: userId,
+    plan_name: `ARES ${goal.replace('_', ' ').toUpperCase()} Plan`,
+    goal: goal,
+    days_per_week: daysPerWeek,
+    duration_weeks: durationWeeks,
+    created_by: 'ares',
+    status: 'active',
+    plan_data: generateWorkoutPlanData(goal, daysPerWeek, context.profile),
+    valid_from: new Date().toISOString().split('T')[0],
+    valid_until: new Date(Date.now() + durationWeeks * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  };
+
+  const { data, error } = await supaClient.from('workout_plans').insert(workoutPlan).select().single();
+  
+  if (error) {
+    console.error('[ARES-TOOL] Error creating workout plan:', error);
+    return { success: false, result: null, error: error.message };
+  }
+  
+  return { success: true, result: { plan_id: data.id, ...workoutPlan } };
+}
+
+function generateWorkoutPlanData(goal: string, daysPerWeek: number, profile: any) {
+  // Generate periodized workout plan based on goal
+  const splits: Record<number, string[]> = {
+    2: ['Upper', 'Lower'],
+    3: ['Push', 'Pull', 'Legs'],
+    4: ['Upper A', 'Lower A', 'Upper B', 'Lower B'],
+    5: ['Chest/Triceps', 'Back/Biceps', 'Shoulders', 'Legs', 'Arms/Core'],
+    6: ['Push', 'Pull', 'Legs', 'Push', 'Pull', 'Legs']
+  };
+
+  const split = splits[Math.min(daysPerWeek, 6)] || splits[4];
+  
+  return {
+    split_type: daysPerWeek <= 3 ? 'Full Body/PPL' : 'Upper/Lower or Bro Split',
+    training_days: split,
+    intensity_progression: goal === 'strength' ? 'linear' : 'undulating',
+    rep_ranges: goal === 'muscle_building' ? '8-12' : goal === 'strength' ? '3-6' : '12-20',
+    rest_periods: goal === 'strength' ? '3-5 min' : '60-90 sec',
+    weekly_volume: goal === 'muscle_building' ? '10-20 sets per muscle' : '8-15 sets per muscle',
+    deload_frequency: 'Every 4-6 weeks',
+    notes: `Personalisiert für ${profile?.first_name || 'User'} - ${goal.replace('_', ' ')}`
+  };
+}
+
+async function handleCreateNutritionPlan(userId: string, supaClient: any, args: any, context: any) {
+  const goal = args.goal || 'maintenance';
+  const mealCount = args.meal_count || 4;
+  const dietType = args.diet_type || 'standard';
+  
+  // Calculate macros based on profile
+  const weight = context.profile?.weight || 80;
+  const tdee = context.profile?.tdee || (weight * 30); // Rough estimate
+  
+  let calories = args.daily_calories;
+  if (!calories) {
+    switch (goal) {
+      case 'muscle_building': calories = Math.round(tdee * 1.15); break;
+      case 'fat_loss': calories = Math.round(tdee * 0.8); break;
+      case 'performance': calories = Math.round(tdee * 1.1); break;
+      default: calories = tdee;
+    }
+  }
+
+  const macros = calculateMacros(calories, goal, weight, dietType);
+
+  const nutritionPlan = {
+    user_id: userId,
+    plan_name: `ARES ${goal.replace('_', ' ').toUpperCase()} Ernährungsplan`,
+    goal: goal,
+    daily_calories: calories,
+    macros: macros,
+    meal_count: mealCount,
+    diet_type: dietType,
+    created_by: 'ares',
+    status: 'active',
+    meal_schedule: generateMealSchedule(mealCount, macros),
+    valid_from: new Date().toISOString().split('T')[0]
+  };
+
+  const { data, error } = await supaClient.from('nutrition_plans').insert(nutritionPlan).select().single();
+  
+  if (error) {
+    console.error('[ARES-TOOL] Error creating nutrition plan:', error);
+    return { success: false, result: null, error: error.message };
+  }
+  
+  return { success: true, result: { plan_id: data.id, ...nutritionPlan } };
+}
+
+function calculateMacros(calories: number, goal: string, weight: number, dietType: string) {
+  let proteinMultiplier = 2.0; // g per kg bodyweight
+  let fatPercent = 0.25;
+  
+  if (goal === 'muscle_building') proteinMultiplier = 2.2;
+  if (goal === 'fat_loss') proteinMultiplier = 2.4;
+  if (dietType === 'keto') fatPercent = 0.7;
+  if (dietType === 'low_carb') fatPercent = 0.4;
+  
+  const protein = Math.round(weight * proteinMultiplier);
+  const fat = Math.round((calories * fatPercent) / 9);
+  const carbs = Math.round((calories - (protein * 4) - (fat * 9)) / 4);
+  
+  return {
+    protein_grams: protein,
+    carbs_grams: Math.max(carbs, 0),
+    fat_grams: fat,
+    protein_percent: Math.round((protein * 4 / calories) * 100),
+    carbs_percent: Math.round((Math.max(carbs, 0) * 4 / calories) * 100),
+    fat_percent: Math.round((fat * 9 / calories) * 100)
+  };
+}
+
+function generateMealSchedule(mealCount: number, macros: any) {
+  const meals = [];
+  const calsPerMeal = Math.round(macros.protein_grams * 4 + macros.carbs_grams * 4 + macros.fat_grams * 9) / mealCount;
+  
+  const mealTimes = ['07:00', '10:00', '13:00', '16:00', '19:00', '21:00'];
+  const mealNames = ['Frühstück', 'Snack 1', 'Mittagessen', 'Snack 2', 'Abendessen', 'Casein'];
+  
+  for (let i = 0; i < mealCount; i++) {
+    meals.push({
+      name: mealNames[i] || `Mahlzeit ${i + 1}`,
+      time: mealTimes[i] || `${7 + i * 3}:00`,
+      calories: Math.round(calsPerMeal),
+      protein: Math.round(macros.protein_grams / mealCount),
+      carbs: Math.round(macros.carbs_grams / mealCount),
+      fat: Math.round(macros.fat_grams / mealCount)
+    });
+  }
+  
+  return meals;
+}
+
+async function handleCreateSupplementPlan(userId: string, supaClient: any, args: any, context: any) {
+  const goal = args.goal || 'health';
+  const budget = args.budget || 'medium';
+  const experienceLevel = args.experience_level || 'beginner';
+  
+  // Get available supplements from database
+  const { data: availableSupplements } = await supaClient
+    .from('supplement_database')
+    .select('*')
+    .limit(50);
+  
+  const recommendedSupplements = getRecommendedSupplements(goal, budget, experienceLevel, availableSupplements || []);
+  
+  const supplementPlan = {
+    user_id: userId,
+    plan_name: `ARES ${goal.replace('_', ' ').toUpperCase()} Supplement Stack`,
+    goal: goal,
+    budget_level: budget,
+    experience_level: experienceLevel,
+    supplements: recommendedSupplements,
+    created_by: 'ares',
+    status: 'active',
+    notes: `Personalisiert für ${experienceLevel} mit ${budget} Budget`,
+    valid_from: new Date().toISOString().split('T')[0]
+  };
+
+  const { data, error } = await supaClient.from('supplement_plans').insert(supplementPlan).select().single();
+  
+  if (error) {
+    console.error('[ARES-TOOL] Error creating supplement plan:', error);
+    return { success: false, result: null, error: error.message };
+  }
+  
+  return { success: true, result: { plan_id: data.id, ...supplementPlan } };
+}
+
+function getRecommendedSupplements(goal: string, budget: string, level: string, available: any[]) {
+  // Base supplements for everyone
+  const base = [
+    { name: 'Vitamin D3', dosage: '4000-5000 IU', timing: 'Morgens mit Fett', priority: 'essential' },
+    { name: 'Omega-3 (EPA/DHA)', dosage: '2-3g', timing: 'Mit Mahlzeiten', priority: 'essential' },
+    { name: 'Magnesium', dosage: '400-500mg', timing: 'Abends', priority: 'essential' }
+  ];
+  
+  const goalSpecific: Record<string, any[]> = {
+    muscle_building: [
+      { name: 'Creatin Monohydrat', dosage: '5g', timing: 'Täglich', priority: 'essential' },
+      { name: 'Whey Protein', dosage: '25-40g', timing: 'Post-Workout', priority: 'essential' },
+      { name: 'Citrullin Malat', dosage: '6-8g', timing: 'Pre-Workout', priority: 'optional' }
+    ],
+    fat_loss: [
+      { name: 'Koffein', dosage: '100-200mg', timing: 'Pre-Workout', priority: 'optional' },
+      { name: 'Whey Protein', dosage: '25-40g', timing: 'Zwischen Mahlzeiten', priority: 'essential' },
+      { name: 'Grüntee Extrakt', dosage: '500mg EGCG', timing: 'Morgens', priority: 'optional' }
+    ],
+    health: [
+      { name: 'Multivitamin', dosage: '1 Portion', timing: 'Morgens', priority: 'optional' },
+      { name: 'Zink', dosage: '15-30mg', timing: 'Abends', priority: 'recommended' }
+    ],
+    performance: [
+      { name: 'Creatin Monohydrat', dosage: '5g', timing: 'Täglich', priority: 'essential' },
+      { name: 'Beta-Alanin', dosage: '3-5g', timing: 'Pre-Workout', priority: 'recommended' },
+      { name: 'Elektrolyte', dosage: 'Nach Bedarf', timing: 'During/Post Workout', priority: 'essential' }
+    ],
+    recovery: [
+      { name: 'Taurin', dosage: '2-3g', timing: 'Post-Workout', priority: 'recommended' },
+      { name: 'Glycin', dosage: '3-5g', timing: 'Vor dem Schlafen', priority: 'optional' },
+      { name: 'Ashwagandha', dosage: '300-600mg', timing: 'Abends', priority: 'recommended' }
+    ]
+  };
+  
+  let supplements = [...base];
+  
+  if (goalSpecific[goal]) {
+    supplements = [...supplements, ...goalSpecific[goal]];
+  }
+  
+  // Filter by budget
+  if (budget === 'low') {
+    supplements = supplements.filter(s => s.priority === 'essential');
+  } else if (budget === 'medium') {
+    supplements = supplements.filter(s => s.priority !== 'optional' || level === 'advanced');
+  }
+  
+  return supplements;
+}
+
+async function handleCreatePeptideProtocol(userId: string, supaClient: any, args: any, context: any) {
+  const goal = args.goal || 'recovery';
+  const experienceLevel = args.experience_level || 'beginner';
+  
+  // Generate peptide protocol based on goal
+  const peptideProtocol = {
+    user_id: userId,
+    protocol_name: `ARES ${goal.replace('_', ' ').toUpperCase()} Peptid-Protokoll`,
+    goal: goal,
+    experience_level: experienceLevel,
+    peptides: getPeptideRecommendations(goal, experienceLevel),
+    contraindications: [
+      'Nicht während Schwangerschaft/Stillzeit',
+      'Bei aktiven Krebserkrankungen kontraindiziert',
+      'Ärztliche Beratung vor Beginn empfohlen'
+    ],
+    monitoring: [
+      'Regelmäßige Blutbilder (alle 3 Monate)',
+      'Blutzucker-Kontrolle bei GH-Peptiden',
+      'Auf Reaktionen an Injektionsstellen achten'
+    ],
+    created_by: 'ares',
+    status: 'draft', // Peptide protocols start as draft for review
+    valid_from: new Date().toISOString().split('T')[0]
+  };
+
+  const { data, error } = await supaClient.from('peptide_protocols').insert(peptideProtocol).select().single();
+  
+  if (error) {
+    console.error('[ARES-TOOL] Error creating peptide protocol:', error);
+    return { success: false, result: null, error: error.message };
+  }
+  
+  return { 
+    success: true, 
+    result: { 
+      plan_id: data.id, 
+      ...peptideProtocol,
+      disclaimer: '⚠️ Peptide sind regulierte Substanzen. Verwendung nur nach ärztlicher Beratung. Protokoll als Entwurf gespeichert.'
+    } 
+  };
+}
+
+function getPeptideRecommendations(goal: string, level: string) {
+  const protocols: Record<string, any[]> = {
+    muscle_growth: [
+      { name: 'Ipamorelin', dosage: '200-300mcg', timing: '2-3x täglich', duration: '8-12 Wochen', notes: 'GH-Secretagogue, gut verträglich' },
+      { name: 'CJC-1295 (no DAC)', dosage: '100mcg', timing: 'Mit Ipamorelin', duration: '8-12 Wochen', notes: 'Synergistisch mit Ipamorelin' }
+    ],
+    fat_loss: [
+      { name: 'Ipamorelin', dosage: '200-300mcg', timing: 'Morgens nüchtern', duration: '8-12 Wochen', notes: 'Fördert Lipolyse' },
+      { name: 'Tesamorelin', dosage: '1-2mg', timing: 'Abends', duration: '12 Wochen', notes: 'Speziell für viszerales Fett' }
+    ],
+    recovery: [
+      { name: 'BPC-157', dosage: '250-500mcg', timing: '2x täglich', duration: '4-8 Wochen', notes: 'Heilungsfördernd für Gewebe' },
+      { name: 'TB-500', dosage: '2-5mg', timing: '2x pro Woche', duration: '4-6 Wochen', notes: 'Systemische Regeneration' }
+    ],
+    anti_aging: [
+      { name: 'Ipamorelin', dosage: '200mcg', timing: 'Vor dem Schlafen', duration: 'Langzeit', notes: 'Natürliche GH-Kurve optimieren' },
+      { name: 'Epitalon', dosage: '5-10mg', timing: '10 Tage Kur', duration: '2-3 Kuren/Jahr', notes: 'Telomerase-Aktivierung' }
+    ],
+    cognitive: [
+      { name: 'Semax', dosage: '300-600mcg', timing: 'Morgens intranasal', duration: '10-20 Tage', notes: 'Nootropes Peptid' },
+      { name: 'Selank', dosage: '250-500mcg', timing: 'Bei Bedarf', duration: '2-3 Wochen', notes: 'Anxiolytisch, kognitiv' }
+    ]
+  };
+  
+  let selectedPeptides = protocols[goal] || protocols.recovery;
+  
+  // For beginners, reduce complexity
+  if (level === 'beginner') {
+    selectedPeptides = selectedPeptides.slice(0, 1);
+  }
+  
+  return selectedPeptides;
+}
+
+async function handleGetUserPlans(userId: string, supaClient: any, args: any) {
+  const planType = args.plan_type || 'all';
+  
+  const results: any = {};
+  
+  if (planType === 'all' || planType === 'workout') {
+    const { data } = await supaClient.from('workout_plans').select('*').eq('user_id', userId).eq('status', 'active');
+    results.workout_plans = data || [];
+  }
+  
+  if (planType === 'all' || planType === 'nutrition') {
+    const { data } = await supaClient.from('nutrition_plans').select('*').eq('user_id', userId).eq('status', 'active');
+    results.nutrition_plans = data || [];
+  }
+  
+  if (planType === 'all' || planType === 'supplement') {
+    const { data } = await supaClient.from('supplement_plans').select('*').eq('user_id', userId).eq('status', 'active');
+    results.supplement_plans = data || [];
+  }
+  
+  if (planType === 'all' || planType === 'peptide') {
+    const { data } = await supaClient.from('peptide_protocols').select('*').eq('user_id', userId);
+    results.peptide_protocols = data || [];
+  }
+  
+  return { success: true, result: results };
+}
+
+async function handleUpdatePlan(userId: string, supaClient: any, args: any) {
+  const { plan_id, plan_type, updates } = args;
+  
+  const tableMap: Record<string, string> = {
+    workout: 'workout_plans',
+    nutrition: 'nutrition_plans',
+    supplement: 'supplement_plans',
+    peptide: 'peptide_protocols'
+  };
+  
+  const table = tableMap[plan_type];
+  if (!table) {
+    return { success: false, result: null, error: 'Invalid plan type' };
+  }
+  
+  const { data, error } = await supaClient
+    .from(table)
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', plan_id)
+    .eq('user_id', userId)
+    .select()
+    .single();
+  
+  if (error) {
+    return { success: false, result: null, error: error.message };
+  }
+  
+  return { success: true, result: data };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// USER CONTEXT & MEMORY LOADING
+// ═══════════════════════════════════════════════════════════════════════════════
+
 async function buildUserContext({ userId }: { userId: string }) {
   const supaUser = createClient(SUPABASE_URL, ANON, {
     auth: { persistSession: false }
@@ -75,11 +703,29 @@ async function buildUserContext({ userId }: { userId: string }) {
     .order('date', { ascending: false })
     .limit(3);
 
+  // Load coach memory for personalization
+  const { data: memoryData } = await supaUser
+    .from('coach_memory')
+    .select('memory_data')
+    .eq('user_id', userId)
+    .eq('coach_id', 'ares')
+    .single();
+
   return {
     profile: profile || {},
     recent_meals: recentMeals || [],
     recent_workouts: recentWorkouts || [],
-    user_preferences: profile?.preferences || {}
+    user_preferences: profile?.preferences || {},
+    memory: memoryData?.memory_data || {
+      trust_level: 0,
+      relationship_stage: 'new',
+      conversation_context: {
+        mood_history: [],
+        success_moments: [],
+        topics_discussed: [],
+        struggles_mentioned: []
+      }
+    }
   };
 }
 
@@ -113,13 +759,11 @@ function getTimeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
 }
 
 async function fetchRagSources({ text, context }: { text: string; context: any }) {
-  // RAG implementation using Supabase knowledge base
   try {
     const supaRag = createClient(SUPABASE_URL, ANON, {
       auth: { persistSession: false }
     });
     
-    // Generate embedding for the query using OpenAI
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
@@ -128,7 +772,7 @@ async function fetchRagSources({ text, context }: { text: string; context: any }
       },
       body: JSON.stringify({
         model: 'text-embedding-3-small',
-        input: text.slice(0, 8000), // Limit input length
+        input: text.slice(0, 8000),
       }),
     });
     
@@ -145,16 +789,14 @@ async function fetchRagSources({ text, context }: { text: string; context: any }
       return { knowledge_chunks: [], relevance_scores: [], total_chunks: 0 };
     }
     
-    // Query knowledge base using vector similarity search
     const { data: ragResults, error: ragError } = await supaRag.rpc('match_knowledge_chunks', {
       query_embedding: queryEmbedding,
       similarity_threshold: 0.6,
       match_count: 5,
-      filter_coach_id: 'ares' // ARES knowledge base
+      filter_coach_id: 'ares'
     });
     
     if (ragError) {
-      // Fallback: try direct query on knowledge_base_embeddings
       const { data: directResults, error: directError } = await supaRag
         .from('knowledge_base_embeddings')
         .select('content_chunk, knowledge_id')
@@ -184,6 +826,10 @@ async function fetchRagSources({ text, context }: { text: string; context: any }
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PROMPT BUILDING WITH MEMORY INTEGRATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext }: {
   persona: any;
   context: any;
@@ -192,17 +838,13 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   images: any;
   userMoodContext?: UserMoodContext;
 }) {
-  // Dynamic ARES Dial Selection
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
-  
-  // Check for ritual context (time-based)
   const ritualContext = getRitualContext();
   const finalDial = ritualContext?.dial || dialResult.dial;
   const finalArchetype = ritualContext?.archetype || dialResult.archetype;
   
   console.log(`[ARES] Dial selected: ${finalDial}, Archetype: ${finalArchetype}, Reason: ${dialResult.reason}`);
   
-  // Build ARES v2 context with dynamic dial
   const promptContext = {
     identity: { 
       name: context.profile?.preferred_name || context.profile?.first_name || null 
@@ -211,7 +853,7 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
     archetype: finalArchetype,
     userMsg: text,
     metrics: {
-      kcalDeviation: 0, // Could be calculated from recent meals vs targets
+      kcalDeviation: 0,
       missedMissions: userMoodContext?.missed_tasks || 0,
       dailyReview: false,
       streak: userMoodContext?.streak || 0,
@@ -227,7 +869,6 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
     ritual: ritualContext?.ritual || null
   };
 
-  // Dynamic dial settings based on calculated dial
   const dialSettings: Record<number, { temp: number; maxWords: number; archetype: string; style: string }> = {
     1: { temp: 0.7, maxWords: 150, archetype: "COMRADE", style: "Supportive, motivating, encouraging" },
     2: { temp: 0.75, maxWords: 180, archetype: "SMITH", style: "Steady, methodical, progressive" },
@@ -238,7 +879,6 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   
   const dial = dialSettings[finalDial] || dialSettings[3];
 
-  // Build archetype-specific system prompt
   const archetypeInstructions: Record<string, string> = {
     COMRADE: `Du bist ein unterstützender Kamerad. Motiviere durch Verständnis und geteilte Erfahrung. 
               "Wir schaffen das zusammen." Feiere kleine Siege. Betone den Weg, nicht nur das Ziel.`,
@@ -252,7 +892,17 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
             "Mehr. Härter. Besser." Akzeptiere nur Exzellenz.`
   };
 
-  // Build ARES system prompt with dynamic archetype
+  // Build memory context string
+  const memory = context.memory || {};
+  const memoryContext = memory.trust_level > 0 || memory.relationship_stage !== 'new' ? `
+## BEZIEHUNGS-KONTEXT (Memory)
+- Vertrauenslevel: ${memory.trust_level}/10
+- Beziehungsphase: ${memory.relationship_stage}
+${memory.conversation_context?.topics_discussed?.length > 0 ? `- Besprochene Themen: ${memory.conversation_context.topics_discussed.slice(-5).join(', ')}` : ''}
+${memory.conversation_context?.success_moments?.length > 0 ? `- Erfolgsmomente: ${memory.conversation_context.success_moments.slice(-3).join(', ')}` : ''}
+${memory.conversation_context?.struggles_mentioned?.length > 0 ? `- Herausforderungen: ${memory.conversation_context.struggles_mentioned.slice(-3).join(', ')}` : ''}
+` : '';
+
   const systemPrompt = `# ARES - ULTIMATE COACHING INTELLIGENCE
 Du bist ARES - die ultimative Coaching-Intelligence für totale menschliche Optimierung.
 
@@ -278,8 +928,11 @@ ${promptContext.dial >= 4 ? "- Direkt und fordernd, keine Ausreden" : ""}
 3. **RECOVERY**: Elite Regeneration + HRV Optimization
 4. **MINDSET**: Mental Toughness + Performance Psychology
 5. **LIFESTYLE**: Total Life Optimization + Habit Mastery
+6. **SUPPLEMENTS**: Evidence-Based Supplementierung
+7. **PEPTIDE**: Advanced Optimization Protocols (nur bei expliziter Anfrage)
 
 ${promptContext.identity.name ? `User-Name: ${promptContext.identity.name}` : ""}
+${memoryContext}
 
 ## USER CONTEXT
 ${promptContext.facts?.weight ? `Gewicht: ${promptContext.facts.weight} kg` : ""}
@@ -294,44 +947,245 @@ Recent workouts: ${JSON.stringify(context.recent_workouts?.slice(0, 2) || [], nu
 ${ragSources.knowledge_chunks?.length > 0 ? `## KNOWLEDGE BASE CONTEXT
 ${ragSources.knowledge_chunks.slice(0, 3).join('\n\n')}` : ""}
 
+## TOOL-NUTZUNG
+Du hast Zugriff auf folgende Tools die du bei Bedarf automatisch aufrufen kannst:
+- **get_meta_analysis**: Ganzheitliche Analyse der User-Daten
+- **create_workout_plan**: Trainingsplan erstellen und in DB speichern
+- **create_nutrition_plan**: Ernährungsplan erstellen und in DB speichern
+- **create_supplement_plan**: Supplement-Stack erstellen und in DB speichern
+- **create_peptide_protocol**: Peptid-Protokoll erstellen (nur bei expliziter Nachfrage)
+- **get_user_plans**: Aktive Pläne des Users abrufen
+- **update_plan**: Bestehenden Plan aktualisieren
+
+Nutze Tools wenn der User explizit nach Plänen fragt oder wenn eine detaillierte Analyse nötig ist.
+
 ## RESPONSE RULES
-- Antworte in ≤${dial.maxWords} Wörtern
+- Antworte in ≤${dial.maxWords} Wörtern (außer bei Plan-Erstellung)
 - Wende den ${dial.archetype}-Stil konsequent an
 - Zeitkontext: ${promptContext.timeOfDay}
 ${promptContext.ritual ? `- Aktuelles Ritual: ${promptContext.ritual.type} - nutze entsprechende Prompts` : ""}
+- Bei Plan-Erstellung: Fasse den erstellten Plan kurz zusammen und bestätige die Speicherung
 
 **ARES = ADAPTIVE RESPONSE EXCELLENCE SYSTEM**`;
 
-  const llmInput = {
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: text }
-    ],
-    max_tokens: 800,
-    temperature: dial.temp,
+  return { 
+    systemPrompt, 
+    completePrompt: systemPrompt + "\n\nUser: " + text, 
+    dial,
+    temperature: dial.temp 
   };
-
-  return { systemPrompt, completePrompt: systemPrompt + "\n\nUser: " + text, llmInput };
 }
 
-async function callLLM(llmInput: any) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+// ═══════════════════════════════════════════════════════════════════════════════
+// LLM CALL WITH FUNCTION CALLING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function callLLMWithTools(
+  systemPrompt: string, 
+  userMessage: string, 
+  temperature: number,
+  userId: string,
+  supaClient: any,
+  context: any
+) {
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userMessage }
+  ];
+  
+  // First LLM call with tools
+  let response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(llmInput),
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: messages,
+      tools: ARES_TOOLS,
+      tool_choice: 'auto',
+      max_tokens: 2000,
+      temperature: temperature,
+    }),
   });
 
   if (!response.ok) {
     throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
   }
 
-  const llmResponse = await response.json();
-  return llmResponse.choices[0].message.content;
+  let llmResponse = await response.json();
+  let assistantMessage = llmResponse.choices[0].message;
+  
+  // Handle tool calls in a loop
+  const toolResults: any[] = [];
+  let maxIterations = 5; // Prevent infinite loops
+  
+  while (assistantMessage.tool_calls && maxIterations > 0) {
+    maxIterations--;
+    console.log(`[ARES] Tool calls detected:`, assistantMessage.tool_calls.length);
+    
+    // Add assistant message with tool calls
+    messages.push(assistantMessage);
+    
+    // Execute each tool call
+    for (const toolCall of assistantMessage.tool_calls) {
+      const toolName = toolCall.function.name;
+      const toolArgs = JSON.parse(toolCall.function.arguments || '{}');
+      
+      console.log(`[ARES] Executing tool: ${toolName}`, toolArgs);
+      
+      const result = await executeToolCall(toolName, toolArgs, userId, supaClient, context);
+      toolResults.push({ tool: toolName, ...result });
+      
+      // Add tool result to messages
+      messages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: JSON.stringify(result)
+      });
+    }
+    
+    // Call LLM again with tool results
+    response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: messages,
+        tools: ARES_TOOLS,
+        tool_choice: 'auto',
+        max_tokens: 2000,
+        temperature: temperature,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    }
+
+    llmResponse = await response.json();
+    assistantMessage = llmResponse.choices[0].message;
+  }
+  
+  return {
+    content: assistantMessage.content,
+    toolResults: toolResults
+  };
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MEMORY UPDATE AFTER CONVERSATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function updateCoachMemory(
+  userId: string, 
+  supaClient: any, 
+  userMessage: string, 
+  assistantResponse: string,
+  toolResults: any[]
+) {
+  try {
+    // Get current memory
+    const { data: currentMemory } = await supaClient
+      .from('coach_memory')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('coach_id', 'ares')
+      .single();
+
+    const memory = currentMemory?.memory_data || {
+      trust_level: 0,
+      relationship_stage: 'new',
+      conversation_context: {
+        mood_history: [],
+        success_moments: [],
+        topics_discussed: [],
+        struggles_mentioned: []
+      }
+    };
+
+    // Update conversation context
+    const lowercaseMsg = userMessage.toLowerCase();
+    
+    // Detect topics
+    const topicKeywords: Record<string, string[]> = {
+      'Training': ['training', 'workout', 'gym', 'übung', 'exercise'],
+      'Ernährung': ['essen', 'ernährung', 'kalorien', 'protein', 'diät', 'makros'],
+      'Supplements': ['supplement', 'vitamin', 'creatin', 'protein shake'],
+      'Peptide': ['peptid', 'bpc', 'ipamorelin', 'gh'],
+      'Recovery': ['schlaf', 'regeneration', 'recovery', 'pause'],
+      'Mindset': ['motivation', 'mental', 'stress', 'angst', 'überfordert']
+    };
+
+    for (const [topic, keywords] of Object.entries(topicKeywords)) {
+      if (keywords.some(k => lowercaseMsg.includes(k))) {
+        if (!memory.conversation_context.topics_discussed.includes(topic)) {
+          memory.conversation_context.topics_discussed.push(topic);
+        }
+      }
+    }
+
+    // Detect struggles
+    const struggleKeywords = ['schwer', 'problem', 'hilfe', 'nicht geschafft', 'aufgeben', 'überfordert'];
+    if (struggleKeywords.some(k => lowercaseMsg.includes(k))) {
+      const struggle = userMessage.slice(0, 100);
+      if (!memory.conversation_context.struggles_mentioned.includes(struggle)) {
+        memory.conversation_context.struggles_mentioned.push(struggle);
+        // Keep only last 10
+        if (memory.conversation_context.struggles_mentioned.length > 10) {
+          memory.conversation_context.struggles_mentioned.shift();
+        }
+      }
+    }
+
+    // Detect success moments
+    const successKeywords = ['geschafft', 'erreicht', 'stolz', 'pr', 'personal record', 'durchgehalten'];
+    if (successKeywords.some(k => lowercaseMsg.includes(k))) {
+      const success = userMessage.slice(0, 100);
+      memory.conversation_context.success_moments.push(success);
+      // Keep only last 10
+      if (memory.conversation_context.success_moments.length > 10) {
+        memory.conversation_context.success_moments.shift();
+      }
+    }
+
+    // Increase trust level based on interaction
+    if (toolResults.length > 0) {
+      memory.trust_level = Math.min(10, memory.trust_level + 0.5);
+    } else {
+      memory.trust_level = Math.min(10, memory.trust_level + 0.1);
+    }
+
+    // Update relationship stage
+    if (memory.trust_level >= 7) {
+      memory.relationship_stage = 'trusted';
+    } else if (memory.trust_level >= 4) {
+      memory.relationship_stage = 'established';
+    } else if (memory.trust_level >= 1) {
+      memory.relationship_stage = 'developing';
+    }
+
+    // Upsert memory
+    await supaClient.from('coach_memory').upsert({
+      user_id: userId,
+      coach_id: 'ares',
+      memory_data: memory,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id,coach_id' });
+
+    console.log('[ARES-MEMORY] Updated memory:', { trust_level: memory.trust_level, stage: memory.relationship_stage });
+  } catch (err) {
+    console.warn('[ARES-MEMORY] Failed to update memory:', err);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN SERVER
+// ═══════════════════════════════════════════════════════════════════════════════
 
 Deno.serve(async (req) => {
   const pre = cors.preflight(req);
@@ -344,7 +1198,7 @@ Deno.serve(async (req) => {
 
   // Health check endpoint
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
-    return new Response(JSON.stringify({ ok: true, env: { svc: !!SVC, openai: !!OPENAI_API_KEY }, traceId }), {
+    return new Response(JSON.stringify({ ok: true, env: { svc: !!SVC, openai: !!OPENAI_API_KEY }, traceId, version: '2.0-function-calling' }), {
       status: 200, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
     });
   }
@@ -399,33 +1253,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Start trace in DB (unified)
+    // Start trace in DB
     await traceStart(traceId, user.id, coachId, { input_text: text || null, images: images || null });
     await traceUpdate(traceId, { status: 'started' });
 
-    const context = await (async () => {
-      // reuse existing buildUserContext
-      // @ts-ignore
-      return await buildUserContext({ userId: user.id });
-    })().catch((e) => {
+    // Load context with memory
+    const context = await buildUserContext({ userId: user.id }).catch((e) => {
       console.error('[ARES-ERROR] buildUserContext', traceId, e);
       throw e;
     });
 
-    const persona = await (async () => {
-      // reuse existing loadPersona
-      // @ts-ignore
-      return await loadPersona({ coachId });
-    })().catch((e) => {
+    const persona = await loadPersona({ coachId }).catch((e) => {
       console.error('[ARES-ERROR] loadPersona', traceId, e);
       throw e;
     });
 
-    const ragSources = await (async () => {
-      // reuse existing fetchRagSources
-      // @ts-ignore
-      return await fetchRagSources({ text, context });
-    })().catch((e) => {
+    const ragSources = await fetchRagSources({ text, context }).catch((e) => {
       console.error('[ARES-ERROR] fetchRagSources', traceId, e);
       throw e;
     });
@@ -438,25 +1281,43 @@ Deno.serve(async (req) => {
 
     await traceUpdate(traceId, { status: 'context_loaded', context, persona, rag_sources: ragSources, mood_context: userMoodContext });
 
-    // @ts-ignore
-    const { systemPrompt, completePrompt, llmInput } = buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext });
+    // Build prompt with memory
+    const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
+      persona, context, ragSources, text, images, userMoodContext 
+    });
 
-    await traceUpdate(traceId, { status: 'prompt_built', system_prompt: systemPrompt, complete_prompt: completePrompt, llm_input: llmInput });
+    await traceUpdate(traceId, { status: 'prompt_built', system_prompt: systemPrompt, complete_prompt: completePrompt });
 
-    // @ts-ignore
-    const llmOutput = await callLLM(llmInput);
+    // Call LLM with Function Calling
+    const { content: llmOutput, toolResults } = await callLLMWithTools(
+      systemPrompt, 
+      text, 
+      temperature,
+      user.id,
+      supaSvc,
+      context
+    );
 
     const duration_ms = Math.round(performance.now() - started);
-    await traceUpdate(traceId, { status: 'llm_called', llm_output: llmOutput, duration_ms });
+    await traceUpdate(traceId, { 
+      status: 'llm_called', 
+      llm_output: llmOutput, 
+      tool_results: toolResults,
+      duration_ms 
+    });
 
-    // Save response to coach_conversations (best-effort)
+    // Update memory based on conversation
+    await updateCoachMemory(user.id, supaSvc, text, llmOutput, toolResults);
+
+    // Save response to coach_conversations
     try {
       await supaSvc.from('coach_conversations').insert({
         user_id: user.id,
         coach_id: coachId,
         message: text,
         response: llmOutput,
-        trace_id: traceId
+        trace_id: traceId,
+        metadata: { tool_results: toolResults }
       });
     } catch (convError) {
       console.warn('[ARES-WARN] Failed to save conversation:', convError);
@@ -464,7 +1325,11 @@ Deno.serve(async (req) => {
 
     await traceDone(traceId, duration_ms);
 
-    return new Response(JSON.stringify({ reply: typeof llmOutput === 'string' ? llmOutput : llmOutput, traceId }), {
+    return new Response(JSON.stringify({ 
+      reply: llmOutput, 
+      traceId,
+      toolsUsed: toolResults.length > 0 ? toolResults.map(t => t.tool) : []
+    }), {
       status: 200,
       headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
     });
