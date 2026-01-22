@@ -35,6 +35,7 @@ import NotFound from "./pages/NotFound";
 import { AdminPage } from "./pages/Admin";
 import { GehirnPage } from "./pages/Gehirn";
 import TraceDebug from "./pages/TraceDebug";
+import { BrainViewerPage } from "./pages/BrainViewer";
 import TransformationJourneyPage from "./pages/TransformationJourney";
 
 import TestSummaryPage from "./pages/TestSummary";
@@ -89,6 +90,7 @@ const App = () => (
                       <Route path="/marketing" element={<Marketing />} />
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/gehirn" element={<GehirnPage />} />
+                      <Route path="/admin/brain" element={<BrainViewerPage />} />
                       <Route path="/test-summary" element={<TestSummaryPage />} />
                       {/* Redirect old subscription route */}
                       <Route path="/subscription" element={<Navigate to="/credits" replace />} />
