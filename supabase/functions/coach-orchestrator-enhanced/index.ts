@@ -4,6 +4,17 @@ import { newTraceId } from '../_shared/ares/ids.ts';
 import { traceStart, traceUpdate, traceDone, traceFail } from '../_shared/ares/trace.ts';
 import { decideAresDial, loadUserMoodContext, getRitualContext, getModeDescription, type UserMoodContext, type AresDialResult, type AresMode } from './aresDial.ts';
 
+// Phase 2: Coach Personas Integration
+import {
+  loadUserPersona,
+  buildPersonaPrompt,
+  resolvePersonaWithContext,
+  applyDialect,
+  type CoachPersona,
+  type PersonaResolutionContext,
+  type ResolvedPersona,
+} from '../_shared/persona/index.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -796,6 +807,119 @@ async function loadPersona({ coachId }: { coachId: string }) {
   };
 }
 
+/**
+ * Phase 2: Load user's selected persona with context resolution
+ * Falls back to STANDARD if no selection or persona not found
+ */
+async function loadUserPersonaWithContext(
+  userId: string,
+  moodContext: UserMoodContext,
+  text: string
+): Promise<{ persona: CoachPersona | ResolvedPersona; personaPrompt: string }> {
+  try {
+    // Load user's selected persona (with STANDARD fallback)
+    const persona = await loadUserPersona(userId);
+    console.log(`[PERSONA] Loaded persona for user ${userId}: ${persona.name} (${persona.id})`);
+    
+    // Build resolution context from available data
+    const resolutionContext: PersonaResolutionContext = {
+      mood: detectMoodFromContext(moodContext, text),
+      timeOfDay: getTimeOfDayForPersona(),
+      userTenure: moodContext.streak || 0, // Use streak as a proxy for tenure
+      topic: detectTopicFromText(text),
+    };
+    
+    // Resolve persona with context modifiers
+    const resolvedPersona = resolvePersonaWithContext(persona, resolutionContext);
+    console.log(`[PERSONA] Applied modifiers: ${resolvedPersona.appliedModifiers.join(', ') || 'none'}`);
+    
+    // Generate the persona prompt
+    const personaPrompt = buildPersonaPrompt(resolvedPersona, resolutionContext);
+    
+    return { persona: resolvedPersona, personaPrompt };
+  } catch (error) {
+    console.error(`[PERSONA] Error loading user persona:`, error);
+    // Return empty prompt on error - will use existing mode-based prompt
+    return { 
+      persona: { id: 'STANDARD', name: 'ARES Standard' } as CoachPersona, 
+      personaPrompt: '' 
+    };
+  }
+}
+
+/**
+ * Detect user mood from context and message
+ */
+function detectMoodFromContext(
+  moodContext: UserMoodContext, 
+  text: string
+): 'positive' | 'neutral' | 'frustrated' | 'overwhelmed' {
+  const lowerText = text.toLowerCase();
+  
+  // Check for frustrated indicators
+  const frustrationWords = ['frustriert', 'frustrierend', 'genervt', 'nervt', 'scheiße', 'mist', 'aufgeben', 'schaff'];
+  if (frustrationWords.some(w => lowerText.includes(w))) {
+    return 'frustrated';
+  }
+  
+  // Check for overwhelmed indicators
+  const overwhelmedWords = ['überfordert', 'zu viel', 'erschöpft', 'müde', 'keine kraft', 'nicht mehr'];
+  if (overwhelmedWords.some(w => lowerText.includes(w))) {
+    return 'overwhelmed';
+  }
+  
+  // Check for positive indicators
+  const positiveWords = ['super', 'geil', 'top', 'klasse', 'perfekt', 'geschafft', 'stolz', 'motiviert', 'freue'];
+  if (positiveWords.some(w => lowerText.includes(w))) {
+    return 'positive';
+  }
+  
+  // Check streak for implicit mood
+  if (moodContext.streak && moodContext.streak >= 7) {
+    return 'positive'; // Long streak = probably positive
+  }
+  
+  if (moodContext.no_workout_days && moodContext.no_workout_days >= 5) {
+    return 'frustrated'; // Long break = might be struggling
+  }
+  
+  return 'neutral';
+}
+
+/**
+ * Get time of day for persona context
+ */
+function getTimeOfDayForPersona(): 'morning' | 'afternoon' | 'evening' | 'night' {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'night';
+}
+
+/**
+ * Detect topic from user message
+ */
+function detectTopicFromText(text: string): string | undefined {
+  const lowerText = text.toLowerCase();
+  
+  const topicKeywords: Record<string, string[]> = {
+    'training': ['training', 'workout', 'übung', 'fitness', 'gym', 'kraft', 'gewicht', 'wiederholung', 'satz'],
+    'nutrition': ['ernährung', 'essen', 'kalorien', 'protein', 'makros', 'diät', 'abnehmen', 'zunehmen', 'mahlzeit'],
+    'motivation': ['motivation', 'motiviert', 'aufgeben', 'weitermachen', 'ziel', 'erfolg', 'schaffen'],
+    'supplements': ['supplement', 'nahrungsergänzung', 'vitamin', 'kreatin', 'protein pulver', 'bcaa'],
+    'recovery': ['erholung', 'schlaf', 'regeneration', 'pause', 'muskelkater', 'verletzung'],
+  };
+  
+  for (const [topic, keywords] of Object.entries(topicKeywords)) {
+    if (keywords.some(kw => lowerText.includes(kw))) {
+      return topic;
+    }
+  }
+  
+  return undefined;
+}
+
 function getTimeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 12) return 'morning';
@@ -932,7 +1056,7 @@ function formatConversationHistory(conversations: any[]): string {
   return formatted;
 }
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory }: {
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt }: {
   persona: any;
   context: any;
   ragSources: any;
@@ -940,6 +1064,7 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   images: any;
   userMoodContext?: UserMoodContext;
   conversationHistory?: any[];
+  personaPrompt?: string; // Phase 2: Persona-specific prompt section
 }) {
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
   const ritualContext = getRitualContext();
@@ -952,7 +1077,7 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   const currentDate = getCurrentGermanDate();
   const timeOfDay = getTimeOfDay();
   
-  // Mode-specific style instruction
+  // Mode-specific style instruction (fallback if no persona prompt)
   const modeStyle = {
     supportive: 'Sei verständnisvoll und ermutigend. Erkenne Herausforderungen an, ohne zu urteilen.',
     balanced: 'Sei freundlich und klar. Balance zwischen Support und konkreten Handlungsschritten.',
@@ -985,15 +1110,19 @@ ${memory.conversation_context?.mood_history?.length > 0
 ` : '';
   
   // Compact system prompt - natural language, no verbose sections
-  const systemPrompt = `Du bist ARES, ein erfahrener Fitness- und Lifestyle-Coach.
+  // Phase 2: Use personaPrompt if available, otherwise fall back to mode-based style
+  const styleSection = personaPrompt 
+    ? personaPrompt 
+    : `## DEIN STIL HEUTE\n${modeStyle[finalMode]}`;
+  
+  const systemPrompt = `# ARES - DEIN COACH
 
 **AKTUELLES DATUM: ${currentDate}**
 **TAGESZEIT: ${timeOfDay}**
 
 ${userName ? `Du sprichst mit ${userName}.` : ''}
 
-## DEIN STIL HEUTE
-${modeStyle[finalMode]}
+${styleSection}
 
 ## USER-DATEN
 ${context.profile?.weight ? `Gewicht: ${context.profile.weight}kg` : ''}${context.profile?.target_weight ? ` → Ziel: ${context.profile.target_weight}kg` : ''}
@@ -1466,6 +1595,16 @@ Deno.serve(async (req) => {
       return {} as UserMoodContext;
     });
 
+    // Phase 2: Load user's selected persona with context resolution
+    const { persona: userPersona, personaPrompt } = await loadUserPersonaWithContext(
+      user.id,
+      userMoodContext,
+      text
+    ).catch((e) => {
+      console.warn('[ARES-WARN] loadUserPersonaWithContext failed:', e);
+      return { persona: null, personaPrompt: '' };
+    });
+
     // Load conversation history (last 20 raw messages = ~10 pairs) for context
     // Schema uses: message_content, message_role, coach_personality (NOT message, response, coach_id)
     const { data: rawConversations, error: convLoadError } = await supaSvc
@@ -1484,17 +1623,24 @@ Deno.serve(async (req) => {
     const conversationHistory = pairConversationMessages(rawConversations || []);
     console.log(`[ARES] Loaded ${rawConversations?.length || 0} raw messages → ${conversationHistory.length} conversation pairs`);
 
-    // Store full context in trace for debugging
+    // Store full context in trace for debugging (include user persona info)
     await traceUpdate(traceId, { 
       status: 'context_loaded', 
       context, // This will be stored as user_context by trace.ts
-      persona, 
+      persona: userPersona || persona, 
       rag_sources: ragSources 
     } as any);
 
-    // Build prompt with memory and conversation history
+    // Build prompt with memory, conversation history, and Phase 2 persona prompt
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
-      persona, context, ragSources, text, images, userMoodContext, conversationHistory: conversationHistory ?? undefined 
+      persona: userPersona || persona, 
+      context, 
+      ragSources, 
+      text, 
+      images, 
+      userMoodContext, 
+      conversationHistory: conversationHistory ?? undefined,
+      personaPrompt: personaPrompt || undefined // Phase 2: Include persona-specific prompt
     });
 
     // Store system prompt AND user input for full LLM tracing
@@ -1517,16 +1663,24 @@ Deno.serve(async (req) => {
 
     const duration_ms = Math.round(performance.now() - started);
     
+    // Phase 2: Apply dialect post-processing if persona has a dialect
+    let finalOutput = llmOutput;
+    const personaDialect = userPersona?.dialect || null;
+    if (personaDialect) {
+      console.log(`[PERSONA] Applying dialect: ${personaDialect}`);
+      finalOutput = applyDialect(llmOutput, personaDialect, 0.5); // Use moderate intensity
+    }
+    
     // Store complete LLM response and tool calls
     await traceUpdate(traceId, { 
       status: 'llm_called', 
-      llm_output: llmOutput,
+      llm_output: finalOutput,
       tool_calls: toolResults.length > 0 ? toolResults : null,
       duration_ms 
     } as any);
 
     // Update memory based on conversation
-    await updateCoachMemory(user.id, supaSvc, text, llmOutput, toolResults);
+    await updateCoachMemory(user.id, supaSvc, text, finalOutput, toolResults);
 
     // Save conversation to coach_conversations (correct schema: message_content, message_role, coach_personality)
     // Insert TWO separate rows: one for user message, one for assistant response
@@ -1543,14 +1697,19 @@ Deno.serve(async (req) => {
         context_data: { trace_id: traceId }
       });
       
-      // Insert assistant response
+      // Insert assistant response (use dialect-processed output)
       await supaSvc.from('coach_conversations').insert({
         user_id: user.id,
         coach_personality: coachId,
         message_role: 'assistant',
-        message_content: llmOutput,
+        message_content: finalOutput,
         conversation_date: conversationDate,
-        context_data: { trace_id: traceId, tool_results: toolResults.length > 0 ? toolResults : null }
+        context_data: { 
+          trace_id: traceId, 
+          tool_results: toolResults.length > 0 ? toolResults : null,
+          persona_id: userPersona?.id || null,
+          dialect_applied: personaDialect || null
+        }
       });
       
       console.log(`[ARES] Saved conversation pair (user + assistant) for trace ${traceId}`);
@@ -1561,9 +1720,10 @@ Deno.serve(async (req) => {
     await traceDone(traceId, duration_ms);
 
     return new Response(JSON.stringify({ 
-      reply: llmOutput, 
+      reply: finalOutput, 
       traceId,
-      toolsUsed: toolResults.length > 0 ? toolResults.map(t => t.tool) : []
+      toolsUsed: toolResults.length > 0 ? toolResults.map(t => t.tool) : [],
+      persona: userPersona?.id || 'STANDARD' // Phase 2: Include persona info in response
     }), {
       status: 200,
       headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
