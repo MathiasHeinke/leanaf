@@ -162,11 +162,13 @@ export default async function handleFemalePeriodization(conv: any[], userId: str
       }
     };
     
-    return templates[goal]?.[level] || templates.general_fitness.intermediate;
+    type GoalType = 'strength' | 'hypertrophy' | 'endurance' | 'fat_loss' | 'general_fitness';
+    type LevelType = 'beginner' | 'intermediate' | 'advanced';
+    return (templates[goal as GoalType]?.[level as LevelType]) || templates.general_fitness.intermediate;
   }
   
   function generateWeeklySchedule(data: FemalePeriodization, phases: any): any {
-    const schedule = {};
+    const schedule: Record<string, any> = {};
     const daysPerWeek = Math.min(data.available_days, 6);
     
     // Create cycle-based weekly templates
@@ -179,7 +181,7 @@ export default async function handleFemalePeriodization(conv: any[], userId: str
   }
   
   function createPhaseSchedule(days: number, phase: any, data: FemalePeriodization): any {
-    const schedules = {
+    const schedules: Record<number, string[]> = {
       3: ['Upper Body + Core', 'Lower Body + Cardio', 'Full Body + Mobility'],
       4: ['Upper Push', 'Lower Body', 'Upper Pull', 'Full Body + Cardio'],
       5: ['Push', 'Pull', 'Legs', 'Upper Body', 'Full Body + Cardio'],
@@ -188,7 +190,7 @@ export default async function handleFemalePeriodization(conv: any[], userId: str
     
     const baseSchedule = schedules[days] || schedules[3];
     
-    return baseSchedule.map((session, index) => ({
+    return baseSchedule.map((session: string, index: number) => ({
       day: index + 1,
       session_name: session,
       intensity_modifier: phase.volume_modifier,
@@ -200,7 +202,7 @@ export default async function handleFemalePeriodization(conv: any[], userId: str
   }
   
   function getPhaseSpecificNotes(phaseName: string, session: string): string[] {
-    const notes = {
+    const notes: Record<string, string[]> = {
       'Menstrual (Tag 1-5)': [
         'Aufwärmzeit verlängern',
         'Bei starken Beschwerden: Yoga/Spaziergang als Alternative',
@@ -269,7 +271,7 @@ export default async function handleFemalePeriodization(conv: any[], userId: str
       }
     };
     
-    const goalSpecific = {
+    const goalSpecific: Record<string, string[]> = {
       strength: ['Kreatin', 'Beta-Alanin'],
       hypertrophy: ['Protein Powder', 'HMB'],
       endurance: ['Elektrolyte', 'Iron'],
