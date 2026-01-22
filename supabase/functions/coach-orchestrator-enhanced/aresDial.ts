@@ -112,7 +112,7 @@ const DIAL_RULES = {
     "response": {
       "dial": 3,
       "archetype": "father",
-      "voice_line": "Ich bin stolz auf dich. Nicht wegen des Ergebnisses – wegen deiner Haltung."
+      "tone": "celebratory and proud - acknowledge the consistency and effort"
     }
   }
 };
