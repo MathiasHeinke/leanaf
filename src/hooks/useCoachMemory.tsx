@@ -35,7 +35,8 @@ export interface CoachMemory {
   communication_style_preference: string;
 }
 
-export const useCoachMemory = (passedUserId?: string) => {
+// ARES-Only: Single coach system - coachId always defaults to 'ares'
+export const useCoachMemory = (passedUserId?: string, coachId: string = 'ares') => {
   const { user } = useAuth();
   const [memory, setMemory] = useState<CoachMemory | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,13 +49,12 @@ export const useCoachMemory = (passedUserId?: string) => {
 
     setIsLoading(true);
     try {
-      // ✅ FIX: Use .maybeSingle() to handle multiple rows gracefully
+      // ✅ ARES-Only: Filter by user_id AND coach_id
       const { data, error } = await supabase
         .from('coach_memory')
         .select('*')
         .eq('user_id', userId)
-        .order('updated_at', { ascending: false })
-        .limit(1)
+        .eq('coach_id', coachId)
         .maybeSingle();
 
       // Handle case where no memory exists yet
@@ -82,7 +82,7 @@ export const useCoachMemory = (passedUserId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, coachId]);
 
   const saveCoachMemory = useCallback(async (memoryData: CoachMemory): Promise<boolean> => {
     if (!userId) return false;
@@ -109,10 +109,12 @@ export const useCoachMemory = (passedUserId?: string) => {
       }
 
       // Speichere mit FOR UPDATE Semantik (über upsert mit conflict handling)
+      // ARES-Only: Include coach_id in upsert
       const { error } = await supabase
         .from('coach_memory')
         .upsert({
           user_id: userId,
+          coach_id: coachId,
           memory_data: memoryData as any,
           updated_at: new Date().toISOString()
         }, {

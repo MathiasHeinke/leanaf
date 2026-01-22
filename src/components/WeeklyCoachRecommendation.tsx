@@ -14,18 +14,11 @@ interface CoachRecommendation {
   recommendation_count: number;
 }
 
+// ARES-Only: Single coach system
 const COACH_DATA = {
-  sascha: {
-    name: "Sascha",
-    avatar: "/coach-images/2c06031d-707a-400d-aaa0-a46decdddfe2.png"
-  },
-  lucy: {
-    name: "Lucy", 
-    avatar: "/coach-images/9e4f4475-6b1f-4563-806d-89f78ba853e6.png"
-  },
-  kai: {
-    name: "Kai",
-    avatar: "/coach-images/fa6fb4d0-0626-4ff4-a5c2-552d0e3d9bbb.png"
+  ares: {
+    name: "ARES",
+    avatar: "/lovable-uploads/1b6ddc34-604a-4356-a46f-07208c77c35f.png"
   }
 };
 
@@ -35,7 +28,7 @@ export const WeeklyCoachRecommendation = () => {
   const navigate = useNavigate();
   const [recommendation, setRecommendation] = useState<CoachRecommendation | null>(null);
   const [showRecommendation, setShowRecommendation] = useState(false);
-  const [selectedCoach, setSelectedCoach] = useState<string>('sascha');
+  const [selectedCoach, setSelectedCoach] = useState<string>('ares');
   const [isLoading, setIsLoading] = useState(true);
   const [coachMessage, setCoachMessage] = useState<string>('');
   const [generatingMessage, setGeneratingMessage] = useState(false);
@@ -164,7 +157,7 @@ export const WeeklyCoachRecommendation = () => {
     return null;
   }
 
-  const coachData = COACH_DATA[selectedCoach as keyof typeof COACH_DATA] || COACH_DATA.sascha;
+  const coachData = COACH_DATA.ares;
 
   return (
     <Card className="mx-4 mb-4 border-0 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent shadow-lg">
