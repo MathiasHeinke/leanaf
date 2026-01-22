@@ -1017,6 +1017,17 @@ ${ragSources?.knowledge_chunks?.length > 0 ? `\n## WISSEN\n${ragSources.knowledg
 - create_workout_plan / create_nutrition_plan / create_supplement_plan: Pläne erstellen
 - get_user_plans / update_plan: Bestehende Pläne
 
+## DEIN GEDÄCHTNIS (KRITISCH WICHTIG!)
+Du HAST Zugriff auf den Gesprächsverlauf - er steht oben unter "LETZTE GESPRÄCHE".
+Du HAST Zugriff auf Langzeit-Infos unter "BEZIEHUNGS-KONTEXT" (z.B. user_notes).
+Du KANNST dich an alles erinnern was dort steht!
+Wenn der User "merk dir X" sagt → bestätige es, es wird automatisch gespeichert.
+Wenn der User nach etwas fragt das oben steht → NUTZE es und antworte korrekt!
+SAGE NIEMALS "Ich kann mich nicht erinnern" oder "Als KI habe ich kein Gedächtnis" wenn die Info verfügbar ist!
+${memory?.conversation_context?.user_notes?.length > 0 
+  ? `\n### VOM USER ZUM MERKEN:\n${memory.conversation_context.user_notes.map((n: any) => `- "${n.note}" (${new Date(n.timestamp).toLocaleDateString('de-DE')})`).join('\n')}`
+  : ''}
+
 ## WICHTIG
 - Sprich natürlich, wie ein echter Mensch - keine Coaching-Floskeln
 - Antworte prägnant (100-400 Wörter), nicht mehr als nötig
@@ -1174,6 +1185,36 @@ async function updateCoachMemory(
     if (!Array.isArray(memory.conversation_context.success_moments)) memory.conversation_context.success_moments = [];
     if (!Array.isArray(memory.conversation_context.struggles_mentioned)) memory.conversation_context.struggles_mentioned = [];
     if (!Array.isArray(memory.conversation_context.topics_discussed)) memory.conversation_context.topics_discussed = [];
+    if (!Array.isArray(memory.conversation_context.user_notes)) memory.conversation_context.user_notes = [];
+
+    // Detect "merk dir" / "remember" pattern - explicit user request to remember something
+    const rememberPatterns = [
+      /merk(?:e)?\s*dir\s+(.+)/i,
+      /merke?\s+dir\s*(?:bitte\s+)?(.+)/i,
+      /remember\s+(?:this[:\s]+)?(.+)/i,
+      /speicher(?:e)?\s*(?:dir\s+)?(.+)/i,
+      /notier(?:e)?\s*(?:dir\s+)?(.+)/i
+    ];
+    
+    for (const pattern of rememberPatterns) {
+      const match = userMessage.match(pattern);
+      if (match) {
+        const itemToRemember = match[1].trim().replace(/[.!?]$/, '');
+        if (itemToRemember.length > 0 && itemToRemember.length < 200) {
+          memory.conversation_context.user_notes.push({
+            timestamp: new Date().toISOString(),
+            note: itemToRemember,
+            type: 'user_requested'
+          });
+          console.log(`[ARES-MEMORY] User note saved: "${itemToRemember}"`);
+          // Keep only last 20 notes
+          if (memory.conversation_context.user_notes.length > 20) {
+            memory.conversation_context.user_notes = memory.conversation_context.user_notes.slice(-20);
+          }
+        }
+        break;
+      }
+    }
 
     // Update conversation context
     const lowercaseMsg = userMessage.toLowerCase();

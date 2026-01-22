@@ -881,26 +881,12 @@ if (enableAdvancedFeatures) {
     return null;
   };
 
-// Persist chat bubbles to coach_conversations
-async function persistConversation(role: 'user'|'assistant', content: string) {
-  try {
-    if (!user?.id) return;
-    const today = getCurrentDateString();
-    
-    const { error } = await supabase.from('coach_conversations').insert({
-      user_id: user.id,
-      coach_personality: coach?.id || 'lucy',
-      conversation_date: today,
-      message_role: role,
-      message_content: content
-    });
-    
-    if (error) {
-      console.warn('persistConversation failed:', error);
-    }
-  } catch (e) {
-    console.warn('persistConversation failed', e);
-  }
+// DEPRECATED: Persistence now handled ONLY in backend (coach-orchestrator-enhanced)
+// This removes duplicate message storage that was causing cluttered chat history
+// See: ARES Memory & Recall Fix - 22.01.2026
+function persistConversation(_role: 'user'|'assistant', _content: string) {
+  // Backend is single source of truth for conversation persistence
+  // Do nothing here to prevent duplicates
 }
 
 // ============= RENDER MESSAGE =============
