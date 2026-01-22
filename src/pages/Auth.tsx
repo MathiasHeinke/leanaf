@@ -17,7 +17,6 @@ import { toast } from 'sonner';
 import { Eye, EyeOff, Shield, Bug } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { authLogger } from '@/lib/authLogger';
-import { AuthDebugOverlay } from '@/components/AuthDebugOverlay';
 import { AuthErrorBoundary } from '@/components/AuthErrorBoundary';
 
 const Auth = () => {
@@ -34,7 +33,6 @@ const Auth = () => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [privacyAccepted, setPrivacyAccepted] = useState(true); // Vorausgewählt wie gewünscht
   const [rateLimiter] = useState(() => new ClientRateLimit(10, 5 * 60 * 1000)); // 10 attempts per 5 minutes
-  const [showDebugOverlay, setShowDebugOverlay] = useState(false);
   
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -72,10 +70,6 @@ const Auth = () => {
         return;
       }
 
-      // Check for debug mode - Only auto-open if explicitly requested
-      if (authLogger.isDebugEnabled() && window.location.search.includes('openDebug=1')) {
-        setShowDebugOverlay(true);
-      }
       
       // Check rate limiting on component mount - NON-BLOCKING
       const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
@@ -211,10 +205,6 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Close debug overlay if open to prevent blocking
-    if (showDebugOverlay) {
-      setShowDebugOverlay(false);
-    }
     
     // Check rate limiting - NON-BLOCKING
     const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
@@ -826,48 +816,9 @@ const Auth = () => {
             >
               Auth zurücksetzen
             </Button>
-            
-            {/* Debug Toggle */}
-            {authLogger.isDebugEnabled() && (
-              <div className="pt-2 border-t space-y-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowDebugOverlay(!showDebugOverlay)}
-                  className="w-full text-xs"
-                >
-                  <Bug className="h-3 w-3 mr-1" />
-                  Auth Debug Timeline
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    const clientId = `auth_${user?.id || 'anonymous'}_${window.location.origin}`;
-                    rateLimiter.reset(clientId);
-                    await authLogger.log({ 
-                      event: 'RATE_LIMIT_RESET', 
-                      stage: 'manual',
-                      details: { clientId: clientId.substring(0, 50) }
-                    });
-                    toast.success('Rate Limiter zurückgesetzt');
-                  }}
-                  className="w-full text-xs"
-                >
-                  Rate Limiter Reset
-                </Button>
-              </div>
-            )}
           </div>
         </CardContent>
         </Card>
-
-        <AuthDebugOverlay 
-          isVisible={showDebugOverlay}
-          onClose={() => setShowDebugOverlay(false)}
-        />
       </div>
     </AuthErrorBoundary>
   );

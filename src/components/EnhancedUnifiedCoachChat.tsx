@@ -72,14 +72,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useOrchestrator, OrchestratorReply, CoachEvent } from '@/hooks/useOrchestrator';
 import { sendToAres, AresCallOptions } from '@/lib/orchestratorClient';
-import { UserChatDebugger } from '@/components/debug/UserChatDebugger';
-import { AresChatDebugPanel } from '@/components/debug/AresChatDebugPanel';
-import { PromptInspectionModal } from '@/components/debug/PromptInspectionModal';
-import { PromptViewer, PromptData } from '@/components/gehirn/PromptViewer';
-import { useDebugSteps } from '@/hooks/useDebugSteps';
-import { usePromptTraceData } from '@/hooks/usePromptTraceData';
-import { ResponseMetadata } from '@/components/debug/ResponseMetadata';
-import { Bug, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import ChoiceBar from '@/components/ChoiceBar';
 import ConfirmMealModal from '@/components/ConfirmMealModal';
 import ConfirmSupplementModal from '@/components/ConfirmSupplementModal';
@@ -201,26 +194,12 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const legacyEnabled = isFlagEnabled('legacy_fallback_enabled');
   const { sendEvent } = useOrchestrator();
   
-  // ARES-specific feature flags for debug panel
+  // ARES-specific feature flags
   const { has: hasAresFlag } = useAresFlags();
-  const showAresDebug = isAres && hasAresFlag('ares.debug');
-  
-  // Debug system integration
-  const debugSteps = useDebugSteps();
-  const [showDebugger, setShowDebugger] = useState(false);
-  const [lastRequest, setLastRequest] = useState<any>(null);
-  const [lastResponse, setLastResponse] = useState<any>(null);
-  const [selectedTraceForPrompt, setSelectedTraceForPrompt] = useState<string | null>(null);
-  const [promptViewerData, setPromptViewerData] = useState<any>(null);
-  const [deepDebug, setDeepDebug] = useState(false);
   
   // Enhanced ARES integration using standardized client
   const sendEventWithDebug = async (userId: string, ev: CoachEvent, traceId?: string, context?: any): Promise<OrchestratorReply> => {
-    let currentStepId: string | undefined;
-    
     try {
-      currentStepId = debugSteps.addStep("Send Request", "Calling ARES enhanced orchestrator...");
-      
       const aresOptions: AresCallOptions = {
         text: ev.type === 'TEXT' ? ev.text : undefined,
         attachments: ev.type === 'IMAGE' ? (ev as any).images : undefined,
@@ -228,11 +207,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
         context
       };
 
-      setLastRequest(aresOptions);
       const result = await sendToAres(aresOptions);
-      setLastResponse(result);
-
-      debugSteps.completeStep(currentStepId!, "Request completed successfully");
 
       // Handle different response formats
       let responseText = '';
@@ -262,10 +237,6 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
 
     } catch (error: any) {
       console.error("🔧 ARES Orchestrator error:", error);
-      
-      if (currentStepId) {
-        debugSteps.errorStep(currentStepId, `Error: ${error?.message || 'Unbekannter Fehler'}`);
-      }
 
       // Enhanced error handling with trace ID
       const errorMessage = error?.message || 'Coach-Verbindung fehlgeschlagen. Bitte kurz erneut senden.';
@@ -1032,24 +1003,6 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
                       </Tooltip>
                     )}
                     
-                     {/* Debug inspect button for messages with traceId */}
-                     {message.metadata?.traceId && (
-                       <Tooltip>
-                         <TooltipTrigger>
-                           <Button
-                             variant="ghost"
-                             size="sm"
-                             className="h-4 w-4 p-0"
-                             onClick={() => handleInspectMessage(message.metadata!.traceId!)}
-                           >
-                             <Search className="w-3 h-3" />
-                           </Button>
-                         </TooltipTrigger>
-                         <TooltipContent>
-                           <p>Prompt & Antwort inspizieren</p>
-                         </TooltipContent>
-                       </Tooltip>
-                     )}
                      
                      {message.metadata.tokensUsed && (
                       <Tooltip>
@@ -1070,28 +1023,6 @@ async function persistConversation(role: 'user'|'assistant', content: string) {
             </div>
           )}
           
-          {/* Response Metadata - Only for assistant messages */}
-          {!isUser && message.metadata && (
-            <div className="mt-2">
-              <ResponseMetadata 
-                metadata={{
-                  coachId: message.metadata.coachId || coach?.id,
-                  model: message.metadata.model,
-                  pipeline: message.metadata.pipeline,
-                  fallback: message.metadata.fallback,
-                  retryCount: message.metadata.retryCount,
-                  processingTime: message.metadata.processingTime,
-                  source: message.metadata.source,
-                  downgraded: message.metadata.downgraded,
-                  error: message.metadata.error,
-                  traceId: message.metadata.traceId,
-                  rawResponse: message.metadata.rawResponse,
-                  apiErrors: message.metadata.apiErrors,
-                }}
-                className="max-w-[75%]"
-              />
-            </div>
-          )}
           
           {/* User layout: Time left, avatar right */}
           {isUser && (
@@ -1145,63 +1076,6 @@ const handleChipClick = useCallback(async (label: string) => {
   }
 }, [user?.id, isOrchestratorLoading, clearChips, setUserTyping, mode, coach?.id, shadowTraceId, lastProposal, sendEvent, renderOrchestratorReply]);
 
-// ============= INSPECT MESSAGE HANDLER =============
-const handleInspectMessage = useCallback((traceId: string) => {
-  setSelectedTraceForPrompt(traceId);
-}, []);
-
-// ============= DEEP DEBUG HANDLERS =============
-const handleInspectPrompt = useCallback((traceIdOrData?: string | any) => {
-  if (typeof traceIdOrData === 'string') {
-    // Traditional trace ID lookup
-    setSelectedTraceForPrompt(traceIdOrData);
-    setPromptViewerData(null);
-  } else if (traceIdOrData) {
-    // Direct prompt data from debug response
-    setPromptViewerData(traceIdOrData);
-    setSelectedTraceForPrompt('direct');
-  }
-}, []);
-
-const handlePromptNow = useCallback(async () => {
-  if (!user?.id) return;
-  
-  try {
-    toast.info("Triggering debug prompt...");
-    
-    // Direct debug call to coach orchestrator with debug flag
-    const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
-      body: { 
-        text: "Zeige mir deinen aktuellen Status und deine letzten Überlegungen",
-        coachId: coach?.id || 'ares',
-        userId: user.id,
-        debug: true
-      },
-      headers: {
-        'x-debug': '1'
-      }
-    });
-
-    if (error) {
-      console.error("Debug prompt error:", error);
-      toast.error("Debug-Prompt fehlgeschlagen");
-      return;
-    }
-    
-    console.log("Debug prompt response:", data);
-    console.log("ARES_DEBUG_PROMPT_DUMP", JSON.stringify(data?.meta?.debug || {}, null, 2));
-    
-    if (data?.meta?.debug) {
-      handleInspectPrompt(data.meta.debug);
-      toast.success("Debug-Daten erhalten!");
-    } else {
-      toast.error("Keine Debug-Daten in Response");
-    }
-  } catch (error) {
-    toast.error("Debug-Prompt fehlgeschlagen");
-    console.error("Debug prompt error:", error);
-  }
-}, [user?.id, coach?.id, handleInspectPrompt]);
 
 // ============= ENHANCED SEND MESSAGE HANDLER =============
 const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
@@ -1360,18 +1234,6 @@ chatInput={
               setMessages([]);
             }}
           />
-          {showAresDebug && (
-            <div className="absolute top-2 right-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDebugger(!showDebugger)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <Bug className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Messages - transparent scrollable area over fire */}
@@ -1413,13 +1275,6 @@ chatInput={
           )}
         </div>
         
-        {/* Debug Console */}
-        <UserChatDebugger
-          isVisible={showDebugger}
-          onToggle={() => setShowDebugger(!showDebugger)}
-          steps={debugSteps.steps}
-          onClear={debugSteps.clearSteps}
-        />
         <WeightEntryModal isOpen={showWeightModal} onClose={() => setShowWeightModal(false)} />
         <ConfirmMealModal
           open={confirmMeal.open}
@@ -1648,29 +1503,6 @@ chatInput={
         onClose={() => setConfirmMeal(prev => ({ ...prev, open: false }))}
       />
       
-      {/* Enhanced Debug Panel for all coaches */}
-      <AresChatDebugPanel
-        isOpen={showDebugger}
-        onClose={() => setShowDebugger(false)}
-        debugSteps={debugSteps.steps}
-        lastRequest={lastRequest}
-        lastResponse={lastResponse}
-        onClearSteps={debugSteps.clearSteps}
-        onInspectPrompt={handleInspectPrompt}
-        deepDebug={deepDebug}
-        onDeepDebugToggle={setDeepDebug}
-        onPromptNow={handlePromptNow}
-      />
-      
-      {/* Prompt Viewer for individual message inspection */}
-      <PromptInspectionModal 
-        traceId={selectedTraceForPrompt !== 'direct' ? selectedTraceForPrompt : undefined}
-        promptData={promptViewerData}
-        onClose={() => {
-          setSelectedTraceForPrompt(null);
-          setPromptViewerData(null);
-        }}
-      />
     </Card>
   );
 };
