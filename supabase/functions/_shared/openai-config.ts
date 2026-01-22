@@ -127,7 +127,6 @@ export const TASK_CONFIGS = {
   // Utilities
   'supplement-recognition': MODEL_CONFIGS.VERIFICATION,
   'image-classifier': MODEL_CONFIGS.VERIFICATION,
-  'debug-direct-chat': MODEL_CONFIGS.REASONING,
   
   // Marketing & Communication
   'generate-intelligent-greeting': MODEL_CONFIGS.CREATIVE,
