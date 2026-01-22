@@ -46,7 +46,7 @@ serve(async (req) => {
     // Collect raw data with timezone awareness
     console.log('🔍 Step 1: Collecting raw data with timezone...');
     const raw = await collectRawData(userId, date, timezone);
-    console.log('✅ Raw data collected:', { hasData: raw.hasData, userProfile: !!raw.userProfile });
+    console.log('✅ Raw data collected:', { hasData: raw.hasData, profile: !!(raw as any).profile });
     
     if (!raw.hasData) {
       console.log(`⚠️ No data found for ${date}`);
@@ -125,7 +125,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("❌ Error in generate-day-summary-v2:", error);
-    return errorResponse(500, error.message);
+    const message = error instanceof Error ? error.message : String(error);
+    return errorResponse(500, message);
   }
 });
 
