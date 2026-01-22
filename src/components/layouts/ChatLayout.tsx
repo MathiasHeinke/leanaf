@@ -1,5 +1,3 @@
-import { GlobalHeader } from "@/components/GlobalHeader";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { ReactNode } from "react";
 
 interface ChatLayoutProps {
@@ -10,11 +8,7 @@ interface ChatLayoutProps {
 
 export const ChatLayout = ({ children, chatInput, bannerCollapsed = false }: ChatLayoutProps) => {
   return (
-    <div className="fixed inset-0 flex flex-col bg-background/80 backdrop-blur-sm text-foreground z-50">
-      
-      {/* Header */}
-      <GlobalHeader />
-
+    <div className="fixed inset-0 flex flex-col bg-background/80 backdrop-blur-sm text-foreground z-30 pt-[61px]">
       {/* Scrollbarer Chat - dynamisches Padding basierend auf Banner-Status */}
       <div 
         className="flex-1 min-h-0 px-4 transition-all duration-300 ease-out"
