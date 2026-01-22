@@ -14,7 +14,7 @@ export default async function handleMealCapture(conv: any[], userId: string) {
   } {
     // Extract amount and unit
     const amountMatch = text.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|stück|portion|portionen)?/i);
-    const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
+    const amount = amountMatch ? parseFloat(amountMatch[1]) : undefined;
     const unit = amountMatch?.[2]?.toLowerCase() || 'g';
     
     // Simple food database lookup (mock)

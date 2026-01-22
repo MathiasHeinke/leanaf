@@ -1306,7 +1306,7 @@ Deno.serve(async (req) => {
 
     // Build prompt with memory and conversation history
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
-      persona, context, ragSources, text, images, userMoodContext, conversationHistory 
+      persona, context, ragSources, text, images, userMoodContext, conversationHistory: conversationHistory ?? undefined 
     });
 
     // Store system prompt AND user input for full LLM tracing

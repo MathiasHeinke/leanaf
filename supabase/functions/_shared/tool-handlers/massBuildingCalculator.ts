@@ -137,8 +137,8 @@ function calculateMassBuildingNeeds(params: any) {
     'extreme': 1.3
   };
 
-  const maintenanceCalories = bmr * (activityMultipliers[activityLevel] || 1.725);
-  const trainingBonus = maintenanceCalories * (intensityMultipliers[trainingIntensity] - 1);
+  const maintenanceCalories = bmr * (activityMultipliers[activityLevel as keyof typeof activityMultipliers] || 1.725);
+  const trainingBonus = maintenanceCalories * ((intensityMultipliers[trainingIntensity as keyof typeof intensityMultipliers] || 1.0) - 1);
   
   // ARES approach: Surplus for mass (500-800 kcal above maintenance)
   const surplus = goalWeightGain * 1100; // ~1100 kcal per kg weight gain per week

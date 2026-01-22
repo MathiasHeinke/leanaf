@@ -35,7 +35,7 @@ async function analyzeUserStrengthHistory(supabase: any, userId: string): Promis
       schulterdrücken: 0
     };
 
-    exerciseData.forEach(set => {
+    exerciseData.forEach((set: { exercises?: { name: string }; weight_kg?: number }) => {
       if (!set.exercises?.name || !set.weight_kg) return;
       
       const name = set.exercises.name.toLowerCase();
@@ -117,7 +117,7 @@ async function handleHeavyTrainingPlan(conv: any[], userId: string, args: any) {
     if (strengthAnalysis.hasHistory) {
       strengthInsights = `\n**⚔️ ARES STÄRKEN-ANALYSE:**
 ${Object.entries(strengthAnalysis.maxWeights)
-  .filter(([_, weight]) => weight > 0)
+  .filter(([_, weight]) => (weight as number) > 0)
   .map(([exercise, weight]) => `⚡ ${exercise}: ${weight}kg`)
   .join('\n')}
 
@@ -352,7 +352,7 @@ function generateHeavyTrainingPlan(params: any) {
     }
   };
 
-  const selectedTemplate = splitTemplates[trainingDays] || splitTemplates[4];
+  const selectedTemplate = splitTemplates[trainingDays as keyof typeof splitTemplates] || splitTemplates[4];
 
   return {
     ...selectedTemplate,
