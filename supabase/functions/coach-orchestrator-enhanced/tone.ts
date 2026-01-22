@@ -1,10 +1,11 @@
 import type { CoachPersona } from './persona.ts';
 
-type ToneOpts = {
+export type ToneOpts = {
   addSignOff?: boolean;         // neu: default true, bei open-intake false setzen
   limitEmojis?: number;         // default 1
   respectQuestion?: boolean;    // wenn Text schon mit ? endet → kein Sign-off
   memoryHint?: string;
+  intensityLevel?: 'low' | 'moderate' | 'high';
 };
 
 export function composeVoice(p: CoachPersona, opts?: { memoryHint?: string }) {
@@ -17,7 +18,7 @@ Regeln:
 }
 
 
-export function toLucyTone(raw: string, persona: { sign_off: string; emojis: string[] }, opts: ToneOpts = {}) {
+export function toLucyTone(raw: string, persona: { sign_off?: string; emojis?: string[] }, opts: ToneOpts = {}) {
   const { addSignOff = false, limitEmojis = 1, respectQuestion = true } = opts;
 
   let text = String(raw || "")
@@ -40,7 +41,7 @@ export function toLucyTone(raw: string, persona: { sign_off: string; emojis: str
   if (!addSignOff) return text;                           // << wichtig für Open‑Intake
   if (respectQuestion && alreadyQuestion) return text;
 
-  return `${text}\n\n${persona.sign_off}`;
+  return `${text}\n\n${persona.sign_off || ''}`;
 }
 
 /**

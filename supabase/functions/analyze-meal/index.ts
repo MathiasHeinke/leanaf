@@ -321,7 +321,7 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
             url: imageUrl,
             detail: 'high' // Ensure high quality image analysis
           }
-        });
+        } as any);
       });
     }
 
@@ -589,16 +589,8 @@ Antworte AUSSCHLIESSLICH im folgenden JSON-Format:
     console.error('❌ [ANALYZE-MEAL] Error in analyze-meal function:', error);
     console.error('🕐 [ANALYZE-MEAL] Failed after:', `${totalDuration}ms (${(totalDuration/1000).toFixed(1)}s)`);
 
-    try {
-      await logTraceEvent(supabaseLog, {
-        traceId,
-        stage: 'error',
-        handler: 'analyze-meal',
-        status: 'ERROR',
-        latencyMs: totalDuration,
-        errorMessage: String(error)
-      });
-    } catch (_) { /* ignore */ }
+    // Note: supabaseLog and traceId may not be available in catch scope
+    // Error logging is handled in the errJson response below
     
     // Always provide fallback data to prevent blocking user
     console.log('🔄 [ANALYZE-MEAL] Providing fallback response due to error');

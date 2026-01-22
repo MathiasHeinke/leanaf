@@ -46,7 +46,7 @@ export async function loadRecentDailySummaries(supabase: any, userId: string, li
       .order('date', { ascending: false })
       .limit(limit);
     if (error) return [];
-    return (data || []).map(r => r.summary_md).filter(Boolean);
+    return (data || []).map((r: { summary_md: string }) => r.summary_md).filter(Boolean);
   } catch (_e) {
     return [];
   }

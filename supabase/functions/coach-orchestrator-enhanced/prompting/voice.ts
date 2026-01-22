@@ -4,12 +4,13 @@ export type Archetype = "Kommandant" | "Schmied" | "Vater" | "Weiser" | "Kamerad
 export type VoiceTopic = "plan" | "checkin" | "struggle" | "default" | "success" | "motivation";
 
 export function pickVoiceLine(archetype: Archetype, topic: VoiceTopic = "default"): string {
-  const voicePool = {
+  const voicePool: Record<Archetype, Record<VoiceTopic, readonly string[]>> = {
     Kommandant: {
       plan: ["Befehl klar. Jetzt handeln.", "Keine Ausreden. Nur Ergebnisse.", "Fokus. Los geht's."],
       checkin: ["Status Report. Wie stehen wir?", "Fortschritt melden.", "Zahlen auf den Tisch."],
       struggle: ["Rückzug ist keine Option.", "Kämpf weiter. Das ist ein Befehl.", "Steh auf. Weiter."],
       success: ["Gut gemacht, Soldat.", "Mission erfüllt.", "Weiter so."],
+      motivation: ["Keine Motivation? Disziplin ersetzt.", "Aufstehen. Weitermachen.", "Du hast es in dir."],
       default: ["Fokus. Handy weg.", "Disziplin entscheidet.", "Ausführen."]
     },
     Schmied: {
@@ -17,6 +18,7 @@ export function pickVoiceLine(archetype: Archetype, topic: VoiceTopic = "default
       checkin: ["Wie läuft die Schmiede?", "Eisen noch heiß?", "Zeig mir das Werk."],
       struggle: ["Stahl wird im Feuer geboren.", "Jeder Schlag zählt.", "Weiter hämmern."],
       success: ["Meisterwerk im Entstehen.", "Gute Arbeit am Amboss.", "Der Stahl wird stark."],
+      motivation: ["Die Schmiede wartet.", "Jeder Hammerschlag zählt.", "Dein Meisterwerk ruft."],
       default: ["1% heute. Weiter.", "Hämmern bis es stimmt.", "Feuer bleibt an."]
     },
     Vater: {
@@ -24,6 +26,7 @@ export function pickVoiceLine(archetype: Archetype, topic: VoiceTopic = "default
       checkin: ["Wie geht es dir wirklich?", "Erzähl mal.", "Ich höre zu."],
       struggle: ["Du schaffst das. Ich glaube an dich.", "Einer nach dem anderen.", "Pause ist okay."],
       success: ["Ich bin stolz auf dich.", "Siehst du? Du kannst das.", "Weiter so, mein Kind."],
+      motivation: ["Du hast mehr Kraft als du denkst.", "Ich glaube an dich.", "Ein Schritt nach dem anderen."],
       default: ["Leise stark. Weiter so.", "Du bist nicht allein.", "Schritt für Schritt."]
     },
     Weiser: {
@@ -31,6 +34,7 @@ export function pickVoiceLine(archetype: Archetype, topic: VoiceTopic = "default
       checkin: ["Was sagen die Zahlen?", "Betrachten wir das genauer.", "Lass uns analysieren."],
       struggle: ["Jede Erfahrung lehrt.", "Rückschläge sind Daten.", "Was lernst du daraus?"],
       success: ["Ergebnis der Beständigkeit.", "Wissen wird Weisheit.", "Gut durchdacht."],
+      motivation: ["Weisheit kommt durch Handeln.", "Verstehen kommt durch Tun.", "Die Zeit ist jetzt."],
       default: ["Konsistenz schlägt Intensität.", "Beobachten. Verstehen. Handeln.", "Geduld zahlt sich aus."]
     },
     Kamerad: {
@@ -38,6 +42,7 @@ export function pickVoiceLine(archetype: Archetype, topic: VoiceTopic = "default
       checkin: ["Wie läuft's, Kumpel?", "Alles klar bei dir?", "Update von der Front?"],
       struggle: ["Wir ziehen das durch.", "Ich lass dich nicht fallen.", "Team bleibt zusammen."],
       success: ["Das haben WIR geschafft!", "High Five!", "Auf uns!"],
+      motivation: ["Komm, wir packen das.", "Zusammen sind wir stärker.", "Los geht's, Kumpel."],
       default: ["Kein Drama. Wir gehen.", "Helm auf. Los.", "Seite an Seite."]
     },
     Hearthkeeper: {
@@ -45,11 +50,13 @@ export function pickVoiceLine(archetype: Archetype, topic: VoiceTopic = "default
       checkin: ["Bist du zu Hause angekommen?", "Wie fühlst du dich?", "Brauchst du Ruhe?"],
       struggle: ["Das Haus steht fest.", "Du bist sicher hier.", "Atme tief durch."],
       success: ["Das Feuer brennt warm.", "Heim gefunden.", "Gut gemacht."],
+      motivation: ["Das Feuer brennt für dich.", "Wärme wartet.", "Dein Zuhause gibt Kraft."],
       default: ["Morgen schmieden wir weiter.", "Du bist zu Hause.", "Sicher und warm."]
     }
-  } as const;
+  };
 
-  const lines = voicePool[archetype]?.[topic] || voicePool[archetype]?.default || ["Weiter so."];
+  const archetypePool = voicePool[archetype];
+  const lines = archetypePool?.[topic] || archetypePool?.default || ["Weiter so."];
   return lines[Math.floor(Math.random() * lines.length)];
 }
 

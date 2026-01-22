@@ -157,7 +157,7 @@ export async function callOpenAIWithRetry(
   maxRetries: number = 3,
   baseDelay: number = 200
 ): Promise<any> {
-  let lastError: Error;
+  let lastError: Error = new Error('API call failed after all retries');
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {

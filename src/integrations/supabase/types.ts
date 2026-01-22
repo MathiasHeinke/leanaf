@@ -2341,7 +2341,7 @@ export type Database = {
           email: string | null
           failure_reason: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           user_agent: string | null
         }
@@ -2350,7 +2350,7 @@ export type Database = {
           email?: string | null
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           user_agent?: string | null
         }
@@ -2359,7 +2359,7 @@ export type Database = {
           email?: string | null
           failure_reason?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           user_agent?: string | null
         }
@@ -3705,6 +3705,63 @@ export type Database = {
         }
         Relationships: []
       }
+      nutrition_plans: {
+        Row: {
+          carbs_g: number | null
+          coach_id: string
+          created_at: string | null
+          daily_calories: number | null
+          description: string | null
+          fat_g: number | null
+          goal: string | null
+          id: string
+          is_active: boolean | null
+          meal_schedule: Json | null
+          meals_per_day: number | null
+          name: string
+          notes: string | null
+          protein_g: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          carbs_g?: number | null
+          coach_id?: string
+          created_at?: string | null
+          daily_calories?: number | null
+          description?: string | null
+          fat_g?: number | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean | null
+          meal_schedule?: Json | null
+          meals_per_day?: number | null
+          name: string
+          notes?: string | null
+          protein_g?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          carbs_g?: number | null
+          coach_id?: string
+          created_at?: string | null
+          daily_calories?: number | null
+          description?: string | null
+          fat_g?: number | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean | null
+          meal_schedule?: Json | null
+          meals_per_day?: number | null
+          name?: string
+          notes?: string | null
+          protein_g?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       orchestrator_traces: {
         Row: {
           client_event_id: string | null
@@ -3774,6 +3831,51 @@ export type Database = {
           trace_id?: string
           user_context?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      peptide_protocols: {
+        Row: {
+          coach_id: string
+          created_at: string | null
+          current_week: number | null
+          cycle_weeks: number | null
+          goal: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          peptides: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          coach_id?: string
+          created_at?: string | null
+          current_week?: number | null
+          cycle_weeks?: number | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          peptides?: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string | null
+          current_week?: number | null
+          cycle_weeks?: number | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          peptides?: Json
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -4432,7 +4534,7 @@ export type Database = {
           action: string
           created_at: string | null
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           resource_id: string | null
           resource_type: string | null
@@ -4443,7 +4545,7 @@ export type Database = {
           action: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           resource_id?: string | null
           resource_type?: string | null
@@ -4454,7 +4556,7 @@ export type Database = {
           action?: string
           created_at?: string | null
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           resource_id?: string | null
           resource_type?: string | null
@@ -4469,7 +4571,7 @@ export type Database = {
           event_category: string
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           severity: string
           user_agent: string | null
@@ -4480,7 +4582,7 @@ export type Database = {
           event_category?: string
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           severity?: string
           user_agent?: string | null
@@ -4491,7 +4593,7 @@ export type Database = {
           event_category?: string
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           severity?: string
           user_agent?: string | null
@@ -4800,6 +4902,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      supplement_plans: {
+        Row: {
+          coach_id: string
+          created_at: string | null
+          duration_weeks: number | null
+          goal: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          supplements: Json
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          coach_id?: string
+          created_at?: string | null
+          duration_weeks?: number | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          supplements?: Json
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string | null
+          duration_weeks?: number | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          supplements?: Json
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       supplement_recognition_log: {
         Row: {
@@ -6503,7 +6647,7 @@ export type Database = {
     }
     Functions: {
       _ensure_user_credits: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string | null
           credits_remaining: number | null
@@ -6515,6 +6659,12 @@ export type Database = {
           tester: boolean
           updated_at: string | null
           user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_credits"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       add_credits: {
@@ -6570,14 +6720,8 @@ export type Database = {
         }
         Returns: Json
       }
-      cleanup_old_client_events: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_old_rate_limits: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      cleanup_old_client_events: { Args: never; Returns: number }
+      cleanup_old_rate_limits: { Args: never; Returns: number }
       cleanup_stale_client_events: {
         Args: { max_age?: unknown }
         Returns: number
@@ -6599,10 +6743,7 @@ export type Database = {
         Args: { p_deduct?: boolean; p_feature_type: string }
         Returns: Json
       }
-      current_user_has_role: {
-        Args: { _role?: string }
-        Returns: boolean
-      }
+      current_user_has_role: { Args: { _role?: string }; Returns: boolean }
       days_in_month: {
         Args: { p_month: number; p_year: number }
         Returns: number
@@ -6615,10 +6756,7 @@ export type Database = {
         Args: { p_identifier: string; p_time_window_minutes?: number }
         Returns: Json
       }
-      ensure_daily_goals: {
-        Args: { user_id_param: string }
-        Returns: Json
-      }
+      ensure_daily_goals: { Args: { user_id_param: string }; Returns: Json }
       fast_fluid_totals: {
         Args: { p_d: string; p_user: string }
         Returns: number
@@ -6636,14 +6774,8 @@ export type Database = {
         Args: { p_d: string; p_user: string }
         Returns: number
       }
-      get_coach_analytics_7d: {
-        Args: { p_user_id: string }
-        Returns: Json
-      }
-      get_credits_status: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_coach_analytics_7d: { Args: { p_user_id: string }; Returns: Json }
+      get_credits_status: { Args: never; Returns: Json }
       get_day_context: {
         Args: { p_day: string; p_user: string }
         Returns: Json
@@ -6652,10 +6784,7 @@ export type Database = {
         Args: { p_day: string; p_timezone?: string; p_user: string }
         Returns: Json
       }
-      get_my_uid: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_my_uid: { Args: never; Returns: Json }
       get_next_entry_sequence: {
         Args: { p_date: string; p_user_id: string }
         Returns: number
@@ -6680,7 +6809,7 @@ export type Database = {
         }[]
       }
       get_trace_kpis_24h: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           avg_latency_ms: number | null
           calls: number | null
@@ -6689,11 +6818,14 @@ export type Database = {
           handler_name: string | null
           p90_latency_ms: number | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "v_trace_kpis_24h"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      has_admin_access: {
-        Args: { user_uuid?: string }
-        Returns: boolean
-      }
+      has_admin_access: { Args: { user_uuid?: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -6701,30 +6833,15 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin_by_email: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_admin_user: {
-        Args: { user_uuid?: string }
-        Returns: boolean
-      }
+      is_admin_by_email: { Args: never; Returns: boolean }
+      is_admin_user: { Args: { user_uuid?: string }; Returns: boolean }
       is_enterprise_or_super_admin: {
         Args: { user_uuid?: string }
         Returns: boolean
       }
-      is_super_admin: {
-        Args: { user_uuid?: string }
-        Returns: boolean
-      }
-      is_super_admin_by_email: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_super_admin_user: {
-        Args: { user_uuid?: string }
-        Returns: boolean
-      }
+      is_super_admin: { Args: { user_uuid?: string }; Returns: boolean }
+      is_super_admin_by_email: { Args: never; Returns: boolean }
+      is_super_admin_user: { Args: { user_uuid?: string }; Returns: boolean }
       log_admin_access_attempt: {
         Args: {
           p_access_granted: boolean
@@ -6946,14 +7063,8 @@ export type Database = {
         }
         Returns: Json
       }
-      validate_admin_access: {
-        Args: { p_resource?: string }
-        Returns: boolean
-      }
-      validate_password_strength: {
-        Args: { password: string }
-        Returns: Json
-      }
+      validate_admin_access: { Args: { p_resource?: string }; Returns: boolean }
+      validate_password_strength: { Args: { password: string }; Returns: Json }
     }
     Enums: {
       app_role:

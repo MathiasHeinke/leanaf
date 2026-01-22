@@ -123,9 +123,10 @@ function evaluateCondition(condition: any, userState: UserMoodContext): boolean 
     const userValue = userState[key as keyof UserMoodContext];
     
     if (typeof constraint === 'object' && constraint !== null) {
-      if ('lte' in constraint && (userValue === undefined || userValue > constraint.lte)) return false;
-      if ('gte' in constraint && (userValue === undefined || userValue < constraint.gte)) return false;
-      if ('in' in constraint && (userValue === undefined || !constraint.in.includes(userValue))) return false;
+      const c = constraint as { lte?: number; gte?: number; in?: any[] };
+      if (c.lte !== undefined && (userValue === undefined || (userValue as number) > c.lte)) return false;
+      if (c.gte !== undefined && (userValue === undefined || (userValue as number) < c.gte)) return false;
+      if (c.in !== undefined && (userValue === undefined || !c.in.includes(userValue))) return false;
     } else if (typeof constraint === 'boolean') {
       if (userValue !== constraint) return false;
     }

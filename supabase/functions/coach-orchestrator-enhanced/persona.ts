@@ -7,6 +7,7 @@ export type CoachPersona = {
   sign_off?: string;
   emojis?: string[];
   catchphrase?: string;
+  archetypes?: string[];
 };
 
 function normalizeVoice(v?: string): CoachPersona['voice'] {

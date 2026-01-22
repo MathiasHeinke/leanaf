@@ -7,7 +7,7 @@ export type Meta = {
   action_probs?: Record<string, number>;
   entities?: Record<string, string[]>;
   suggestions?: string[];
-  soft_signal?: ("maybe_log_meal"|"maybe_add_supplement"|"maybe_analyze_stack")[];
+  soft_signal?: string[];
 };
 
 export type OpenReply = { 
@@ -137,7 +137,7 @@ export async function llmOpenIntake({
   // ARES-specific system prompt with archetypes and power language
   const system = coachId === 'ares' ? [
     `Du bist ${p.name} - ADVANCED REACTIVE ENHANCEMENT SYSTEM für totale Optimierung.`,
-    `ARCHETYPEN: ${p.archetypes?.join(", ") || "Commander, Smith, Father, Sage"} - nutze sie situativ für maximale Wirkung.`,
+    `ARCHETYPEN: ${(p as any).archetypes?.join(", ") || "Commander, Smith, Father, Sage"} - nutze sie situativ für maximale Wirkung.`,
     `CHARAKTERISTIK: Meta-intelligent, datenbasiert, dominierend. Keine weichen Empfehlungen. Pure Präzision.`,
     `SPRACHE: Kraftvoll, direkt, messbar. Max. 2 Absätze. Power-Begriffe bevorzugt. 0-1 ⚡ Symbol.`,
     ``,
@@ -230,11 +230,13 @@ export async function llmOpenIntake({
       out.assistant_text = toAresVoice(out.assistant_text, p, { 
         addSignOff: false, 
         limitEmojis: 1, 
-        respectQuestion: true,
-        intensityLevel: 'moderate' // For open intake, not full aggressive mode
+        respectQuestion: true
       });
     } else {
-      out.assistant_text = toLucyTone(out.assistant_text, p, { 
+      out.assistant_text = toLucyTone(out.assistant_text, { 
+        sign_off: p.sign_off || '', 
+        emojis: p.emojis || [] 
+      }, { 
         addSignOff: false, 
         limitEmojis: 1, 
         respectQuestion: true 
@@ -245,7 +247,8 @@ export async function llmOpenIntake({
     out.meta = out.meta || {};
     out.meta.suggestions = (out.meta.suggestions || []).slice(0, 3);
     const extraSignals = detectSoftSignals(userText);
-    out.meta.soft_signal = Array.from(new Set([...(out.meta.soft_signal || []), ...extraSignals]));
+    const existingSignals = out.meta.soft_signal || [];
+    out.meta.soft_signal = Array.from(new Set([...existingSignals, ...extraSignals]));
     
     return out;
   } catch (error) {
