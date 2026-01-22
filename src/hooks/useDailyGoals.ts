@@ -3,7 +3,7 @@ import { loadDailyGoals } from "@/data/queries";
 import { withWatchdog } from "@/utils/timeRange";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { extractGoalsFromProfile, type ARESGoalContext } from "@/ares/adapters/goals";
+import { extractGoalsFromProfile, extractGoalsFromData, type ARESGoalContext } from "@/ares/adapters/goals";
 
 export function useDailyGoals() {
   const [data, setData] = useState<ARESGoalContext | null>(null);
@@ -77,9 +77,10 @@ export function useDailyGoals() {
           setData(null); 
         } else { 
           console.log('[useDailyGoals] Successfully loaded daily goals:', res.data);
-          // Convert legacy goals to ARES format using adapter
+          // Convert to ARES format using universal adapter (supports both column naming conventions)
           if (res.data) {
-            const goals = extractGoalsFromProfile(res.data);
+            const goals = extractGoalsFromData(res.data);
+            console.log('[useDailyGoals] Extracted goals:', goals);
             setData(goals);
           } else {
             setData(null);
