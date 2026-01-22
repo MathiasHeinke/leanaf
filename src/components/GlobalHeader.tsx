@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { Menu, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCredits } from "@/hooks/useCredits";
 import { useLocation, useNavigate } from "react-router-dom";
-import { PointsDebugPanel } from "./PointsDebugPanel";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { COACH_REGISTRY } from "@/lib/coachRegistry";
@@ -18,10 +16,6 @@ export const GlobalHeader = ({
   onRefresh, 
   isRefreshing = false
 }: GlobalHeaderProps) => {
-  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
-  const [clickCount, setClickCount] = useState(0);
-  
-  const { status: creditsStatus } = useCredits();
   const location = useLocation();
   const navigate = useNavigate();
   const { state } = useSidebar();
@@ -29,7 +23,6 @@ export const GlobalHeader = ({
 
   // Get ARES coach data
   const aresCoach = COACH_REGISTRY.ares;
-
 
   // Route to title mapping with breadcrumb support
   const getPageTitle = (pathname: string) => {
@@ -55,35 +48,14 @@ export const GlobalHeader = ({
       case '/credits': return 'Credits & Packs';
       case '/account': return 'Account';
       case '/admin': return 'Admin';
-      case '/gehirn': return 'Gehirn';
       case '/history': return 'Historie';
       case '/transformation': return 'Transformation';
       default: return 'GetleanAI';
     }
   };
 
-  // Reset click count after 1 second
-  useEffect(() => {
-    if (clickCount > 0) {
-      const timer = setTimeout(() => setClickCount(0), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [clickCount]);
-
-
-  // Handle refresh with debug functionality
+  // Handle refresh functionality
   const handleRefresh = () => {
-    const newClickCount = clickCount + 1;
-    setClickCount(newClickCount);
-    
-    // Open debug panel on triple click
-    if (newClickCount >= 3) {
-      setIsDebugPanelOpen(true);
-      setClickCount(0);
-      return;
-    }
-    
-    // Normal refresh functionality
     if (onRefresh) {
       onRefresh();
     } else {
@@ -102,7 +74,6 @@ export const GlobalHeader = ({
       navigate('/coach/ares');
     }
   };
-
 
   return (
     <div className="relative">
@@ -155,14 +126,6 @@ export const GlobalHeader = ({
 
       {/* Spacer to prevent content overlap */}
       <div className="h-[61px]" />
-
-      {/* Debug Panel for Super Admins */}
-      {(creditsStatus?.tester || false) && (
-        <PointsDebugPanel 
-          isOpen={isDebugPanelOpen} 
-          onClose={() => setIsDebugPanelOpen(false)} 
-        />
-      )}
     </div>
   );
 };
