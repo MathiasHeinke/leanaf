@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { saveFluid, type FluidModern } from "@/ares/adapters/fluids";
 import { useTodaysFluids } from '@/hooks/useTodaysFluids';
+import { triggerDataRefresh } from '@/hooks/useDataRefresh';
 
 interface FluidOption {
   id: string;
@@ -104,6 +105,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
         : customFluidName || 'Getränk';
       
       toast.success(`${amountMl}ml ${fluidName} hinzugefügt`);
+      triggerDataRefresh(); // Notify all fluid-related components to refresh
       onFluidUpdate?.();
     } catch (error) {
       console.error('Error adding fluid directly:', error);
@@ -147,6 +149,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
       setNotes('');
       setShowAddForm(false);
       
+      triggerDataRefresh(); // Notify all fluid-related components to refresh
       onFluidUpdate?.();
     } catch (error) {
       console.error('Error adding fluid:', error);
