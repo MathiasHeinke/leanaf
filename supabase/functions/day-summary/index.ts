@@ -194,7 +194,8 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error(`❌ Fehler bei Day-Summary:`, e);
-    return resp(500, { status: "error", message: e.message });
+    const message = e instanceof Error ? e.message : String(e);
+    return resp(500, { status: "error", message });
   }
 });
 

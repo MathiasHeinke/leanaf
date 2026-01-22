@@ -27,12 +27,12 @@ serve(async (req) => {
 
     const { plan, coupon_code } = await req.json();
 
-    const planPricing = {
+    const planPricing: Record<string, { amount: number; name: string; interval: string; interval_count?: number }> = {
       monthly: { amount: 1999, name: "GetLean AI Premium - Monatlich", interval: "month" },
       sixmonths: { amount: 8999, name: "GetLean AI Premium - 6 Monate", interval: "month", interval_count: 6 }
     };
 
-    const selectedPlan = planPricing[plan as keyof typeof planPricing];
+    const selectedPlan = planPricing[plan as string];
     if (!selectedPlan) throw new Error(`Invalid plan: ${plan}`);
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -79,7 +79,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

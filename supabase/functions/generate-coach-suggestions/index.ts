@@ -15,6 +15,7 @@ const corsHeaders = {
 };
 
 interface UserData {
+  userId: string;
   todaysTotals: {
     calories: number;
     protein: number;
@@ -268,12 +269,13 @@ serve(async (req) => {
       .eq('date', today);
 
     // Process supplement data for context
+    const categories = userSupplements?.map(s => (s.supplement_database as any)?.category || 'Custom').filter(Boolean) || [];
     const supplementContext = {
       hasSupplements: userSupplements && userSupplements.length > 0,
       totalSupplements: userSupplements?.length || 0,
       takenToday: todayIntake?.filter(log => log.taken).length || 0,
       missedToday: (userSupplements?.reduce((sum, s) => sum + (s.timing?.length || 0), 0) || 0) - (todayIntake?.filter(log => log.taken).length || 0),
-      categories: [...new Set(userSupplements?.map(s => s.supplement_database?.category || 'Custom').filter(Boolean))] || []
+      categories: [...new Set(categories)]
     };
 
     const systemPrompt = `Du bist ein intelligenter Assistent, der PERPLEXITY-STYLE Follow-up-Fragen für spezialisierte Fitness-Coaches generiert.
@@ -437,10 +439,11 @@ WICHTIG:
       { text: 'Meine nächsten Schritte', prompt: 'Was sind die wichtigsten nächsten Schritte für mich?' }
     ];
 
+    const message = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ 
       suggestions: fallbackSuggestions,
       success: false,
-      error: error.message 
+      error: message 
     }), {
       status: 200, // Return 200 to provide fallback suggestions
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

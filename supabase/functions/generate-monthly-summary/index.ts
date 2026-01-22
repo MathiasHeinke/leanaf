@@ -131,10 +131,11 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Unexpected error in generate-monthly-summary:', error);
+    const message = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        details: error.message 
+        details: message 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

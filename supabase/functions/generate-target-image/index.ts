@@ -77,7 +77,7 @@ serve(async (req) => {
     // Get user profile data for better prompting
     const { data: profile } = await supabase
       .from('profiles')
-      .select('gender, height, age, goal, target_weight, target_body_fat_percentage, weight, first_name')
+      .select('gender, height, age, goal, target_weight, target_body_fat_percentage, weight, first_name, body_fat_percentage, target_date')
       .eq('user_id', userId)
       .single();
 
@@ -277,7 +277,8 @@ serve(async (req) => {
               console.log(`Base64 conversion successful, length: ${inputImageBase64.length} characters`);
             } catch (imageError) {
               console.error('❌ Failed to fetch and convert input image:', imageError);
-              throw new Error(`Failed to process input image: ${imageError.message}`);
+              const imgErrMsg = imageError instanceof Error ? imageError.message : String(imageError);
+              throw new Error(`Failed to process input image: ${imgErrMsg}`);
             }
             
             const requestBody = {
@@ -580,16 +581,17 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in generate-target-image function:', error);
-    console.error('Error stack:', error.stack);
+    const errObj = error instanceof Error ? error : new Error(String(error));
+    console.error('Error stack:', errObj.stack);
     console.error('Error details:', {
-      message: error.message,
-      name: error.name,
-      cause: error.cause
+      message: errObj.message,
+      name: errObj.name,
+      cause: errObj.cause
     });
     
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: errObj.message,
         details: 'Check function logs for more information',
         timestamp: new Date().toISOString()
       }),

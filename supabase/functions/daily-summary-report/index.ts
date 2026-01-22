@@ -182,8 +182,9 @@ Deno.serve(async (req) => {
     )
   } catch (e) {
     console.error('daily-summary-report error:', e)
+    const message = e instanceof Error ? e.message : String(e);
     return new Response(
-      JSON.stringify({ error: 'Internal server error', details: e.message }),
+      JSON.stringify({ error: 'Internal server error', details: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
