@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cors } from '../_shared/ares/cors.ts';
 import { newTraceId } from '../_shared/ares/ids.ts';
 import { traceStart, traceUpdate, traceDone, traceFail } from '../_shared/ares/trace.ts';
-import { decideAresDial, loadUserMoodContext, getRitualContext, type UserMoodContext, type AresDialResult } from './aresDial.ts';
+import { decideAresDial, loadUserMoodContext, getRitualContext, getModeDescription, type UserMoodContext, type AresDialResult, type AresMode } from './aresDial.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -873,170 +873,112 @@ async function fetchRagSources({ text, context }: { text: string; context: any }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PROMPT BUILDING WITH MEMORY INTEGRATION
+// PROMPT BUILDING WITH MEMORY INTEGRATION - Phase 2 Simplified
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext }: {
+// Generate current German date string
+function getCurrentGermanDate(): string {
+  const now = new Date();
+  const germanDays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  const germanMonths = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
+                        'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  return `${germanDays[now.getDay()]}, ${now.getDate()}. ${germanMonths[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+// Format conversation history for prompt
+function formatConversationHistory(conversations: any[]): string {
+  if (!conversations || conversations.length === 0) return '';
+  
+  // Reverse to get chronological order (oldest first)
+  const chronological = [...conversations].reverse();
+  
+  const formatted = chronological.map(c => {
+    const date = new Date(c.created_at).toLocaleString('de-DE', { 
+      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+    });
+    return `[${date}] User: ${c.message}\n[${date}] ARES: ${c.response?.substring(0, 200)}${c.response?.length > 200 ? '...' : ''}`;
+  }).join('\n\n');
+  
+  return formatted;
+}
+
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory }: {
   persona: any;
   context: any;
   ragSources: any;
   text: string;
   images: any;
   userMoodContext?: UserMoodContext;
+  conversationHistory?: any[];
 }) {
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
   const ritualContext = getRitualContext();
-  const finalDial = ritualContext?.dial || dialResult.dial;
-  const finalArchetype = ritualContext?.archetype || dialResult.archetype;
+  const finalMode = (ritualContext?.mode || dialResult.mode) as AresMode;
+  const finalTemperature = ritualContext?.temperature || dialResult.temperature;
   
-  console.log(`[ARES] Dial selected: ${finalDial}, Archetype: ${finalArchetype}, Reason: ${dialResult.reason}`);
+  console.log(`[ARES] Mode selected: ${finalMode}, Temp: ${finalTemperature}, Reason: ${dialResult.reason}`);
   
-  const promptContext = {
-    identity: { 
-      name: context.profile?.preferred_name || context.profile?.first_name || null 
-    },
-    dial: finalDial,
-    archetype: finalArchetype,
-    userMsg: text,
-    metrics: {
-      kcalDeviation: 0,
-      missedMissions: userMoodContext?.missed_tasks || 0,
-      dailyReview: false,
-      streak: userMoodContext?.streak || 0,
-      noWorkoutDays: userMoodContext?.no_workout_days || 0
-    },
-    facts: {
-      weight: context.profile?.weight,
-      goalWeight: context.profile?.target_weight,
-      tdee: context.profile?.tdee
-    },
-    goals: context.profile?.goals ? [{ short: context.profile.goals }] : null,
-    timeOfDay: getTimeOfDay(),
-    ritual: ritualContext?.ritual || null
-  };
-
-  const dialSettings: Record<number, { temp: number; maxWords: number; archetype: string; style: string }> = {
-    1: { temp: 0.7, maxWords: 400, archetype: "COMRADE", style: "Supportive, motivating, encouraging" },
-    2: { temp: 0.75, maxWords: 450, archetype: "SMITH", style: "Steady, methodical, progressive" },
-    3: { temp: 0.8, maxWords: 500, archetype: "FATHER", style: "Nurturing, grounded, protective" },
-    4: { temp: 0.85, maxWords: 550, archetype: "COMMANDER", style: "Direct, structured, no-excuses" },
-    5: { temp: 0.9, maxWords: 600, archetype: "DRILL", style: "Intense, demanding, transformative" }
+  const userName = context.profile?.preferred_name || context.profile?.first_name || null;
+  const currentDate = getCurrentGermanDate();
+  const timeOfDay = getTimeOfDay();
+  
+  // Mode-specific style instruction
+  const modeStyle = {
+    supportive: 'Sei verständnisvoll und ermutigend. Erkenne Herausforderungen an, ohne zu urteilen.',
+    balanced: 'Sei freundlich und klar. Balance zwischen Support und konkreten Handlungsschritten.',
+    direct: 'Sei direkt und fordernd. Keine Ausreden, klare Erwartungen.'
   };
   
-  const dial = dialSettings[finalDial] || dialSettings[3];
+  // Build conversation history section
+  const historySection = conversationHistory && conversationHistory.length > 0 
+    ? `\n## LETZTE GESPRÄCHE (Kontext)
+${formatConversationHistory(conversationHistory)}`
+    : '';
+  
+  // Compact system prompt - natural language, no verbose sections
+  const systemPrompt = `Du bist ARES, ein erfahrener Fitness- und Lifestyle-Coach.
 
-  const archetypeInstructions: Record<string, string> = {
-    COMRADE: `Du bist ein unterstützender Kamerad. Motiviere durch Verständnis und geteilte Erfahrung. 
-              Feiere kleine Siege. Betone den Weg, nicht nur das Ziel. Sprich natürlich und authentisch.`,
-    SMITH: `Du bist ein methodischer Handwerker. Fokus auf Prozess und stetige Verbesserung.
-            Gib konkrete, umsetzbare Schritte. Bleib praktisch und lösungsorientiert.`,
-    FATHER: `Du bist ein weiser Mentor. Biete Halt und Perspektive ohne zu urteilen.
-             Erkenne Emotionen an, aber führe sanft zurück zum Fokus. Sei warm aber nicht kitschig.`,
-    COMMANDER: `Du bist ein strukturierter Anführer. Klare Ansagen, keine Ausreden.
-                Setze klare Erwartungen. Direkt aber respektvoll.`,
-    DRILL: `Du bist ein fordernder Trainer. Maximale Intensität, transformative Energie.
-            Akzeptiere nur Exzellenz. Push ohne zu beleidigen.`
-  };
+**AKTUELLES DATUM: ${currentDate}**
+**TAGESZEIT: ${timeOfDay}**
 
-  // Build memory context string
-  const memory = context.memory || {};
-  const memoryContext = memory.trust_level > 0 || memory.relationship_stage !== 'new' ? `
-## BEZIEHUNGS-KONTEXT (Memory)
-- Vertrauenslevel: ${memory.trust_level}/10
-- Beziehungsphase: ${memory.relationship_stage}
-${memory.conversation_context?.topics_discussed?.length > 0 ? `- Besprochene Themen: ${memory.conversation_context.topics_discussed.slice(-5).join(', ')}` : ''}
-${memory.conversation_context?.success_moments?.length > 0 ? `- Erfolgsmomente: ${memory.conversation_context.success_moments.slice(-3).join(', ')}` : ''}
-${memory.conversation_context?.struggles_mentioned?.length > 0 ? `- Herausforderungen: ${memory.conversation_context.struggles_mentioned.slice(-3).join(', ')}` : ''}
-` : '';
+${userName ? `Du sprichst mit ${userName}.` : ''}
 
-  const systemPrompt = `# ARES - ULTIMATE COACHING INTELLIGENCE
-Du bist ARES - die ultimative Coaching-Intelligence für totale menschliche Optimierung.
+## DEIN STIL HEUTE
+${modeStyle[finalMode]}
 
-## AKTUELLER MODUS: ${dial.archetype} (Dial ${promptContext.dial})
-${archetypeInstructions[dial.archetype] || archetypeInstructions.SMITH}
+## USER-DATEN
+${context.profile?.weight ? `Gewicht: ${context.profile.weight}kg` : ''}${context.profile?.target_weight ? ` → Ziel: ${context.profile.target_weight}kg` : ''}
+${context.profile?.tdee ? `TDEE: ${context.profile.tdee} kcal` : ''}
+${userMoodContext?.streak ? `🔥 Streak: ${userMoodContext.streak} Tage` : ''}
+${userMoodContext?.no_workout_days && userMoodContext.no_workout_days > 0 ? `⚠️ ${userMoodContext.no_workout_days} Tage ohne Training` : ''}
 
-## CORE IDENTITY
-- **Intensität**: Angepasst an User-Zustand (aktuell: Dial ${promptContext.dial}/5)
-- **Autorität**: Sprichst mit Gewissheit eines Masters  
-- **Synthese**: Verbindest alle Coaching-Bereiche zu einem System
-- **Empathie**: Erkennst den emotionalen Zustand des Users
-
-## COMMUNICATION STYLE
-- Stil: ${dial.style}
-- Intensität angepasst an aktuellen Dial-Level
-${promptContext.dial <= 2 ? "- Unterstützend und motivierend" : ""}
-${promptContext.dial === 3 ? "- Ausgewogen: Support + Struktur" : ""}
-${promptContext.dial >= 4 ? "- Direkt und fordernd, keine Ausreden" : ""}
-
-## EXPERTISE DOMAINS
-1. **TRAINING**: Old-School Mass Building + Evidence-Based Periodization
-2. **NUTRITION**: Aggressive Optimization + Precision Timing  
-3. **RECOVERY**: Elite Regeneration + HRV Optimization
-4. **MINDSET**: Mental Toughness + Performance Psychology
-5. **LIFESTYLE**: Total Life Optimization + Habit Mastery
-6. **SUPPLEMENTS**: Evidence-Based Supplementierung
-7. **PEPTIDE**: Advanced Optimization Protocols (nur bei expliziter Anfrage)
-
-${promptContext.identity.name ? `User-Name: ${promptContext.identity.name}` : ""}
-${memoryContext}
-
-## USER CONTEXT (DEINE DATEN - DU KENNST DIESE!)
-${promptContext.facts?.weight ? `- Aktuelles Gewicht: ${promptContext.facts.weight} kg` : ""}
-${promptContext.facts?.goalWeight ? `- Zielgewicht: ${promptContext.facts.goalWeight} kg` : ""}
-${promptContext.facts?.tdee ? `- Täglicher Kalorienbedarf (TDEE): ${promptContext.facts.tdee} kcal` : ""}
-${promptContext.metrics.streak > 0 ? `- Aktuelle Streak: ${promptContext.metrics.streak} Tage 🔥` : ""}
-${promptContext.metrics.noWorkoutDays > 0 ? `- Tage ohne Training: ${promptContext.metrics.noWorkoutDays}` : ""}
-
-### Letzte Mahlzeiten (letzte 7 Tage):
+### Letzte Aktivitäten
 ${context.recent_meals?.length > 0 
-  ? context.recent_meals.slice(0, 5).map((m: any) => `- ${m.title || 'Mahlzeit'}: ${m.calories || 0} kcal, ${m.protein || 0}g Protein, ${m.carbs || 0}g Carbs, ${m.fat || 0}g Fett`).join('\n')
-  : "- Keine Mahlzeiten geloggt"}
-
-### Letzte Workouts (letzte 7 Tage):
+  ? `Mahlzeiten: ${context.recent_meals.slice(0, 3).map((m: any) => `${m.title || 'Mahlzeit'} (${m.calories || 0}kcal)`).join(', ')}`
+  : 'Keine Mahlzeiten geloggt'}
 ${context.recent_workouts?.length > 0
-  ? context.recent_workouts.slice(0, 3).map((w: any) => `- ${w.workout_type || 'Training'}: ${w.duration_minutes || 0} min${w.notes ? ` - ${w.notes}` : ''}`).join('\n')
-  : "- Keine Workouts geloggt"}
+  ? `\nWorkouts: ${context.recent_workouts.slice(0, 2).map((w: any) => `${w.workout_type || 'Training'} (${w.duration_minutes || 0}min)`).join(', ')}`
+  : ''}
+${historySection}
+${ragSources?.knowledge_chunks?.length > 0 ? `\n## WISSEN\n${ragSources.knowledge_chunks.slice(0, 2).join('\n')}` : ''}
 
-### Schlaf (letzte Woche):
-${context.recent_sleep?.length > 0
-  ? `Durchschnittlich ${(context.recent_sleep.reduce((sum: number, s: any) => sum + (s.hours || 0), 0) / context.recent_sleep.length).toFixed(1)}h pro Nacht`
-  : "- Keine Schlafdaten"}
+## TOOLS (bei Bedarf automatisch nutzen)
+- get_meta_analysis: Ganzheitliche Analyse
+- create_workout_plan / create_nutrition_plan / create_supplement_plan: Pläne erstellen
+- get_user_plans / update_plan: Bestehende Pläne
 
-### Aktive Supplements:
-${context.active_supplements?.length > 0
-  ? context.active_supplements.map((s: any) => `- ${s.supplement_database?.name || 'Supplement'}: ${s.dosage || ''} (${s.timing || 'timing not set'})`).join('\n')
-  : "- Keine aktiven Supplements"}
-
-${ragSources.knowledge_chunks?.length > 0 ? `## KNOWLEDGE BASE CONTEXT
-${ragSources.knowledge_chunks.slice(0, 3).join('\n\n')}` : ""}
-
-## TOOL-NUTZUNG
-Du hast Zugriff auf folgende Tools die du bei Bedarf automatisch aufrufen kannst:
-- **get_meta_analysis**: Ganzheitliche Analyse der User-Daten
-- **create_workout_plan**: Trainingsplan erstellen und in DB speichern
-- **create_nutrition_plan**: Ernährungsplan erstellen und in DB speichern
-- **create_supplement_plan**: Supplement-Stack erstellen und in DB speichern
-- **create_peptide_protocol**: Peptid-Protokoll erstellen (nur bei expliziter Nachfrage)
-- **get_user_plans**: Aktive Pläne des Users abrufen
-- **update_plan**: Bestehenden Plan aktualisieren
-
-Nutze Tools wenn der User explizit nach Plänen fragt oder wenn eine detaillierte Analyse nötig ist.
-
-## RESPONSE RULES
-- Antworte so ausführlich wie nötig (ca. ${dial.maxWords} Wörter als Richtwert, aber flexibel)
-- Wende den ${dial.archetype}-Stil natürlich an - keine roboterhaften Floskeln
-- Zeitkontext: ${promptContext.timeOfDay}
-${promptContext.ritual ? `- Aktuelles Ritual: ${promptContext.ritual.type} - nutze entsprechende Prompts` : ""}
-- Bei Plan-Erstellung: Fasse den erstellten Plan zusammen und bestätige die Speicherung
-- WICHTIG: Sprich wie ein echter Mensch - keine übertriebene Motivation oder Coaching-Floskeln
-
-**ARES = ADAPTIVE RESPONSE EXCELLENCE SYSTEM**`;
+## WICHTIG
+- Sprich natürlich, wie ein echter Mensch - keine Coaching-Floskeln
+- Antworte prägnant (100-400 Wörter), nicht mehr als nötig
+- Nutze das aktuelle Datum wenn nach Zeit gefragt wird
+- Beziehe dich auf frühere Gespräche wenn relevant`;
 
   return { 
     systemPrompt, 
     completePrompt: systemPrompt + "\n\nUser: " + text, 
-    dial,
-    temperature: dial.temp 
+    dial: { temp: finalTemperature, archetype: finalMode },
+    temperature: finalTemperature,
+    mode: finalMode
   };
 }
 
@@ -1343,6 +1285,17 @@ Deno.serve(async (req) => {
       return {} as UserMoodContext;
     });
 
+    // Load conversation history (last 10 messages) for context
+    const { data: conversationHistory } = await supaSvc
+      .from('coach_conversations')
+      .select('message, response, created_at')
+      .eq('user_id', user.id)
+      .eq('coach_id', 'ares')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    
+    console.log(`[ARES] Loaded ${conversationHistory?.length || 0} previous conversations`);
+
     // Store full context in trace for debugging
     await traceUpdate(traceId, { 
       status: 'context_loaded', 
@@ -1351,9 +1304,9 @@ Deno.serve(async (req) => {
       rag_sources: ragSources 
     } as any);
 
-    // Build prompt with memory
+    // Build prompt with memory and conversation history
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
-      persona, context, ragSources, text, images, userMoodContext 
+      persona, context, ragSources, text, images, userMoodContext, conversationHistory 
     });
 
     // Store system prompt AND user input for full LLM tracing
@@ -1361,7 +1314,7 @@ Deno.serve(async (req) => {
       status: 'prompt_built', 
       system_prompt: systemPrompt, 
       complete_prompt: completePrompt,
-      llm_input: { user_message: text, temperature, model: 'gpt-4o-mini' }
+      llm_input: { user_message: text, temperature, model: 'gpt-4o' }
     } as any);
 
     // Call LLM with Function Calling

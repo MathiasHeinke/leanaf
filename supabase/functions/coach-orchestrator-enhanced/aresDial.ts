@@ -1,5 +1,5 @@
-// ============= ARES Dial Selection System =============
-// Phase 1: Core function implementing JSON trigger rules
+// ============= ARES Dial Selection System - Phase 2 Simplified =============
+// Vereinfachtes 3-Modi System: supportive, balanced, direct
 
 export interface UserMoodContext {
   mood_score?: number;
@@ -12,207 +12,154 @@ export interface UserMoodContext {
   alcohol_intake?: boolean;
 }
 
+// Simplified result type
+export type AresMode = 'supportive' | 'balanced' | 'direct';
+
 export interface AresDialResult {
-  dial: number;
-  archetype: string;
+  dial: number;  // For backwards compatibility: 1=supportive, 2=balanced, 3=direct
+  mode: AresMode;
+  archetype: string;  // Legacy field
   reason: string;
+  temperature: number;
   ritual?: {
     type: 'muster' | 'grind' | 'hearth';
     prompt_key: string;
   };
 }
 
-// JSON Trigger Rules (from your specification)
-const DIAL_RULES = {
-  "dial_selection": {
-    "default": 2,
-    "rules": [
-      {
-        "condition": {
-          "mood_score": { "lte": 3 },
-          "energy_level": { "lte": 4 }
-        },
-        "set_dial": 3,
-        "archetype": "father",
-        "reason": "User hat niedrige Stimmung & Energie – beruhigend, erdend"
-      },
-      {
-        "condition": {
-          "mood_score": { "lte": 5 },
-          "streak": { "gte": 3 }
-        },
-        "set_dial": 1,
-        "archetype": "comrade",
-        "reason": "User leicht niedergeschlagen, aber konstant – motivierend"
-      },
-      {
-        "condition": {
-          "no_workout_days": { "gte": 3 },
-          "mood_score": { "gte": 6 }
-        },
-        "set_dial": 4,
-        "archetype": "commander",
-        "reason": "Kein Training trotz guter Stimmung – klarer Rahmen"
-      },
-      {
-        "condition": {
-          "missed_tasks": { "gte": 2 },
-          "last_dial": { "in": [2, 3, 4] }
-        },
-        "set_dial": 5,
-        "archetype": "drill",
-        "reason": "Wiederholte Verfehlungen trotz Support – Eskalation"
-      },
-      {
-        "condition": {
-          "recent_binge": true,
-          "alcohol_intake": true
-        },
-        "set_dial": 3,
-        "archetype": "father",
-        "reason": "Schutzmodus nach Eskalation – Contain & Compress"
-      }
-    ]
+// Mode configuration - simple and clear
+const MODE_CONFIG: Record<AresMode, { temp: number; description: string }> = {
+  supportive: {
+    temp: 0.7,
+    description: 'Sanft, verständnisvoll, ermutigend'
   },
-  "ritual_schedule": {
-    "muster": {
-      "trigger_time": "06:00-09:00",
-      "archetype": "smith",
-      "dial": 2,
-      "prompt_key": "morning_ritual"
-    },
-    "grind": {
-      "trigger_time": "11:30-14:00",
-      "archetype": "comrade",
-      "dial": 1,
-      "prompt_key": "midday_check"
-    },
-    "hearth": {
-      "trigger_time": "20:30-23:00",
-      "archetype": "hearthkeeper",
-      "dial": 3,
-      "prompt_key": "evening_review"
-    }
+  balanced: {
+    temp: 0.8,
+    description: 'Normal, freundlich, ausgewogen'
   },
-  "fallback_modes": {
-    "trigger_words": ["überfordert", "schwach", "aufgeben", "allein", "versagt"],
-    "emergency_response": {
-      "dial": 3,
-      "archetype": "father",
-      "playbook": "contain_compress_commit"
-    }
-  },
-  "celebration_triggers": {
-    "streaks": [7, 14, 21, 30],
-    "milestones": {
-      "weight_loss": [-5, -10],
-      "lean_mass_gain": [5],
-      "protocol_week_success": 0.9
-    },
-    "response": {
-      "dial": 3,
-      "archetype": "father",
-      "tone": "celebratory and proud - acknowledge the consistency and effort"
-    }
+  direct: {
+    temp: 0.85,
+    description: 'Direkt, pushend, fordernd'
   }
 };
 
-// Helper: Check if condition matches user state
-function evaluateCondition(condition: any, userState: UserMoodContext): boolean {
-  for (const [key, constraint] of Object.entries(condition)) {
-    const userValue = userState[key as keyof UserMoodContext];
-    
-    if (typeof constraint === 'object' && constraint !== null) {
-      const c = constraint as { lte?: number; gte?: number; in?: any[] };
-      if (c.lte !== undefined && (userValue === undefined || (userValue as number) > c.lte)) return false;
-      if (c.gte !== undefined && (userValue === undefined || (userValue as number) < c.gte)) return false;
-      if (c.in !== undefined && (userValue === undefined || !c.in.includes(userValue))) return false;
-    } else if (typeof constraint === 'boolean') {
-      if (userValue !== constraint) return false;
-    }
+// Trigger words for supportive mode
+const SUPPORTIVE_TRIGGERS = [
+  'überfordert', 'schwach', 'aufgeben', 'allein', 'versagt',
+  'schaffe es nicht', 'zu viel', 'müde', 'erschöpft', 'traurig',
+  'frustriert', 'demotiviert', 'hilfe', 'keine kraft'
+];
+
+// Trigger words for direct mode
+const DIRECT_TRIGGERS = [
+  'los gehts', 'bin bereit', 'push me', 'gib mir alles',
+  'keine ausreden', 'vollgas', 'härter', 'mehr intensität',
+  'kick ass', 'let\'s go', 'motiviert', 'ready'
+];
+
+// Celebration triggers for mode adjustment
+const CELEBRATION_STREAKS = [7, 14, 21, 30];
+
+/**
+ * Core function: Detect mode based on user text and context
+ */
+export function detectMode(userText: string, userState: UserMoodContext): AresMode {
+  const lowerText = userText.toLowerCase();
+  
+  // Check for supportive triggers first (user struggling)
+  const hasSupportiveTrigger = SUPPORTIVE_TRIGGERS.some(word => lowerText.includes(word));
+  if (hasSupportiveTrigger) {
+    console.log('[ARES-MODE] Supportive trigger detected in text');
+    return 'supportive';
   }
-  return true;
+  
+  // Check for direct triggers (user motivated)
+  const hasDirectTrigger = DIRECT_TRIGGERS.some(word => lowerText.includes(word));
+  if (hasDirectTrigger) {
+    console.log('[ARES-MODE] Direct trigger detected in text');
+    return 'direct';
+  }
+  
+  // Context-based detection
+  if (userState.mood_score !== undefined && userState.mood_score <= 4) {
+    console.log('[ARES-MODE] Low mood detected, going supportive');
+    return 'supportive';
+  }
+  
+  if (userState.energy_level !== undefined && userState.energy_level <= 3) {
+    console.log('[ARES-MODE] Low energy detected, going supportive');
+    return 'supportive';
+  }
+  
+  // Direct if no workout for 3+ days but good mood
+  if (userState.no_workout_days && userState.no_workout_days >= 3 && 
+      (userState.mood_score === undefined || userState.mood_score >= 6)) {
+    console.log('[ARES-MODE] No workout + good mood, going direct');
+    return 'direct';
+  }
+  
+  // Default: balanced
+  return 'balanced';
 }
 
-// Core: Decide ARES dial based on user state
+/**
+ * Main function: Decide ARES dial based on user state and text
+ */
 export function decideAresDial(userState: UserMoodContext, userText?: string): AresDialResult {
   console.log('[ARES-DIAL] Evaluating user state:', userState);
   
-  // Check for emergency fallback triggers first
-  if (userText) {
-    const lowerText = userText.toLowerCase();
-    const triggerWords = DIAL_RULES.fallback_modes.trigger_words;
-    const hasEmergencyWord = triggerWords.some(word => lowerText.includes(word));
-    
-    if (hasEmergencyWord) {
-      console.log('[ARES-DIAL] Emergency trigger detected');
-      return {
-        dial: DIAL_RULES.fallback_modes.emergency_response.dial,
-        archetype: DIAL_RULES.fallback_modes.emergency_response.archetype,
-        reason: "Emergency fallback triggered"
-      };
-    }
+  const mode = userText ? detectMode(userText, userState) : 'balanced';
+  const config = MODE_CONFIG[mode];
+  
+  // Map mode to legacy dial number for backwards compatibility
+  const dialNumber = mode === 'supportive' ? 1 : mode === 'balanced' ? 2 : 3;
+  
+  // Check for celebration
+  let reason = `Mode: ${mode}`;
+  if (userState.streak && CELEBRATION_STREAKS.includes(userState.streak)) {
+    reason = `${userState.streak}-day streak! 🔥 ${reason}`;
+    console.log(`[ARES-DIAL] Celebrating ${userState.streak}-day streak`);
   }
   
-  // Check celebration triggers
-  if (userState.streak) {
-    const celebrationStreaks = DIAL_RULES.celebration_triggers.streaks;
-    if (celebrationStreaks.includes(userState.streak)) {
-      console.log('[ARES-DIAL] Celebration trigger for streak:', userState.streak);
-      return {
-        dial: DIAL_RULES.celebration_triggers.response.dial,
-        archetype: DIAL_RULES.celebration_triggers.response.archetype,
-        reason: `Celebrating ${userState.streak}-day streak`
-      };
-    }
-  }
+  console.log(`[ARES-DIAL] Selected mode: ${mode} (dial ${dialNumber}), temp: ${config.temp}`);
   
-  // Evaluate dial selection rules
-  for (const rule of DIAL_RULES.dial_selection.rules) {
-    if (evaluateCondition(rule.condition, userState)) {
-      console.log('[ARES-DIAL] Rule matched:', rule.reason);
-      return {
-        dial: rule.set_dial,
-        archetype: rule.archetype,
-        reason: rule.reason
-      };
-    }
-  }
-  
-  // Default dial
-  console.log('[ARES-DIAL] Using default dial');
   return {
-    dial: DIAL_RULES.dial_selection.default,
-    archetype: "smith",
-    reason: "Default archetype - steady progress focus"
+    dial: dialNumber,
+    mode: mode,
+    archetype: mode,  // Legacy field, just use mode name
+    reason: reason,
+    temperature: config.temp
   };
 }
 
-// Time-based ritual detection
+/**
+ * Time-based ritual detection (unchanged from Phase 1)
+ */
 export function getRitualContext(): AresDialResult | null {
   const now = new Date();
-  const timeStr = now.toTimeString().slice(0, 5); // HH:MM format
-  const [hours, minutes] = timeStr.split(':').map(Number);
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
   const currentMinutes = hours * 60 + minutes;
   
-  // Check each ritual time window
-  for (const [ritualType, config] of Object.entries(DIAL_RULES.ritual_schedule)) {
-    const [startTime, endTime] = config.trigger_time.split('-');
-    const [startHours, startMins] = startTime.split(':').map(Number);
-    const [endHours, endMins] = endTime.split(':').map(Number);
-    
-    const startMinutes = startHours * 60 + startMins;
-    const endMinutes = endHours * 60 + endMins;
-    
-    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
-      console.log(`[ARES-DIAL] Ritual time detected: ${ritualType}`);
+  const rituals: { name: string; start: number; end: number; mode: AresMode; prompt: string }[] = [
+    { name: 'muster', start: 6*60, end: 9*60, mode: 'balanced', prompt: 'morning_ritual' },
+    { name: 'grind', start: 11*60+30, end: 14*60, mode: 'balanced', prompt: 'midday_check' },
+    { name: 'hearth', start: 20*60+30, end: 23*60, mode: 'supportive', prompt: 'evening_review' }
+  ];
+  
+  for (const ritual of rituals) {
+    if (currentMinutes >= ritual.start && currentMinutes <= ritual.end) {
+      console.log(`[ARES-DIAL] Ritual time detected: ${ritual.name}`);
+      const config = MODE_CONFIG[ritual.mode];
       return {
-        dial: config.dial,
-        archetype: config.archetype,
-        reason: `Ritual time: ${ritualType}`,
+        dial: ritual.mode === 'supportive' ? 1 : ritual.mode === 'balanced' ? 2 : 3,
+        mode: ritual.mode,
+        archetype: ritual.mode,
+        reason: `Ritual: ${ritual.name}`,
+        temperature: config.temp,
         ritual: {
-          type: ritualType as 'muster' | 'grind' | 'hearth',
-          prompt_key: config.prompt_key
+          type: ritual.name as 'muster' | 'grind' | 'hearth',
+          prompt_key: ritual.prompt
         }
       };
     }
@@ -221,12 +168,14 @@ export function getRitualContext(): AresDialResult | null {
   return null;
 }
 
-// Load user mood context from database
+/**
+ * Load user mood context from database
+ */
 export async function loadUserMoodContext(supabase: any, userId: string): Promise<UserMoodContext> {
   try {
     console.log('[ARES-DIAL] Loading mood context for user:', userId);
     
-    // Get recent mood data from journal entries and cycle assessments
+    // Get recent mood data
     const { data: journalData } = await supabase
       .from('journal_entries')
       .select('mood_score, energy_level, created_at')
@@ -241,7 +190,7 @@ export async function loadUserMoodContext(supabase: any, userId: string): Promis
       .order('created_at', { ascending: false })
       .limit(1);
     
-    // Get workout streak and missed days from daily summaries
+    // Get workout streak and missed days
     const { data: workoutData } = await supabase
       .from('daily_summaries')
       .select('date, workout_volume')
@@ -249,55 +198,46 @@ export async function loadUserMoodContext(supabase: any, userId: string): Promis
       .order('date', { ascending: false })
       .limit(7);
     
-    // Calculate mood and energy averages
-    let mood_score: number | undefined;
-    let energy_level: number | undefined;
+    // Calculate averages
+    const avgMood = journalData?.length > 0
+      ? journalData.reduce((sum: number, j: any) => sum + (j.mood_score || 5), 0) / journalData.length
+      : undefined;
     
-    if (journalData?.length) {
-      mood_score = journalData.reduce((sum: number, entry: any) => sum + (entry.mood_score || 5), 0) / journalData.length;
-      energy_level = journalData.reduce((sum: number, entry: any) => sum + (entry.energy_level || 5), 0) / journalData.length;
-    }
+    const avgEnergy = journalData?.length > 0
+      ? journalData.reduce((sum: number, j: any) => sum + (j.energy_level || 5), 0) / journalData.length
+      : cycleData?.[0]?.energy_level;
     
-    if (cycleData?.length && !energy_level) {
-      energy_level = cycleData[0].energy_level || 5;
-    }
-    
-    // Calculate workout streak and missed days
+    // Calculate streak and no workout days
     let streak = 0;
-    let no_workout_days = 0;
+    let noWorkoutDays = 0;
     
-    if (workoutData?.length) {
-      let consecutiveDays = 0;
-      let missedDays = 0;
-      
+    if (workoutData?.length > 0) {
       for (const day of workoutData) {
         if (day.workout_volume > 0) {
-          consecutiveDays++;
-          missedDays = 0; // Reset missed days on workout
+          streak++;
         } else {
-          if (consecutiveDays === 0) missedDays++; // Only count recent misses
-          break; // Break streak on first miss
+          noWorkoutDays++;
+          break;
         }
       }
-      
-      streak = consecutiveDays;
-      no_workout_days = missedDays;
     }
     
-    const context: UserMoodContext = {
-      mood_score,
-      energy_level,
-      streak,
-      no_workout_days,
-      missed_tasks: 0, // Could be calculated from task completion data
-      recent_binge: false, // Could be detected from meal data
-      alcohol_intake: false // Could be detected from nutrition data
+    return {
+      mood_score: avgMood ? Math.round(avgMood) : undefined,
+      energy_level: avgEnergy ? Math.round(avgEnergy) : undefined,
+      streak: streak,
+      no_workout_days: noWorkoutDays,
+      missed_tasks: 0
     };
-    
-    console.log('[ARES-DIAL] Mood context loaded:', context);
-    return context;
   } catch (error) {
     console.error('[ARES-DIAL] Error loading mood context:', error);
     return {};
   }
+}
+
+/**
+ * Get mode description for prompt
+ */
+export function getModeDescription(mode: AresMode): string {
+  return MODE_CONFIG[mode].description;
 }
