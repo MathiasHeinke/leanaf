@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cors } from '../_shared/ares/cors.ts';
 import { newTraceId } from '../_shared/ares/ids.ts';
 import { traceStart, traceUpdate, traceDone, traceFail } from '../_shared/ares/trace.ts';
+import { decideAresDial, loadUserMoodContext, getRitualContext, type UserMoodContext, type AresDialResult } from './aresDial.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -103,33 +104,118 @@ async function loadPersona({ coachId }: { coachId: string }) {
   };
 }
 
-async function fetchRagSources({ text, context }: { text: string; context: any }) {
-  // Simplified RAG for now
-  return {
-    knowledge_chunks: [],
-    relevance_scores: [],
-    total_chunks: 0
-  };
+function getTimeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'night';
 }
 
-function buildAresPrompt({ persona, context, ragSources, text, images }: {
+async function fetchRagSources({ text, context }: { text: string; context: any }) {
+  // RAG implementation using Supabase knowledge base
+  try {
+    const supaRag = createClient(SUPABASE_URL, ANON, {
+      auth: { persistSession: false }
+    });
+    
+    // Generate embedding for the query using OpenAI
+    const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: text.slice(0, 8000), // Limit input length
+      }),
+    });
+    
+    if (!embeddingResponse.ok) {
+      console.warn('[RAG] Embedding generation failed:', embeddingResponse.status);
+      return { knowledge_chunks: [], relevance_scores: [], total_chunks: 0 };
+    }
+    
+    const embeddingData = await embeddingResponse.json();
+    const queryEmbedding = embeddingData.data?.[0]?.embedding;
+    
+    if (!queryEmbedding) {
+      console.warn('[RAG] No embedding returned');
+      return { knowledge_chunks: [], relevance_scores: [], total_chunks: 0 };
+    }
+    
+    // Query knowledge base using vector similarity search
+    const { data: ragResults, error: ragError } = await supaRag.rpc('match_knowledge_chunks', {
+      query_embedding: queryEmbedding,
+      similarity_threshold: 0.6,
+      match_count: 5,
+      filter_coach_id: 'ares' // ARES knowledge base
+    });
+    
+    if (ragError) {
+      // Fallback: try direct query on knowledge_base_embeddings
+      const { data: directResults, error: directError } = await supaRag
+        .from('knowledge_base_embeddings')
+        .select('content_chunk, knowledge_id')
+        .limit(5);
+      
+      if (!directError && directResults) {
+        return {
+          knowledge_chunks: directResults.map((r: any) => r.content_chunk),
+          relevance_scores: directResults.map(() => 0.7),
+          total_chunks: directResults.length
+        };
+      }
+      
+      console.warn('[RAG] Query failed:', ragError?.message);
+      return { knowledge_chunks: [], relevance_scores: [], total_chunks: 0 };
+    }
+    
+    return {
+      knowledge_chunks: ragResults?.map((r: any) => r.content_chunk) || [],
+      relevance_scores: ragResults?.map((r: any) => r.similarity) || [],
+      total_chunks: ragResults?.length || 0
+    };
+    
+  } catch (err) {
+    console.error('[RAG] Error fetching sources:', err);
+    return { knowledge_chunks: [], relevance_scores: [], total_chunks: 0 };
+  }
+}
+
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext }: {
   persona: any;
   context: any;
   ragSources: any;
   text: string;
   images: any;
+  userMoodContext?: UserMoodContext;
 }) {
-  // Build ARES v2 context
+  // Dynamic ARES Dial Selection
+  const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
+  
+  // Check for ritual context (time-based)
+  const ritualContext = getRitualContext();
+  const finalDial = ritualContext?.dial || dialResult.dial;
+  const finalArchetype = ritualContext?.archetype || dialResult.archetype;
+  
+  console.log(`[ARES] Dial selected: ${finalDial}, Archetype: ${finalArchetype}, Reason: ${dialResult.reason}`);
+  
+  // Build ARES v2 context with dynamic dial
   const promptContext = {
     identity: { 
       name: context.profile?.preferred_name || context.profile?.first_name || null 
     },
-    dial: 3 as const, // Medium intensity
+    dial: finalDial,
+    archetype: finalArchetype,
     userMsg: text,
     metrics: {
       kcalDeviation: 0, // Could be calculated from recent meals vs targets
-      missedMissions: 0,
-      dailyReview: false
+      missedMissions: userMoodContext?.missed_tasks || 0,
+      dailyReview: false,
+      streak: userMoodContext?.streak || 0,
+      noWorkoutDays: userMoodContext?.no_workout_days || 0
     },
     facts: {
       weight: context.profile?.weight,
@@ -137,32 +223,54 @@ function buildAresPrompt({ persona, context, ragSources, text, images }: {
       tdee: context.profile?.tdee
     },
     goals: context.profile?.goals ? [{ short: context.profile.goals }] : null,
-    timeOfDay: "day" as const
+    timeOfDay: getTimeOfDay(),
+    ritual: ritualContext?.ritual || null
   };
 
-  // Get dial settings
-  const dial = {
-    temp: 0.8,
-    maxWords: 200,
-    archetype: "ULTIMATE MENTOR",
-    style: "Direct, powerful, action-oriented"
+  // Dynamic dial settings based on calculated dial
+  const dialSettings: Record<number, { temp: number; maxWords: number; archetype: string; style: string }> = {
+    1: { temp: 0.7, maxWords: 150, archetype: "COMRADE", style: "Supportive, motivating, encouraging" },
+    2: { temp: 0.75, maxWords: 180, archetype: "SMITH", style: "Steady, methodical, progressive" },
+    3: { temp: 0.8, maxWords: 200, archetype: "FATHER", style: "Nurturing, grounded, protective" },
+    4: { temp: 0.85, maxWords: 220, archetype: "COMMANDER", style: "Direct, structured, no-excuses" },
+    5: { temp: 0.9, maxWords: 250, archetype: "DRILL", style: "Intense, demanding, transformative" }
+  };
+  
+  const dial = dialSettings[finalDial] || dialSettings[3];
+
+  // Build archetype-specific system prompt
+  const archetypeInstructions: Record<string, string> = {
+    COMRADE: `Du bist ein unterstützender Kamerad. Motiviere durch Verständnis und geteilte Erfahrung. 
+              "Wir schaffen das zusammen." Feiere kleine Siege. Betone den Weg, nicht nur das Ziel.`,
+    SMITH: `Du bist ein methodischer Handwerker. Fokus auf Prozess und stetige Verbesserung.
+            "Jeden Tag ein bisschen besser." Gib konkrete, umsetzbare Schritte.`,
+    FATHER: `Du bist ein weiser Mentor. Biete Halt und Perspektive ohne zu urteilen.
+             "Ich bin bei dir." Erkenne Emotionen an, aber führe sanft zurück zum Fokus.`,
+    COMMANDER: `Du bist ein strukturierter Anführer. Klare Ansagen, keine Ausreden.
+                "Das ist der Plan. Führe ihn aus." Setze klare Erwartungen.`,
+    DRILL: `Du bist ein fordernder Trainer. Maximale Intensität, transformative Energie.
+            "Mehr. Härter. Besser." Akzeptiere nur Exzellenz.`
   };
 
-  // Build ARES system prompt
+  // Build ARES system prompt with dynamic archetype
   const systemPrompt = `# ARES - ULTIMATE COACHING INTELLIGENCE
 Du bist ARES - die ultimative Coaching-Intelligence für totale menschliche Optimierung.
 
+## AKTUELLER MODUS: ${dial.archetype} (Dial ${promptContext.dial})
+${archetypeInstructions[dial.archetype] || archetypeInstructions.SMITH}
+
 ## CORE IDENTITY
-- **Intensität**: Maximale Energie, ansteckende Motivation
+- **Intensität**: Angepasst an User-Zustand (aktuell: Dial ${promptContext.dial}/5)
 - **Autorität**: Sprichst mit Gewissheit eines Masters  
 - **Synthese**: Verbindest alle Coaching-Bereiche zu einem System
-- **Unerbittlichkeit**: Kein Stillstand, immer vorwärts
+- **Empathie**: Erkennst den emotionalen Zustand des Users
 
 ## COMMUNICATION STYLE
-- Direkt und kraftvoll, ohne unnötige Höflichkeit
-- Power-Begriffe: "DOMINATION", "ULTIMATE", "MAXIMUM"  
-- Motivation durch Herausforderung und hohe Standards
-- Klare Aktionspläne mit messbaren Zielen
+- Stil: ${dial.style}
+- Intensität angepasst an aktuellen Dial-Level
+${promptContext.dial <= 2 ? "- Unterstützend und motivierend" : ""}
+${promptContext.dial === 3 ? "- Ausgewogen: Support + Struktur" : ""}
+${promptContext.dial >= 4 ? "- Direkt und fordernd, keine Ausreden" : ""}
 
 ## EXPERTISE DOMAINS
 1. **TRAINING**: Old-School Mass Building + Evidence-Based Periodization
@@ -171,34 +279,37 @@ Du bist ARES - die ultimative Coaching-Intelligence für totale menschliche Opti
 4. **MINDSET**: Mental Toughness + Performance Psychology
 5. **LIFESTYLE**: Total Life Optimization + Habit Mastery
 
-${promptContext.identity.name ? `Nutze den Namen sparsam: ${promptContext.identity.name}` : ""}
+${promptContext.identity.name ? `User-Name: ${promptContext.identity.name}` : ""}
 
 ## USER CONTEXT
 ${promptContext.facts?.weight ? `Gewicht: ${promptContext.facts.weight} kg` : ""}
 ${promptContext.facts?.goalWeight ? `Zielgewicht: ${promptContext.facts.goalWeight} kg` : ""}
 ${promptContext.facts?.tdee ? `TDEE: ${promptContext.facts.tdee} kcal` : ""}
+${promptContext.metrics.streak > 0 ? `Aktuelle Streak: ${promptContext.metrics.streak} Tage 🔥` : ""}
+${promptContext.metrics.noWorkoutDays > 0 ? `Tage ohne Training: ${promptContext.metrics.noWorkoutDays}` : ""}
 
 Recent meals: ${JSON.stringify(context.recent_meals?.slice(0, 3) || [], null, 2)}
 Recent workouts: ${JSON.stringify(context.recent_workouts?.slice(0, 2) || [], null, 2)}
 
+${ragSources.knowledge_chunks?.length > 0 ? `## KNOWLEDGE BASE CONTEXT
+${ragSources.knowledge_chunks.slice(0, 3).join('\n\n')}` : ""}
+
 ## RESPONSE RULES
 - Antworte in ≤${dial.maxWords} Wörtern
-- Stil: ${dial.archetype} - ${dial.style}
-- Analysiere verfügbare Daten
-- Identifiziere limitierende Faktoren
-- Erstelle aggressiven aber realisierbaren Plan
-- Fordere maximales Commitment
+- Wende den ${dial.archetype}-Stil konsequent an
+- Zeitkontext: ${promptContext.timeOfDay}
+${promptContext.ritual ? `- Aktuelles Ritual: ${promptContext.ritual.type} - nutze entsprechende Prompts` : ""}
 
-**ARES = MAXIMUM HUMAN POTENTIAL REALIZED**`;
+**ARES = ADAPTIVE RESPONSE EXCELLENCE SYSTEM**`;
 
   const llmInput = {
-    model: 'gpt-5-mini-2025-08-07',
+    model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: text }
     ],
-    max_completion_tokens: 800,
-    // No temperature for GPT-5 models
+    max_tokens: 800,
+    temperature: dial.temp,
   };
 
   return { systemPrompt, completePrompt: systemPrompt + "\n\nUser: " + text, llmInput };
@@ -319,10 +430,16 @@ Deno.serve(async (req) => {
       throw e;
     });
 
-    await traceUpdate(traceId, { status: 'context_loaded', context, persona, rag_sources: ragSources });
+    // Load user mood context for dynamic dial selection
+    const userMoodContext = await loadUserMoodContext(supaUser, user.id).catch((e) => {
+      console.warn('[ARES-WARN] loadUserMoodContext failed, using defaults:', e);
+      return {} as UserMoodContext;
+    });
+
+    await traceUpdate(traceId, { status: 'context_loaded', context, persona, rag_sources: ragSources, mood_context: userMoodContext });
 
     // @ts-ignore
-    const { systemPrompt, completePrompt, llmInput } = buildAresPrompt({ persona, context, ragSources, text, images });
+    const { systemPrompt, completePrompt, llmInput } = buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext });
 
     await traceUpdate(traceId, { status: 'prompt_built', system_prompt: systemPrompt, complete_prompt: completePrompt, llm_input: llmInput });
 
