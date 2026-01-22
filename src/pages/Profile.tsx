@@ -24,6 +24,7 @@ import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import { ProfileFieldIndicator } from '@/components/ProfileFieldIndicator';
 import { MedicalScreening } from '@/components/MedicalScreening';
 import { AvatarSelector } from '@/components/AvatarSelector';
+import { PersonaSelector } from '@/components/persona';
 import { ProfileLoadingGuard } from '@/components/ProfileLoadingGuard';
 import { cn } from '@/lib/utils';
 
@@ -1405,7 +1406,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         {/* 8. Tracking Preferences */}
         <TrackingPreferences />
 
-        {/* 9. Avatar Selection */}
+        {/* 9. Coach Persona Selection */}
+        <PersonaSelector />
+
+        {/* 10. Avatar Selection */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-indigo-500 rounded-xl flex items-center justify-center">
