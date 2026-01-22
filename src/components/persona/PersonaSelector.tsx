@@ -73,11 +73,11 @@ const PersonaSelector: React.FC<PersonaSelectorProps> = ({ className }) => {
   useEffect(() => {
     const loadPersonas = async () => {
       try {
-        const { data, error } = await supabase
-          .from('coach_personas')
+        const { data, error } = await (supabase
+          .from('coach_personas' as any)
           .select('*')
           .eq('is_active', true)
-          .order('name');
+          .order('name') as unknown as Promise<{ data: any[] | null; error: any }>);
 
         if (error) {
           console.warn('Could not load personas from DB, using defaults:', error);
@@ -116,11 +116,11 @@ const PersonaSelector: React.FC<PersonaSelectorProps> = ({ className }) => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_persona_selection')
+        const { data, error } = await (supabase
+          .from('user_persona_selection' as any)
           .select('persona_id')
           .eq('user_id', user.id)
-          .maybeSingle();
+          .maybeSingle() as unknown as Promise<{ data: { persona_id: string } | null; error: any }>);
 
         if (error && error.code !== 'PGRST116') {
           console.warn('Could not load user persona selection:', error);
@@ -158,15 +158,15 @@ const PersonaSelector: React.FC<PersonaSelectorProps> = ({ className }) => {
     setSaving(true);
 
     try {
-      const { error } = await supabase
-        .from('user_persona_selection')
+      const { error } = await (supabase
+        .from('user_persona_selection' as any)
         .upsert({
           user_id: user.id,
           persona_id: personaId,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id'
-        });
+        }) as unknown as Promise<{ error: any }>);
 
       if (error) throw error;
 
