@@ -1236,21 +1236,21 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       
                       {/* Hauptmetriken - Größer und prominenter */}
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 backdrop-blur-sm rounded-xl p-4 text-center border border-purple-200/20 shadow-sm">
-                          <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+                        <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 dark:from-purple-500/20 dark:to-purple-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-purple-200/20 dark:border-purple-500/30 shadow-sm">
+                          <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-300 bg-clip-text text-transparent">
                             {Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')).toFixed(1)} kg
                           </div>
                           <div className="text-sm text-muted-foreground mt-1">Gewichtsunterschied</div>
-                          <div className="text-xs text-purple-600/70 mt-1">
+                          <div className="text-xs text-purple-600/70 dark:text-purple-400 mt-1">
                             {parseFloat(targetWeight || '0') > parseFloat(weight || '0') ? 'Zunehmen' : 'Abnehmen'}
                           </div>
                         </div>
-                        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-sm rounded-xl p-4 text-center border border-blue-200/20 shadow-sm">
-                          <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-blue-200/20 dark:border-blue-500/30 shadow-sm">
+                          <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent">
                             {Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))} Wochen
                           </div>
                           <div className="text-sm text-muted-foreground mt-1">bis zum Ziel</div>
-                          <div className="text-xs text-blue-600/70 mt-1">
+                          <div className="text-xs text-blue-600/70 dark:text-blue-400 mt-1">
                             ca. {Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} Tage
                           </div>
                         </div>
@@ -1258,32 +1258,32 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
                       {/* Detailmetriken - Schönere Gestaltung */}
                       <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-sm rounded-xl p-4 text-center border border-green-200/20 shadow-sm">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">
+                        <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-green-200/20 dark:border-green-500/30 shadow-sm">
+                          <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-800 dark:from-green-400 dark:to-green-300 bg-clip-text text-transparent">
                             {((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 1000) / 
                               Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))).toFixed(0)}g
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">pro Woche</div>
-                          <div className="text-xs text-green-600/70 mt-1">
+                          <div className="text-xs text-green-600/70 dark:text-green-400 mt-1">
                             {((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 1000) / 
                               Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))).toFixed(0)}g täglich
                           </div>
                         </div>
-                        <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 backdrop-blur-sm rounded-xl p-4 text-center border border-orange-200/20 shadow-sm">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 bg-clip-text text-transparent">
+                        <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 dark:from-orange-500/20 dark:to-orange-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-orange-200/20 dark:border-orange-500/30 shadow-sm">
+                          <div className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 dark:from-orange-400 dark:to-orange-300 bg-clip-text text-transparent">
                             {calculateRequiredCalorieDeficit()?.daily}
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">kcal täglich</div>
-                          <div className="text-xs text-orange-600/70 mt-1">
+                          <div className="text-xs text-orange-600/70 dark:text-orange-400 mt-1">
                             {goal === 'lose' ? 'Defizit' : goal === 'gain' ? 'Überschuss' : 'Erhaltung'}
                           </div>
                         </div>
-                        <div className="bg-gradient-to-br from-teal-500/10 to-teal-600/10 backdrop-blur-sm rounded-xl p-4 text-center border border-teal-200/20 shadow-sm">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-teal-800 bg-clip-text text-transparent">
+                        <div className="bg-gradient-to-br from-teal-500/10 to-teal-600/10 dark:from-teal-500/20 dark:to-teal-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-teal-200/20 dark:border-teal-500/30 shadow-sm">
+                          <div className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-teal-800 dark:from-teal-400 dark:to-teal-300 bg-clip-text text-transparent">
                             {calculateRequiredCalorieDeficit()?.weekly}
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">kcal wöchentlich</div>
-                          <div className="text-xs text-teal-600/70 mt-1">
+                          <div className="text-xs text-teal-600/70 dark:text-teal-400 mt-1">
                             {Math.round((calculateRequiredCalorieDeficit()?.weekly || 0) / 7700 * 1000)}g Fett/Woche
                           </div>
                         </div>
@@ -1291,19 +1291,19 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
                       {/* Zusätzliche Metriken */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 backdrop-blur-sm rounded-xl p-3 text-center border border-indigo-200/20 shadow-sm">
-                          <div className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-indigo-800 bg-clip-text text-transparent">
+                        <div className="bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 dark:from-indigo-500/20 dark:to-indigo-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-3 text-center border border-indigo-200/20 dark:border-indigo-500/30 shadow-sm">
+                          <div className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-indigo-800 dark:from-indigo-400 dark:to-indigo-300 bg-clip-text text-transparent">
                             {Math.round((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 7700))}
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">Gesamt-kcal</div>
-                          <div className="text-xs text-indigo-600/70 mt-1">benötigt für Ziel</div>
+                          <div className="text-xs text-indigo-600/70 dark:text-indigo-400 mt-1">benötigt für Ziel</div>
                         </div>
-                        <div className="bg-gradient-to-br from-pink-500/10 to-pink-600/10 backdrop-blur-sm rounded-xl p-3 text-center border border-pink-200/20 shadow-sm">
-                          <div className="text-lg font-bold bg-gradient-to-r from-pink-600 to-pink-800 bg-clip-text text-transparent">
+                        <div className="bg-gradient-to-br from-pink-500/10 to-pink-600/10 dark:from-pink-500/20 dark:to-pink-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-3 text-center border border-pink-200/20 dark:border-pink-500/30 shadow-sm">
+                          <div className="text-lg font-bold bg-gradient-to-r from-pink-600 to-pink-800 dark:from-pink-400 dark:to-pink-300 bg-clip-text text-transparent">
                             {new Date(targetDate).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">Zieldatum</div>
-                          <div className="text-xs text-pink-600/70 mt-1">
+                          <div className="text-xs text-pink-600/70 dark:text-pink-400 mt-1">
                             {new Date(targetDate).toLocaleDateString('de-DE', { weekday: 'long' })}
                           </div>
                         </div>
@@ -1312,7 +1312,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
                     {/* Warnungen und Empfehlungen */}
                     {!calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) > 1000 && (
-                      <div className="bg-gradient-to-br from-red-500/10 to-red-600/10 backdrop-blur-sm rounded-xl p-4 border border-red-200/30 shadow-sm">
+                      <div className="bg-gradient-to-br from-red-500/10 to-red-600/10 dark:from-red-500/20 dark:to-red-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-red-200/30 dark:border-red-500/30 shadow-sm">
                         <div className="flex items-start gap-3">
                           <div className="p-2 bg-red-500/20 rounded-lg">
                             <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -1329,7 +1329,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     )}
 
                     {calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) > 800 && (
-                      <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 backdrop-blur-sm rounded-xl p-4 border border-orange-200/30 shadow-sm">
+                      <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 dark:from-orange-500/20 dark:to-orange-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-orange-200/30 dark:border-orange-500/30 shadow-sm">
                         <div className="flex items-start gap-3">
                           <div className="p-2 bg-orange-500/20 rounded-lg">
                             <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -1346,7 +1346,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     )}
 
                     {!calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) < 500 && (calculateRequiredCalorieDeficit()?.daily || 0) > 0 && (
-                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-sm rounded-xl p-4 border border-green-200/30 shadow-sm">
+                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-green-200/30 dark:border-green-500/30 shadow-sm">
                         <div className="flex items-start gap-3">
                           <div className="p-2 bg-green-500/20 rounded-lg">
                             <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -1362,7 +1362,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     )}
 
                     {calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) >= 200 && (calculateRequiredCalorieDeficit()?.daily || 0) <= 500 && (
-                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-sm rounded-xl p-4 border border-green-200/30 shadow-sm">
+                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-green-200/30 dark:border-green-500/30 shadow-sm">
                         <div className="flex items-start gap-3">
                           <div className="p-2 bg-green-500/20 rounded-lg">
                             <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -1377,7 +1377,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       </div>
                     )}
 
-                    <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-sm rounded-xl p-4 border border-blue-200/30 shadow-sm">
+                    <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-blue-200/30 dark:border-blue-500/30 shadow-sm">
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-blue-500/20 rounded-lg">
                           <Calculator className="h-5 w-5 text-blue-500" />
