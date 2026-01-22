@@ -287,7 +287,7 @@ export const QuickFluidInput = ({ onFluidUpdate, currentDate }: QuickFluidInputP
 
             {/* Add Fluid Form */}
             {showAddForm && (
-              <Card className="p-4 space-y-4">
+              <Card className="p-4 space-y-4 bg-card border-border">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium">Getränk hinzufügen</h4>
                   <Button
