@@ -949,8 +949,17 @@ ${memory.conversation_context?.success_moments?.length > 0 ? `- Erfolgsmomente: 
 ${memory.conversation_context?.struggles_mentioned?.length > 0 ? `- Herausforderungen: ${memory.conversation_context.struggles_mentioned.slice(-3).join(', ')}` : ''}
 ` : '';
 
+  // Generate current date in German format
+  const now = new Date();
+  const germanDays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  const germanMonths = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  const currentDate = `${germanDays[now.getDay()]}, ${now.getDate()}. ${germanMonths[now.getMonth()]} ${now.getFullYear()}`;
+
   const systemPrompt = `# ARES - ULTIMATE COACHING INTELLIGENCE
 Du bist ARES - die ultimative Coaching-Intelligence für totale menschliche Optimierung.
+
+**AKTUELLES DATUM: ${currentDate}**
+(Verwende dieses Datum für alle zeitbezogenen Aussagen!)
 
 ## AKTUELLER MODUS: ${dial.archetype} (Dial ${promptContext.dial})
 ${archetypeInstructions[dial.archetype] || archetypeInstructions.SMITH}
