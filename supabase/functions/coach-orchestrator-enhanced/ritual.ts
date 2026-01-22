@@ -70,7 +70,7 @@ export function getCurrentRitual(): RitualConfig | null {
 }
 
 export function getRitualPrompt(ritual: RitualConfig, userState?: any): string {
-  const prompts = RITUAL_PROMPTS[ritual.prompt_key];
+  const prompts = RITUAL_PROMPTS[ritual.prompt_key as keyof typeof RITUAL_PROMPTS];
   if (!prompts) return '';
 
   const archetypePrompt = prompts[ritual.archetype as keyof typeof prompts];
@@ -83,11 +83,11 @@ export function getRitualPrompt(ritual: RitualConfig, userState?: any): string {
     contextualPrompt += ` Übrigens – ${userState.streak} Tage in Folge. Respekt.`;
   }
 
-  if (userState?.missed_tasks >= 2 && ritual.type === 'evening_review') {
+  if (userState?.missed_tasks >= 2 && ritual.prompt_key === 'evening_review') {
     contextualPrompt += ` Es gab heute Hindernisse. Was lernen wir daraus?`;
   }
 
-  if (userState?.energy_level <= 3 && ritual.type === 'morning_ritual') {
+  if (userState?.energy_level <= 3 && ritual.prompt_key === 'morning_ritual') {
     contextualPrompt += ` Du wirkst müde. Was brauchst du für einen guten Start?`;
   }
 

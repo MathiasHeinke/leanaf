@@ -252,9 +252,10 @@ Mach es einfach, praktisch und lecker. ${muscleMaintenancePriority ? 'Der User w
 
   } catch (error) {
     console.error('❌ Error in coach-recipes function:', error);
+    const message = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ 
       error: 'Fehler bei der Erstellung der Rezept-Empfehlungen',
-      details: error.message 
+      details: message 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

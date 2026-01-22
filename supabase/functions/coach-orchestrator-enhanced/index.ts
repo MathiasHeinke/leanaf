@@ -1043,7 +1043,7 @@ async function callLLMWithTools(
         role: 'tool',
         tool_call_id: toolCall.id,
         content: JSON.stringify(result)
-      });
+      } as any);
     }
     
     // Call LLM again with tool results
@@ -1279,7 +1279,7 @@ Deno.serve(async (req) => {
       return {} as UserMoodContext;
     });
 
-    await traceUpdate(traceId, { status: 'context_loaded', context, persona, rag_sources: ragSources, mood_context: userMoodContext });
+    await traceUpdate(traceId, { status: 'context_loaded', context, persona, rag_sources: ragSources } as any);
 
     // Build prompt with memory
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
@@ -1302,9 +1302,8 @@ Deno.serve(async (req) => {
     await traceUpdate(traceId, { 
       status: 'llm_called', 
       llm_output: llmOutput, 
-      tool_results: toolResults,
       duration_ms 
-    });
+    } as any);
 
     // Update memory based on conversation
     await updateCoachMemory(user.id, supaSvc, text, llmOutput, toolResults);
