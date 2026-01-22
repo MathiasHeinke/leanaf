@@ -964,6 +964,25 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
     ? `\n## LETZTE GESPRÄCHE (Kontext)
 ${formatConversationHistory(conversationHistory)}`
     : '';
+
+  // Build relationship/memory context section
+  const memory = context.memory;
+  const memorySection = memory && memory.trust_level !== undefined ? `
+## BEZIEHUNGS-KONTEXT
+- Trust Level: ${Math.round(memory.trust_level)}/100 (${memory.relationship_stage || 'new'})
+${memory.conversation_context?.topics_discussed?.length > 0 
+  ? `- Besprochene Themen: ${memory.conversation_context.topics_discussed.join(', ')}`
+  : ''}
+${memory.conversation_context?.struggles_mentioned?.length > 0 
+  ? `- Letzte Herausforderungen: ${memory.conversation_context.struggles_mentioned.slice(-3).map((s: any) => typeof s === 'string' ? s : s.struggle).join('; ')}`
+  : ''}
+${memory.conversation_context?.success_moments?.length > 0
+  ? `- Letzte Erfolge: ${memory.conversation_context.success_moments.slice(-3).map((s: any) => typeof s === 'string' ? s : s.achievement).join('; ')}`
+  : ''}
+${memory.conversation_context?.mood_history?.length > 0
+  ? `- Letzte Stimmung: ${memory.conversation_context.mood_history.slice(-3).map((m: any) => m.mood).join(', ')}`
+  : ''}
+` : '';
   
   // Compact system prompt - natural language, no verbose sections
   const systemPrompt = `Du bist ARES, ein erfahrener Fitness- und Lifestyle-Coach.
@@ -990,6 +1009,7 @@ ${context.recent_workouts?.length > 0
   ? `\nWorkouts: ${context.recent_workouts.slice(0, 2).map((w: any) => `${w.workout_type || 'Training'} (${w.duration_minutes || 0}min)`).join(', ')}`
   : ''}
 ${historySection}
+${memorySection}
 ${ragSources?.knowledge_chunks?.length > 0 ? `\n## WISSEN\n${ragSources.knowledge_chunks.slice(0, 2).join('\n')}` : ''}
 
 ## TOOLS (bei Bedarf automatisch nutzen)
@@ -1136,6 +1156,8 @@ async function updateCoachMemory(
     const memory = currentMemory?.memory_data || {
       trust_level: 0,
       relationship_stage: 'new',
+      communication_style_preference: 'balanced',
+      user_preferences: [],
       conversation_context: {
         mood_history: [],
         success_moments: [],
@@ -1143,6 +1165,15 @@ async function updateCoachMemory(
         struggles_mentioned: []
       }
     };
+
+    // Ensure all required arrays exist
+    if (!memory.conversation_context) {
+      memory.conversation_context = { mood_history: [], success_moments: [], topics_discussed: [], struggles_mentioned: [] };
+    }
+    if (!Array.isArray(memory.conversation_context.mood_history)) memory.conversation_context.mood_history = [];
+    if (!Array.isArray(memory.conversation_context.success_moments)) memory.conversation_context.success_moments = [];
+    if (!Array.isArray(memory.conversation_context.struggles_mentioned)) memory.conversation_context.struggles_mentioned = [];
+    if (!Array.isArray(memory.conversation_context.topics_discussed)) memory.conversation_context.topics_discussed = [];
 
     // Update conversation context
     const lowercaseMsg = userMessage.toLowerCase();
@@ -1165,55 +1196,116 @@ async function updateCoachMemory(
       }
     }
 
-    // Detect struggles
-    const struggleKeywords = ['schwer', 'problem', 'hilfe', 'nicht geschafft', 'aufgeben', 'überfordert'];
+    // Detect struggles - store as objects with timestamp
+    const struggleKeywords = ['schwer', 'problem', 'hilfe', 'nicht geschafft', 'aufgeben', 'überfordert', 'frustrier', 'stuck', 'kämpfe'];
     if (struggleKeywords.some(k => lowercaseMsg.includes(k))) {
-      const struggle = userMessage.slice(0, 100);
-      if (!memory.conversation_context.struggles_mentioned.includes(struggle)) {
-        memory.conversation_context.struggles_mentioned.push(struggle);
-        // Keep only last 10
-        if (memory.conversation_context.struggles_mentioned.length > 10) {
-          memory.conversation_context.struggles_mentioned.shift();
-        }
+      memory.conversation_context.struggles_mentioned.push({
+        timestamp: new Date().toISOString(),
+        struggle: userMessage.slice(0, 100),
+        support_given: true
+      });
+      // Keep only last 15
+      if (memory.conversation_context.struggles_mentioned.length > 15) {
+        memory.conversation_context.struggles_mentioned = memory.conversation_context.struggles_mentioned.slice(-15);
       }
     }
 
-    // Detect success moments
-    const successKeywords = ['geschafft', 'erreicht', 'stolz', 'pr', 'personal record', 'durchgehalten'];
+    // Detect success moments - store as objects with timestamp
+    const successKeywords = ['geschafft', 'erreicht', 'stolz', 'pr', 'personal record', 'durchgehalten', 'super', 'geil', 'hammer', 'stark'];
     if (successKeywords.some(k => lowercaseMsg.includes(k))) {
-      const success = userMessage.slice(0, 100);
-      memory.conversation_context.success_moments.push(success);
-      // Keep only last 10
-      if (memory.conversation_context.success_moments.length > 10) {
-        memory.conversation_context.success_moments.shift();
+      memory.conversation_context.success_moments.push({
+        timestamp: new Date().toISOString(),
+        achievement: userMessage.slice(0, 100),
+        celebration_given: true
+      });
+      // Keep only last 15
+      if (memory.conversation_context.success_moments.length > 15) {
+        memory.conversation_context.success_moments = memory.conversation_context.success_moments.slice(-15);
       }
     }
 
-    // Increase trust level based on interaction
+    // Detect mood and add to history
+    const moodKeywords: Record<string, { mood: string; intensity: number }> = {
+      'super': { mood: 'excited', intensity: 9 },
+      'motiviert': { mood: 'motivated', intensity: 8 },
+      'gut': { mood: 'positive', intensity: 7 },
+      'okay': { mood: 'neutral', intensity: 5 },
+      'müde': { mood: 'tired', intensity: 6 },
+      'erschöpft': { mood: 'exhausted', intensity: 7 },
+      'frustriert': { mood: 'frustrated', intensity: 7 },
+      'gestresst': { mood: 'stressed', intensity: 7 },
+      'down': { mood: 'low', intensity: 6 },
+      'demotiviert': { mood: 'demotivated', intensity: 7 }
+    };
+
+    for (const [keyword, moodData] of Object.entries(moodKeywords)) {
+      if (lowercaseMsg.includes(keyword)) {
+        memory.conversation_context.mood_history.push({
+          timestamp: new Date().toISOString(),
+          mood: moodData.mood,
+          intensity: moodData.intensity
+        });
+        break; // Only capture first detected mood
+      }
+    }
+    // Keep only last 20 mood entries
+    if (memory.conversation_context.mood_history.length > 20) {
+      memory.conversation_context.mood_history = memory.conversation_context.mood_history.slice(-20);
+    }
+
+    // Increase trust level based on interaction (0-100 scale)
+    // Convert old 0-10 scale to 0-100 if needed
+    if (memory.trust_level <= 10) {
+      memory.trust_level = memory.trust_level * 10;
+    }
+    
     if (toolResults.length > 0) {
-      memory.trust_level = Math.min(10, memory.trust_level + 0.5);
+      memory.trust_level = Math.min(100, memory.trust_level + 5); // Tool usage = higher trust gain
     } else {
-      memory.trust_level = Math.min(10, memory.trust_level + 0.1);
+      memory.trust_level = Math.min(100, memory.trust_level + 1); // Normal conversation
     }
 
-    // Update relationship stage
-    if (memory.trust_level >= 7) {
-      memory.relationship_stage = 'trusted';
-    } else if (memory.trust_level >= 4) {
+    // Update relationship stage based on trust level (matching frontend expectations)
+    if (memory.trust_level >= 80) {
+      memory.relationship_stage = 'close';
+    } else if (memory.trust_level >= 60) {
       memory.relationship_stage = 'established';
-    } else if (memory.trust_level >= 1) {
-      memory.relationship_stage = 'developing';
+    } else if (memory.trust_level >= 20) {
+      memory.relationship_stage = 'getting_familiar';
+    } else {
+      memory.relationship_stage = 'new';
     }
 
-    // Upsert memory
-    await supaClient.from('coach_memory').upsert({
+    // Upsert memory - use delete + insert pattern for unique index compatibility
+    const { error: deleteError } = await supaClient
+      .from('coach_memory')
+      .delete()
+      .eq('user_id', userId)
+      .eq('coach_id', 'ares');
+    
+    if (deleteError) {
+      console.warn('[ARES-MEMORY] Delete before upsert failed:', deleteError);
+    }
+    
+    const { error: insertError } = await supaClient.from('coach_memory').insert({
       user_id: userId,
       coach_id: 'ares',
       memory_data: memory,
       updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id,coach_id' });
+    });
 
-    console.log('[ARES-MEMORY] Updated memory:', { trust_level: memory.trust_level, stage: memory.relationship_stage });
+    if (insertError) {
+      console.warn('[ARES-MEMORY] Insert failed:', insertError);
+    }
+
+    console.log('[ARES-MEMORY] Updated memory:', { 
+      trust_level: Math.round(memory.trust_level), 
+      stage: memory.relationship_stage,
+      topics: memory.conversation_context.topics_discussed?.length || 0,
+      struggles: memory.conversation_context.struggles_mentioned?.length || 0,
+      successes: memory.conversation_context.success_moments?.length || 0,
+      moods: memory.conversation_context.mood_history?.length || 0
+    });
   } catch (err) {
     console.warn('[ARES-MEMORY] Failed to update memory:', err);
   }
