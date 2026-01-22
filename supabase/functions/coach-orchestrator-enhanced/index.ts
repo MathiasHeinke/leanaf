@@ -916,26 +916,26 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   };
 
   const dialSettings: Record<number, { temp: number; maxWords: number; archetype: string; style: string }> = {
-    1: { temp: 0.7, maxWords: 150, archetype: "COMRADE", style: "Supportive, motivating, encouraging" },
-    2: { temp: 0.75, maxWords: 180, archetype: "SMITH", style: "Steady, methodical, progressive" },
-    3: { temp: 0.8, maxWords: 200, archetype: "FATHER", style: "Nurturing, grounded, protective" },
-    4: { temp: 0.85, maxWords: 220, archetype: "COMMANDER", style: "Direct, structured, no-excuses" },
-    5: { temp: 0.9, maxWords: 250, archetype: "DRILL", style: "Intense, demanding, transformative" }
+    1: { temp: 0.7, maxWords: 400, archetype: "COMRADE", style: "Supportive, motivating, encouraging" },
+    2: { temp: 0.75, maxWords: 450, archetype: "SMITH", style: "Steady, methodical, progressive" },
+    3: { temp: 0.8, maxWords: 500, archetype: "FATHER", style: "Nurturing, grounded, protective" },
+    4: { temp: 0.85, maxWords: 550, archetype: "COMMANDER", style: "Direct, structured, no-excuses" },
+    5: { temp: 0.9, maxWords: 600, archetype: "DRILL", style: "Intense, demanding, transformative" }
   };
   
   const dial = dialSettings[finalDial] || dialSettings[3];
 
   const archetypeInstructions: Record<string, string> = {
     COMRADE: `Du bist ein unterstützender Kamerad. Motiviere durch Verständnis und geteilte Erfahrung. 
-              "Wir schaffen das zusammen." Feiere kleine Siege. Betone den Weg, nicht nur das Ziel.`,
+              Feiere kleine Siege. Betone den Weg, nicht nur das Ziel. Sprich natürlich und authentisch.`,
     SMITH: `Du bist ein methodischer Handwerker. Fokus auf Prozess und stetige Verbesserung.
-            "Jeden Tag ein bisschen besser." Gib konkrete, umsetzbare Schritte.`,
+            Gib konkrete, umsetzbare Schritte. Bleib praktisch und lösungsorientiert.`,
     FATHER: `Du bist ein weiser Mentor. Biete Halt und Perspektive ohne zu urteilen.
-             "Ich bin bei dir." Erkenne Emotionen an, aber führe sanft zurück zum Fokus.`,
+             Erkenne Emotionen an, aber führe sanft zurück zum Fokus. Sei warm aber nicht kitschig.`,
     COMMANDER: `Du bist ein strukturierter Anführer. Klare Ansagen, keine Ausreden.
-                "Das ist der Plan. Führe ihn aus." Setze klare Erwartungen.`,
+                Setze klare Erwartungen. Direkt aber respektvoll.`,
     DRILL: `Du bist ein fordernder Trainer. Maximale Intensität, transformative Energie.
-            "Mehr. Härter. Besser." Akzeptiere nur Exzellenz.`
+            Akzeptiere nur Exzellenz. Push ohne zu beleidigen.`
   };
 
   // Build memory context string
@@ -1023,11 +1023,12 @@ Du hast Zugriff auf folgende Tools die du bei Bedarf automatisch aufrufen kannst
 Nutze Tools wenn der User explizit nach Plänen fragt oder wenn eine detaillierte Analyse nötig ist.
 
 ## RESPONSE RULES
-- Antworte in ≤${dial.maxWords} Wörtern (außer bei Plan-Erstellung)
-- Wende den ${dial.archetype}-Stil konsequent an
+- Antworte so ausführlich wie nötig (ca. ${dial.maxWords} Wörter als Richtwert, aber flexibel)
+- Wende den ${dial.archetype}-Stil natürlich an - keine roboterhaften Floskeln
 - Zeitkontext: ${promptContext.timeOfDay}
 ${promptContext.ritual ? `- Aktuelles Ritual: ${promptContext.ritual.type} - nutze entsprechende Prompts` : ""}
-- Bei Plan-Erstellung: Fasse den erstellten Plan kurz zusammen und bestätige die Speicherung
+- Bei Plan-Erstellung: Fasse den erstellten Plan zusammen und bestätige die Speicherung
+- WICHTIG: Sprich wie ein echter Mensch - keine übertriebene Motivation oder Coaching-Floskeln
 
 **ARES = ADAPTIVE RESPONSE EXCELLENCE SYSTEM**`;
 
@@ -1064,11 +1065,11 @@ async function callLLMWithTools(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: messages,
       tools: ARES_TOOLS,
       tool_choice: 'auto',
-      max_tokens: 2000,
+      max_tokens: 4000,
       temperature: temperature,
     }),
   });
@@ -1117,11 +1118,11 @@ async function callLLMWithTools(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: messages,
         tools: ARES_TOOLS,
         tool_choice: 'auto',
-        max_tokens: 2000,
+        max_tokens: 4000,
         temperature: temperature,
       }),
     });
