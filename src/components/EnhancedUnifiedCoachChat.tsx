@@ -11,7 +11,7 @@ import { Send, Loader2, Brain, Database, Clock, Zap, Users } from 'lucide-react'
 import ReactMarkdown from 'react-markdown';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useAuth } from '@/hooks/useAuth';
-import ARESChatRoot from '@/ares/chat/ARESChatRoot';
+import { useAresFlags } from '@/ares/flags/useAresFlags';
 interface EnhancedChatInputProps {
   inputText: string;
   setInputText: (text: string) => void;
@@ -177,11 +177,6 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
     );
   }
 
-  // ARES Integration - Early exit for new modular architecture
-  if (coach?.id === 'ares') {
-    return <ARESChatRoot userId={user.id} />;
-  }
-  
   // FireBackdrop for ARES
   const fireBackdropRef = useRef<FireBackdropHandle>(null);
   const isAres = coach?.id === 'ares';
@@ -205,6 +200,10 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const autoTool = isFlagEnabled('auto_tool_orchestration');
   const legacyEnabled = isFlagEnabled('legacy_fallback_enabled');
   const { sendEvent } = useOrchestrator();
+  
+  // ARES-specific feature flags for debug panel
+  const { has: hasAresFlag } = useAresFlags();
+  const showAresDebug = isAres && hasAresFlag('ares.debug');
   
   // Debug system integration
   const debugSteps = useDebugSteps();
@@ -1361,16 +1360,18 @@ chatInput={
               setMessages([]);
             }}
           />
-          <div className="absolute top-2 right-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowDebugger(!showDebugger)}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Bug className="h-4 w-4" />
-            </Button>
-          </div>
+          {showAresDebug && (
+            <div className="absolute top-2 right-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowDebugger(!showDebugger)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <Bug className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Messages - transparent scrollable area over fire */}
