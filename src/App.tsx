@@ -7,7 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { TranslationProvider } from "@/hooks/useTranslation";
 
 import { EnhancedSecurityManager } from "@/components/EnhancedSecurityManager";
-import { SidebarProvider } from "@/components/ui/sidebar";
+// SidebarProvider moved to Layout.tsx to prevent duplicate renders
 import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -52,39 +52,37 @@ const App = () => (
               <MealInputProvider>
                 <EnhancedSecurityManager>
                   <Sonner />
-                  <SidebarProvider>
-                    <Layout>
-                      <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/auth" element={<Auth />} />
-                        <Route path="/account" element={<Account />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/credits" element={<Credits />} />
-                        <Route path="/credits/success" element={<CreditsSuccess />} />
-                        <Route path="/coach" element={<CoachPage />} />
-                        <Route path="/coach/:coachId" element={<CoachPage />} />
-                        <Route path="/training" element={<TrainingPlus />} />
-                        <Route path="/plus" element={<Navigate to="/" replace />} />
-                        <Route path="/transformation" element={<TransformationJourneyPage />} />
-                        <Route path="/history" element={<HistoryPage />} />
-                        <Route path="/analyse" element={<AnalysePage />} />
-                        <Route path="/backupanalyse" element={<BackupAnalysePage />} />
-                        <Route path="/achievements" element={<Achievements />} />
-                        <Route path="/science" element={<Science />} />
-                        <Route path="/features" element={<Features />} />
-                        <Route path="/roadmap" element={<Roadmap />} />
-                        <Route path="/terms" element={<Terms />} />
-                        <Route path="/privacy" element={<Privacy />} />
-                        <Route path="/imprint" element={<Imprint />} />
-                        <Route path="/marketing" element={<Marketing />} />
-                        <Route path="/admin" element={<AdminPage />} />
-                        {/* Redirect old subscription route */}
-                        <Route path="/subscription" element={<Navigate to="/credits" replace />} />
-                        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </Layout>
-                  </SidebarProvider>
+                  <Layout>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/auth" element={<Auth />} />
+                      <Route path="/account" element={<Account />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="/credits" element={<Credits />} />
+                      <Route path="/credits/success" element={<CreditsSuccess />} />
+                      <Route path="/coach" element={<CoachPage />} />
+                      <Route path="/coach/:coachId" element={<CoachPage />} />
+                      <Route path="/training" element={<TrainingPlus />} />
+                      <Route path="/plus" element={<Navigate to="/" replace />} />
+                      <Route path="/transformation" element={<TransformationJourneyPage />} />
+                      <Route path="/history" element={<HistoryPage />} />
+                      <Route path="/analyse" element={<AnalysePage />} />
+                      <Route path="/backupanalyse" element={<BackupAnalysePage />} />
+                      <Route path="/achievements" element={<Achievements />} />
+                      <Route path="/science" element={<Science />} />
+                      <Route path="/features" element={<Features />} />
+                      <Route path="/roadmap" element={<Roadmap />} />
+                      <Route path="/terms" element={<Terms />} />
+                      <Route path="/privacy" element={<Privacy />} />
+                      <Route path="/imprint" element={<Imprint />} />
+                      <Route path="/marketing" element={<Marketing />} />
+                      <Route path="/admin" element={<AdminPage />} />
+                      {/* Redirect old subscription route */}
+                      <Route path="/subscription" element={<Navigate to="/credits" replace />} />
+                      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Layout>
                 </EnhancedSecurityManager>
               </MealInputProvider>
             </AuthProvider>
