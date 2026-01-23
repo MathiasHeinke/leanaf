@@ -319,18 +319,8 @@ WICHTIG: MAXIMAL 2 kurze Sätze! Erstelle eine prägnante, natürliche Begrüßu
   } catch (error) {
     console.error('Error generating intelligent greeting:', error);
     
-    // Short, human fallback greetings
-    const fallbackGreetings = {
-      'lucy': 'Hey! ✨',
-      'sascha': 'Moin!',
-      'kai': 'Hey! 🙏',
-      'markus': 'Ei gude!',
-      'dr_vita': 'Hey! 🌸',
-      'sophia': 'Hey! 🌿',
-      'ares': 'Status? ⚡'
-    };
-
-    const fallback = fallbackGreetings[requestedCoachId] || fallbackGreetings['lucy'];
+    // ARES-only fallback greeting
+    const fallback = 'Status? ⚡';
 
     return new Response(
       JSON.stringify({ 

@@ -130,7 +130,7 @@ export const KnowledgeBaseCSVImport = () => {
   };
 
   const sampleCsv = `title,expertise_area,knowledge_type,content,coach_id,priority_level,tags,source_url,created_at
-Rohkost-Ernährung: Chancen & Risiken,plant_based_diets,science,"Strenge Rohkost liefert niedrigen BMI und günstige Lipidprofile, aber birgt hohes Risiko für B12-, Protein-, Calcium-, Zink- und Vitamin-D-Mangel.",lucy,3,raw_diet;micronutrients;female_health,"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6566854/",2025-07-28T18:00:00+02:00`;
+Rohkost-Ernährung: Chancen & Risiken,plant_based_diets,science,"Strenge Rohkost liefert niedrigen BMI und günstige Lipidprofile, aber birgt hohes Risiko für B12-, Protein-, Calcium-, Zink- und Vitamin-D-Mangel.",ares,3,raw_diet;micronutrients;female_health,"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6566854/",2025-07-28T18:00:00+02:00`;
 
   return (
     <Card className="w-full max-w-4xl mx-auto">
