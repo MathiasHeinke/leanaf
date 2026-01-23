@@ -82,7 +82,7 @@ async function traceEvent(traceId: string, eventType: string, status: string, da
       message_id: messageId
     });
   } catch (error) {
-    console.error(`Failed to log trace event: ${error.message}`);
+    console.error(`Failed to log trace event: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -120,7 +120,7 @@ async function buildAIContext(userId: string, coachId: string, userMessage: stri
     
     return ctx;
   } catch (error) {
-    await traceEvent(traceId, 'context_build', 'error', { error: error.message });
+    await traceEvent(traceId, 'context_build', 'error', { error: error instanceof Error ? error.message : 'Unknown error' });
     console.error('Context building error:', error);
     return ctx;
   }
@@ -274,7 +274,7 @@ Markus: "Ei, gude wie? Hör ma zu, Kerl: 4-5 mal die Woch, schwere Gewichte, kei
     }
   };
   
-  return personas[coachId] || personas['lucy'];
+  return personas[coachId as keyof typeof personas] || personas['lucy'];
 }
 
 async function loadCoachMemory(userId: string, coachId: string, traceId: string): Promise<any> {
@@ -324,7 +324,7 @@ async function loadCoachMemory(userId: string, coachId: string, traceId: string)
     
     return memory;
   } catch (error) {
-    await traceEvent(traceId, 'memory_load', 'error', { error: error.message });
+    await traceEvent(traceId, 'memory_load', 'error', { error: error instanceof Error ? error.message : 'Unknown error' });
     return null;
   }
 }
@@ -443,7 +443,7 @@ async function loadEnhancedDaily(userId: string, traceId: string): Promise<any> 
     
     return daily;
   } catch (error) {
-    await traceEvent(traceId, 'daily_load', 'error', { error: error.message });
+    await traceEvent(traceId, 'daily_load', 'error', { error: error instanceof Error ? error.message : 'Unknown error' });
     return null;
   }
 }
