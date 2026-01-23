@@ -1282,6 +1282,22 @@ ${memory.conversation_context?.mood_history?.length > 0
   systemPromptParts.push(memorySection);
   systemPromptParts.push(conversationHistoryContext);
   systemPromptParts.push('');
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // CRITICAL: Style Override - Persona style takes precedence over conversation history
+  // Fixes issue where ARES used old persona's dialect (e.g., Markus Hessisch) after switching
+  // ═══════════════════════════════════════════════════════════════════════════════
+  systemPromptParts.push('## KRITISCH: STIL-ANWEISUNG');
+  systemPromptParts.push('IGNORIERE den Sprachstil und Dialekt aus dem GESPRAECHSVERLAUF!');
+  systemPromptParts.push('Der Gespraechsverlauf dient NUR fuer inhaltlichen Kontext - welche Themen besprochen wurden.');
+  systemPromptParts.push('Nutze AUSSCHLIESSLICH den Stil aus "DEINE PERSOENLICHKEIT HEUTE" (oben).');
+  if (persona && persona.dialect) {
+    systemPromptParts.push('Dein aktueller Dialekt: ' + persona.dialect);
+  } else {
+    systemPromptParts.push('Du sprichst HOCHDEUTSCH - KEIN Dialekt, keine regionalen Ausdruecke!');
+  }
+  systemPromptParts.push('Kopiere NIEMALS den Sprachstil aus frueheren Nachrichten im Verlauf.');
+  systemPromptParts.push('');
   systemPromptParts.push('## USER CONTEXT (DEINE DATEN - DU KENNST DIESE!)');
   if (context.profile?.weight) systemPromptParts.push('- Aktuelles Gewicht: ' + context.profile.weight + ' kg');
   if (context.profile?.target_weight) systemPromptParts.push('- Zielgewicht: ' + context.profile.target_weight + ' kg');

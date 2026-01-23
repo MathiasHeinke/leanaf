@@ -114,6 +114,22 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
       const role = msg.role === 'user' ? 'USER' : 'DU';
       sections.push(`${role}: ${msg.content.slice(0, 300)}${msg.content.length > 300 ? '...' : ''}`);
     });
+    
+    // CRITICAL: Style Override - Persona style takes precedence over conversation history
+    sections.push('');
+    sections.push('== KRITISCH: STIL-ANWEISUNG ==');
+    sections.push('IGNORIERE den Sprachstil und Dialekt aus der vorherigen Konversation!');
+    sections.push('Die Konversation dient NUR fuer inhaltlichen Kontext - welche Themen besprochen wurden.');
+    sections.push('Nutze AUSSCHLIESSLICH den Stil aus deiner Persona-Definition (oben).');
+    
+    // Check for dialect in persona
+    const personaWithDialect = persona as { dialect?: string };
+    if (personaWithDialect.dialect) {
+      sections.push('Dein aktueller Dialekt: ' + personaWithDialect.dialect);
+    } else {
+      sections.push('Du sprichst HOCHDEUTSCH - KEIN Dialekt, keine regionalen Ausdruecke!');
+    }
+    sections.push('Kopiere NIEMALS den Sprachstil aus frueheren Nachrichten.');
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
