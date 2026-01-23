@@ -29,9 +29,16 @@ export async function sendToAres({
   context,
   coachId = 'ares'
 }: AresCallOptions): Promise<AresResponse> {
-  const { data: sess } = await supabase.auth.getSession();
-  const accessToken = sess?.session?.access_token;
   const traceId = newTraceId();
+  
+  // Force session refresh to ensure valid token
+  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) {
+    console.warn('[ARES] Session refresh failed, trying getSession fallback:', refreshError.message);
+  }
+
+  const { data: sess } = await supabase.auth.getSession();
+  const accessToken = refreshData?.session?.access_token || sess?.session?.access_token;
 
   // Bullet-proof payload format - supports both modern and legacy
   const payload = {
