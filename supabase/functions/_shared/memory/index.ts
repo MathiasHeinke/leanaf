@@ -10,7 +10,8 @@
  *   extractInsightsFromMessage, 
  *   saveInsights, 
  *   loadRelevantInsights,
- *   detectPatterns 
+ *   detectPatterns,
+ *   runMemoryCleanup
  * } from '../_shared/memory/index.ts';
  * ```
  */
@@ -45,3 +46,11 @@ export {
   loadUnaddressedPatterns,
   markPatternAddressed 
 } from './patternDetector.ts';
+
+// Cleanup
+export {
+  runMemoryCleanup,
+  cleanupExpiredInsights,
+  cleanupStaleInsights,
+  cleanupAddressedPatterns
+} from './cleanup.ts';

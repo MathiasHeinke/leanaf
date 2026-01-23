@@ -30,6 +30,37 @@ const CORRELATION_RULES = [
     categories: ['ernährung', 'ziele'],
     keywords: [['alkohol', 'bier', 'wein'], ['abnehmen', 'definieren', 'gewicht']],
     suggestion: 'Alkoholkonsum könnte Abnehmziele behindern - Kaloriengehalt thematisieren'
+  },
+  // NEW: Additional correlation rules
+  {
+    name: 'wasser_energie',
+    categories: ['ernährung', 'emotionen'],
+    keywords: [['wasser', 'trinken', 'dehydriert'], ['müde', 'energie', 'erschöpft', 'kraftlos']],
+    suggestion: 'Dehydration könnte Energielevel beeinflussen - Trinkgewohnheiten prüfen'
+  },
+  {
+    name: 'schlaf_stimmung',
+    categories: ['schlaf', 'emotionen'],
+    keywords: [['schlaf', 'müde', 'wach'], ['gereizt', 'launisch', 'traurig', 'down']],
+    suggestion: 'Schlechter Schlaf beeinflusst Stimmung - Schlafhygiene verbessern'
+  },
+  {
+    name: 'training_stress',
+    categories: ['training', 'stress'],
+    keywords: [['training', 'sport', 'gym'], ['stress', 'entspannen', 'abschalten']],
+    suggestion: 'Training als Stressventil nutzen - gezielte Trainingszeiten vorschlagen'
+  },
+  {
+    name: 'zucker_energie',
+    categories: ['ernährung', 'emotionen'],
+    keywords: [['zucker', 'süß', 'schoko'], ['müde', 'crash', 'einbruch', 'energie']],
+    suggestion: 'Zuckerkonsum verursacht Energie-Crashes - stabilere Energiequellen empfehlen'
+  },
+  {
+    name: 'protein_muskel',
+    categories: ['ernährung', 'training'],
+    keywords: [['protein', 'eiweiß', 'fleisch'], ['muskel', 'kraft', 'aufbau']],
+    suggestion: 'Proteinzufuhr für Muskelaufbau optimieren - Timing und Menge prüfen'
   }
 ];
 
@@ -45,6 +76,31 @@ const CONTRADICTION_PATTERNS = [
     pattern1: { category: 'ziele', keywords: ['gesund', 'fit', 'ausdauer'] },
     pattern2: { category: 'gewohnheiten', keywords: ['rauch', 'zigarette', 'vape'] },
     suggestion: 'Rauchen steht im Widerspruch zu Gesundheitszielen - behutsam thematisieren'
+  },
+  // NEW: Additional contradiction patterns
+  {
+    name: 'muskel_nur_cardio',
+    pattern1: { category: 'ziele', keywords: ['muskel', 'aufbau', 'masse', 'kraft'] },
+    pattern2: { category: 'training', keywords: ['nur cardio', 'joggen', 'laufen', 'kein kraft'] },
+    suggestion: 'Muskelaufbau-Ziel mit reinem Cardio schwer erreichbar - Krafttraining empfehlen'
+  },
+  {
+    name: 'abnehmen_kein_training',
+    pattern1: { category: 'ziele', keywords: ['abnehmen', 'gewicht', 'fett'] },
+    pattern2: { category: 'training', keywords: ['kein sport', 'nicht trainieren', 'keine bewegung'] },
+    suggestion: 'Abnehmen ohne Bewegung schwieriger - sanfte Bewegungsintegration vorschlagen'
+  },
+  {
+    name: 'gesund_alkohol',
+    pattern1: { category: 'ziele', keywords: ['gesund', 'leber', 'entgiften'] },
+    pattern2: { category: 'gewohnheiten', keywords: ['alkohol', 'trinken', 'bier', 'wein'] },
+    suggestion: 'Regelmäßiger Alkohol vs Gesundheitsziele - Balance besprechen'
+  },
+  {
+    name: 'schlafen_koffein_spät',
+    pattern1: { category: 'ziele', keywords: ['besser schlafen', 'schlaf verbessern'] },
+    pattern2: { category: 'gewohnheiten', keywords: ['abends kaffee', 'spät koffein', 'energy drink'] },
+    suggestion: 'Späte Koffein-Einnahme vs Schlafziel - Koffein-Curfew empfehlen'
   }
 ];
 

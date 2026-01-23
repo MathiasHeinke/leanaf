@@ -2024,10 +2024,40 @@ Deno.serve(async (req) => {
             console.log(`[MEMORY] Detected ${detectedPatterns.length} new patterns`);
           }
         }
+
+        // Phase 4.1: Mark patterns as addressed if mentioned in response
+        if (userPatterns && userPatterns.length > 0 && finalOutput && finalOutput.length > 50) {
+          for (const pattern of userPatterns) {
+            // Check if the AI response addresses this pattern's topic
+            const patternKeywords = extractPatternKeywords(pattern.description);
+            const responseAddressesPattern = patternKeywords.some(kw => 
+              finalOutput.toLowerCase().includes(kw.toLowerCase())
+            );
+            
+            if (responseAddressesPattern) {
+              await markPatternAddressed(pattern.id, supaSvc);
+              console.log(`[MEMORY] Marked pattern as addressed: ${pattern.description}`);
+            }
+          }
+        }
       } catch (memError) {
         console.warn('[MEMORY-WARN] Memory extraction failed:', memError);
       }
     })();
+
+    // Helper to extract keywords from pattern description
+    function extractPatternKeywords(description: string): string[] {
+      // Extract meaningful words from pattern description
+      const cleanDesc = description
+        .replace(/Möglicher (Zusammenhang|Widerspruch):/i, '')
+        .replace(/Häufiges Thema:/i, '')
+        .replace(/[↔→vs]/g, ' ');
+      
+      return cleanDesc
+        .split(/[\s_]+/)
+        .filter(w => w.length > 3)
+        .slice(0, 4);
+    }
 
     await traceDone(traceId, duration_ms);
 

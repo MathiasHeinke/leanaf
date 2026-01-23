@@ -2,6 +2,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logTraceEvent } from "../telemetry.ts";
+import { extractInsightsFromMessage, saveInsights, getExistingInsightStrings, detectPatterns, getAllUserInsights } from "../_shared/memory/index.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id, x-source, x-chat-mode",
@@ -59,7 +61,7 @@ Deno.serve(async (req) => {
       date: today,
     };
 
-    const { error } = await supabase.from("diary_entries").insert(payload);
+    const { error, data: insertedEntry } = await supabase.from("diary_entries").insert(payload).select('id').single();
     if (error) {
       if ((error as any)?.code === "23505") {
         await logTraceEvent(supabase, {
@@ -76,6 +78,34 @@ Deno.serve(async (req) => {
       }
       throw error;
     }
+
+    // Phase 4: Extract insights from journal entry (non-blocking)
+    (async () => {
+      try {
+        const existingInsightStrings = await getExistingInsightStrings(userId!, supabase);
+        const newInsights = await extractInsightsFromMessage(
+          text,
+          userId!,
+          'journal',
+          existingInsightStrings
+        );
+
+        if (newInsights.length > 0) {
+          await saveInsights(userId!, newInsights, 'journal', insertedEntry?.id || traceId, supabase);
+          console.log(`[DIARY-MEMORY] Extracted ${newInsights.length} insights from journal entry`);
+
+          // Also detect patterns
+          const allInsights = await getAllUserInsights(userId!, supabase);
+          const patterns = await detectPatterns(userId!, newInsights, allInsights, supabase);
+          if (patterns.length > 0) {
+            console.log(`[DIARY-MEMORY] Detected ${patterns.length} patterns from journal`);
+          }
+        }
+      } catch (memErr) {
+        console.warn('[DIARY-MEMORY-WARN] Failed to extract insights:', memErr);
+      }
+    })();
+
     await logTraceEvent(supabase, {
       traceId,
       userId,
