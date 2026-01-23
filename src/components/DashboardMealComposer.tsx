@@ -179,7 +179,7 @@ const handleSubmit = useCallback(async () => {
         clientEventId: crypto.randomUUID(),
         context: { source: 'momentum', coachMode: 'nutrition', coachId: 'lucy' }
       });
-      if (reply.kind === 'message') {
+      if (reply.kind === 'message' && !reply.text.includes('beschäftigt')) {
         toast.message(reply.text);
         setClarify(null);
       } else if (reply.kind === 'clarify') {

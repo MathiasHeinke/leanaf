@@ -360,8 +360,10 @@ export type Database = {
           error: Json | null
           images: Json | null
           input_text: string | null
+          insights_loaded: number | null
           llm_input: Json | null
           llm_output: Json | null
+          patterns_loaded: number | null
           persona: Json | null
           rag_sources: Json | null
           status: string
@@ -381,8 +383,10 @@ export type Database = {
           error?: Json | null
           images?: Json | null
           input_text?: string | null
+          insights_loaded?: number | null
           llm_input?: Json | null
           llm_output?: Json | null
+          patterns_loaded?: number | null
           persona?: Json | null
           rag_sources?: Json | null
           status?: string
@@ -402,8 +406,10 @@ export type Database = {
           error?: Json | null
           images?: Json | null
           input_text?: string | null
+          insights_loaded?: number | null
           llm_input?: Json | null
           llm_output?: Json | null
+          patterns_loaded?: number | null
           persona?: Json | null
           rag_sources?: Json | null
           status?: string
