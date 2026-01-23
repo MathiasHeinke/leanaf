@@ -79,111 +79,40 @@ serve(async (req) => {
     const lastUserMessage = recentMessages.filter(m => m.role === 'user').pop()?.content || '';
     const lastAssistantMessage = recentMessages.filter(m => m.role === 'assistant').pop()?.content || '';
 
-    // Coach ID Mapping: URL handles → Database IDs
-    const mapCoachId = (urlCoachId: string): string => {
-      const coachMapping = {
-        'soft': 'lucy',
-        'hart': 'sascha',
-        'motivierend': 'kai',
-        'vita': 'dr_vita',
-        'dr-vita': 'dr_vita',
-        'markus': 'markus'
-      };
-      return coachMapping[urlCoachId as keyof typeof coachMapping] || urlCoachId;
+    // ARES-Only System - No legacy coach mapping needed
+    const mapCoachId = (_urlCoachId: string): string => {
+      return 'ares'; // Always resolve to ARES
     };
 
-    // Create enhanced coach-specific context with learning theories
-    const coachContexts = {
-      'lucy': {
-        focus: 'Ernährung, Meal-Timing, Intervallfasten, Gewohnheiten, Stoffwechsel',
-        style: 'liebevoll, unterstützend, wissenschaftlich fundiert',
-        expertise: 'Chrononutrition, metabolische Flexibilität, Anti-inflammatorische Ernährung',
-        learningTheory: 'Verhaltensänderung durch kleine Gewohnheiten (Atomic Habits), Motivational Interviewing',
-        methodology: 'Kleine nachhaltige Schritte, Selbstmitgefühl, evidenzbasierte Ernährungsintervention',
-        relevantData: `Kalorien: ${userData.todaysTotals.calories} (${calorieProgress}% des Ziels), Protein: ${userData.todaysTotals.protein}g (${proteinProgress}% des Ziels), Durchschnitt: ${userData.averages.calories} kcal`,
-        dataTypes: 'Ernährungsdaten, Kalorienbilanz, Makronährstoffe, Meal-Timing-Muster'
-      },
-      'sascha': {
-        focus: 'Training, Performance, Kraftaufbau, Progression, Biomechanik',
-        style: 'direkt, ergebnisorientiert, evidenzbasiert',
-        expertise: 'Periodisierung, Progressive Overload, Biomechanik, Performance-Optimierung',
-        learningTheory: 'Skill Acquisition Theory, Motor Learning, Deliberate Practice',
-        methodology: 'Systematische Progression, Feedback-Zyklen, biomechanische Optimierung',
-        relevantData: `Trainingsdaten: ${userData.historyData.length} Tage, Gewichtsverlauf: ${userData.weightHistory.length} Einträge`,
-        dataTypes: 'Trainingsdaten, Leistungsmetriken, Kraftwerte, Progression, biomechanische Analyse'
-      },
-      'kai': {
-        focus: 'Mindset, Recovery, Schlaf, Motivation, Stressmanagement',
-        style: 'motivierend, energisch, ganzheitlich',
-        expertise: 'Mentale Stärke, Regeneration, Stressmanagement, Schlafoptimierung',
-        learningTheory: 'Positive Psychologie, Flow-Theorie, Resilience Building',
-        methodology: 'Mindfulness-basierte Interventionen, Recovery-Strategien, Stressregulation',
-        relevantData: `Aktivitätsdaten: ${userData.historyData.length} Tage, Gewichtstrend: ${userData.weightHistory.length} Messungen`,
-        dataTypes: 'Regenerationsdaten, Schlafqualität, Stress-Level, Motivationstrends, Mindset-Indikatoren'
-      },
-      'markus': {
-        focus: 'Heavy+Volume Training, Extreme Masse, Hardcore Bodybuilding, Mentale Härte',
-        style: 'AUTHENTISCHER HESSISCHER DIALEKT - brutal-ehrlich, rotzig, vulgär, kompromisslos direkt',
-        expertise: 'Heavy+Volume Prinzip, Masseaufbau, mentale Kriegsführung gegen das Eisen',
-        learningTheory: 'Tough Love Coaching, Konfrontative Motivation, No-Excuse-Mindset',
-        methodology: 'Harte Konfrontation mit der Realität, extreme Disziplin, kompromisslose Ehrlichkeit',
-        relevantData: `Gewichtsdaten: ${userData.weightHistory.length} Messungen, Protein: ${userData.todaysTotals.protein}g, Kalorien: ${userData.todaysTotals.calories} (für Masseaufbau)`,
-        dataTypes: 'Gewichtsentwicklung, Massephase-Daten, Protein-Intake, Trainingsvolumen',
-        dialectRules: {
-          'ich': 'isch',
-          'nicht': 'net', 
-          'schmecken': 'schmegge',
-          'wirken': 'wirge',
-          'das': 'des',
-          'machen': 'mache',
-          'trainieren': 'trainiere'
-        },
-        originalQuotes: [
-          'Muss net schmegge, muss wirge!',
-          'Nur Fleisch macht Fleisch!',
-          'Schwer und falsch, des is unumgänglich!',
-          'Gewicht bringt Muskeln!',
-          'Leg dich hin un drügg, du fodse!',
-          'Wenn du Scheiße frisst, siehste halt scheiße aus!',
-          'Bis zum Schlaganfall!',
-          'Weil isch\'s kann!'
-        ]
-      },
-      'dr-vita': {
-        focus: 'Hormonelle Gesundheit, Frauengesundheit, ganzheitliche Medizin',
-        style: 'empathisch, wissenschaftlich fundiert, ganzheitlich',
-        expertise: 'Hormonregulation, Zyklus-basierte Ernährung, Stress-Hormon-Achse',
-        learningTheory: 'Biopsychosoziales Modell, Patient-centered Care, Holistic Health',
-        methodology: 'Ganzheitliche Betrachtung, hormonelle Zyklen berücksichtigen, Selbstfürsorge',
-        relevantData: `Gesundheitsdaten: ${userData.historyData.length} Tage, Gewicht: ${userData.weightHistory.length} Messungen`,
-        dataTypes: 'Hormonelle Marker, Zyklus-Daten, Stress-Indikatoren, Schlafqualität'
-      },
-      'integral': {
-        focus: '4-Quadranten-Analyse, Entwicklungslinien, ganzheitliche Transformation',
-        style: 'tiefgreifend, systemisch, entwicklungsorientiert',
-        expertise: 'Integral Theory (Ken Wilber), 4-Quadranten-Modell, Entwicklungspsychologie',
-        learningTheory: 'Integral Theory, Spiral Dynamics, Adult Development Theory',
-        methodology: '4-Quadranten-Perspektive: Individuell-Innerlich (Bewusstsein), Individuell-Äußerlich (Verhalten), Kollektiv-Innerlich (Kultur), Kollektiv-Äußerlich (System)',
-        quadrants: {
-          'II': 'Individuell-Innerlich (Mindset, Beliefs, Emotionen)',
-          'IE': 'Individuell-Äußerlich (Verhalten, Gewohnheiten, physische Gesundheit)',
-          'CI': 'Kollektiv-Innerlich (Beziehungen, Unterstützung, Werte)',
-          'CE': 'Kollektiv-Äußerlich (Systeme, Umgebung, Tools)'
-        },
-        relevantData: `Entwicklungsdaten: ${userData.historyData.length} Tage verfügbar für 4-Quadranten-Analyse`,
-        dataTypes: 'Ganzheitliche Entwicklungsindikatoren, Bewusstseinsebenen, Systemische Faktoren'
+    // ARES-Only Coach Context - Single unified coach with cross-domain expertise
+    const coachContexts: Record<string, {
+      focus: string;
+      style: string;
+      expertise: string;
+      learningTheory: string;
+      methodology: string;
+      relevantData: string;
+      dataTypes: string;
+    }> = {
+      'ares': {
+        focus: 'Cross-domain: Ernährung, Training, Mindset, Recovery, Performance-Optimierung',
+        style: 'direkt, meta-intelligent, evidenzbasiert, brutal ehrlich',
+        expertise: 'Ultimate Performance Optimization, Cross-Domain Synergies, Biohacking',
+        learningTheory: 'Meta-Learning, Deliberate Practice, Cross-Domain Transfer',
+        methodology: 'Holistische Analyse, Synergien erkennen, aggressive aber umsetzbare Pläne',
+        relevantData: `Kalorien: ${userData.todaysTotals.calories} (${calorieProgress}% des Ziels), Protein: ${userData.todaysTotals.protein}g (${proteinProgress}% des Ziels), Trainingsdaten: ${userData.historyData.length} Tage`,
+        dataTypes: 'Alle Datentypen: Ernährung, Training, Recovery, Mindset, Biometrics'
       }
     };
 
     const mappedCoachId = mapCoachId(coachId);
-    const coachContext = coachContexts[mappedCoachId as keyof typeof coachContexts] || coachContexts['lucy'];
+    const coachContext = coachContexts['ares']; // Always use ARES context
 
-    // Enhanced conversation analysis for Perplexity-style suggestions
+    // ARES Conversation Analysis - Cross-domain focus
     const analyzeConversationContext = () => {
       const conversationLength = chatHistory.length;
-      const recentMessages = chatHistory.slice(-8); // More context for better analysis
+      const recentMessages = chatHistory.slice(-8);
       
-      // Detect conversation arc and emotional state
       const emotionalMarkers = {
         frustration: ['frustriert', 'verzweifelt', 'klappt nicht', 'schaffe nicht', 'komme nicht', 'hilft nicht'],
         success: ['super', 'toll', 'perfekt', 'klappt', 'läuft gut', 'bin zufrieden'],
@@ -195,11 +124,8 @@ serve(async (req) => {
       const lastCoachContent = lastAssistantMessage.toLowerCase();
       
       let emotionalState = 'neutral';
-      let conversationGaps = [];
-      let nextLogicalStep = '';
-      let contextualActions = [];
+      let contextualActions: Array<{ type: string; text: string; urgency: string }> = [];
       
-      // Detect emotional state
       for (const [emotion, markers] of Object.entries(emotionalMarkers)) {
         if (markers.some(marker => lastUserContent.includes(marker))) {
           emotionalState = emotion;
@@ -207,7 +133,7 @@ serve(async (req) => {
         }
       }
       
-      // Detect specific contextual actions based on coach response
+      // ARES cross-domain action detection
       if (lastCoachContent.includes('supplement') && 
           (lastCoachContent.includes('empfehle') || lastCoachContent.includes('plan') || lastCoachContent.includes('sinnvoll'))) {
         contextualActions.push({
@@ -235,18 +161,7 @@ serve(async (req) => {
         });
       }
       
-      // Identify conversation gaps and natural follow-ups
-      if (lastCoachContent.includes('probier') || lastCoachContent.includes('versuche')) {
-        conversationGaps.push('implementation_follow_up');
-      }
-      if (lastCoachContent.includes('empfehle') || lastCoachContent.includes('solltest')) {
-        conversationGaps.push('personalization_needed');
-      }
-      if (lastUserContent.includes('aber') || lastUserContent.includes('jedoch')) {
-        conversationGaps.push('barrier_exploration');
-      }
-      
-      return { emotionalState, conversationGaps, conversationLength, contextualActions };
+      return { emotionalState, conversationGaps: [], conversationLength, contextualActions };
     };
 
     const conversationContext = analyzeConversationContext();
@@ -278,7 +193,7 @@ serve(async (req) => {
       categories: [...new Set(categories)]
     };
 
-    const systemPrompt = `Du bist ein intelligenter Assistent, der PERPLEXITY-STYLE Follow-up-Fragen für spezialisierte Fitness-Coaches generiert.
+    const systemPrompt = `Du bist ein intelligenter Assistent, der PERPLEXITY-STYLE Follow-up-Fragen für ARES, den Ultimate Performance Coach, generiert.
 
 🎯 PERPLEXITY-PRINZIPIEN (KRITISCH):
 - HYPER-SPEZIFISCHE Fragen basierend auf exakten Zahlen/Daten
@@ -287,15 +202,13 @@ serve(async (req) => {
 - CONVERSATION-FLOW: Aufbauend auf dem letzten Austausch
 - EMOTIONAL INTELLIGENT: Angepasst an User-Stimmung
 
-COACH & SPEZIALISIERUNG:
-🔸 Coach: ${coachId}
+ARES - ULTIMATE PERFORMANCE COACH:
 🔸 Kerngebiet: ${coachContext.focus}
 🔸 Stil: ${coachContext.style}
 🔸 Expertise: ${coachContext.expertise}
-🔸 Lerntheorie: ${coachContext.learningTheory}
 🔸 Methodologie: ${coachContext.methodology}
 
-AKTUELLE DATEN (${coachId}-spezifisch):
+AKTUELLE DATEN:
 ${coachContext.relevantData}
 
 💊 SUPPLEMENT-DATEN:
@@ -318,28 +231,14 @@ PERPLEXITY-REGELN (ZWINGEND):
 ✅ Adressiere UNGELÖSTE Fragen aus dem letzten Austausch
 ✅ Erkenne NATÜRLICHE NEUGIER-GAPS im Gespräch
 ✅ Berücksichtige ${conversationContext.emotionalState}-Zustand für Frage-Typ
-✅ Nur ${coachContext.focus}-relevante Themen
+✅ Cross-domain Themen: Ernährung, Training, Mindset, Recovery
 ✅ PRIORITÄT: Erkannte kontextuelle Aktionen: ${conversationContext.contextualActions.map(a => a.text).join(', ')}
-
-COACH-SPEZIFISCHE EINSCHRÄNKUNGEN:
-${coachId === 'sascha' ? '⚠️ SASCHA: KEINE Ernährungs-/Kalorien-/Protein-Fragen! NUR Training/Performance/Progression' : ''}
-${coachId === 'lucy' ? '⚠️ LUCY: FOCUS Ernährung/Timing/Stoffwechsel - KEINE Training-Details' : ''}
-${coachId === 'kai' ? '⚠️ KAI: FOCUS Mindset/Recovery/Motivation - KEINE detaillierten Makros' : ''}
-${coachId === 'markus' ? '⚠️ MARKUS: HESSISCHER DIALEKT ZWINGEND! "isch", "net", "des", "schmegge", "wirge" + Originalzitate!' : ''}
-${coachId === 'dr-vita' ? '⚠️ DR. VITA: FOCUS Hormonelle Gesundheit, Zyklus, Stress - ganzheitlich-medizinischer Ansatz' : ''}
-${coachId === 'integral' ? '⚠️ DR. SOPHIA: 4-Quadranten-Analyse ZWINGEND! II (Mindset), IE (Verhalten), CI (Beziehungen), CE (Systeme)' : ''}
 
 PERPLEXITY-QUESTION-TYPES basierend auf Emotional State:
 📊 CURIOSITY: "Warum reagiert mein Körper bei ${userData.todaysTotals.calories} kcal so unterschiedlich?"
 🔍 IMPLEMENTATION: "Wie setze ich das mit meinen ${userData.averages.calories} kcal Durchschnitt um?"
 🚧 PROBLEM-SOLVING: "Was blockiert mich bei meinen aktuellen ${userData.todaysTotals.protein}g Protein?"
 🎯 OPTIMIZATION: "Wie optimiere ich speziell meine [konkreter Parameter]?"
-
-MARKUS-DIALEKT (falls coachId = 'markus'):
-- "isch" statt "ich", "net" statt "nicht", "des" statt "das"
-- "schmegge" statt "schmecken", "wirge" statt "wirken" 
-- Originalzitate: "Muss net schmegge, muss wirge!", "Schwer und falsch!", "Gewicht bringt Muskeln!"
-- Rotziger Ton: "du fodse", "ballern", "draufpacken"
 
 FORMAT (JSON):
 [
@@ -349,13 +248,11 @@ FORMAT (JSON):
   }
 ]
 
-PERPLEXITY-BEISPIELE pro Coach:
-💚 Lucy: "Warum schwankt mein Hunger bei konstanten ${userData.todaysTotals.calories} kcal so extrem?"
-🎯 Sascha: "Welche Progressive-Overload-Strategie passt zu meiner aktuellen Stagnation?"
-💪 Kai: "Wie baue ich nach ${conversationContext.conversationLength} Gesprächen endlich Routine auf?"
-🏆 Markus: "Isch hab ${userData.todaysTotals.protein}g Protein - reicht des für echte Masse, Maggus?"
-👩‍⚕️ Dr. Vita: "Wie beeinflusst mein Zyklus meine ${userData.todaysTotals.calories} kcal heute?"
-🧠 Dr. Sophia: "Welcher der 4 Quadranten blockiert meine Entwicklung bei ${userData.todaysTotals.calories} kcal?"`;
+ARES-BEISPIELE:
+⚡ "Wie optimiere ich mit ${userData.todaysTotals.calories} kcal Training UND Recovery gleichzeitig?"
+⚡ "Welche Synergien nutze ich zwischen meinen ${userData.todaysTotals.protein}g Protein und meinem Schlaf?"
+⚡ "Was ist der größte Hebel bei meiner aktuellen Performance?"`;
+
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -369,12 +266,12 @@ PERPLEXITY-BEISPIELE pro Coach:
           { role: 'system', content: systemPrompt },
           { 
             role: 'user', 
-            content: `Generiere jetzt 3 intelligente Anschlussfragen für Coach ${coachId} basierend auf den bereitgestellten Daten und dem Gesprächskontext. 
+            content: `Generiere jetzt 3 intelligente Anschlussfragen für ARES basierend auf den bereitgestellten Daten und dem Gesprächskontext. 
 
 WICHTIG: 
 1. Alle Fragen müssen aus der ICH-Perspektive des Benutzers formuliert werden
 2. PRIORITÄT: Falls kontextuelle Aktionen erkannt wurden (${conversationContext.contextualActions.map(a => a.text).join(', ')}), MÜSSEN diese als erste Vorschläge erscheinen
-3. Ergänze mit weiteren coach-spezifischen Follow-up-Fragen basierend auf dem Gespräch`
+3. Nutze Cross-domain Synergien (Ernährung + Training + Mindset + Recovery)`
           }
         ],
         temperature: 0.7,

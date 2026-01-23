@@ -76,7 +76,7 @@ export const CardDiary = ({ payload }: CardDiaryProps) => {
       toast({
         title: "Tagebuch gespeichert ✨",
         description: action.data.kai_insight 
-          ? "Dein Eintrag wurde mit Kai's Analyse gespeichert"
+          ? "Dein Eintrag wurde mit Coach-Analyse gespeichert"
           : "Dein Eintrag wurde erfolgreich gespeichert"
       });
     } catch (error) {
