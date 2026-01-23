@@ -52,7 +52,8 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
       datasets: ['all_knowledge', 'performance_research', 'optimization_protocols', 'nutrition_database', 'supplement_database'],
       rag: ['search_ares_ultimate_knowledge']
     },
-    aliases: ['ares', 'ultimate', 'performance', 'meta', 'optimization', 'sascha', 'kai', 'lucy', 'freya', 'vita', 'markus', 'ruhl']
+    // No legacy aliases - clean ARES-only system
+    aliases: ['ares']
   }
 };
 
@@ -62,7 +63,6 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
  * @returns ARES coach metadata
  */
 export function resolveCoach(_inputId?: string): CoachMetadata {
-  // ARES-Only: Always return ARES regardless of input
   return COACH_REGISTRY.ares;
 }
 

@@ -300,7 +300,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
       role: 'assistant',
       content: text,
       created_at: new Date().toISOString(),
-      coach_personality: coach?.id || 'lucy',
+      coach_personality: coach?.id || 'ares',
       coach_name: coach?.name || 'Coach',
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
@@ -335,7 +335,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
       role: 'assistant',
       content: humanize(promptText, ""), // No additional ask
       created_at: new Date().toISOString(),
-      coach_personality: coach?.id || 'lucy',
+      coach_personality: coach?.id || 'ares',
       coach_name: coach?.name || 'Coach',
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
@@ -368,7 +368,7 @@ const renderOrchestratorReply = useCallback((res: OrchestratorReply) => {
       role: 'assistant',
       content: text,
       created_at: new Date().toISOString(),
-      coach_personality: coach?.id || 'lucy',
+      coach_personality: coach?.id || 'ares',
       coach_name: coach?.name || 'Coach',
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
@@ -443,7 +443,7 @@ const onChipClick = useCallback(async (label: string) => {
       role: 'assistant',
       content: 'Alles klar – sag Bescheid, wenn wir’s speichern sollen. Was interessiert dich gerade am meisten?',
       created_at: new Date().toISOString(),
-      coach_personality: coach?.id || 'lucy',
+      coach_personality: coach?.id || 'ares',
       coach_name: coach?.name || 'Coach',
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
@@ -524,13 +524,13 @@ const awaitingFirstPaintRef = useRef<boolean>(false);
   useEffect(() => {
     if (!user?.id) {
       console.warn('ℹ️ No authenticated user found, showing simple greeting');
-      const fallbackGreeting = getSimpleGreeting(coach?.id || 'lucy');
+      const fallbackGreeting = getSimpleGreeting(coach?.id || 'ares');
       const welcomeMsg: EnhancedChatMessage = {
         id: `welcome-${Date.now()}`,
         role: 'assistant',
         content: fallbackGreeting,
         created_at: new Date().toISOString(),
-        coach_personality: coach?.id || 'lucy',
+        coach_personality: coach?.id || 'ares',
         coach_name: coach?.name || 'Coach',
         coach_avatar: coach?.imageUrl,
         coach_color: coach?.color,
@@ -544,7 +544,7 @@ const awaitingFirstPaintRef = useRef<boolean>(false);
     
     // Always reinitialize when user or coach changes
     const init = async () => {
-      console.log(`🔄 Initializing chat for user ${user.id}, coach ${coach?.id || 'lucy'}`);
+      console.log(`🔄 Initializing chat for user ${user.id}, coach ${coach?.id || 'ares'}`);
       initializationRef.current = true;
     
       try {
@@ -553,13 +553,13 @@ const awaitingFirstPaintRef = useRef<boolean>(false);
         
         // Load existing chat history for today
         const today = getCurrentDateString();
-        console.log(`🔍 Loading chat history for user ${user.id}, coach ${coach?.id || 'lucy'}, date ${today}`);
+        console.log(`🔍 Loading chat history for user ${user.id}, coach ${coach?.id || 'ares'}, date ${today}`);
         
         const { data: existingMessages, error: historyError } = await supabase
           .from('coach_conversations')
           .select('*')
           .eq('user_id', user.id)
-          .eq('coach_personality', coach?.id || 'lucy')
+          .eq('coach_personality', coach?.id || 'ares')
           .eq('conversation_date', today)
           .order('created_at', { ascending: true });
 
@@ -594,13 +594,13 @@ const awaitingFirstPaintRef = useRef<boolean>(false);
         
         // Show immediate simple greeting placeholder
         const placeholderId = `welcome-${Date.now()}`;
-        const placeholderGreeting = getSimpleGreeting(coach?.id || 'lucy');
+        const placeholderGreeting = getSimpleGreeting(coach?.id || 'ares');
         const placeholderMsg: EnhancedChatMessage = {
           id: placeholderId,
           role: 'assistant',
           content: placeholderGreeting,
           created_at: new Date().toISOString(),
-          coach_personality: coach?.id || 'lucy',
+          coach_personality: coach?.id || 'ares',
           coach_name: coach?.name || 'Coach',
           coach_avatar: coach?.imageUrl,
           coach_color: coach?.color,
@@ -610,7 +610,7 @@ const awaitingFirstPaintRef = useRef<boolean>(false);
         
 if (enableAdvancedFeatures) {
   // Fire and append dynamic follow-up as a second bubble (no salutation)
-  generateIntelligentGreeting(user.id, coach?.id || 'lucy', {
+  generateIntelligentGreeting(user.id, coach?.id || 'ares', {
     firstName: user.user_metadata?.name || 'User',
     isFirstConversation: true,
     alreadyGreeted: true
@@ -628,7 +628,7 @@ if (enableAdvancedFeatures) {
         role: 'assistant',
         content: cleaned,
         created_at: new Date().toISOString(),
-        coach_personality: coach?.id || 'lucy',
+        coach_personality: coach?.id || 'ares',
         coach_name: coach?.name || 'Coach',
         coach_avatar: coach?.imageUrl,
         coach_color: coach?.color,
@@ -711,7 +711,7 @@ if (enableAdvancedFeatures) {
           role: 'assistant',
           content: data?.text ?? 'OK.',
           created_at: new Date().toISOString(),
-          coach_personality: coach?.id || 'lucy',
+          coach_personality: coach?.id || 'ares',
           coach_name: coach?.name || 'Coach',
           coach_avatar: coach?.imageUrl,
           coach_color: coach?.color,
@@ -795,7 +795,7 @@ if (enableAdvancedFeatures) {
         role: 'assistant',
         content: '✅ Ich habe deinen nächsten Trainingstag erstellt. Du kannst ihn unten anpassen und speichern.',
         created_at: new Date().toISOString(),
-        coach_personality: coach?.id || 'lucy',
+        coach_personality: coach?.id || 'ares',
         coach_name: coach?.name || 'Coach',
         coach_avatar: coach?.imageUrl,
         coach_color: coach?.color,
@@ -1076,7 +1076,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
       role: 'user',
       content: msg,
       created_at: new Date().toISOString(),
-      coach_personality: coach?.id || 'lucy',
+      coach_personality: coach?.id || 'ares',
       coach_name: coach?.name || 'Coach',
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
@@ -1092,7 +1092,7 @@ const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?
       role: 'user',
       content: `![📷 Bild gesendet](${url})`,
       created_at: new Date().toISOString(),
-      coach_personality: coach?.id || 'lucy',
+      coach_personality: coach?.id || 'ares',
       coach_name: coach?.name || 'Coach',
       coach_avatar: coach?.imageUrl,
       coach_color: coach?.color,
@@ -1494,17 +1494,16 @@ chatInput={
 };
 
 // ============= HELPER FUNCTIONS =============
-function getSimpleGreeting(coachId: string): string {
-  const greetings = {
-    'lucy': ['Hey! ✨', 'Hi! 💗', 'Hallo! 🌟'],
-    'sascha': ['Moin!', 'Hey! 💪', 'Servus!'],
-    'ares': ['ARES ist bereit!', 'Zeit für totale Dominanz!', 'Ultimate Intelligence aktiviert!'],
-    'kai': ['Hey! 🙏', 'Namaste!', 'Hi!'],
-    'dr_vita': ['Hallo! 🌸', 'Hi!', 'Hey!']
-  };
+function getSimpleGreeting(_coachId: string): string {
+  // ARES-only greetings
+  const greetings = [
+    'ARES ist bereit! ⚡',
+    'Zeit für totale Dominanz! 💪',
+    'Ultimate Intelligence aktiviert!',
+    'Bereit für deinen nächsten Schritt! 🔥'
+  ];
   
-  const options = greetings[coachId] || ['Hey! 👋'];
-  return options[Math.floor(Math.random() * options.length)];
+  return greetings[Math.floor(Math.random() * greetings.length)];
 }
 
 export default EnhancedUnifiedCoachChat;

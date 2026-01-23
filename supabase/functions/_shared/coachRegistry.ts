@@ -1,3 +1,4 @@
+// ARES-Only Coach Registry - Single unified coach for all backend functions
 export interface CoachMetadata {
   id: string;
   name: string;
@@ -21,37 +22,8 @@ export interface CoachMetadata {
   aliases: string[];
 }
 
+// ARES is the single unified coach - all legacy coaches consolidated
 export const COACH_REGISTRY: Record<string, CoachMetadata> = {
-  freya: {
-    id: 'freya',
-    name: 'FREYA',
-    displayName: 'FREYA',
-    personality: 'Ultimate Female Intelligence - vereint Ernährungswissen mit Hormonexpertise',
-    role: 'Ultimate Female Health & Performance Coach',
-    prompt_template_id: 'freya_ultimate',
-    memory_id: 'freya_memory_v2',
-    avatar: '👑',
-    imageUrl: '/lovable-uploads/4b8ee7ce-3bfe-4f9d-8a58-e6b50b29d78c.png',
-    color: 'hsl(320, 70%, 65%)',
-    accentColor: 'hsl(280, 60%, 70%)',
-    isPremium: false,
-    isFree: true,
-    expertise: [
-      'Female Hormone Optimization',
-      'Cycle-Based Training', 
-      'Nutrition & Metabolism',
-      'Recovery & Wellness',
-      'Life Phase Coaching',
-      'Mindful Nutrition',
-      'Supplement Safety'
-    ],
-    access: {
-      tools: ['cycleAssessment', 'femaleTraining', 'hormonalInsights', 'nutritionAnalysis', 'recoveryOptimization'],
-      datasets: ['hormone_research', 'cycle_data', 'nutrition_database', 'supplement_database'],
-      rag: ['vita_knowledge_semantic']
-    },
-    aliases: ['freya', 'female', 'women', 'frau', 'frauen', 'hormone', 'cycle', 'zyklus', 'lucy', 'vita', 'nutrition']
-  },
   ares: {
     id: 'ares',
     name: 'ARES',
@@ -64,94 +36,59 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
     imageUrl: '/lovable-uploads/1b6ddc34-604a-4356-a46f-07208c77c35f.png',
     color: 'hsl(0, 80%, 60%)',
     accentColor: 'hsl(20, 70%, 65%)',
-    isPremium: true,
-    isFree: false,
+    isPremium: false,
+    isFree: true,
     expertise: [
-      'Cross-Domain Optimization',
-      'Ultimate Performance',
-      'Meta-Intelligence Coaching',
-      'Total Life Mastery',
-      'Advanced Periodization',
-      'Peak Performance Psychology',
-      'Biohacking & Optimization'
+      'Ernährung & Makros',
+      'Training & Periodisierung',
+      'Mindset & Motivation',
+      'Recovery & Regeneration',
+      'Hormone & Zyklus',
+      'Biohacking & Optimierung',
+      'Supplements & Stacks'
     ],
     access: {
-      tools: ['aresMetaCoach', 'aresTotalAssessment', 'ultimateOptimization', 'crossDomainAnalysis'],
-      datasets: ['all_knowledge', 'performance_research', 'optimization_protocols'],
+      tools: ['aresMetaCoach', 'aresTotalAssessment', 'ultimateOptimization', 'crossDomainAnalysis', 'nutritionAnalysis', 'trainingPlanning'],
+      datasets: ['all_knowledge', 'performance_research', 'optimization_protocols', 'nutrition_database', 'supplement_database'],
       rag: ['search_ares_ultimate_knowledge']
     },
-    aliases: ['ares', 'ultimate', 'performance', 'meta', 'optimization', 'sascha', 'kai', 'male', 'markus', 'ruhl']
+    // No legacy aliases - clean ARES-only system
+    aliases: ['ares']
   }
 };
 
 /**
- * Resolves coach ID using fuzzy matching
- * @param inputId Raw coach ID from request
- * @returns Resolved coach metadata or fallback to FREYA
+ * Resolves any coach ID to ARES (single coach system)
+ * All legacy coach IDs (lucy, sascha, kai, vita, freya) now resolve to ARES
  */
-export function resolveCoach(inputId: string): CoachMetadata {
-  if (!inputId) {
-    return COACH_REGISTRY.freya; // Default fallback
-  }
-
-  const normalized = inputId.trim().toLowerCase().replace(/[_-\s]/g, '');
-  
-  // Exact match first
-  if (COACH_REGISTRY[normalized]) {
-    return COACH_REGISTRY[normalized];
-  }
-  
-  // Fuzzy matching through aliases
-  for (const [coachId, coach] of Object.entries(COACH_REGISTRY)) {
-    if (coach.aliases.some(alias => 
-      alias.toLowerCase().replace(/[_-\s]/g, '').includes(normalized) ||
-      normalized.includes(alias.toLowerCase().replace(/[_-\s]/g, ''))
-    )) {
-      return coach;
-    }
-  }
-  
-  // Legacy redirects for old coaches
-  const legacyMappings: Record<string, string> = {
-    'lucy': 'freya',
-    'vita': 'freya',
-    'sascha': 'ares',
-    'kai': 'ares',
-    'markus': 'ares',
-    'ruhl': 'ares',
-    'persona_lucy': 'freya',
-    'persona_vita': 'freya',
-    'persona_sascha': 'ares',
-    'persona_kai': 'ares',
-    'persona_ares': 'ares',
-    'persona_ruhl': 'ares'
-  };
-  
-  if (legacyMappings[normalized]) {
-    return COACH_REGISTRY[legacyMappings[normalized]];
-  }
-  
-  // Fallback to FREYA
-  return COACH_REGISTRY.freya;
+export function resolveCoach(_inputId?: string): CoachMetadata {
+  return COACH_REGISTRY.ares;
 }
 
 /**
- * Get all available coach IDs
+ * Get all available coach IDs (only ARES)
  */
 export function getAllCoachIds(): string[] {
-  return Object.keys(COACH_REGISTRY);
+  return ['ares'];
 }
 
 /**
- * Get coach by ID with error handling
+ * Get coach by ID (always returns ARES)
  */
-export function getCoachById(id: string): CoachMetadata | null {
-  return COACH_REGISTRY[id] || null;
+export function getCoachById(_id?: string): CoachMetadata {
+  return COACH_REGISTRY.ares;
 }
 
 /**
- * Check if coach ID is valid
+ * Check if coach ID is valid (always true for single coach)
  */
-export function isValidCoachId(id: string): boolean {
-  return id in COACH_REGISTRY;
+export function isValidCoachId(_id?: string): boolean {
+  return true;
+}
+
+/**
+ * Get the default coach (ARES)
+ */
+export function getDefaultCoach(): CoachMetadata {
+  return COACH_REGISTRY.ares;
 }
