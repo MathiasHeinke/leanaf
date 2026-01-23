@@ -45,12 +45,18 @@ export const COACH_REGISTRY: Record<string, CoachMetadata> = {
       'Recovery & Regeneration',
       'Hormone & Zyklus',
       'Biohacking & Optimierung',
-      'Supplements & Stacks'
+      'Supplements & Stacks',
+      'Peptide & GLP-1',
+      'Blutbild-Interpretation'
     ],
     access: {
-      tools: ['aresMetaCoach', 'aresTotalAssessment', 'ultimateOptimization', 'crossDomainAnalysis', 'nutritionAnalysis', 'trainingPlanning'],
-      datasets: ['all_knowledge', 'performance_research', 'optimization_protocols', 'nutrition_database', 'supplement_database'],
-      rag: ['search_ares_ultimate_knowledge']
+      tools: ['aresMetaCoach', 'aresTotalAssessment', 'ultimateOptimization', 'crossDomainAnalysis', 
+              'nutritionAnalysis', 'trainingPlanning', 'peptideProtocols', 'hormonePlanning', 
+              'recoveryOptimization', 'bloodworkAnalysis', 'memoryExtraction'],
+      datasets: ['all_knowledge', 'performance_research', 'optimization_protocols', 'nutrition_database', 
+                 'supplement_database', 'peptide_database', 'hormone_research', 'longevity_protocols',
+                 'bloodwork_references', 'female_health'],
+      rag: ['search_ares_ultimate_knowledge', 'search_all_coaches', 'search_peptide_knowledge']
     },
     // No legacy aliases - clean ARES-only system
     aliases: ['ares']

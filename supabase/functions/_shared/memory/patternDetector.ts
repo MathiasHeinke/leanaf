@@ -61,6 +61,37 @@ const CORRELATION_RULES = [
     categories: ['ernährung', 'training'],
     keywords: [['protein', 'eiweiß', 'fleisch'], ['muskel', 'kraft', 'aufbau']],
     suggestion: 'Proteinzufuhr für Muskelaufbau optimieren - Timing und Menge prüfen'
+  },
+  // NEW: Peptide & Hormone Correlations
+  {
+    name: 'peptide_training',
+    categories: ['gesundheit', 'training'],
+    keywords: [['peptid', 'bpc', 'gh', 'ipamorelin', 'semaglutide', 'tirzepatide'], ['training', 'regeneration', 'recovery', 'verletzung']],
+    suggestion: 'Peptid-Nutzung und Training-Regeneration korrelieren - Timing und Protokoll optimieren'
+  },
+  {
+    name: 'hormone_stimmung',
+    categories: ['gesundheit', 'emotionen'],
+    keywords: [['hormon', 'testosteron', 'oestrogen', 'trt', 'hrt'], ['stimmung', 'energie', 'antrieb', 'libido', 'muede']],
+    suggestion: 'Hormon-Level beeinflusst Stimmung und Energie - Blutbild-Check empfehlen'
+  },
+  {
+    name: 'defizit_kraft',
+    categories: ['ernährung', 'training'],
+    keywords: [['defizit', 'diaet', 'wenig essen', 'abnehmen', 'kalorien'], ['kraft', 'schwach', 'progression', 'stagnation']],
+    suggestion: 'Kaloriendefizit kann Kraftentwicklung limitieren - Refeeds oder Diet-Breaks einplanen'
+  },
+  {
+    name: 'glp1_hunger',
+    categories: ['gesundheit', 'ernährung'],
+    keywords: [['semaglutide', 'tirzepatide', 'ozempic', 'wegovy', 'mounjaro'], ['hunger', 'appetit', 'satt', 'uebelkeit']],
+    suggestion: 'GLP-1 Agonist beeinflusst Appetit stark - Protein-Priorisierung und Hydration sicherstellen'
+  },
+  {
+    name: 'schlaf_hormone',
+    categories: ['schlaf', 'gesundheit'],
+    keywords: [['schlaf', 'muede', 'wach', 'insomnia'], ['hormon', 'testosteron', 'cortisol', 'melatonin']],
+    suggestion: 'Proteinzufuhr für Muskelaufbau optimieren - Timing und Menge prüfen'
   }
 ];
 
@@ -258,26 +289,62 @@ function checkContradiction(
 function detectTrends(insights: any[]): DetectedPattern[] {
   const trends: DetectedPattern[] = [];
   const categoryCount: Record<string, number> = {};
+  const recentCategories: Record<string, Date[]> = {};
+  const subcategoryCount: Record<string, number> = {};
 
-  // Count category mentions
+  // Count category and subcategory mentions with timestamps
   for (const insight of insights) {
     categoryCount[insight.category] = (categoryCount[insight.category] || 0) + 1;
+    
+    // Track subcategories for more specific patterns
+    if (insight.subcategory) {
+      const key = insight.category + ':' + insight.subcategory;
+      subcategoryCount[key] = (subcategoryCount[key] || 0) + 1;
+    }
+    
+    // Track temporal patterns
+    if (!recentCategories[insight.category]) recentCategories[insight.category] = [];
+    recentCategories[insight.category].push(new Date(insight.extractedAt || Date.now()));
   }
 
-  // Detect frequent topics (potential concerns)
+  // Detect frequent topics (potential concerns) - lowered threshold to 3
   for (const [category, count] of Object.entries(categoryCount)) {
     if (count >= 3) {
       const categoryInsights = insights.filter(i => i.category === category);
+      
+      // Generate coaching-specific suggestion based on category
+      let suggestion = 'User beschaeftigt sich haeufig mit ' + category + ' - proaktiv vertiefen';
+      if (category === 'training') suggestion = 'Training ist Fokusthema - Periodisierung und Progression besprechen';
+      if (category === 'ernaehrung') suggestion = 'Ernaehrung ist Fokusthema - Makros und Meal-Timing optimieren';
+      if (category === 'schlaf') suggestion = 'Schlaf ist Fokusthema - Schlafhygiene-Protokoll vorschlagen';
+      if (category === 'stress') suggestion = 'Stress ist Fokusthema - Recovery-Strategien und Cortisol-Management';
+      if (category === 'gesundheit') suggestion = 'Gesundheit ist Fokusthema - Blutbild und Praevention ansprechen';
+      
       trends.push({
         patternType: 'trend',
-        description: `Häufiges Thema: ${category} (${count}x erwähnt)`,
+        description: 'Haeufiges Thema: ' + category + ' (' + count + 'x erwaehnt)',
         insightIds: categoryInsights.slice(0, 5).map(i => i.id),
         confidence: Math.min(0.9, 0.5 + (count * 0.1)),
-        suggestion: `User beschäftigt sich häufig mit ${category} - möglicherweise ein Fokusthema`
+        suggestion: suggestion
+      });
+    }
+  }
+  
+  // Detect specific subcategory trends (e.g., "ernaehrung:koffein" mentioned 2+ times)
+  for (const [key, count] of Object.entries(subcategoryCount)) {
+    if (count >= 2) {
+      const [category, subcategory] = key.split(':');
+      trends.push({
+        patternType: 'trend',
+        description: 'Spezifisches Thema: ' + subcategory + ' in ' + category + ' (' + count + 'x)',
+        insightIds: insights.filter(i => i.category === category && i.subcategory === subcategory).slice(0, 3).map(i => i.id),
+        confidence: 0.7,
+        suggestion: 'User erwaehnt ' + subcategory + ' wiederholt - gezielt nachfragen'
       });
     }
   }
 
+  console.log('[PatternDetector] Detected ' + trends.length + ' trends from ' + insights.length + ' insights');
   return trends;
 }
 
