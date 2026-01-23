@@ -21,9 +21,6 @@ import HistoryPage from "./pages/History";
 import AnalysePage from "./pages/Analyse";
 import BackupAnalysePage from "./pages/BackupAnalysePage";
 import Achievements from "./pages/Achievements";
-import Science from "./pages/Science";
-import Features from "./pages/Features";
-import Roadmap from "./pages/Roadmap";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Imprint from "./pages/Imprint";
@@ -70,9 +67,6 @@ const App = () => (
                       <Route path="/analyse" element={<AnalysePage />} />
                       <Route path="/backupanalyse" element={<BackupAnalysePage />} />
                       <Route path="/achievements" element={<Achievements />} />
-                      <Route path="/science" element={<Science />} />
-                      <Route path="/features" element={<Features />} />
-                      <Route path="/roadmap" element={<Roadmap />} />
                       <Route path="/terms" element={<Terms />} />
                       <Route path="/privacy" element={<Privacy />} />
                       <Route path="/imprint" element={<Imprint />} />

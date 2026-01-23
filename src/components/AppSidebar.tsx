@@ -2,7 +2,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { 
   LayoutDashboard, 
-  MessageCircle, 
   Dumbbell,
   TrendingUp,
   BarChart3,
@@ -10,20 +9,15 @@ import {
   Settings, 
   CreditCard, 
   Trophy, 
-  Microscope, 
   Bug, 
   LogOut,
   Star,
   Award,
   Crown,
-  Lightbulb,
-  MapPin,
   FileText,
   Shield,
   Info,
-  Mail,
   History as HistoryIcon,
-  Brain,
   Zap,
   Sun,
   Moon,
@@ -66,12 +60,7 @@ const navigationItems = [
 const settingsItems = [
   { title: "Einstellungen", url: "/account", icon: Settings, key: "header.account" },
   { title: "Credits & Packs", url: "/credits", icon: CreditCard, key: "header.subscription" },
-  { title: "Wissenschaft", url: "/science", icon: Microscope },
-  { title: "Features", url: "/features", icon: Lightbulb },
-  { title: "Roadmap", url: "/roadmap", icon: MapPin },
-  { title: "Email", url: "/marketing", icon: Mail },
   { title: "Admin", url: "/admin", icon: Shield, adminOnly: true },
-  { title: "Gehirn", url: "/gehirn", icon: Brain, adminOnly: true },
 ];
 
 const legalItems = [
@@ -89,36 +78,9 @@ export function AppSidebar() {
   const { toggleTheme, getThemeStatus, getThemeIcon } = useAutoDarkMode();
   const navigate = useNavigate();
   const location = useLocation();
-  const [hasMarketingRole, setHasMarketingRole] = useState<boolean>(false);
   const [userGender, setUserGender] = useState<string | null>(null);
   
   const collapsed = state === "collapsed";
-
-  useEffect(() => {
-    const checkMarketingRole = async () => {
-      if (!user) {
-        setHasMarketingRole(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.rpc('current_user_has_role', {
-          _role: 'marketing'
-        });
-        if (error) {
-          console.error('Error checking marketing role:', error);
-          setHasMarketingRole(false);
-        } else {
-          setHasMarketingRole(data || false);
-        }
-      } catch (error) {
-        console.error('Error checking marketing role:', error);
-        setHasMarketingRole(false);
-      }
-    };
-
-    checkMarketingRole();
-  }, [user]);
 
   useEffect(() => {
     const fetchUserGender = async () => {
@@ -360,11 +322,6 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {settingsItems.map((item) => {
-                // Only show Email item if user has marketing role
-                if (item.url === '/marketing' && !hasMarketingRole) {
-                  return null;
-                }
-                
                 // Only show Admin item for admin users or in development
                 if (item.adminOnly && !(user?.email?.includes('admin') || process.env.NODE_ENV === 'development')) {
                   return null;
