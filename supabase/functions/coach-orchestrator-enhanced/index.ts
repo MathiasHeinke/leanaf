@@ -2186,15 +2186,15 @@ Deno.serve(async (req) => {
     });
     
     // Merge ARES-context meals into healthContext for complete prompt injection
-    if (healthContext && contextResult.recent_meals?.length > 0) {
-      console.log('[ARES-FIX] Merging ' + contextResult.recent_meals.length + ' meals from contextResult into healthContext');
+    if (healthContext && context.recent_meals?.length > 0) {
+      console.log('[ARES-FIX] Merging ' + context.recent_meals.length + ' meals from context into healthContext');
       healthContext.recentActivity = healthContext.recentActivity || {} as any;
-      healthContext.recentActivity.mealsLogged = contextResult.recent_meals.length;
+      healthContext.recentActivity.mealsLogged = context.recent_meals.length;
       healthContext.recentActivity.avgCalories = Math.round(
-        contextResult.recent_meals.reduce((sum: number, m: any) => sum + (m.calories || 0), 0) / contextResult.recent_meals.length
+        context.recent_meals.reduce((sum: number, m: any) => sum + (m.calories || 0), 0) / context.recent_meals.length
       );
       healthContext.recentActivity.avgProtein = Math.round(
-        contextResult.recent_meals.reduce((sum: number, m: any) => sum + (m.protein || 0), 0) / contextResult.recent_meals.length
+        context.recent_meals.reduce((sum: number, m: any) => sum + (m.protein || 0), 0) / context.recent_meals.length
       );
     }
 
