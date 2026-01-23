@@ -24,8 +24,29 @@ interface PersonaCardProps {
 }
 
 const PersonaCard: React.FC<PersonaCardProps> = ({ persona, isSelected, onSelect }) => {
-  // Persona-specific styling
+  // Persona-specific styling for the new 4-persona system
   const personaStyles: Record<string, { border: string; bg: string; accent: string }> = {
+    lester: { 
+      border: 'border-yellow-500', 
+      bg: 'bg-yellow-500/10', 
+      accent: 'text-yellow-500' 
+    },
+    ares: { 
+      border: 'border-red-500', 
+      bg: 'bg-red-500/10', 
+      accent: 'text-red-500' 
+    },
+    markus: { 
+      border: 'border-amber-500', 
+      bg: 'bg-amber-500/10', 
+      accent: 'text-amber-500' 
+    },
+    freya: { 
+      border: 'border-emerald-500', 
+      bg: 'bg-emerald-500/10', 
+      accent: 'text-emerald-500' 
+    },
+    // Legacy IDs (fallbacks)
     standard: { 
       border: 'border-blue-500', 
       bg: 'bg-blue-500/10', 
@@ -48,7 +69,7 @@ const PersonaCard: React.FC<PersonaCardProps> = ({ persona, isSelected, onSelect
     },
   };
 
-  const style = personaStyles[persona.id] || personaStyles.standard;
+  const style = personaStyles[persona.id] || personaStyles.lester;
 
   return (
     <Card

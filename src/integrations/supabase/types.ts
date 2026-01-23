@@ -1022,10 +1022,26 @@ export type Database = {
           bio_short: string | null
           catchphrase: string | null
           created_at: string
+          description: string | null
+          dial_challenge: number | null
+          dial_depth: number | null
+          dial_directness: number | null
+          dial_energy: number | null
+          dial_humor: number | null
+          dial_opinion: number | null
+          dial_warmth: number | null
+          dialect: string | null
           emojis: Json
+          example_responses: Json | null
+          icon: string | null
           id: string
+          is_active: boolean | null
+          language_style: string | null
           name: string
+          phrase_frequency: number | null
+          phrases: Json | null
           sign_off: string | null
+          sort_order: number | null
           style_rules: Json
           title: string | null
           updated_at: string
@@ -1035,10 +1051,26 @@ export type Database = {
           bio_short?: string | null
           catchphrase?: string | null
           created_at?: string
+          description?: string | null
+          dial_challenge?: number | null
+          dial_depth?: number | null
+          dial_directness?: number | null
+          dial_energy?: number | null
+          dial_humor?: number | null
+          dial_opinion?: number | null
+          dial_warmth?: number | null
+          dialect?: string | null
           emojis?: Json
+          example_responses?: Json | null
+          icon?: string | null
           id: string
+          is_active?: boolean | null
+          language_style?: string | null
           name: string
+          phrase_frequency?: number | null
+          phrases?: Json | null
           sign_off?: string | null
+          sort_order?: number | null
           style_rules?: Json
           title?: string | null
           updated_at?: string
@@ -1048,10 +1080,26 @@ export type Database = {
           bio_short?: string | null
           catchphrase?: string | null
           created_at?: string
+          description?: string | null
+          dial_challenge?: number | null
+          dial_depth?: number | null
+          dial_directness?: number | null
+          dial_energy?: number | null
+          dial_humor?: number | null
+          dial_opinion?: number | null
+          dial_warmth?: number | null
+          dialect?: string | null
           emojis?: Json
+          example_responses?: Json | null
+          icon?: string | null
           id?: string
+          is_active?: boolean | null
+          language_style?: string | null
           name?: string
+          phrase_frequency?: number | null
+          phrases?: Json | null
           sign_off?: string | null
+          sort_order?: number | null
           style_rules?: Json
           title?: string | null
           updated_at?: string
@@ -5766,6 +5814,32 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_persona_selection: {
+        Row: {
+          persona_id: string | null
+          selected_at: string | null
+          user_id: string
+        }
+        Insert: {
+          persona_id?: string | null
+          selected_at?: string | null
+          user_id: string
+        }
+        Update: {
+          persona_id?: string | null
+          selected_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_persona_selection_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "coach_personas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_points: {
         Row: {
