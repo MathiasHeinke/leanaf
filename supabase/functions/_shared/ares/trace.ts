@@ -26,7 +26,8 @@ function truncateForDb(value: any, maxLength: number = 50000): any {
   if (typeof value === 'object' && value !== null) {
     const str = JSON.stringify(value);
     if (str.length > maxLength) {
-      return JSON.parse(str.slice(0, maxLength - 100) + '"}');
+      // SAFE: Return truncated string instead of attempting invalid JSON parse
+      return str.slice(0, maxLength) + '...[truncated]';
     }
   }
   return value;
