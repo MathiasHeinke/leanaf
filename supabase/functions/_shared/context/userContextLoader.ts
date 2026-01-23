@@ -172,12 +172,12 @@ export async function loadUserHealthContext(
     .limit(1)
     .single();
 
-  // 10. Journal Entries laden für Insights
+  // 10. Journal Entries laden für Insights - WICHTIG: raw_text und ai_summary_md holen!
   const { data: journalEntries } = await supabase
     .from('journal_entries')
-    .select('challenge, highlight, kai_insight, mood_score, energy_level, date')
+    .select('raw_text, ai_summary_md, challenge, highlight, kai_insight, mood_score, energy_level, sentiment_tag, created_at')
     .eq('user_id', userId)
-    .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(5);
 
   // 11. Aktive Pläne prüfen
@@ -285,8 +285,16 @@ export async function loadUserHealthContext(
     goalType: dailyGoals?.goal_type || null,
   };
 
-  // Journal Insights
+  // Journal Insights - raw_text ist das wichtigste, da highlight/challenge oft leer sind
   const journalInsights = {
+    recentEntries: (journalEntries || []).slice(0, 5).map((j: any) => ({
+      text: j.raw_text || '',
+      summary: j.ai_summary_md || null,
+      mood: j.mood_score || 0,
+      energy: j.energy_level || null,
+      sentiment: j.sentiment_tag || 'neutral',
+      date: j.created_at?.split('T')[0] || 'unknown',
+    })),
     recentChallenges: (journalEntries || []).map((j: any) => j.challenge).filter(Boolean).slice(0, 3),
     recentHighlights: (journalEntries || []).map((j: any) => j.highlight).filter(Boolean).slice(0, 3),
     latestKaiInsight: journalEntries?.[0]?.kai_insight || null,
@@ -543,10 +551,16 @@ function generatePromptSummary(
     lines.push('Schlaf: Oe ' + recentActivity.avgSleepHours + ' Stunden/Nacht');
   }
 
-  // Journal Insights
-  if (journalInsights.latestKaiInsight || journalInsights.recentChallenges.length > 0 || journalInsights.recentHighlights.length > 0) {
+  // Journal Insights - IMMER anzeigen wenn Einträge vorhanden
+  if (journalInsights.recentEntries && journalInsights.recentEntries.length > 0) {
     lines.push('');
-    lines.push('-- Journal-Einblicke --');
+    lines.push('-- MINDSET-JOURNAL (letzte Eintraege) --');
+    journalInsights.recentEntries.slice(0, 3).forEach((entry: any) => {
+      const text = entry.text?.substring(0, 150) || '';
+      const moodInfo = entry.mood > 0 ? ' [Mood: ' + entry.mood + '/10]' : '';
+      const sentimentInfo = entry.sentiment !== 'neutral' ? ' [' + entry.sentiment + ']' : '';
+      lines.push('  ' + entry.date + ': "' + text + (entry.text?.length > 150 ? '...' : '') + '"' + moodInfo + sentimentInfo);
+    });
     if (journalInsights.avgMoodScore) {
       lines.push('Durchschnittliche Stimmung: ' + journalInsights.avgMoodScore + '/10');
     }
