@@ -1,15 +1,15 @@
 import { ResearchNode, CoachProgram, Principle, GoalGuideline, SexSpecific, CoachPersona, isPrinciple, isCoachProgram, isGoalGuideline, isSexSpecific, isCoachPersona } from '@/types/research-types';
 import researchData from '@/data/research-data.json';
-import coachPersonasData from '@/data/coach-personas.json';
 
 /**
  * Central manager for research-based workout methodology data
+ * Coach personas are now loaded from the database via useUserPersona hook
  */
 export class ResearchDataManager {
   private data: ResearchNode[];
 
   constructor() {
-    // Only use research data - coach personas are now simplified
+    // Only use research data - coach personas are now loaded from DB
     this.data = [
       ...(researchData as ResearchNode[])
     ];

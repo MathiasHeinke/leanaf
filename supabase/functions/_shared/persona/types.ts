@@ -174,10 +174,10 @@ export interface CoachPersonaRow {
  * Persona IDs als Konstanten
  */
 export const PERSONA_IDS = {
-  STANDARD: 'STANDARD',
-  KRIEGER: 'KRIEGER',
-  RÜHL: 'RÜHL',
-  SANFT: 'SANFT',
+  LESTER: 'lester',
+  ARES: 'ares',
+  MARKUS: 'markus',
+  FREYA: 'freya',
 } as const;
 
 export type PersonaId = typeof PERSONA_IDS[keyof typeof PERSONA_IDS];
@@ -185,4 +185,4 @@ export type PersonaId = typeof PERSONA_IDS[keyof typeof PERSONA_IDS];
 /**
  * Default Persona wenn keine ausgewählt
  */
-export const DEFAULT_PERSONA_ID: PersonaId = 'STANDARD';
+export const DEFAULT_PERSONA_ID: PersonaId = 'lester';

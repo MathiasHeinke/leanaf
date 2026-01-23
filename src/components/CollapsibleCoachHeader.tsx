@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ArrowLeft, Clock, Trash2, Info } from 'lucide-react';
+import { ChevronDown, ArrowLeft, Clock, Trash2, Info, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDateString } from '@/utils/dateHelpers';
 import { useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
+import { useUserPersona } from '@/hooks/useUserPersona';
 
 interface CollapsibleCoachHeaderProps {
   coach: {
@@ -22,6 +23,16 @@ interface CollapsibleCoachHeaderProps {
   onCollapseChange?: (collapsed: boolean) => void;
   onDailyReset?: () => void;
 }
+
+const DIAL_LABELS: Record<string, string> = {
+  dial_energy: 'Energie',
+  dial_directness: 'Direktheit',
+  dial_humor: 'Humor',
+  dial_warmth: 'Wärme',
+  dial_depth: 'Tiefe',
+  dial_challenge: 'Fordernd',
+  dial_opinion: 'Meinung',
+};
 
 export const CollapsibleCoachHeader = ({ 
   coach, 
@@ -40,6 +51,9 @@ export const CollapsibleCoachHeader = ({
   const navigate = useNavigate();
   const { state } = useSidebar();
   const isSidebarCollapsed = state === "collapsed";
+  
+  // Dynamic persona from DB
+  const { persona: userPersona, loading: personaLoading } = useUserPersona();
 
   // Get actual chat history from Supabase
   const getChatHistory = async () => {
@@ -119,64 +133,6 @@ export const CollapsibleCoachHeader = ({
     onCollapseChange?.(newCollapsed);
   };
 
-  const getCoachInfo = () => {
-    const coachId = coach.id?.toLowerCase() || coach.name.toLowerCase();
-    
-    if (coachId === 'ares') {
-      return {
-        title: 'ARES - Ultimate Performance Coach',
-        description: 'Der ultimative Performance-Coach mit Zugriff auf alle Trainingsdaten, Ernährungsanalysen und fortschrittliche Tools.',
-        expertise: [
-          'Cross-Domain Training & Nutrition Mastery',
-          'Advanced Performance Analytics',
-          'Hormone & Recovery Optimization',
-          'Strength & Hypertrophy Periodization',
-          'Mental Toughness & Mindset'
-        ],
-        tools: [
-          'Complete User Database Access',
-          'Advanced Workout Planning',
-          'Nutrition Tracking & Analysis',
-          'Progress Photo Analysis',
-          'Performance Metrics Tracking',
-          'Recovery & Sleep Analysis'
-        ],
-        specialties: [
-          'Maximaler Muskelaufbau',
-          'Kraftsteigerung',
-          'Hormonoptimierung',
-          'Wettkampfvorbereitung'
-        ]
-      };
-    } else {
-      return {
-        title: 'FREYA - Holistic Wellness Coach',
-        description: 'Deine ganzheitliche Wellness-Expertin mit Fokus auf weibliche Gesundheit und nachhaltigen Lifestyle.',
-        expertise: [
-          'Female Health & Cycle Optimization',
-          'Holistic Nutrition & Wellness',
-          'Sustainable Lifestyle Design',
-          'Mind-Body Connection',
-          'Hormonal Balance'
-        ],
-        tools: [
-          'Complete User Database Access',
-          'Cycle-Based Training Plans',
-          'Nutrition & Meal Planning',
-          'Progress Tracking',
-          'Wellness Analytics',
-          'Lifestyle Assessments'
-        ],
-        specialties: [
-          'Zyklusbasiertes Training',
-          'Hormonelle Balance',
-          'Nachhaltiger Lifestyle',
-          'Ganzheitliches Wohlbefinden'
-        ]
-      };
-    }
-  };
-
   return (
     <>
       {/* Coach Banner mit Glass-Effekt */}
@@ -219,7 +175,7 @@ export const CollapsibleCoachHeader = ({
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Coach Info Button */}
+          {/* Coach Info Button - Dynamic Persona */}
           <Popover open={showCoachInfo} onOpenChange={setShowCoachInfo}>
             <PopoverTrigger asChild>
               <Button
@@ -232,54 +188,74 @@ export const CollapsibleCoachHeader = ({
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-96 p-4" align="end">
-              <div className="space-y-4">
-                {(() => {
-                  const info = getCoachInfo();
-                  return (
-                    <>
-                      <div>
-                        <h3 className="font-semibold text-lg mb-2">{info.title}</h3>
-                        <p className="text-sm text-muted-foreground">{info.description}</p>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-sm mb-2">Expertise</h4>
-                        <ul className="text-xs space-y-1">
-                          {info.expertise.map((item, index) => (
-                            <li key={index} className="flex items-center gap-2">
-                              <div className="w-1 h-1 bg-primary rounded-full" />
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-sm mb-2">Verfügbare Tools</h4>
-                        <ul className="text-xs space-y-1">
-                          {info.tools.map((tool, index) => (
-                            <li key={index} className="flex items-center gap-2">
-                              <div className="w-1 h-1 bg-accent rounded-full" />
-                              {tool}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <h4 className="font-medium text-sm mb-2">Spezialgebiete</h4>
-                        <div className="flex flex-wrap gap-1">
-                          {info.specialties.map((specialty, index) => (
-                            <span key={index} className="text-xs bg-accent/50 px-2 py-1 rounded">
-                              {specialty}
-                            </span>
-                          ))}
+              {personaLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : userPersona ? (
+                <div className="space-y-4">
+                  {/* Header mit Icon */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-4xl">{userPersona.icon || '🤖'}</span>
+                    <div>
+                      <h3 className="font-semibold text-lg">{userPersona.name}</h3>
+                      <p className="text-sm text-muted-foreground">{userPersona.description}</p>
+                    </div>
+                  </div>
+
+                  {/* Personality Dials Visualisierung */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Persönlichkeit</h4>
+                    {(['dial_energy', 'dial_directness', 'dial_humor', 'dial_warmth', 'dial_depth', 'dial_challenge', 'dial_opinion'] as const).map((key) => {
+                      const value = userPersona[key] ?? 5;
+                      return (
+                        <div key={key} className="flex items-center gap-2">
+                          <span className="text-xs w-20">{DIAL_LABELS[key]}</span>
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary rounded-full transition-all"
+                              style={{ width: `${value * 10}%` }}
+                            />
+                          </div>
+                          <span className="text-xs w-4 text-muted-foreground">{value}</span>
                         </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Dialekt (wenn vorhanden) */}
+                  {userPersona.dialect && (
+                    <div className="text-sm">
+                      <span className="font-medium">Dialekt:</span> {userPersona.dialect}
+                    </div>
+                  )}
+
+                  {/* Sprachstil */}
+                  {userPersona.language_style && (
+                    <div className="text-sm">
+                      <span className="font-medium">Stil:</span> <span className="text-muted-foreground">{userPersona.language_style}</span>
+                    </div>
+                  )}
+
+                  {/* Typische Phrasen */}
+                  {userPersona.phrases?.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-1">Typische Ausdrücke</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {userPersona.phrases.slice(0, 4).map((phrase, i) => (
+                          <span key={i} className="text-xs bg-accent/50 px-2 py-1 rounded">
+                            "{phrase}"
+                          </span>
+                        ))}
                       </div>
-                    </>
-                  );
-                })()}
-              </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  Keine Persona ausgewählt
+                </div>
+              )}
             </PopoverContent>
           </Popover>
 
@@ -325,7 +301,6 @@ export const CollapsibleCoachHeader = ({
                       className="w-full justify-start text-left p-2 h-auto whitespace-normal"
                       onClick={() => {
                         setShowHistory(false);
-                        // Navigate to specific chat date
                         navigate(`/coach/${coach.name.toLowerCase()}?date=${chat.id}`);
                       }}
                     >

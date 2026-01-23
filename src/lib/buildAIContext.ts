@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import coachPersonasData from "@/data/coach-personas.json";
 
 export const CtxInput = z.object({
   userId: z.string().uuid(),
@@ -88,31 +87,40 @@ async function safe<T>(p: Promise<T>): Promise<T | null> {
   }
 }
 
-// Real coach persona loader using actual JSON data
+// Load coach persona from database (new system)
 async function getCoachPersona(coachId: string) {
   try {
-    const persona = coachPersonasData.find(p => 
-      p.id === `persona_${coachId}` || 
-      p.id === `${coachId}_ultimate` ||
-      p.name.toLowerCase().includes(coachId.toLowerCase())
-    );
+    // Try to load from database first
+    const { data, error } = await supabase
+      .from('coach_personas')
+      .select('name, language_style, dial_energy, dial_directness, dial_humor, dial_warmth')
+      .eq('id', coachId.toLowerCase())
+      .eq('is_active', true)
+      .single();
     
-    if (persona) {
+    if (!error && data) {
+      const style: string[] = [];
+      if (data.dial_energy >= 7) style.push('energetisch');
+      if (data.dial_directness >= 7) style.push('direkt');
+      if (data.dial_humor >= 7) style.push('humorvoll');
+      if (data.dial_warmth >= 7) style.push('warm');
+      if (data.language_style) style.push(data.language_style.slice(0, 30));
+      
       return {
-        name: persona.name,
-        style: typeof persona.personality === 'string' 
-          ? [persona.personality] 
-          : ["empowerment", "optimization"]
+        name: data.name,
+        style: style.length > 0 ? style : ["ausgewogen"]
       };
     }
     
     // Fallback mapping for compatibility
     const fallbackPersonas: Record<string, any> = {
-      freya: { name: "FREYA", style: ["empowerment", "hormon-bewusst", "ganzheitlich"] },
-      ares: { name: "ARES", style: ["ultimate", "dominant", "meta-intelligent"] }
+      lester: { name: "LESTER", style: ["wissenschaftlich", "humorvoll", "tiefgründig"] },
+      ares: { name: "ARES", style: ["energetisch", "fordernd", "direkt"] },
+      markus: { name: "MARKUS", style: ["humorvoll", "hessisch", "locker"] },
+      freya: { name: "FREYA", style: ["empowerment", "warm", "ganzheitlich"] }
     };
     
-    return fallbackPersonas[coachId] || { name: "Coach", style: ["direkt", "lösungsorientiert"] };
+    return fallbackPersonas[coachId.toLowerCase()] || { name: "Coach", style: ["direkt", "lösungsorientiert"] };
   } catch (error) {
     console.warn('Failed to load coach persona:', error);
     return { name: "Coach", style: ["direkt", "lösungsorientiert"] };

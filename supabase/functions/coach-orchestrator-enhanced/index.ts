@@ -1152,18 +1152,20 @@ ${memory.conversation_context?.mood_history?.length > 0
     const historyItems = chronologicalConvs.map((conv: any) => {
       const userMsg = conv.message?.slice(0, 200) || '';
       const aresResp = conv.response?.slice(0, 300) || '';
-      return `**User**: ${userMsg}${conv.message?.length > 200 ? '...' : ''}\n**ARES**: ${aresResp}${conv.response?.length > 300 ? '...' : ''}`;
+      const userEllipsis = (conv.message?.length || 0) > 200 ? '...' : '';
+      const aresEllipsis = (conv.response?.length || 0) > 300 ? '...' : '';
+      return "**User**: " + userMsg + userEllipsis + "\n**ARES**: " + aresResp + aresEllipsis;
     });
     
-    conversationHistoryContext = `
-## GESPRÄCHSVERLAUF (Letzte ${recentConversations.length} Nachrichten)
-**WICHTIG: Du erinnerst dich an diese Gespräche! Beziehe dich darauf wenn relevant.**
-
-${historyItems.join('\n\n---\n\n')}
-
----
-*Ende des Gesprächsverlaufs - Die aktuelle Nachricht kommt unten.*
-`;
+    conversationHistoryContext = [
+      "## GESPRAECHSVERLAUF (Letzte " + recentConversations.length + " Nachrichten)",
+      "**WICHTIG: Du erinnerst dich an diese Gespraeche! Beziehe dich darauf wenn relevant.**",
+      "",
+      historyItems.join("\n\n---\n\n"),
+      "",
+      "---",
+      "*Ende des Gespraechsverlaufs - Die aktuelle Nachricht kommt unten.*"
+    ].join("\n");
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
