@@ -102,8 +102,8 @@ export const AdminPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* 📊 SINGLE-COLUMN MOBILE-FIRST LAYOUT */}
-      <div className="container mx-auto px-4 py-6">
+      {/* 📊 FULL-WIDTH DESKTOP, MOBILE-FIRST LAYOUT */}
+      <div className="w-full px-4 py-6 md:px-8 lg:px-12">
         <Tabs defaultValue="production" className="w-full">
           {/* 🎛️ COMPACT TAB NAVIGATION - 4 tabs */}
           <div className="w-full mb-8">
@@ -137,7 +137,7 @@ export const AdminPage = () => {
 
           {/* 🔒🏥 SYSTEM & SECURITY - Combined Overview */}
           <TabsContent value="system" className="space-y-6 mt-6 safe-area-pb-6">
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
               {/* Coach Personas Editor Link */}
               <Link to="/admin/personas">
