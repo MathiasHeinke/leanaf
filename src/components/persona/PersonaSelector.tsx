@@ -6,54 +6,54 @@ import { toast } from 'sonner';
 import { Users, Loader2 } from 'lucide-react';
 import PersonaCard, { PersonaPreview } from './PersonaCard';
 
-// Default personas (fallback if DB is empty)
+// Default personas (fallback if DB is empty) - matches new 4-persona system
 const DEFAULT_PERSONAS: PersonaPreview[] = [
   {
-    id: 'standard',
-    name: 'ARES Standard',
-    icon: '⚡',
-    description: 'Ausgewogen, professionell und motivierend. Der perfekte Einstieg für alle.',
-    example_quote: 'Guter Fortschritt heute! Lass uns das Momentum nutzen und weiter Gas geben.',
+    id: 'lester',
+    name: 'LESTER',
+    icon: '💡',
+    description: 'Der Wissenschafts-Nerd mit Charme. Tiefes Fachwissen, verständlich erklärt.',
+    example_quote: 'Okay, pass auf, das ist interessant... Die Wissenschaft sagt...',
     is_active: true,
-    energy: 6,
-    directness: 6,
-    humor: 5,
+    energy: 7,
+    directness: 7,
+    humor: 8,
     warmth: 6,
   },
   {
-    id: 'krieger',
-    name: 'KRIEGER',
-    icon: '🛡️',
+    id: 'ares',
+    name: 'ARES',
+    icon: '⚔️',
     description: 'Spartanisch, diszipliniert, keine Ausreden. Für alle, die harte Ansagen brauchen.',
-    example_quote: 'Ausreden sind Gift. Du weißt was zu tun ist. Also tu es.',
-    is_active: true,
-    energy: 9,
-    directness: 10,
-    humor: 2,
-    warmth: 3,
-  },
-  {
-    id: 'ruehl',
-    name: 'RÜHL',
-    icon: '💪',
-    description: 'Locker, humorvoll, mit hessischem Charme. Motivation mit einem Augenzwinkern.',
-    example_quote: 'Ei gude wie! Des war doch schon ganz ordentlich. Morgen knallen wir noch eine Schippe drauf!',
+    example_quote: 'Keine Ausreden. Du weißt was zu tun ist. Disziplin schlägt Motivation.',
     is_active: true,
     energy: 8,
-    directness: 7,
-    humor: 10,
-    warmth: 7,
+    directness: 10,
+    humor: 3,
+    warmth: 4,
   },
   {
-    id: 'sanft',
-    name: 'SANFT',
-    icon: '🌱',
-    description: 'Einfühlsam, verständnisvoll, geduldig. Für sensible Phasen und sanften Support.',
-    example_quote: 'Es ist völlig okay, mal einen schwierigen Tag zu haben. Was zählt ist, dass du dranbleibst.',
+    id: 'markus',
+    name: 'MARKUS',
+    icon: '💪',
+    description: 'Locker, humorvoll, mit hessischem Charme. Motivation mit einem Augenzwinkern.',
+    example_quote: 'Ei gude wie! Des is doch kä Problem! Weißte was ich mein?',
     is_active: true,
-    energy: 4,
-    directness: 3,
-    humor: 4,
+    energy: 9,
+    directness: 8,
+    humor: 10,
+    warmth: 6,
+  },
+  {
+    id: 'freya',
+    name: 'FREYA',
+    icon: '🌸',
+    description: 'Einfühlsam, verständnisvoll, geduldig. Für sensible Phasen und sanften Support.',
+    example_quote: 'Es ist völlig okay. Ich verstehe das. Jeder kleine Schritt zählt.',
+    is_active: true,
+    energy: 5,
+    directness: 4,
+    humor: 5,
     warmth: 10,
   },
 ];
@@ -65,7 +65,7 @@ interface PersonaSelectorProps {
 const PersonaSelector: React.FC<PersonaSelectorProps> = ({ className }) => {
   const { user } = useAuth();
   const [personas, setPersonas] = useState<PersonaPreview[]>(DEFAULT_PERSONAS);
-  const [selectedId, setSelectedId] = useState<string>('standard');
+  const [selectedId, setSelectedId] = useState<string>('lester'); // Default to LESTER
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -77,7 +77,7 @@ const PersonaSelector: React.FC<PersonaSelectorProps> = ({ className }) => {
           .from('coach_personas' as any)
           .select('*')
           .eq('is_active', true)
-          .order('name') as unknown as Promise<{ data: any[] | null; error: any }>);
+          .order('sort_order') as unknown as Promise<{ data: any[] | null; error: any }>);
 
         if (error) {
           console.warn('Could not load personas from DB, using defaults:', error);
@@ -89,13 +89,14 @@ const PersonaSelector: React.FC<PersonaSelectorProps> = ({ className }) => {
             id: p.id,
             name: p.name,
             icon: p.icon || '⚡',
-            description: p.description || '',
-            example_quote: p.example_responses?.[0] || '',
-            is_active: p.is_active,
-            energy: p.energy || 5,
-            directness: p.directness || 5,
-            humor: p.humor || 5,
-            warmth: p.warmth || 5,
+            description: p.description || p.bio_short || '',
+            example_quote: p.example_responses?.[0]?.response || p.catchphrase || '',
+            is_active: p.is_active !== false,
+            // Map dial_* columns from DB
+            energy: p.dial_energy ?? 5,
+            directness: p.dial_directness ?? 5,
+            humor: p.dial_humor ?? 5,
+            warmth: p.dial_warmth ?? 5,
           }));
           setPersonas(mappedPersonas);
         }
@@ -163,7 +164,7 @@ const PersonaSelector: React.FC<PersonaSelectorProps> = ({ className }) => {
         .upsert({
           user_id: user.id,
           persona_id: personaId,
-          updated_at: new Date().toISOString(),
+          selected_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id'
         }) as unknown as Promise<{ error: any }>);
