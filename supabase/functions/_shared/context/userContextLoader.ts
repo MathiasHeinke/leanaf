@@ -90,7 +90,7 @@ export async function loadUserHealthContext(
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const { data: meals } = await supabase
     .from('meals')
-    .select('calories, protein, carbs, fat, date')
+    .select('calories, protein, carbs, fats, date')
     .eq('user_id', userId)
     .gte('date', sevenDaysAgo)
     .order('date', { ascending: false });
@@ -147,7 +147,7 @@ export async function loadUserHealthContext(
   const avgCalories = mealCount > 0 ? Math.round(meals!.reduce((sum: number, m: any) => sum + (m.calories || 0), 0) / mealCount) : null;
   const avgProtein = mealCount > 0 ? Math.round(meals!.reduce((sum: number, m: any) => sum + (m.protein || 0), 0) / mealCount) : null;
   const avgCarbs = mealCount > 0 ? Math.round(meals!.reduce((sum: number, m: any) => sum + (m.carbs || 0), 0) / mealCount) : null;
-  const avgFat = mealCount > 0 ? Math.round(meals!.reduce((sum: number, m: any) => sum + (m.fat || 0), 0) / mealCount) : null;
+  const avgFat = mealCount > 0 ? Math.round(meals!.reduce((sum: number, m: any) => sum + (m.fats || 0), 0) / mealCount) : null;
 
   const sleepCount = sleepLogs?.length || 0;
   const avgSleepHours = sleepCount > 0 ? Number((sleepLogs!.reduce((sum: number, s: any) => sum + (s.hours || 0), 0) / sleepCount).toFixed(1)) : null;
