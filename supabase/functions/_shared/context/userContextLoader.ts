@@ -13,6 +13,7 @@ export interface UserHealthContext {
     age: number | null;
     gender: string | null;
     bodyFatPercentage: number | null;
+    musclePercentage: number | null;  // NEU: aus weight_history
     targetWeight: number | null;
     targetBodyFat: number | null;
     activityLevel: string | null;
@@ -88,10 +89,10 @@ export async function loadUserHealthContext(
     .eq('user_id', userId)
     .single();
 
-  // 2. Letzte Gewichtsmessungen
+  // 2. Letzte Gewichtsmessungen (Tabelle heißt weight_history, nicht weight_logs!)
   const { data: weightLogs } = await supabase
-    .from('weight_logs')
-    .select('weight, body_fat_percentage, date')
+    .from('weight_history')
+    .select('weight, body_fat_percentage, muscle_percentage, date')
     .eq('user_id', userId)
     .order('date', { ascending: false })
     .limit(5);
@@ -114,29 +115,21 @@ export async function loadUserHealthContext(
     .gte('date', sevenDaysAgo)
     .order('date', { ascending: false });
 
-  // 5. Schlaf-Daten
+  // 5. Schlaf-Daten (Tabelle heißt sleep_tracking, Spalten: sleep_hours, sleep_quality!)
   const { data: sleepLogs } = await supabase
-    .from('sleep_logs')
-    .select('hours, quality, date')
+    .from('sleep_tracking')
+    .select('sleep_hours, sleep_quality, sleep_score, date')
     .eq('user_id', userId)
     .order('date', { ascending: false })
     .limit(7);
 
-  // 6. Blutbilder prüfen
-  const { data: bloodwork } = await supabase
-    .from('bloodwork_results')
-    .select('date, test_type')
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .limit(1);
+  // 6. Blutbilder prüfen - Tabelle existiert nicht, skippen wir vorerst
+  // TODO: bloodwork_results Tabelle erstellen wenn benötigt
+  const bloodwork: any[] = [];
 
-  // 7. Hormone prüfen
-  const { data: hormones } = await supabase
-    .from('hormone_panels')
-    .select('date')
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .limit(1);
+  // 7. Hormone prüfen - Tabelle existiert nicht, skippen wir vorerst
+  // TODO: hormone_panels Tabelle erstellen wenn benötigt  
+  const hormones: any[] = [];
 
   // 8. Aktive Supplements
   const { data: supplements } = await supabase
@@ -161,15 +154,17 @@ export async function loadUserHealthContext(
   const avgFat = mealCount > 0 ? Math.round(meals!.reduce((sum: number, m: any) => sum + (m.fats || 0), 0) / mealCount) : null;
 
   const sleepCount = sleepLogs?.length || 0;
-  const avgSleepHours = sleepCount > 0 ? Number((sleepLogs!.reduce((sum: number, s: any) => sum + (s.hours || 0), 0) / sleepCount).toFixed(1)) : null;
-  const avgSleepQuality = sleepCount > 0 ? Number((sleepLogs!.reduce((sum: number, s: any) => sum + (s.quality || 0), 0) / sleepCount).toFixed(1)) : null;
+  // Korrigierte Spaltennamen: sleep_hours, sleep_quality (nicht hours, quality)
+  const avgSleepHours = sleepCount > 0 ? Number((sleepLogs!.reduce((sum: number, s: any) => sum + (s.sleep_hours || 0), 0) / sleepCount).toFixed(1)) : null;
+  const avgSleepQuality = sleepCount > 0 ? Number((sleepLogs!.reduce((sum: number, s: any) => sum + (s.sleep_quality || 0), 0) / sleepCount).toFixed(1)) : null;
 
   const workoutCount = workouts?.length || 0;
   const lastWorkout = workouts?.[0];
 
   // Aktuelles Gewicht (bevorzugt aus Log, sonst Profil)
   const currentWeight = weightLogs?.[0]?.weight || profile?.weight || null;
-  const currentBodyFat = weightLogs?.[0]?.body_fat_percentage || profile?.body_fat_percentage || null;
+  const currentBodyFat = weightLogs?.[0]?.body_fat_percentage || null;
+  const currentMuscle = weightLogs?.[0]?.muscle_percentage || null;
 
   // Alter: ZUERST direkt aus Profil, DANN aus birth_date berechnen
   let age: number | null = profile?.age || null;
@@ -195,6 +190,7 @@ export async function loadUserHealthContext(
     age,
     gender: profile?.gender || null,
     bodyFatPercentage: currentBodyFat,
+    musclePercentage: currentMuscle,  // NEU
     targetWeight: profile?.target_weight || null,
     targetBodyFat: profile?.target_body_fat || null,
     activityLevel: profile?.activity_level || null,
@@ -202,9 +198,10 @@ export async function loadUserHealthContext(
   };
 
   // Build recentMeals array with detailed info
+  // WICHTIG: title NICHT mit 'Mahlzeit' überschreiben - das verhindert dass text später genutzt wird!
   const recentMeals = (meals || []).slice(0, 5).map((m: any) => ({
     text: m.text || '',
-    title: m.title || 'Mahlzeit',
+    title: m.title || null,  // FIX: null statt 'Mahlzeit' - so wird text als Fallback genutzt
     calories: m.calories || 0,
     protein: m.protein || 0,
     carbs: m.carbs || 0,
@@ -397,6 +394,7 @@ function generatePromptSummary(
   if (basics.age) physicalData.push(`${basics.age} Jahre`);
   if (basics.gender) physicalData.push(basics.gender === 'male' ? 'männlich' : basics.gender === 'female' ? 'weiblich' : basics.gender);
   if (basics.bodyFatPercentage) physicalData.push(`~${basics.bodyFatPercentage}% KFA`);
+  if (basics.musclePercentage) physicalData.push(`~${basics.musclePercentage}% Muskel`);  // NEU
   
   if (physicalData.length > 0) {
     lines.push(`Körperdaten: ${physicalData.join(', ')}`);
@@ -421,7 +419,8 @@ function generatePromptSummary(
     if (recentActivity.recentMeals && recentActivity.recentMeals.length > 0) {
       lines.push('Letzte Mahlzeiten:');
       recentActivity.recentMeals.slice(0, 5).forEach((m: any) => {
-        const name = m.title || m.text || 'Mahlzeit';
+        // FIX: text ZUERST prüfen (enthält echte Beschreibung), dann title als Fallback
+        const name = m.text || m.title || 'Unbenannte Mahlzeit';
         const mealType = m.meal_type !== 'unknown' ? ' (' + m.meal_type + ')' : '';
         lines.push('  - ' + name + mealType + ': ' + m.calories + 'kcal, ' + m.protein + 'g P, ' + m.carbs + 'g C, ' + m.fats + 'g F [' + m.date + ']');
       });
