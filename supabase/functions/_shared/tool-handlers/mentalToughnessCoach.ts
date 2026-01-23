@@ -53,7 +53,7 @@ async function handleMentalToughnessCoach(conv: any[], userId: string, args: any
 }
 
 function provideMentalCoaching(params: any) {
-  const { challengeType, motivationLevel, specificProblem, trainingPhase, recentSetback } = params;
+  const { challengeType, motivationLevel, recentSetback } = params;
 
   // ARES Mental Toughness Strategies
   const coachingStrategies = {
@@ -208,7 +208,8 @@ function provideMentalCoaching(params: any) {
     }
   };
 
-  const selectedStrategy = coachingStrategies[challengeType] || coachingStrategies.lack_motivation;
+  type ChallengeType = keyof typeof coachingStrategies;
+  const selectedStrategy = coachingStrategies[challengeType as ChallengeType] || coachingStrategies.lack_motivation;
 
   // Add recent setback handling
   if (recentSetback) {

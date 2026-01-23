@@ -188,8 +188,8 @@ export default async function handleMenopauseNavigator(conv: any[], userId: stri
     return guidance;
   }
   
-  function getStageSpecificAdvice(stage: string, age: number): any {
-    const advice = {
+  function getStageSpecificAdvice(stage: string, _age: number): any {
+    const advice: Record<string, { title: string; description: string; key_focus: string[]; timeline: string }> = {
       perimenopause: {
         title: 'Perimenopause Navigation',
         description: 'Die Vorbereitung auf die Wechseljahre - Zeit für Grundlagenstärkung',
@@ -229,7 +229,12 @@ export default async function handleMenopauseNavigator(conv: any[], userId: stri
   }
   
   function getExerciseRecommendations(profile: MenopauseProfile): any {
-    const baseRecommendations = {
+    const baseRecommendations: {
+      strength_training: { frequency: string; focus: string; intensity: string; specific_exercises: string[] };
+      cardiovascular: { frequency: string; types: string[]; intensity: string; duration: string };
+      flexibility_balance: { frequency: string; types: string[]; benefits: string };
+      modifications?: string[];
+    } = {
       strength_training: {
         frequency: '3-4x pro Woche',
         focus: 'Große Muskelgruppen, Compound-Übungen',
@@ -353,7 +358,7 @@ export default async function handleMenopauseNavigator(conv: any[], userId: stri
   }
   
   function getSymptomManagement(profile: MenopauseProfile): any {
-    const management = {};
+    const management: Record<string, string[]> = {};
     
     if (profile.symptoms.vasomotor.length > 0) {
       management.vasomotor = [
