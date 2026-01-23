@@ -1,6 +1,41 @@
 import { detectSoftSignals } from './soft-detectors.ts';
-import { personaPreset, loadCoachPersona } from './persona.ts';
 import { toLucyTone, toAresVoice } from './tone.ts';
+
+// Persona preset fallback when no DB access
+function personaPreset(coachId: string) {
+  const presets: Record<string, any> = {
+    ares: {
+      name: 'ARES',
+      sign_off: 'Weiter. Schwer ist korrekt.',
+      emojis: ['⚡'],
+      style_rules: ['direkt', 'kraftvoll', 'messbar'],
+      catchphrase: 'Status?',
+      archetypes: ['Commander', 'Smith', 'Father', 'Sage']
+    },
+    default: {
+      name: 'ARES',
+      sign_off: '',
+      emojis: ['✨'],
+      style_rules: ['klar', 'kompetent'],
+      catchphrase: ''
+    }
+  };
+  return presets[coachId] || presets.default;
+}
+
+// Load persona from DB or fallback
+async function loadCoachPersona(supabase: any, coachId: string) {
+  try {
+    const { data } = await supabase
+      .from('coach_personas')
+      .select('*')
+      .eq('id', coachId)
+      .maybeSingle();
+    return data || personaPreset(coachId);
+  } catch {
+    return personaPreset(coachId);
+  }
+}
 
 export type Meta = {
   domain_probs?: Record<string, number>;
@@ -247,7 +282,7 @@ export async function llmOpenIntake({
     out.meta = out.meta || {};
     out.meta.suggestions = (out.meta.suggestions || []).slice(0, 3);
     const extraSignals = detectSoftSignals(userText);
-    const existingSignals: string[] = out.meta.soft_signal ?? [];
+    const existingSignals: string[] = Array.isArray(out.meta.soft_signal) ? out.meta.soft_signal : [];
     out.meta.soft_signal = Array.from(new Set([...existingSignals, ...extraSignals]));
     
     return out;

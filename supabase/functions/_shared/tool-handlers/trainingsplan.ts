@@ -158,6 +158,14 @@ async function analyzeUserTrainingHistory(userId: string) {
     const eightWeeksAgo = new Date();
     eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
     
+    interface ExerciseSet {
+      weight_kg: number | null;
+      reps: number | null;
+      rpe: number | null;
+      created_at: string;
+      exercises: { name: string; category: string; muscle_groups: string[] } | null;
+    }
+
     const { data: exerciseData, error: exerciseError } = await supabase
       .from('exercise_sets')
       .select(`
@@ -180,7 +188,18 @@ async function analyzeUserTrainingHistory(userId: string) {
     }
 
     // Analyze patterns and strengths
-    const analysis = {
+    const analysis: {
+      totalWorkouts: number;
+      totalVolume: number;
+      favoriteExercises: { name: string; volume: number; sets: number; maxWeight: number }[];
+      strengthEstimates: Record<string, number>;
+      muscleGroupBalance: Record<string, number>;
+      intensityProfile: { low: number; medium: number; high: number };
+      progressionTrends: Record<string, unknown>;
+      weeklyFrequency: number;
+      lastWorkout: string | null;
+      experienceLevel: string;
+    } = {
       totalWorkouts: 0,
       totalVolume: 0,
       favoriteExercises: [],
@@ -193,13 +212,14 @@ async function analyzeUserTrainingHistory(userId: string) {
       experienceLevel: 'beginner'
     };
 
-    if (exerciseData && exerciseData.length > 0) {
+    const typedData = (exerciseData || []) as ExerciseSet[];
+    if (typedData.length > 0) {
       // Count unique workout days
-      const workoutDays = new Set();
-      const exerciseMap = new Map();
-      const muscleGroupMap = new Map();
+      const workoutDays = new Set<string>();
+      const exerciseMap = new Map<string, { volume: number; sets: number; maxWeight: number }>();
+      const muscleGroupMap = new Map<string, number>();
 
-      exerciseData.forEach(set => {
+      typedData.forEach((set: ExerciseSet) => {
         if (!set.exercises?.name || !set.weight_kg || !set.reps) return;
         
         const workoutDate = set.created_at.split('T')[0];
@@ -213,14 +233,14 @@ async function analyzeUserTrainingHistory(userId: string) {
         if (!exerciseMap.has(exerciseName)) {
           exerciseMap.set(exerciseName, { volume: 0, sets: 0, maxWeight: 0 });
         }
-        const exercise = exerciseMap.get(exerciseName);
+        const exercise = exerciseMap.get(exerciseName)!;
         exercise.volume += volume;
         exercise.sets += 1;
         exercise.maxWeight = Math.max(exercise.maxWeight, set.weight_kg);
         
         // Track muscle groups
         if (set.exercises.muscle_groups) {
-          set.exercises.muscle_groups.forEach(mg => {
+          set.exercises.muscle_groups.forEach((mg: string) => {
             muscleGroupMap.set(mg, (muscleGroupMap.get(mg) || 0) + volume);
           });
         }
@@ -244,17 +264,17 @@ async function analyzeUserTrainingHistory(userId: string) {
       
       // Estimate 1RM for main lifts
       ['Bankdrücken', 'Kniebeugen', 'Kreuzheben', 'Schulterdrücken'].forEach(lift => {
-        const liftData = exerciseData.filter(set => 
+        const liftData = typedData.filter((set: ExerciseSet) => 
           set.exercises?.name?.toLowerCase().includes(lift.toLowerCase()) && 
           set.weight_kg && set.reps
         );
         if (liftData.length > 0) {
-          const maxSet = liftData.reduce((max, current) => 
-            (current.weight_kg > max.weight_kg) ? current : max
+          const maxSet = liftData.reduce((max: ExerciseSet, current: ExerciseSet) => 
+            ((current.weight_kg || 0) > (max.weight_kg || 0)) ? current : max
           );
           // Simple 1RM estimation: weight * (1 + reps/30)
           analysis.strengthEstimates[lift] = Math.round(
-            maxSet.weight_kg * (1 + maxSet.reps / 30)
+            (maxSet.weight_kg || 0) * (1 + (maxSet.reps || 0) / 30)
           );
         }
       });
@@ -267,7 +287,7 @@ async function analyzeUserTrainingHistory(userId: string) {
         analysis.experienceLevel = 'advanced';
       }
       
-      analysis.lastWorkout = exerciseData[0]?.created_at;
+      analysis.lastWorkout = typedData[0]?.created_at || null;
     }
 
     return analysis;
@@ -299,12 +319,12 @@ async function getPreferredCoach(userId: string) {
       .limit(10);
 
     if (error || !conversations || conversations.length === 0) {
-      return { id: 'sascha', name: 'Sascha', style: 'motivierend' };
+      return { id: 'ares', name: 'ARES', style: 'direkt', focus: 'Kraft & Progression' };
     }
 
     // Count coach interactions
-    const coachCounts = {};
-    conversations.forEach(conv => {
+    const coachCounts: Record<string, number> = {};
+    conversations.forEach((conv: { coach_id: string }) => {
       coachCounts[conv.coach_id] = (coachCounts[conv.coach_id] || 0) + 1;
     });
 
@@ -312,10 +332,9 @@ async function getPreferredCoach(userId: string) {
       coachCounts[a] > coachCounts[b] ? a : b
     );
 
-    const coachStyles = {
-      'sascha': { name: 'Sascha', style: 'motivierend', focus: 'Kraft & Progression' },
-      'markus': { name: 'Markus', style: 'analytisch', focus: 'Technik & Form' },
-      'default': { name: 'Sascha', style: 'motivierend', focus: 'Kraft & Progression' }
+    const coachStyles: Record<string, { name: string; style: string; focus: string }> = {
+      'ares': { name: 'ARES', style: 'direkt', focus: 'Kraft & Progression' },
+      'default': { name: 'ARES', style: 'direkt', focus: 'Kraft & Progression' }
     };
 
     return { 
@@ -324,13 +343,13 @@ async function getPreferredCoach(userId: string) {
     };
   } catch (error) {
     console.error('Error getting preferred coach:', error);
-    return { id: 'sascha', name: 'Sascha', style: 'motivierend', focus: 'Kraft & Progression' };
+    return { id: 'ares', name: 'ARES', style: 'direkt', focus: 'Kraft & Progression' };
   }
 }
 
 // Generate personalized plan name
-function generatePersonalizedPlanName(goal, daysPerWeek, userAnalysis) {
-  const goalNames = {
+function generatePersonalizedPlanName(goal: string, daysPerWeek: number, userAnalysis: { experienceLevel: string }) {
+  const goalNames: Record<string, string> = {
     'hypertrophy': 'Muskelaufbau',
     'strength': 'Kraftaufbau', 
     'endurance': 'Ausdauer',
@@ -347,7 +366,7 @@ function generatePersonalizedPlanName(goal, daysPerWeek, userAnalysis) {
 }
 
 // Generate personalized training structure with specific sets, reps, and weights
-async function generatePersonalizedStructure(daysPerWeek, goal, userAnalysis, preferredCoach, experienceYears) {
+async function generatePersonalizedStructure(daysPerWeek: number, goal: string, userAnalysis: any, _preferredCoach: any, _experienceYears: number) {
   const templates = {
     3: [
       {
