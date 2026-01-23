@@ -731,7 +731,7 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
   
   const { data: recentMeals, error: mealsError } = await supaClient
     .from('meals')
-    .select('title, calories, protein, carbs, fat, date')
+    .select('text, calories, protein, carbs, fats, date, meal_type')
     .eq('user_id', userId)
     .gte('date', sevenDaysAgo)
     .order('date', { ascending: false })
@@ -846,7 +846,7 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     }
   };
 
-  console.log('[ARES-CONTEXT] Context summary: Profile=' + !!profile + ', Meals=' + (recentMeals?.length || 0) + ', Workouts=' + (recentWorkouts?.length || 0) + ', Sleep=' + (sleepData?.length || 0) + ', Supplements=' + (supplements?.length || 0) + ', Conversations=' + (recentConversations?.length || 0));
+  console.log('[ARES-CONTEXT] Context summary: Profile=' + !!profile + ', Meals=' + (recentMeals?.length || 0) + ', Workouts=' + (recentWorkouts?.length || 0) + ', Sleep=' + (sleepData?.length || 0) + ', Supplements=' + (supplements?.length || 0) + ', Conversations=' + pairedConversations.length);
   
   return contextResult;
 }
