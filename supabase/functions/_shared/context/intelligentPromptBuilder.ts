@@ -7,6 +7,29 @@ import type { UserHealthContext } from './userContextLoader.ts';
 import type { CoachPersona, ResolvedPersona } from '../persona/types.ts';
 import type { UserInsight, UserPattern } from '../memory/types.ts';
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOOD SCALE HELPERS - Konvertiert -5/+5 zu natürlicher 1-10 Skala
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Konvertiert Mood-Score von -5/+5 zu 1-10 Skala
+ * -5 → 1, 0 → 6, +5 → 10
+ */
+export function moodToTenScale(mood: number): number {
+  const clamped = Math.max(-5, Math.min(5, mood));
+  return Math.round((clamped + 5) / 10 * 9) + 1;
+}
+
+/**
+ * Gibt eine deutsche Beschreibung für den Mood-Score zurück
+ */
+export function moodDescription(mood: number): string {
+  if (mood >= 4) return 'ausgezeichnet';
+  if (mood >= 2) return 'gut';
+  if (mood >= 0) return 'neutral/ok';
+  if (mood >= -2) return 'gedrueckt';
+  return 'schwierig';
+}
 export interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;

@@ -1598,9 +1598,13 @@ ${memory.conversation_context?.mood_history?.length > 0
   }
 
   if (context.journal_entries && context.journal_entries.length > 0) {
-    const avgMood = Math.round(context.journal_entries.reduce((s: number, j: any) => s + (j.mood_score || 0), 0) / context.journal_entries.length);
+    // WICHTIG: mood_score ist -5 bis +5, konvertieren zu 1-10!
+    const rawAvgMood = context.journal_entries.reduce((s: number, j: any) => s + (j.mood_score || 0), 0) / context.journal_entries.length;
+    // Konvertiere -5/+5 zu 1-10: -5→1, 0→6, +5→10
+    const avgMood10 = Math.round((Math.max(-5, Math.min(5, rawAvgMood)) + 5) / 10 * 9) + 1;
+    const moodDesc = rawAvgMood >= 4 ? 'ausgezeichnet' : rawAvgMood >= 2 ? 'gut' : rawAvgMood >= 0 ? 'neutral/ok' : rawAvgMood >= -2 ? 'gedrueckt' : 'schwierig';
     systemPromptParts.push('### Journal (letzte 5 Eintraege)');
-    systemPromptParts.push('- Stimmung: durchschnittlich ' + avgMood + '/10');
+    systemPromptParts.push('- Stimmung: durchschnittlich ' + avgMood10 + '/10 (' + moodDesc + ')');
     const lastChallenge = context.journal_entries[0]?.challenge;
     if (lastChallenge) {
       systemPromptParts.push('- Letzte Herausforderung: "' + lastChallenge + '"');
