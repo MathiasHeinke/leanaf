@@ -3157,6 +3157,69 @@ export type Database = {
           },
         ]
       }
+      knowledge_taxonomy: {
+        Row: {
+          category_level1: string
+          category_level2: string | null
+          category_level3: string | null
+          category_path: string | null
+          created_at: string
+          description: string
+          evidence_level: string
+          id: string
+          is_active: boolean | null
+          is_sensitive: boolean | null
+          keywords: string[] | null
+          relevant_bloodwork_markers: string[] | null
+          relevant_user_tables: string[] | null
+          sources: Json | null
+          summary: string | null
+          synonyms: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category_level1: string
+          category_level2?: string | null
+          category_level3?: string | null
+          category_path?: string | null
+          created_at?: string
+          description: string
+          evidence_level: string
+          id?: string
+          is_active?: boolean | null
+          is_sensitive?: boolean | null
+          keywords?: string[] | null
+          relevant_bloodwork_markers?: string[] | null
+          relevant_user_tables?: string[] | null
+          sources?: Json | null
+          summary?: string | null
+          synonyms?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category_level1?: string
+          category_level2?: string | null
+          category_level3?: string | null
+          category_path?: string | null
+          created_at?: string
+          description?: string
+          evidence_level?: string
+          id?: string
+          is_active?: boolean | null
+          is_sensitive?: boolean | null
+          keywords?: string[] | null
+          relevant_bloodwork_markers?: string[] | null
+          relevant_user_tables?: string[] | null
+          sources?: Json | null
+          summary?: string | null
+          synonyms?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       kpi_catalog: {
         Row: {
           created_at: string | null
@@ -7156,6 +7219,18 @@ export type Database = {
           expertise_area: string
           knowledge_id: string
           similarity: number
+          title: string
+        }[]
+      }
+      search_knowledge_topics: {
+        Args: { max_results?: number; search_terms: string[] }
+        Returns: {
+          category_path: string
+          description: string
+          evidence_level: string
+          id: string
+          relevance_score: number
+          summary: string
           title: string
         }[]
       }
