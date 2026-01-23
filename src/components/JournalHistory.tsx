@@ -471,7 +471,7 @@ export const JournalHistory = ({ timeRange }: JournalHistoryProps) => {
                           <div className="bg-violet-50 dark:bg-violet-950/30 p-3 rounded-lg">
                             <h4 className="text-sm font-medium mb-2 flex items-center gap-2 text-violet-700 dark:text-violet-300">
                               <Brain className="h-4 w-4" />
-                              Kai's Analyse
+                              Coach-Analyse
                             </h4>
                             <p className="text-sm text-violet-600 dark:text-violet-400">
                               {entry.kai_insight}

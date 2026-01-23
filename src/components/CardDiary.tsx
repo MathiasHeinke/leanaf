@@ -149,7 +149,7 @@ export const CardDiary = ({ payload }: CardDiaryProps) => {
             )}
           </div>
 
-          {/* Kai's Insight */}
+          {/* Coach Insight */}
           {payload.kai_insight && (
             <div className="p-2 rounded-md bg-primary/10 border border-primary/20">
               <div className="flex items-start gap-2">

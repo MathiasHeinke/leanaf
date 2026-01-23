@@ -16,13 +16,13 @@ export default async function handleAresSuperNutrition(conv: any[], userId: stri
       total_calories: 'Calculated for aggressive lean gaining'
     },
     
-    // Multi-Domain Integration
+    // ARES Cross-Domain Nutrition Synthesis
     coaching_synthesis: [
-      'Lucy: Chrono-nutrition + plant-based optimization',
-      'Sascha: Performance-driven macros + timing',
-      'Kai: Recovery nutrition + stress-eating management', 
-      'Vita: Hormone-supporting foods + cycle-awareness',
-      'ARES: Aggressive anabolic nutrition for maximum gains'
+      'Chrono-nutrition + circadian optimization',
+      'Performance-driven macros + precise timing',
+      'Recovery nutrition + stress management',
+      'Hormone-supporting foods + cycle-awareness',
+      'Aggressive anabolic nutrition for maximum gains'
     ],
     
     // Daily Nutrition Framework
