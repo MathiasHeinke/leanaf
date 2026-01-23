@@ -13,11 +13,21 @@ export interface UserHealthContext {
     age: number | null;
     gender: string | null;
     bodyFatPercentage: number | null;
-    musclePercentage: number | null;  // NEU: aus weight_history
+    musclePercentage: number | null;
     targetWeight: number | null;
     targetBodyFat: number | null;
     activityLevel: string | null;
     tdee: number | null;
+  };
+
+  // Tägliche Ziele (aus daily_goals)
+  dailyTargets: {
+    calories: number | null;
+    protein: number | null;
+    carbs: number | null;
+    fats: number | null;
+    tdee: number | null;
+    goalType: string | null;
   };
 
   // Tracking-Daten (letzte 7 Tage)
@@ -42,6 +52,21 @@ export interface UserHealthContext {
     lastWorkoutType: string | null;
     avgSleepHours: number | null;
     avgSleepQuality: number | null;
+    recentSleep: {
+      date: string;
+      hours: number;
+      quality: number;
+      score: number;
+    }[];
+  };
+
+  // Journal Insights
+  journalInsights: {
+    recentChallenges: string[];
+    recentHighlights: string[];
+    latestKaiInsight: string | null;
+    avgMoodScore: number | null;
+    avgEnergyLevel: number | null;
   };
 
   // Medizinische Daten
@@ -131,14 +156,31 @@ export async function loadUserHealthContext(
   // TODO: hormone_panels Tabelle erstellen wenn benötigt  
   const hormones: any[] = [];
 
-  // 8. Aktive Supplements
+  // 8. Aktive Supplements - mit direktem Join
   const { data: supplements } = await supabase
     .from('user_supplements')
     .select('supplement_database(name)')
     .eq('user_id', userId)
     .eq('is_active', true);
 
-  // 9. Aktive Pläne prüfen
+  // 9. Daily Goals laden (TDEE, Kalorienziel, Makroziele)
+  const { data: dailyGoals } = await supabase
+    .from('daily_goals')
+    .select('calories, protein, carbs, fats, tdee, goal_type')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  // 10. Journal Entries laden für Insights
+  const { data: journalEntries } = await supabase
+    .from('journal_entries')
+    .select('challenge, highlight, kai_insight, mood_score, energy_level, date')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+    .limit(5);
+
+  // 11. Aktive Pläne prüfen
   const [workoutPlans, nutritionPlans, supplementPlans, peptidePlans] = await Promise.all([
     supabase.from('workout_plans').select('id').eq('user_id', userId).eq('status', 'active').limit(1),
     supabase.from('nutrition_plans').select('id').eq('user_id', userId).eq('status', 'active').limit(1),
@@ -210,6 +252,14 @@ export async function loadUserHealthContext(
     meal_type: m.meal_type || 'unknown'
   }));
 
+  // Build recentSleep array
+  const recentSleep = (sleepLogs || []).slice(0, 5).map((s: any) => ({
+    date: s.date,
+    hours: s.sleep_hours || 0,
+    quality: s.sleep_quality || 0,
+    score: s.sleep_score || 0
+  }));
+
   const recentActivity = {
     avgCalories,
     avgProtein,
@@ -222,6 +272,28 @@ export async function loadUserHealthContext(
     lastWorkoutType: lastWorkout?.workout_type || null,
     avgSleepHours,
     avgSleepQuality,
+    recentSleep,
+  };
+
+  // Daily Targets from daily_goals
+  const dailyTargets = {
+    calories: dailyGoals?.calories || null,
+    protein: dailyGoals?.protein || null,
+    carbs: dailyGoals?.carbs || null,
+    fats: dailyGoals?.fats || null,
+    tdee: dailyGoals?.tdee || null,
+    goalType: dailyGoals?.goal_type || null,
+  };
+
+  // Journal Insights
+  const journalInsights = {
+    recentChallenges: (journalEntries || []).map((j: any) => j.challenge).filter(Boolean).slice(0, 3),
+    recentHighlights: (journalEntries || []).map((j: any) => j.highlight).filter(Boolean).slice(0, 3),
+    latestKaiInsight: journalEntries?.[0]?.kai_insight || null,
+    avgMoodScore: journalEntries?.length ? 
+      Number((journalEntries.reduce((sum: number, j: any) => sum + (j.mood_score || 0), 0) / journalEntries.length).toFixed(1)) : null,
+    avgEnergyLevel: journalEntries?.length ?
+      Number((journalEntries.reduce((sum: number, j: any) => sum + (j.energy_level || 0), 0) / journalEntries.length).toFixed(1)) : null,
   };
 
   const medical = {
@@ -244,13 +316,15 @@ export async function loadUserHealthContext(
   const knowledgeGaps = identifyKnowledgeGaps(basics, recentActivity, medical);
 
   // Zusammenfassung für Prompt generieren
-  const summaryForPrompt = generatePromptSummary(basics, recentActivity, medical, activePlans, knowledgeGaps);
+  const summaryForPrompt = generatePromptSummary(basics, recentActivity, dailyTargets, journalInsights, medical, activePlans, knowledgeGaps);
 
-  console.log(`[USER-CONTEXT] Loaded: Weight=${currentWeight}kg, Meals=${mealCount}, Workouts=${workoutCount}, Gaps=${knowledgeGaps.length}`);
+  console.log(`[USER-CONTEXT] Loaded: Weight=${currentWeight}kg, Meals=${mealCount}, Workouts=${workoutCount}, Sleep=${sleepCount}, Journal=${journalEntries?.length || 0}, DailyGoals=${dailyGoals ? 'yes' : 'no'}, Gaps=${knowledgeGaps.length}`);
 
   return {
     basics,
+    dailyTargets,
     recentActivity,
+    journalInsights,
     medical,
     activePlans,
     knowledgeGaps,
@@ -374,6 +448,8 @@ function identifyKnowledgeGaps(
 function generatePromptSummary(
   basics: UserHealthContext['basics'],
   recentActivity: UserHealthContext['recentActivity'],
+  dailyTargets: UserHealthContext['dailyTargets'],
+  journalInsights: UserHealthContext['journalInsights'],
   medical: UserHealthContext['medical'],
   activePlans: UserHealthContext['activePlans'],
   knowledgeGaps: UserHealthContext['knowledgeGaps']
@@ -385,48 +461,58 @@ function generatePromptSummary(
 
   // Grunddaten
   if (basics.firstName) {
-    lines.push(`Name: ${basics.firstName}`);
+    lines.push('Name: ' + basics.firstName);
   }
   
   const physicalData: string[] = [];
-  if (basics.weight) physicalData.push(`${basics.weight}kg`);
-  if (basics.height) physicalData.push(`${basics.height}cm`);
-  if (basics.age) physicalData.push(`${basics.age} Jahre`);
-  if (basics.gender) physicalData.push(basics.gender === 'male' ? 'männlich' : basics.gender === 'female' ? 'weiblich' : basics.gender);
-  if (basics.bodyFatPercentage) physicalData.push(`~${basics.bodyFatPercentage}% KFA`);
-  if (basics.musclePercentage) physicalData.push(`~${basics.musclePercentage}% Muskel`);  // NEU
+  if (basics.weight) physicalData.push(basics.weight + 'kg');
+  if (basics.height) physicalData.push(basics.height + 'cm');
+  if (basics.age) physicalData.push(basics.age + ' Jahre');
+  if (basics.gender) physicalData.push(basics.gender === 'male' ? 'maennlich' : basics.gender === 'female' ? 'weiblich' : basics.gender);
+  if (basics.bodyFatPercentage) physicalData.push('~' + basics.bodyFatPercentage + '% KFA');
+  if (basics.musclePercentage) physicalData.push('~' + basics.musclePercentage + '% Muskel');
   
   if (physicalData.length > 0) {
-    lines.push(`Körperdaten: ${physicalData.join(', ')}`);
+    lines.push('Koerperdaten: ' + physicalData.join(', '));
   }
 
-  // Ziele
-  const goals: string[] = [];
-  if (basics.targetWeight) goals.push(`Zielgewicht: ${basics.targetWeight}kg`);
-  if (basics.targetBodyFat) goals.push(`Ziel-KFA: ${basics.targetBodyFat}%`);
-  if (goals.length > 0) {
-    lines.push(`Ziele: ${goals.join(', ')}`);
+  // Ziele aus daily_goals (TDEE, Makros)
+  if (dailyTargets.calories || dailyTargets.tdee) {
+    lines.push('');
+    lines.push('-- Taegliche Ziele --');
+    if (dailyTargets.tdee) lines.push('TDEE: ' + dailyTargets.tdee + ' kcal');
+    if (dailyTargets.calories) lines.push('Kalorienziel: ' + dailyTargets.calories + ' kcal');
+    if (dailyTargets.protein) lines.push('Proteinziel: ' + dailyTargets.protein + 'g');
+    if (dailyTargets.carbs) lines.push('Kohlenhydrate-Ziel: ' + dailyTargets.carbs + 'g');
+    if (dailyTargets.fats) lines.push('Fett-Ziel: ' + dailyTargets.fats + 'g');
+    if (dailyTargets.goalType) lines.push('Zieltyp: ' + dailyTargets.goalType);
+  }
+
+  // Körperliche Ziele
+  const bodyGoals: string[] = [];
+  if (basics.targetWeight) bodyGoals.push('Zielgewicht: ' + basics.targetWeight + 'kg');
+  if (basics.targetBodyFat) bodyGoals.push('Ziel-KFA: ' + basics.targetBodyFat + '%');
+  if (bodyGoals.length > 0) {
+    lines.push('Koerper-Ziele: ' + bodyGoals.join(', '));
   }
 
   // Aktivität letzte 7 Tage
   lines.push('');
-  lines.push('-- Aktivität (letzte 7 Tage) --');
+  lines.push('-- Aktivitaet (letzte 7 Tage) --');
   
   if (recentActivity.mealsLogged > 0) {
-    lines.push('Ernaehrung: ' + recentActivity.mealsLogged + ' Mahlzeiten in den letzten 7 Tagen');
+    lines.push('Ernaehrung: ' + recentActivity.mealsLogged + ' Mahlzeiten geloggt');
     
     // DETAILLIERTE Mahlzeiten anzeigen
     if (recentActivity.recentMeals && recentActivity.recentMeals.length > 0) {
       lines.push('Letzte Mahlzeiten:');
       recentActivity.recentMeals.slice(0, 5).forEach((m: any) => {
-        // FIX: text ZUERST prüfen (enthält echte Beschreibung), dann title als Fallback
         const name = m.text || m.title || 'Unbenannte Mahlzeit';
         const mealType = m.meal_type !== 'unknown' ? ' (' + m.meal_type + ')' : '';
         lines.push('  - ' + name + mealType + ': ' + m.calories + 'kcal, ' + m.protein + 'g P, ' + m.carbs + 'g C, ' + m.fats + 'g F [' + m.date + ']');
       });
     }
     
-    // Zusaetzlich Durchschnitt
     if (recentActivity.avgCalories) {
       lines.push('Durchschnitt: ' + recentActivity.avgCalories + ' kcal/Mahlzeit, ' + recentActivity.avgProtein + 'g Protein');
     }
@@ -435,16 +521,53 @@ function generatePromptSummary(
   }
 
   if (recentActivity.workoutsThisWeek > 0) {
-    lines.push(`Training: ${recentActivity.workoutsThisWeek} Workouts diese Woche`);
+    lines.push('Training: ' + recentActivity.workoutsThisWeek + ' Workouts diese Woche');
     if (recentActivity.lastWorkoutDate) {
-      lines.push(`  Letztes Training: ${recentActivity.lastWorkoutType || 'Unbekannt'} am ${recentActivity.lastWorkoutDate}`);
+      lines.push('  Letztes Training: ' + (recentActivity.lastWorkoutType || 'Unbekannt') + ' am ' + recentActivity.lastWorkoutDate);
     }
   } else {
     lines.push('Training: Keine Workouts diese Woche');
   }
 
-  if (recentActivity.avgSleepHours !== null) {
-    lines.push(`Schlaf: Ø ${recentActivity.avgSleepHours} Stunden/Nacht`);
+  // Schlaf-Details
+  if (recentActivity.recentSleep && recentActivity.recentSleep.length > 0) {
+    lines.push('');
+    lines.push('-- Schlaf (letzte Naechte) --');
+    recentActivity.recentSleep.slice(0, 3).forEach((s: any) => {
+      lines.push('  ' + s.date + ': ' + s.hours + 'h, Qualitaet ' + s.quality + '/10, Score ' + s.score);
+    });
+    if (recentActivity.avgSleepHours !== null) {
+      lines.push('Durchschnitt: ' + recentActivity.avgSleepHours + 'h/Nacht, Qualitaet ' + (recentActivity.avgSleepQuality || 'k.A.') + '/10');
+    }
+  } else if (recentActivity.avgSleepHours !== null) {
+    lines.push('Schlaf: Oe ' + recentActivity.avgSleepHours + ' Stunden/Nacht');
+  }
+
+  // Journal Insights
+  if (journalInsights.latestKaiInsight || journalInsights.recentChallenges.length > 0 || journalInsights.recentHighlights.length > 0) {
+    lines.push('');
+    lines.push('-- Journal-Einblicke --');
+    if (journalInsights.avgMoodScore) {
+      lines.push('Durchschnittliche Stimmung: ' + journalInsights.avgMoodScore + '/10');
+    }
+    if (journalInsights.avgEnergyLevel) {
+      lines.push('Durchschnittliches Energielevel: ' + journalInsights.avgEnergyLevel + '/10');
+    }
+    if (journalInsights.recentChallenges.length > 0) {
+      lines.push('Aktuelle Herausforderungen:');
+      journalInsights.recentChallenges.forEach((c: string) => {
+        lines.push('  - ' + c.substring(0, 100) + (c.length > 100 ? '...' : ''));
+      });
+    }
+    if (journalInsights.recentHighlights.length > 0) {
+      lines.push('Aktuelle Highlights:');
+      journalInsights.recentHighlights.forEach((h: string) => {
+        lines.push('  - ' + h.substring(0, 100) + (h.length > 100 ? '...' : ''));
+      });
+    }
+    if (journalInsights.latestKaiInsight) {
+      lines.push('Letzter KI-Insight: ' + journalInsights.latestKaiInsight.substring(0, 200));
+    }
   }
 
   // Medizinische Daten
@@ -452,26 +575,26 @@ function generatePromptSummary(
     lines.push('');
     lines.push('-- Gesundheit --');
     if (medical.hasBloodwork) {
-      lines.push(`Blutbild: Ja (${medical.lastBloodworkDate || 'Datum unbekannt'})`);
+      lines.push('Blutbild: Ja (' + (medical.lastBloodworkDate || 'Datum unbekannt') + ')');
     }
     if (medical.hasHormonePanel) {
-      lines.push(`Hormonwerte: Ja (${medical.lastHormonePanelDate || 'Datum unbekannt'})`);
+      lines.push('Hormonwerte: Ja (' + (medical.lastHormonePanelDate || 'Datum unbekannt') + ')');
     }
     if (medical.supplements.length > 0) {
-      lines.push(`Aktive Supplements: ${medical.supplements.join(', ')}`);
+      lines.push('Aktive Supplements: ' + medical.supplements.join(', '));
     }
   }
 
   // Aktive Pläne
   const plans: string[] = [];
   if (activePlans.hasWorkoutPlan) plans.push('Trainingsplan');
-  if (activePlans.hasNutritionPlan) plans.push('Ernährungsplan');
+  if (activePlans.hasNutritionPlan) plans.push('Ernaehrungsplan');
   if (activePlans.hasSupplementPlan) plans.push('Supplement-Plan');
   if (activePlans.hasPeptideProtocol) plans.push('Peptid-Protokoll');
   
   if (plans.length > 0) {
     lines.push('');
-    lines.push(`Aktive Pläne: ${plans.join(', ')}`);
+    lines.push('Aktive Plaene: ' + plans.join(', '));
   }
 
   // == WISSENSLÜCKEN ==
@@ -485,17 +608,17 @@ function generatePromptSummary(
     
     if (criticalGaps.length > 0) {
       lines.push('KRITISCH fehlend:');
-      criticalGaps.forEach(g => lines.push(`  - ${g.field}: "${g.question}"`));
+      criticalGaps.forEach(g => lines.push('  - ' + g.field + ': "' + g.question + '"'));
     }
     
     if (highGaps.length > 0) {
       lines.push('Wichtig zu erfragen:');
-      highGaps.forEach(g => lines.push(`  - ${g.field}: "${g.question}"`));
+      highGaps.forEach(g => lines.push('  - ' + g.field + ': "' + g.question + '"'));
     }
     
     if (mediumGaps.length > 0) {
       lines.push('Bei Gelegenheit erfragen:');
-      mediumGaps.forEach(g => lines.push(`  - ${g.field}: "${g.question}"`));
+      mediumGaps.forEach(g => lines.push('  - ' + g.field + ': "' + g.question + '"'));
     }
   }
 
