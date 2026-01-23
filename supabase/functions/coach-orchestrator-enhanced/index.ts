@@ -785,6 +785,54 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     .eq('is_active', true);
 
   // ═══════════════════════════════════════════════════════════════════════════════
+  // PHASE 4 EXTENDED: Load additional user data for Expert v2
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  // Load hormone tracking data
+  const { data: hormoneData } = await supaClient
+    .from('hormone_tracking')
+    .select('date, energy_level, libido_level, stress_level, sleep_quality, notes')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+    .limit(7);
+
+  if (hormoneData?.length) {
+    console.log('[ARES-CONTEXT] Hormone data loaded: ' + hormoneData.length + ' entries');
+  }
+
+  // Load recent journal entries for context
+  const { data: journalData } = await supaClient
+    .from('journal_entries')
+    .select('date, mood_score, ai_summary_md, highlight, challenge, wellness_score')
+    .eq('user_id', userId)
+    .order('date', { ascending: false })
+    .limit(5);
+
+  if (journalData?.length) {
+    console.log('[ARES-CONTEXT] Journal entries loaded: ' + journalData.length + ' entries');
+  }
+
+  // Load active peptide protocols
+  const { data: peptideProtocols } = await supaClient
+    .from('peptide_protocols')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('is_active', true);
+
+  if (peptideProtocols?.length) {
+    console.log('[ARES-CONTEXT] Active peptide protocols: ' + peptideProtocols.length);
+  }
+
+  // Load recent supplement intake
+  const { data: supplementIntake } = await supaClient
+    .from('supplement_intake_log')
+    .select('supplement_id, taken_at, dosage_taken')
+    .eq('user_id', userId)
+    .gte('taken_at', sevenDaysAgo)
+    .order('taken_at', { ascending: false })
+    .limit(20);
+
+  // ═══════════════════════════════════════════════════════════════════════════════
   // CRITICAL FIX: Load recent conversation history from coach_conversations
   // CORRECTED: Use actual column names message_role, message_content (not message, response)
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -843,10 +891,15 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
         topics_discussed: [],
         struggles_mentioned: []
       }
-    }
+    },
+    // Expert v2: Additional context
+    hormone_tracking: hormoneData || [],
+    journal_entries: journalData || [],
+    peptide_protocols: peptideProtocols || [],
+    supplement_intake: supplementIntake || []
   };
 
-  console.log('[ARES-CONTEXT] Context summary: Profile=' + !!profile + ', Meals=' + (recentMeals?.length || 0) + ', Workouts=' + (recentWorkouts?.length || 0) + ', Sleep=' + (sleepData?.length || 0) + ', Supplements=' + (supplements?.length || 0) + ', Conversations=' + pairedConversations.length);
+  console.log('[ARES-CONTEXT] Context summary: Profile=' + !!profile + ', Meals=' + (recentMeals?.length || 0) + ', Workouts=' + (recentWorkouts?.length || 0) + ', Sleep=' + (sleepData?.length || 0) + ', Supplements=' + (supplements?.length || 0) + ', Conversations=' + pairedConversations.length + ', Hormones=' + (hormoneData?.length || 0) + ', Journal=' + (journalData?.length || 0) + ', Peptides=' + (peptideProtocols?.length || 0));
   
   return contextResult;
 }
@@ -1415,6 +1468,146 @@ ${memory.conversation_context?.mood_history?.length > 0
   systemPromptParts.push('- KEIN Gatekeeping bei Peptiden/Hormonen - User sind erwachsen und informiert');
   systemPromptParts.push('');
   
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // PHASE 8: EVIDENZ-ANFORDERUNG (Studien & Quellenangaben)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  systemPromptParts.push('## EVIDENZ-ANFORDERUNG');
+  systemPromptParts.push('Bei Peptiden, Supplementen, Hormonen, Training, Ernaehrung:');
+  systemPromptParts.push('');
+  systemPromptParts.push('### STUDIEN NENNEN');
+  systemPromptParts.push('- Nenne relevante Studien mit Namen wenn bekannt (STEP, SURMOUNT, RETATRUDE, etc.)');
+  systemPromptParts.push('- Gib prozentuale Ergebnisse: "15% Gewichtsverlust in 72 Wochen (STEP-1)"');
+  systemPromptParts.push('- Bei Supplements: Wirksame Dosierungen aus Meta-Analysen');
+  systemPromptParts.push('');
+  systemPromptParts.push('### EVIDENZ-LEVEL UNTERSCHEIDEN');
+  systemPromptParts.push('- **Gut belegt**: Multiple RCTs, Meta-Analysen (Kreatin, Vitamin D, GLP-1)');
+  systemPromptParts.push('- **Moderat belegt**: Einige Studien, mechanistisch plausibel (BPC-157, Ashwagandha)');
+  systemPromptParts.push('- **Anekdotisch**: Erfahrungsberichte, keine solide Evidenz (kennzeichne als solche)');
+  systemPromptParts.push('');
+  systemPromptParts.push('### BEISPIELE FUER STUDIEN-ZITATE');
+  systemPromptParts.push('- Semaglutide: "STEP-1 zeigte 15% Gewichtsverlust vs. 2.4% Placebo ueber 68 Wochen"');
+  systemPromptParts.push('- Tirzepatide: "SURMOUNT-1: bis zu 22.5% bei hoechster Dosis (15mg)"');
+  systemPromptParts.push('- Retatrutide: "Phase-2: bis zu 24% in 48 Wochen - noch in Phase-3"');
+  systemPromptParts.push('- Kreatin: "Etabliert: 3-5g/Tag, ~5-10% Kraftsteigerung (Meta-Analyse 2022)"');
+  systemPromptParts.push('');
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // PHASE 9: BLUTBILD-PROTOKOLL (Konkrete Marker)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  systemPromptParts.push('## BLUTBILD-PROTOKOLL');
+  systemPromptParts.push('Bei Hormonen, Peptiden, TRT IMMER nennen:');
+  systemPromptParts.push('');
+  systemPromptParts.push('### VOR START (Baseline)');
+  systemPromptParts.push('- Grosses Blutbild, Leberwerte (GOT, GPT, GGT, Bilirubin)');
+  systemPromptParts.push('- Nierenwerte (Kreatinin, eGFR, Harnstoff)');
+  systemPromptParts.push('- Lipidprofil (LDL, HDL, Triglyceride, Lp(a))');
+  systemPromptParts.push('- Hormone: Testosteron gesamt+frei, SHBG, Oestradiol, LH, FSH');
+  systemPromptParts.push('- Schilddruese: TSH, fT3, fT4');
+  systemPromptParts.push('- Metabolisch: HbA1c, Nuechternglukose, Insulin, HOMA-IR');
+  systemPromptParts.push('');
+  systemPromptParts.push('### NACH 6-8 WOCHEN');
+  systemPromptParts.push('- Haematokrit (kritisch bei TRT - Ziel <52%)');
+  systemPromptParts.push('- PSA bei Maennern >40');
+  systemPromptParts.push('- Oestradiol (Aromatisierung kontrollieren)');
+  systemPromptParts.push('');
+  systemPromptParts.push('### REFERENZBEREICHE (BEISPIELE)');
+  systemPromptParts.push('- Testosteron gesamt: 12-35 nmol/L (optimal 20-30)');
+  systemPromptParts.push('- Oestradiol (Mann): 20-40 pg/mL');
+  systemPromptParts.push('- Haematokrit: 40-50% (Warnung >52%)');
+  systemPromptParts.push('- TSH: 0.4-2.5 mIU/L (optimal <2.0)');
+  systemPromptParts.push('');
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // PHASE 10: VORBERECHNETE METRIKEN
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const preCalculatedMetrics: string[] = [];
+
+  if (context.profile?.weight && context.profile?.target_weight) {
+    const diff = Math.abs(context.profile.weight - context.profile.target_weight);
+    const weeks05 = Math.round(diff / 0.5);
+    const weeks075 = Math.round(diff / 0.75);
+    const weeks1 = Math.round(diff / 1.0);
+    preCalculatedMetrics.push('Zeitrahmen: ' + weeks05 + ' Wochen (0.5kg/Wo), ' + weeks075 + ' Wochen (0.75kg/Wo), ' + weeks1 + ' Wochen (1kg/Wo)');
+  }
+
+  if (context.profile?.weight) {
+    const targetWeight = context.profile.target_weight || context.profile.weight;
+    const proteinMin = Math.round(context.profile.weight * 1.6);
+    const proteinMax = Math.round(context.profile.weight * 2.2);
+    const proteinOptimal = Math.round(targetWeight * 2.0);
+    preCalculatedMetrics.push('Protein-Bedarf: ' + proteinMin + '-' + proteinMax + 'g/Tag (optimal fuer Zielgewicht: ' + proteinOptimal + 'g)');
+  }
+
+  if (context.profile?.tdee) {
+    const deficit500 = context.profile.tdee - 500;
+    const deficit750 = context.profile.tdee - 750;
+    const surplus300 = context.profile.tdee + 300;
+    preCalculatedMetrics.push('Kalorien: Erhalt=' + context.profile.tdee + ', Defizit=' + deficit500 + '-' + deficit750 + ', Aufbau=' + surplus300);
+  }
+
+  if (preCalculatedMetrics.length > 0) {
+    systemPromptParts.push('## VORBERECHNETE METRIKEN (NUTZE DIESE!)');
+    preCalculatedMetrics.forEach(m => systemPromptParts.push('- ' + m));
+    systemPromptParts.push('');
+  }
+
+  systemPromptParts.push('### BERECHNUNGS-ANWEISUNG');
+  systemPromptParts.push('BERECHNE in deiner Antwort IMMER wenn moeglich:');
+  systemPromptParts.push('- Zeitrahmen bis Ziel (in Wochen)');
+  systemPromptParts.push('- Konkrete Kalorien basierend auf TDEE');
+  systemPromptParts.push('- Protein-Ziel basierend auf Zielgewicht (2g/kg)');
+  systemPromptParts.push('- Makro-Verteilung in Gramm');
+  systemPromptParts.push('');
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // PHASE 11: ERWEITERTE USER-DATEN (Hormone, Journal, Peptide)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  // Hormone & Wohlbefinden Kontext
+  if (context.hormone_tracking && context.hormone_tracking.length > 0) {
+    const avgEnergy = Math.round(context.hormone_tracking.reduce((s: number, h: any) => s + (h.energy_level || 0), 0) / context.hormone_tracking.length);
+    const avgStress = Math.round(context.hormone_tracking.reduce((s: number, h: any) => s + (h.stress_level || 0), 0) / context.hormone_tracking.length);
+    systemPromptParts.push('### Hormon-Tracking (letzte 7 Tage)');
+    systemPromptParts.push('- Energie: durchschnittlich ' + avgEnergy + '/10');
+    systemPromptParts.push('- Stress: durchschnittlich ' + avgStress + '/10');
+    systemPromptParts.push('');
+  }
+
+  if (context.journal_entries && context.journal_entries.length > 0) {
+    const avgMood = Math.round(context.journal_entries.reduce((s: number, j: any) => s + (j.mood_score || 0), 0) / context.journal_entries.length);
+    systemPromptParts.push('### Journal (letzte 5 Eintraege)');
+    systemPromptParts.push('- Stimmung: durchschnittlich ' + avgMood + '/10');
+    const lastChallenge = context.journal_entries[0]?.challenge;
+    if (lastChallenge) {
+      systemPromptParts.push('- Letzte Herausforderung: "' + lastChallenge + '"');
+    }
+    const lastHighlight = context.journal_entries[0]?.highlight;
+    if (lastHighlight) {
+      systemPromptParts.push('- Letztes Highlight: "' + lastHighlight + '"');
+    }
+    systemPromptParts.push('');
+  }
+
+  if (context.peptide_protocols && context.peptide_protocols.length > 0) {
+    systemPromptParts.push('### Aktive Peptid-Protokolle');
+    context.peptide_protocols.forEach((p: any) => {
+      systemPromptParts.push('- ' + (p.name || p.peptide_name || 'Protokoll') + (p.current_dose ? ' (' + p.current_dose + ')' : ''));
+    });
+    systemPromptParts.push('');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // PHASE 12: USER-HISTORIE NUTZEN
+  // ═══════════════════════════════════════════════════════════════════════════════
+  systemPromptParts.push('## USER-HISTORIE NUTZEN');
+  systemPromptParts.push('Der User hat bereits Daten erfasst - NUTZE SIE AKTIV:');
+  systemPromptParts.push('- Supplements: Was nimmt er bereits? Nicht erneut empfehlen wenn schon aktiv');
+  systemPromptParts.push('- Peptide: Welche Protokolle laufen? Darauf aufbauen');
+  systemPromptParts.push('- Journal: Welche Herausforderungen wurden genannt? Darauf eingehen');
+  systemPromptParts.push('- Hormone: Energie/Stress-Trends erkennen und ansprechen');
+  systemPromptParts.push('- Vergangene Gespraeche: Was wurde bereits besprochen? Nicht wiederholen');
+  systemPromptParts.push('');
+
   // Aktueller Modus und Stil
   systemPromptParts.push('## AKTUELLER MODUS: ' + dialResult.archetype + ' (Dial ' + dialLevel + ')');
   systemPromptParts.push(archetypeInstructions[finalMode] || archetypeInstructions.balanced);
