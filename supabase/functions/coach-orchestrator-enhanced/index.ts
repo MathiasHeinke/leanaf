@@ -24,6 +24,19 @@ import {
   type ConversationMessage,
 } from '../_shared/context/index.ts';
 
+// Phase 4: Memory Extraction System
+import {
+  extractInsightsFromMessage,
+  saveInsights,
+  loadRelevantInsights,
+  getExistingInsightStrings,
+  detectPatterns,
+  loadUnaddressedPatterns,
+  getAllUserInsights,
+  type UserInsight,
+  type UserPattern,
+} from '../_shared/memory/index.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -1085,7 +1098,7 @@ function formatConversationHistory(conversations: any[]): string {
   return formatted;
 }
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext }: {
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext, userInsights, userPatterns }: {
   persona: any;
   context: any;
   ragSources: any;
@@ -1095,6 +1108,8 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   conversationHistory?: any[];
   personaPrompt?: string; // Phase 2: Persona-specific prompt section
   healthContext?: UserHealthContext | null; // Phase 3: Extended health context
+  userInsights?: UserInsight[]; // Phase 4: Memory insights
+  userPatterns?: UserPattern[]; // Phase 4: Memory patterns
 }) {
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
   const ritualContext = getRitualContext();
@@ -1121,6 +1136,8 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
       personaPrompt: personaPrompt || '',
       ragKnowledge: ragSources?.knowledge_chunks || [],
       currentMessage: text,
+      userInsights: userInsights, // Phase 4: Memory insights
+      userPatterns: userPatterns, // Phase 4: Memory patterns
     });
     
     // Add memory and tools section that the intelligent builder doesn't include
@@ -1794,16 +1811,30 @@ Deno.serve(async (req) => {
     const conversationHistory = pairConversationMessages(rawConversations || []);
     console.log(`[ARES] Loaded ${rawConversations?.length || 0} raw messages → ${conversationHistory.length} conversation pairs`);
 
+    // Phase 4: Load user insights and patterns from memory system
+    let userInsights: UserInsight[] = [];
+    let userPatterns: UserPattern[] = [];
+    try {
+      userInsights = await loadRelevantInsights(user.id, text, 15, supaSvc);
+      userPatterns = await loadUnaddressedPatterns(user.id, 5, supaSvc);
+      console.log(`[MEMORY] Loaded ${userInsights.length} insights, ${userPatterns.length} patterns`);
+    } catch (memError) {
+      console.warn('[ARES-WARN] Memory loading failed:', memError);
+    }
+
     // Store full context in trace for debugging (include user persona info)
     await traceUpdate(traceId, { 
       status: 'context_loaded', 
       context, // This will be stored as user_context by trace.ts
       persona: userPersona || persona, 
-      rag_sources: ragSources 
+      rag_sources: ragSources,
+      insights_loaded: userInsights.length,
+      patterns_loaded: userPatterns.length
     } as any);
 
     // Build prompt with memory, conversation history, and Phase 2 persona prompt
     // Phase 3: Pass healthContext for intelligent prompts
+    // Phase 4: Pass userInsights and userPatterns for memory context
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
       persona: userPersona || persona, 
       context, 
@@ -1814,6 +1845,8 @@ Deno.serve(async (req) => {
       conversationHistory: conversationHistory ?? undefined,
       personaPrompt: personaPrompt || undefined, // Phase 2: Include persona-specific prompt
       healthContext: healthContext || undefined, // Phase 3: Include health context
+      userInsights: userInsights.length > 0 ? userInsights : undefined, // Phase 4: Memory insights
+      userPatterns: userPatterns.length > 0 ? userPatterns : undefined, // Phase 4: Memory patterns
     });
 
     // Store system prompt AND user input for full LLM tracing
@@ -1889,6 +1922,39 @@ Deno.serve(async (req) => {
     } catch (convError) {
       console.warn('[ARES-WARN] Failed to save conversation:', convError);
     }
+
+    // Phase 4: Extract and store insights from user message (async, non-blocking)
+    // Run in background to not delay response
+    (async () => {
+      try {
+        // Get existing insights to avoid duplicates
+        const existingInsightStrings = await getExistingInsightStrings(user.id, supaSvc);
+        
+        // Extract new insights from user message
+        const newInsights = await extractInsightsFromMessage(
+          text,
+          user.id,
+          'chat',
+          existingInsightStrings
+        );
+
+        if (newInsights.length > 0) {
+          // Save new insights
+          await saveInsights(user.id, newInsights, 'chat', traceId, supaSvc);
+          console.log(`[MEMORY] Extracted and saved ${newInsights.length} new insights from message`);
+
+          // Detect patterns with new insights
+          const allInsights = await getAllUserInsights(user.id, supaSvc);
+          const detectedPatterns = await detectPatterns(user.id, newInsights, allInsights, supaSvc);
+          
+          if (detectedPatterns.length > 0) {
+            console.log(`[MEMORY] Detected ${detectedPatterns.length} new patterns`);
+          }
+        }
+      } catch (memError) {
+        console.warn('[MEMORY-WARN] Memory extraction failed:', memError);
+      }
+    })();
 
     await traceDone(traceId, duration_ms);
 

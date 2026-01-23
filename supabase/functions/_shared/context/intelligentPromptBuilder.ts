@@ -5,6 +5,7 @@
 
 import type { UserHealthContext } from './userContextLoader.ts';
 import type { CoachPersona, ResolvedPersona } from '../persona/types.ts';
+import type { UserInsight, UserPattern } from '../memory/types.ts';
 
 export interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -19,6 +20,9 @@ export interface IntelligentPromptConfig {
   personaPrompt: string;
   ragKnowledge: string[];
   currentMessage: string;
+  // Phase 4: Memory System
+  userInsights?: UserInsight[];
+  userPatterns?: UserPattern[];
 }
 
 /**
@@ -32,6 +36,8 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
     personaPrompt,
     ragKnowledge,
     currentMessage,
+    userInsights,
+    userPatterns,
   } = config;
 
   const sections: string[] = [];
@@ -50,6 +56,43 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
   // ═══════════════════════════════════════════════════════════════════════════════
   sections.push('');
   sections.push(userContext.summaryForPrompt);
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ABSCHNITT 2B: Erkannte Insights (Memory System)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  if (userInsights && userInsights.length > 0) {
+    sections.push('');
+    sections.push('== ERKANNTE INSIGHTS ÜBER DEN USER ==');
+    sections.push('(Automatisch aus Gesprächen extrahiert - nutze diese Infos aktiv!)');
+    
+    // Gruppiere nach Kategorie
+    const byCategory = groupInsightsByCategory(userInsights);
+    for (const [category, insights] of Object.entries(byCategory)) {
+      sections.push(`\n#${category.toUpperCase()}:`);
+      insights.slice(0, 3).forEach(i => {
+        const importance = i.importance === 'critical' ? '⚠️' : i.importance === 'high' ? '!' : '';
+        sections.push(`  ${importance} ${i.insight}`);
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ABSCHNITT 2C: Erkannte Muster & Zusammenhänge
+  // ═══════════════════════════════════════════════════════════════════════════════
+  if (userPatterns && userPatterns.length > 0) {
+    sections.push('');
+    sections.push('== ERKANNTE MUSTER & ZUSAMMENHÄNGE ==');
+    sections.push('(Nutze diese proaktiv wenn es zum Gespräch passt!)');
+    
+    userPatterns.slice(0, 3).forEach(p => {
+      const typeLabel = p.patternType === 'contradiction' ? '⚡ Widerspruch' :
+                       p.patternType === 'correlation' ? '🔗 Zusammenhang' : '📈 Trend';
+      sections.push(`\n${typeLabel}: ${p.description}`);
+      if (p.suggestion) {
+        sections.push(`  → ${p.suggestion}`);
+      }
+    });
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // ABSCHNITT 3: Coaching-Regeln
@@ -246,6 +289,22 @@ export function convertConversationHistory(
   }
   
   return messages;
+}
+
+/**
+ * Gruppiert Insights nach Kategorie
+ */
+function groupInsightsByCategory(insights: UserInsight[]): Record<string, UserInsight[]> {
+  const grouped: Record<string, UserInsight[]> = {};
+  
+  for (const insight of insights) {
+    if (!grouped[insight.category]) {
+      grouped[insight.category] = [];
+    }
+    grouped[insight.category].push(insight);
+  }
+  
+  return grouped;
 }
 
 export { generateSituationalInstructions, getCurrentGermanDate };
