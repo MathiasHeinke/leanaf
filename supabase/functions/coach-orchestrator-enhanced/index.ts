@@ -37,6 +37,19 @@ import {
   type UserPattern,
 } from '../_shared/memory/index.ts';
 
+// Phase 5: Knowledge + Bloodwork Integration
+import {
+  loadRelevantKnowledge,
+  formatKnowledgeForPrompt,
+  type KnowledgeContext,
+} from '../_shared/knowledge/index.ts';
+
+import {
+  loadBloodworkContext,
+  formatBloodworkForPrompt,
+  type BloodworkContext,
+} from '../_shared/bloodwork/index.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -1174,7 +1187,7 @@ function formatConversationHistory(conversations: any[]): string {
   return formatted;
 }
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext, userInsights, userPatterns }: {
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext, userInsights, userPatterns, knowledgeContext, bloodworkContext }: {
   persona: any;
   context: any;
   ragSources: any;
@@ -1186,6 +1199,8 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   healthContext?: UserHealthContext | null; // Phase 3: Extended health context
   userInsights?: UserInsight[]; // Phase 4: Memory insights
   userPatterns?: UserPattern[]; // Phase 4: Memory patterns
+  knowledgeContext?: KnowledgeContext | null; // Phase 5: Scientific knowledge
+  bloodworkContext?: BloodworkContext | null; // Phase 5: Bloodwork analysis
 }) {
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
   const ritualContext = getRitualContext();
@@ -1243,7 +1258,16 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
 - create_workout_plan / create_nutrition_plan / create_supplement_plan: Pläne erstellen
 - get_user_plans / update_plan: Bestehende Pläne verwalten`;
 
-    const finalSystemPrompt = systemPrompt + memoryNotes + toolsSection;
+    // Phase 5: Add knowledge and bloodwork context
+    const knowledgeSection = knowledgeContext?.hasRelevantKnowledge 
+      ? formatKnowledgeForPrompt(knowledgeContext)
+      : '';
+    
+    const bloodworkSection = bloodworkContext?.hasData 
+      ? formatBloodworkForPrompt(bloodworkContext)
+      : '';
+
+    const finalSystemPrompt = systemPrompt + memoryNotes + knowledgeSection + bloodworkSection + toolsSection;
     
     // DEBUG: Log final prompt details
     console.log('[ARES-PROMPT] Final system prompt length:', finalSystemPrompt.length);
@@ -2292,6 +2316,21 @@ Deno.serve(async (req) => {
       console.warn('[ARES-WARN] Memory loading failed:', memError);
     }
 
+    // Phase 5: Load knowledge and bloodwork context in parallel
+    let knowledgeContext: KnowledgeContext | null = null;
+    let bloodworkContext: BloodworkContext | null = null;
+    try {
+      const [knowledgeResult, bloodworkResult] = await Promise.all([
+        loadRelevantKnowledge(text, supaSvc, { maxTopics: 5 }),
+        loadBloodworkContext(user.id, supaSvc, context.profile?.gender || undefined)
+      ]);
+      knowledgeContext = knowledgeResult;
+      bloodworkContext = bloodworkResult;
+      console.log(`[ARES-CONTEXT] Knowledge topics: ${knowledgeContext?.topics?.length || 0}, Bloodwork: ${bloodworkContext?.hasData ? 'available' : 'none'}`);
+    } catch (phase5Error) {
+      console.warn('[ARES-WARN] Phase 5 context loading failed:', phase5Error);
+    }
+
     // Store full context in trace for debugging (include user persona info)
     await traceUpdate(traceId, { 
       status: 'context_loaded', 
@@ -2317,6 +2356,8 @@ Deno.serve(async (req) => {
       healthContext: healthContext || undefined, // Phase 3: Include health context
       userInsights: userInsights.length > 0 ? userInsights : undefined, // Phase 4: Memory insights
       userPatterns: userPatterns.length > 0 ? userPatterns : undefined, // Phase 4: Memory patterns
+      knowledgeContext: knowledgeContext || undefined, // Phase 5: Scientific knowledge
+      bloodworkContext: bloodworkContext || undefined, // Phase 5: Bloodwork analysis
     });
 
     // Store system prompt AND user input for full LLM tracing
