@@ -1,0 +1,352 @@
+/**
+ * ARES Streaming Hook
+ * True SSE streaming for ARES chat with automatic fallback to blocking
+ * 
+ * @version 1.0.0
+ */
+
+import { useState, useCallback, useRef } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface StreamEvent {
+  type: 'context_ready' | 'content' | 'error' | 'done';
+  content?: string;
+  delta?: string;
+  traceId?: string;
+  error?: string;
+  redirect?: 'blocking';
+  reason?: string;
+  metrics?: {
+    firstTokenMs?: number;
+    totalTokens?: number;
+    durationMs?: number;
+  };
+  loadedModules?: string[];
+}
+
+interface StreamMetrics {
+  firstTokenMs: number | null;
+  totalTokens: number;
+  durationMs: number | null;
+  loadedModules: string[];
+}
+
+type StreamState = 'idle' | 'connecting' | 'context_loading' | 'streaming' | 'complete' | 'error';
+
+export interface UseAresStreamingOptions {
+  onStreamStart?: () => void;
+  onStreamEnd?: (fullContent: string, traceId: string | null) => void;
+  onError?: (error: string) => void;
+  onContextReady?: (modules: string[]) => void;
+  fallbackToBlocking?: boolean;
+}
+
+export interface UseAresStreamingReturn {
+  sendMessage: (message: string, coachId?: string) => Promise<void>;
+  streamingContent: string;
+  isStreaming: boolean;
+  streamState: StreamState;
+  error: string | null;
+  traceId: string | null;
+  metrics: StreamMetrics;
+  stopStream: () => void;
+  clearState: () => void;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// HOOK
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAresStreamingReturn {
+  const {
+    onStreamStart,
+    onStreamEnd,
+    onError,
+    onContextReady,
+    fallbackToBlocking = true
+  } = options;
+
+  // State
+  const [streamingContent, setStreamingContent] = useState('');
+  const [streamState, setStreamState] = useState<StreamState>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [traceId, setTraceId] = useState<string | null>(null);
+  const [metrics, setMetrics] = useState<StreamMetrics>({
+    firstTokenMs: null,
+    totalTokens: 0,
+    durationMs: null,
+    loadedModules: []
+  });
+
+  // Refs
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
+  const isStreamingRef = useRef(false);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // STOP STREAM
+  // ═══════════════════════════════════════════════════════════════════════════
+  const stopStream = useCallback(() => {
+    console.log('[useAresStreaming] Stopping stream');
+    
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    
+    if (readerRef.current) {
+      readerRef.current.cancel().catch(() => {});
+      readerRef.current = null;
+    }
+    
+    isStreamingRef.current = false;
+    setStreamState('idle');
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CLEAR STATE
+  // ═══════════════════════════════════════════════════════════════════════════
+  const clearState = useCallback(() => {
+    stopStream();
+    setStreamingContent('');
+    setError(null);
+    setTraceId(null);
+    setMetrics({
+      firstTokenMs: null,
+      totalTokens: 0,
+      durationMs: null,
+      loadedModules: []
+    });
+  }, [stopStream]);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FALLBACK TO BLOCKING ORCHESTRATOR
+  // ═══════════════════════════════════════════════════════════════════════════
+  const fallbackToBlockingRequest = useCallback(async (message: string, coachId: string): Promise<string> => {
+    console.log('[useAresStreaming] Falling back to blocking request');
+    
+    const { data, error: invokeError } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
+      body: {
+        event: { type: 'TEXT', text: message },
+        coachId
+      }
+    });
+
+    if (invokeError) {
+      throw new Error(invokeError.message);
+    }
+
+    return data?.reply || data?.content || '';
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SEND MESSAGE
+  // ═══════════════════════════════════════════════════════════════════════════
+  const sendMessage = useCallback(async (message: string, coachId: string = 'ares') => {
+    // Prevent concurrent streams
+    if (isStreamingRef.current) {
+      console.warn('[useAresStreaming] Already streaming, ignoring request');
+      return;
+    }
+
+    // Reset state
+    setStreamingContent('');
+    setError(null);
+    setTraceId(null);
+    setMetrics({
+      firstTokenMs: null,
+      totalTokens: 0,
+      durationMs: null,
+      loadedModules: []
+    });
+    setStreamState('connecting');
+    isStreamingRef.current = true;
+
+    // Create abort controller
+    abortControllerRef.current = new AbortController();
+    const startTime = performance.now();
+
+    try {
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('Not authenticated');
+      }
+
+      onStreamStart?.();
+
+      // Make streaming request
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ares-streaming`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream'
+          },
+          body: JSON.stringify({ message, coachId }),
+          signal: abortControllerRef.current.signal
+        }
+      );
+
+      // Check for redirect to blocking
+      if (response.headers.get('Content-Type')?.includes('application/json')) {
+        const jsonData = await response.json();
+        
+        if (jsonData.redirect === 'blocking' && fallbackToBlocking) {
+          console.log('[useAresStreaming] Server requested fallback:', jsonData.reason);
+          setStreamState('streaming');
+          
+          const blockingResponse = await fallbackToBlockingRequest(message, coachId);
+          setStreamingContent(blockingResponse);
+          setStreamState('complete');
+          setTraceId(jsonData.traceId || null);
+          
+          const duration = Math.round(performance.now() - startTime);
+          setMetrics(m => ({ ...m, durationMs: duration }));
+          
+          onStreamEnd?.(blockingResponse, jsonData.traceId || null);
+          isStreamingRef.current = false;
+          return;
+        }
+
+        if (jsonData.error) {
+          throw new Error(jsonData.error);
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      // Read SSE stream
+      const reader = response.body.getReader();
+      readerRef.current = reader;
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullContent = '';
+      let currentTraceId: string | null = null;
+      let tokenCount = 0;
+
+      setStreamState('context_loading');
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+          try {
+            const event: StreamEvent = JSON.parse(trimmed.slice(6));
+
+            switch (event.type) {
+              case 'context_ready':
+                setStreamState('streaming');
+                if (event.loadedModules) {
+                  setMetrics(m => ({ ...m, loadedModules: event.loadedModules! }));
+                  onContextReady?.(event.loadedModules);
+                }
+                if (event.traceId) {
+                  currentTraceId = event.traceId;
+                  setTraceId(event.traceId);
+                }
+                break;
+
+              case 'content':
+                if (event.delta) {
+                  fullContent += event.delta;
+                  tokenCount++;
+                  setStreamingContent(fullContent);
+                  
+                  // Track first token
+                  if (tokenCount === 1) {
+                    const firstTokenTime = Math.round(performance.now() - startTime);
+                    setMetrics(m => ({ ...m, firstTokenMs: firstTokenTime }));
+                  }
+                  setMetrics(m => ({ ...m, totalTokens: tokenCount }));
+                }
+                break;
+
+              case 'done':
+                setStreamState('complete');
+                if (event.traceId) {
+                  currentTraceId = event.traceId;
+                  setTraceId(event.traceId);
+                }
+                if (event.metrics) {
+                  setMetrics(m => ({
+                    ...m,
+                    firstTokenMs: event.metrics?.firstTokenMs ?? m.firstTokenMs,
+                    totalTokens: event.metrics?.totalTokens ?? m.totalTokens,
+                    durationMs: event.metrics?.durationMs ?? m.durationMs
+                  }));
+                }
+                onStreamEnd?.(fullContent, currentTraceId);
+                break;
+
+              case 'error':
+                throw new Error(event.error || 'Stream error');
+            }
+          } catch (parseError) {
+            // Ignore JSON parse errors for incomplete chunks
+            if (parseError instanceof SyntaxError) continue;
+            throw parseError;
+          }
+        }
+      }
+
+      // Finalize if not already done
+      if (streamState !== 'complete') {
+        setStreamState('complete');
+        const duration = Math.round(performance.now() - startTime);
+        setMetrics(m => ({ ...m, durationMs: duration }));
+        onStreamEnd?.(fullContent, currentTraceId);
+      }
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      
+      // Don't report abort as error
+      if (errorMessage === 'The operation was aborted.' || errorMessage === 'AbortError') {
+        console.log('[useAresStreaming] Stream aborted');
+        setStreamState('idle');
+      } else {
+        console.error('[useAresStreaming] Error:', errorMessage);
+        setError(errorMessage);
+        setStreamState('error');
+        onError?.(errorMessage);
+      }
+    } finally {
+      isStreamingRef.current = false;
+      readerRef.current = null;
+      abortControllerRef.current = null;
+    }
+  }, [fallbackToBlocking, fallbackToBlockingRequest, onStreamStart, onStreamEnd, onError, onContextReady, streamState]);
+
+  return {
+    sendMessage,
+    streamingContent,
+    isStreaming: streamState === 'connecting' || streamState === 'context_loading' || streamState === 'streaming',
+    streamState,
+    error,
+    traceId,
+    metrics,
+    stopStream,
+    clearState
+  };
+}
