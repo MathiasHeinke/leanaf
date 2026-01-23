@@ -14,36 +14,36 @@ export function dialSettings(dial: DialLevel): DialSettings {
       return { 
         archetype: "Kamerad", 
         temp: 0.6, 
-        maxWords: 80,
-        style: "locker, kumpelhaft" 
+        maxWords: 200,
+        style: "locker, kumpelhaft, aber fachlich fundiert" 
       };
     case 2:
       return { 
         archetype: "Schmied", 
         temp: 0.7, 
-        maxWords: 120,
-        style: "pragmatisch, handwerklich" 
+        maxWords: 300,
+        style: "pragmatisch, handwerklich, evidenzbasiert" 
       };
     case 3:
       return { 
         archetype: "Vater", 
         temp: 0.55, 
-        maxWords: 140,
-        style: "fürsorglich, unterstützend" 
+        maxWords: 400,
+        style: "fuehrsorglich, unterstuetzend, tiefgehend" 
       };
     case 4:
       return { 
         archetype: "Kommandant", 
         temp: 0.4, 
-        maxWords: 90,
-        style: "direkt, befehlend" 
+        maxWords: 250,
+        style: "direkt, befehlend, praezise" 
       };
     case 5:
       return { 
         archetype: "Kommandant", 
         temp: 0.35, 
-        maxWords: 70,
-        style: "knapp, militärisch" 
+        maxWords: 150,
+        style: "knapp, militaerisch, auf den Punkt" 
       };
     default:
       return dialSettings(3); // Default to level 3
