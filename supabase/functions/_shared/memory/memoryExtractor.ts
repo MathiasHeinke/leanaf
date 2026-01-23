@@ -30,6 +30,11 @@ REGELN:
 5. Bewerte Importance: critical (Gesundheit!), high (wichtig für Coaching), medium (nützlich), low (nice-to-know)
 6. KEINE Duplikate zu existierenden Insights
 7. Wenn nichts Neues, gib leeres Array zurück
+8. Extrahiere IMPLIZITE FAKTEN aus Fragen:
+   - "Sind 4 Tassen Kaffee schlimm?" -> User trinkt 4 Tassen Kaffee/Tag
+   - "Ist 1800kcal zu wenig?" -> User isst ca. 1800kcal
+   - "Reicht 150g Protein?" -> User isst ca. 150g Protein
+   - Bei solchen Fragen: confidence 0.85 (implizit aber klar)
 
 Antworte NUR mit einem JSON-Array:
 [
