@@ -786,21 +786,44 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // CRITICAL FIX: Load recent conversation history from coach_conversations
-  // This was missing - conversations were saved but never loaded for context!
+  // CORRECTED: Use actual column names message_role, message_content (not message, response)
   // ═══════════════════════════════════════════════════════════════════════════════
-  const { data: recentConversations, error: convError } = await supaClient
+  const { data: recentConversationsRaw, error: convError } = await supaClient
     .from('coach_conversations')
-    .select('message, response, created_at')
+    .select('message_role, message_content, created_at')
     .eq('user_id', userId)
-    .eq('coach_id', 'ares')
+    .eq('coach_personality', 'ares')
     .order('created_at', { ascending: false })
-    .limit(10); // Last 10 conversation turns
+    .limit(30); // Load more raw messages for better context pairing
 
   if (convError) {
     console.warn('[ARES-CONTEXT] Conversations load error:', convError.message);
-  } else {
-    console.log('[ARES-CONTEXT] Conversations loaded: ' + (recentConversations?.length || 0) + ' entries');
   }
+
+  // Convert raw messages to paired {message, response} format for prompt building
+  const pairedConversations: Array<{message: string; response: string; created_at?: string}> = [];
+  const rawMsgs = recentConversationsRaw || [];
+  
+  // Messages are in reverse chronological order, so we process pairs
+  for (let i = 0; i < rawMsgs.length; i++) {
+    const msg = rawMsgs[i];
+    if (msg.message_role === 'assistant' && i + 1 < rawMsgs.length) {
+      const nextMsg = rawMsgs[i + 1];
+      if (nextMsg.message_role === 'user') {
+        pairedConversations.push({
+          message: nextMsg.message_content || '',
+          response: msg.message_content || '',
+          created_at: msg.created_at
+        });
+        i++; // Skip the user message we just paired
+      }
+    }
+  }
+  
+  // Reverse to chronological order for prompt
+  pairedConversations.reverse();
+  
+  console.log('[ARES-CONTEXT] Conversations: ' + rawMsgs.length + ' raw msgs -> ' + pairedConversations.length + ' pairs');
 
   const contextResult = {
     profile: profile || {},
@@ -809,8 +832,8 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     recent_sleep: sleepData || [],
     active_supplements: supplements || [],
     user_preferences: profile?.preferences || {},
-    // CRITICAL FIX: Include recent conversations for context continuity
-    recent_conversations: recentConversations || [],
+    // FIXED: Use properly paired conversations
+    recent_conversations: pairedConversations,
     memory: memoryData?.memory_data || {
       trust_level: 0,
       relationship_stage: 'new',
