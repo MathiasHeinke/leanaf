@@ -552,17 +552,24 @@ function generatePromptSummary(
   }
 
   // Journal Insights - IMMER anzeigen wenn Einträge vorhanden
+  // WICHTIG: Mood-Score ist -5 bis +5, konvertieren zu 1-10!
   if (journalInsights.recentEntries && journalInsights.recentEntries.length > 0) {
     lines.push('');
     lines.push('-- MINDSET-JOURNAL (letzte Eintraege) --');
     journalInsights.recentEntries.slice(0, 3).forEach((entry: any) => {
       const text = entry.text?.substring(0, 150) || '';
-      const moodInfo = entry.mood > 0 ? ' [Mood: ' + entry.mood + '/10]' : '';
+      // Konvertiere -5/+5 zu 1-10: -5→1, 0→6, +5→10
+      const mood10 = Math.round((Math.max(-5, Math.min(5, entry.mood || 0)) + 5) / 10 * 9) + 1;
+      const moodDesc = entry.mood >= 4 ? 'ausgezeichnet' : entry.mood >= 2 ? 'gut' : entry.mood >= 0 ? 'neutral/ok' : entry.mood >= -2 ? 'gedrueckt' : 'schwierig';
+      const moodInfo = ' [Stimmung: ' + mood10 + '/10 - ' + moodDesc + ']';
       const sentimentInfo = entry.sentiment !== 'neutral' ? ' [' + entry.sentiment + ']' : '';
       lines.push('  ' + entry.date + ': "' + text + (entry.text?.length > 150 ? '...' : '') + '"' + moodInfo + sentimentInfo);
     });
-    if (journalInsights.avgMoodScore) {
-      lines.push('Durchschnittliche Stimmung: ' + journalInsights.avgMoodScore + '/10');
+    if (journalInsights.avgMoodScore !== null && journalInsights.avgMoodScore !== undefined) {
+      // Konvertiere Durchschnitt auch zu 1-10
+      const avg10 = Math.round((Math.max(-5, Math.min(5, journalInsights.avgMoodScore)) + 5) / 10 * 9) + 1;
+      const avgDesc = journalInsights.avgMoodScore >= 4 ? 'ausgezeichnet' : journalInsights.avgMoodScore >= 2 ? 'gut' : journalInsights.avgMoodScore >= 0 ? 'neutral/ok' : journalInsights.avgMoodScore >= -2 ? 'gedrueckt' : 'schwierig';
+      lines.push('Durchschnittliche Stimmung: ' + avg10 + '/10 (' + avgDesc + ')');
     }
     if (journalInsights.avgEnergyLevel) {
       lines.push('Durchschnittliches Energielevel: ' + journalInsights.avgEnergyLevel + '/10');
