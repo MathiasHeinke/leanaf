@@ -2435,76 +2435,80 @@ Deno.serve(async (req) => {
     }
 
     // Phase 4: Extract and store insights from user message
-    // IMPROVED: Use await with robust error logging for debugging
-    try {
-      console.log('[MEMORY] ========== INSIGHT EXTRACTION START ==========');
-      console.log('[MEMORY] User ID:', user.id);
-      console.log('[MEMORY] Message length:', text?.length || 0);
-      console.log('[MEMORY] Message preview:', text?.substring(0, 100) || 'empty');
-      
-      // Get existing insights to avoid duplicates
-      const existingInsightStrings = await getExistingInsightStrings(user.id, supaSvc);
-      console.log('[MEMORY] Existing insights count:', existingInsightStrings.length);
-      
-      // Extract new insights from user message
-      const newInsights = await extractInsightsFromMessage(
-        text,
-        user.id,
-        'chat',
-        existingInsightStrings
-      );
-      console.log('[MEMORY] New insights extracted:', newInsights.length);
-      
-      if (newInsights.length > 0) {
-        console.log('[MEMORY] Insights to save:', JSON.stringify(newInsights.map(i => ({ category: i.category, insight: i.insight.substring(0, 50) }))));
+    // CRITICAL FIX: Execute memory extraction BEFORE returning response to ensure DB save completes
+    // This fixes BUG-001 where Edge Function terminated before async save finished
+    const memoryExtractionPromise = (async () => {
+      try {
+        console.log('[MEMORY] ========== INSIGHT EXTRACTION START ==========');
+        console.log('[MEMORY] User ID:', user.id);
+        console.log('[MEMORY] Message length:', text?.length || 0);
+        console.log('[MEMORY] Message preview:', text?.substring(0, 100) || 'empty');
         
-        // Save new insights
-        await saveInsights(user.id, newInsights, 'chat', traceId, supaSvc);
-        console.log('[MEMORY] SUCCESS: Saved', newInsights.length, 'new insights');
-
-        // Detect patterns with new insights
-        const allInsights = await getAllUserInsights(user.id, supaSvc);
-        console.log('[MEMORY] Total user insights after save:', allInsights.length);
+        // Get existing insights to avoid duplicates
+        const existingInsightStrings = await getExistingInsightStrings(user.id, supaSvc);
+        console.log('[MEMORY] Existing insights count:', existingInsightStrings.length);
         
-        const detectedPatterns = await detectPatterns(user.id, newInsights, allInsights, supaSvc);
+        // Extract new insights from user message
+        const newInsights = await extractInsightsFromMessage(
+          text,
+          user.id,
+          'chat',
+          existingInsightStrings
+        );
+        console.log('[MEMORY] New insights extracted:', newInsights.length);
         
-        if (detectedPatterns.length > 0) {
-          console.log('[MEMORY] SUCCESS: Detected', detectedPatterns.length, 'new patterns');
-          detectedPatterns.forEach(p => console.log('[MEMORY] Pattern:', p.patternType, '-', p.description));
-        }
-      } else {
-        console.log('[MEMORY] No new insights extracted from message');
-      }
-
-      // Phase 4.1: Mark patterns as addressed if mentioned in response
-      if (userPatterns && userPatterns.length > 0 && finalOutput && finalOutput.length > 50) {
-        console.log('[MEMORY] Checking', userPatterns.length, 'patterns for addressed status');
-        for (const pattern of userPatterns) {
-          // Check if the AI response addresses this pattern's topic
-          const patternKeywords = extractPatternKeywords(pattern.description);
-          const responseAddressesPattern = patternKeywords.some(kw => 
-            finalOutput.toLowerCase().includes(kw.toLowerCase())
-          );
+        if (newInsights.length > 0) {
+          console.log('[MEMORY] Insights to save:', JSON.stringify(newInsights.map(i => ({ category: i.category, insight: i.insight.substring(0, 50) }))));
           
-          if (responseAddressesPattern) {
-            await markPatternAddressed(pattern.id, supaSvc);
-            console.log('[MEMORY] Marked pattern as addressed:', pattern.description);
+          // Save new insights - AWAIT to ensure completion
+          await saveInsights(user.id, newInsights, 'chat', traceId, supaSvc);
+          console.log('[MEMORY] SUCCESS: Saved', newInsights.length, 'new insights');
+
+          // Detect patterns with new insights
+          const allInsights = await getAllUserInsights(user.id, supaSvc);
+          console.log('[MEMORY] Total user insights after save:', allInsights.length);
+          
+          const detectedPatterns = await detectPatterns(user.id, newInsights, allInsights, supaSvc);
+          
+          if (detectedPatterns.length > 0) {
+            console.log('[MEMORY] SUCCESS: Detected', detectedPatterns.length, 'new patterns');
+            detectedPatterns.forEach(p => console.log('[MEMORY] Pattern:', p.patternType, '-', p.description));
+          }
+        } else {
+          console.log('[MEMORY] No new insights extracted from message');
+        }
+
+        // Phase 4.1: Mark patterns as addressed if mentioned in response
+        if (userPatterns && userPatterns.length > 0 && finalOutput && finalOutput.length > 50) {
+          console.log('[MEMORY] Checking', userPatterns.length, 'patterns for addressed status');
+          for (const pattern of userPatterns) {
+            // Check if the AI response addresses this pattern's topic
+            const patternKeywords = extractPatternKeywordsLocal(pattern.description);
+            const responseAddressesPattern = patternKeywords.some(kw => 
+              finalOutput.toLowerCase().includes(kw.toLowerCase())
+            );
+            
+            if (responseAddressesPattern) {
+              await markPatternAddressed(pattern.id, supaSvc);
+              console.log('[MEMORY] Marked pattern as addressed:', pattern.description);
+            }
           }
         }
+        
+        console.log('[MEMORY] ========== INSIGHT EXTRACTION END ==========');
+        return { success: true };
+      } catch (memError) {
+        console.error('[MEMORY-ERROR] ========== EXTRACTION FAILED ==========');
+        console.error('[MEMORY-ERROR] Error:', memError);
+        console.error('[MEMORY-ERROR] Stack:', (memError as Error).stack);
+        console.error('[MEMORY-ERROR] User ID:', user.id);
+        console.error('[MEMORY-ERROR] Message:', text?.substring(0, 100));
+        return { success: false, error: memError };
       }
-      
-      console.log('[MEMORY] ========== INSIGHT EXTRACTION END ==========');
-    } catch (memError) {
-      console.error('[MEMORY-ERROR] ========== EXTRACTION FAILED ==========');
-      console.error('[MEMORY-ERROR] Error:', memError);
-      console.error('[MEMORY-ERROR] Stack:', (memError as Error).stack);
-      console.error('[MEMORY-ERROR] User ID:', user.id);
-      console.error('[MEMORY-ERROR] Message:', text?.substring(0, 100));
-    }
+    })();
 
-    // Helper to extract keywords from pattern description
-    function extractPatternKeywords(description: string): string[] {
-      // Extract meaningful words from pattern description
+    // Helper to extract keywords from pattern description (local scope to avoid hoisting issues)
+    function extractPatternKeywordsLocal(description: string): string[] {
       const cleanDesc = description
         .replace(/Möglicher (Zusammenhang|Widerspruch):/i, '')
         .replace(/Häufiges Thema:/i, '')
@@ -2515,6 +2519,11 @@ Deno.serve(async (req) => {
         .filter(w => w.length > 3)
         .slice(0, 4);
     }
+
+    // CRITICAL: Wait for memory extraction to complete BEFORE returning response
+    // This ensures the Edge Function doesn't terminate before DB writes finish
+    const memoryResult = await memoryExtractionPromise;
+    console.log('[MEMORY] Extraction completed with result:', memoryResult.success ? 'SUCCESS' : 'FAILED');
 
     await traceDone(traceId, duration_ms);
 

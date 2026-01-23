@@ -70,7 +70,7 @@ export const usePointsSystem = () => {
     }
   };
 
-  // Load department progress
+  // Load department progress with auto-initialization for new users (BUG-002 fix)
   const loadDepartmentProgress = async () => {
     if (!user?.id) return;
 
@@ -85,7 +85,43 @@ export const usePointsSystem = () => {
         return;
       }
 
-      setDepartmentProgress(data || []);
+      // BUG-002 FIX: Auto-initialize department progress for new users
+      const requiredDepartments = ['training', 'nutrition', 'tracking'];
+      const existingDepartments = (data || []).map(d => d.department);
+      const missingDepartments = requiredDepartments.filter(d => !existingDepartments.includes(d));
+
+      if (missingDepartments.length > 0) {
+        console.log('[PointsSystem] Auto-initializing missing departments:', missingDepartments);
+        
+        // Insert missing departments with default values
+        const inserts = missingDepartments.map(dept => ({
+          user_id: user.id,
+          department: dept,
+          level: 1,
+          points: 0
+        }));
+
+        const { error: insertError } = await supabase
+          .from('department_progress')
+          .insert(inserts);
+
+        if (insertError) {
+          // Ignore conflict errors (race condition with trigger)
+          if (!insertError.message?.includes('duplicate') && !insertError.code?.includes('23505')) {
+            console.error('Error auto-initializing departments:', insertError);
+          }
+        }
+
+        // Reload with new entries
+        const { data: refreshedData } = await supabase
+          .from('department_progress')
+          .select('*')
+          .eq('user_id', user.id);
+        
+        setDepartmentProgress(refreshedData || []);
+      } else {
+        setDepartmentProgress(data || []);
+      }
     } catch (error) {
       console.error('Error in loadDepartmentProgress:', error);
     }
