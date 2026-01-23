@@ -58,13 +58,23 @@ export async function sendToAres({
     hasAuth: !!accessToken 
   });
 
+  // Explicitly pass the user's access token - invoke() sometimes uses anon key
+  if (!accessToken) {
+    const aresError = Object.assign(
+      new Error('Not authenticated - please sign in'),
+      { status: 401, traceId, code: 'NO_SESSION' }
+    ) as AresError;
+    throw aresError;
+  }
+
   const { data, error } = await supabase.functions.invoke('coach-orchestrator-enhanced', {
     body: payload,
     headers: {
       'x-trace-id': traceId,
       'x-source': 'web',
       'accept': 'application/json',
-      'content-type': 'application/json'
+      'content-type': 'application/json',
+      'Authorization': 'Bearer ' + accessToken
     }
   });
 
