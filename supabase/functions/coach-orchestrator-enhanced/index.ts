@@ -1641,6 +1641,44 @@ ${memory.conversation_context?.mood_history?.length > 0
   systemPromptParts.push('');
   
   systemPromptParts.push(historySection);
+  
+  // Phase 4: Add user insights from memory system (fallback path)
+  if (userInsights && userInsights.length > 0) {
+    systemPromptParts.push('');
+    systemPromptParts.push('## USER-INSIGHTS (Aus frueheren Gespraechen gelernt)');
+    systemPromptParts.push('(Nutze diese Infos AKTIV - der User hat sie bereits erwaehnt!)');
+    
+    // Group insights by category
+    const grouped: Record<string, any[]> = {};
+    userInsights.forEach((i: any) => {
+      if (!grouped[i.category]) grouped[i.category] = [];
+      grouped[i.category].push(i);
+    });
+    
+    for (const [category, insights] of Object.entries(grouped)) {
+      systemPromptParts.push('');
+      systemPromptParts.push('### ' + category.toUpperCase());
+      insights.slice(0, 3).forEach((ins: any) => {
+        const marker = ins.importance === 'critical' ? '[KRITISCH] ' : ins.importance === 'high' ? '[!] ' : '';
+        systemPromptParts.push('- ' + marker + ins.insight);
+      });
+    }
+  }
+  
+  // Phase 4: Add detected patterns from memory system (fallback path)
+  if (userPatterns && userPatterns.length > 0) {
+    systemPromptParts.push('');
+    systemPromptParts.push('## ERKANNTE MUSTER (Proaktiv ansprechen wenn passend!)');
+    userPatterns.slice(0, 3).forEach((p: any) => {
+      const typeLabel = p.patternType === 'contradiction' ? 'WIDERSPRUCH' :
+                       p.patternType === 'correlation' ? 'ZUSAMMENHANG' : 'TREND';
+      systemPromptParts.push('- [' + typeLabel + '] ' + p.description);
+      if (p.suggestion) {
+        systemPromptParts.push('  -> Coaching-Hinweis: ' + p.suggestion);
+      }
+    });
+  }
+  
   if (ragSources?.knowledge_chunks?.length > 0) {
     systemPromptParts.push('');
     systemPromptParts.push('## WISSEN (RAG)');
@@ -2314,54 +2352,73 @@ Deno.serve(async (req) => {
       console.warn('[ARES-WARN] Failed to save conversation:', convError);
     }
 
-    // Phase 4: Extract and store insights from user message (async, non-blocking)
-    // Run in background to not delay response
-    (async () => {
-      try {
-        // Get existing insights to avoid duplicates
-        const existingInsightStrings = await getExistingInsightStrings(user.id, supaSvc);
+    // Phase 4: Extract and store insights from user message
+    // IMPROVED: Use await with robust error logging for debugging
+    try {
+      console.log('[MEMORY] ========== INSIGHT EXTRACTION START ==========');
+      console.log('[MEMORY] User ID:', user.id);
+      console.log('[MEMORY] Message length:', text?.length || 0);
+      console.log('[MEMORY] Message preview:', text?.substring(0, 100) || 'empty');
+      
+      // Get existing insights to avoid duplicates
+      const existingInsightStrings = await getExistingInsightStrings(user.id, supaSvc);
+      console.log('[MEMORY] Existing insights count:', existingInsightStrings.length);
+      
+      // Extract new insights from user message
+      const newInsights = await extractInsightsFromMessage(
+        text,
+        user.id,
+        'chat',
+        existingInsightStrings
+      );
+      console.log('[MEMORY] New insights extracted:', newInsights.length);
+      
+      if (newInsights.length > 0) {
+        console.log('[MEMORY] Insights to save:', JSON.stringify(newInsights.map(i => ({ category: i.category, insight: i.insight.substring(0, 50) }))));
         
-        // Extract new insights from user message
-        const newInsights = await extractInsightsFromMessage(
-          text,
-          user.id,
-          'chat',
-          existingInsightStrings
-        );
+        // Save new insights
+        await saveInsights(user.id, newInsights, 'chat', traceId, supaSvc);
+        console.log('[MEMORY] SUCCESS: Saved', newInsights.length, 'new insights');
 
-        if (newInsights.length > 0) {
-          // Save new insights
-          await saveInsights(user.id, newInsights, 'chat', traceId, supaSvc);
-          console.log(`[MEMORY] Extracted and saved ${newInsights.length} new insights from message`);
-
-          // Detect patterns with new insights
-          const allInsights = await getAllUserInsights(user.id, supaSvc);
-          const detectedPatterns = await detectPatterns(user.id, newInsights, allInsights, supaSvc);
-          
-          if (detectedPatterns.length > 0) {
-            console.log(`[MEMORY] Detected ${detectedPatterns.length} new patterns`);
-          }
+        // Detect patterns with new insights
+        const allInsights = await getAllUserInsights(user.id, supaSvc);
+        console.log('[MEMORY] Total user insights after save:', allInsights.length);
+        
+        const detectedPatterns = await detectPatterns(user.id, newInsights, allInsights, supaSvc);
+        
+        if (detectedPatterns.length > 0) {
+          console.log('[MEMORY] SUCCESS: Detected', detectedPatterns.length, 'new patterns');
+          detectedPatterns.forEach(p => console.log('[MEMORY] Pattern:', p.patternType, '-', p.description));
         }
-
-        // Phase 4.1: Mark patterns as addressed if mentioned in response
-        if (userPatterns && userPatterns.length > 0 && finalOutput && finalOutput.length > 50) {
-          for (const pattern of userPatterns) {
-            // Check if the AI response addresses this pattern's topic
-            const patternKeywords = extractPatternKeywords(pattern.description);
-            const responseAddressesPattern = patternKeywords.some(kw => 
-              finalOutput.toLowerCase().includes(kw.toLowerCase())
-            );
-            
-            if (responseAddressesPattern) {
-              await markPatternAddressed(pattern.id, supaSvc);
-              console.log(`[MEMORY] Marked pattern as addressed: ${pattern.description}`);
-            }
-          }
-        }
-      } catch (memError) {
-        console.warn('[MEMORY-WARN] Memory extraction failed:', memError);
+      } else {
+        console.log('[MEMORY] No new insights extracted from message');
       }
-    })();
+
+      // Phase 4.1: Mark patterns as addressed if mentioned in response
+      if (userPatterns && userPatterns.length > 0 && finalOutput && finalOutput.length > 50) {
+        console.log('[MEMORY] Checking', userPatterns.length, 'patterns for addressed status');
+        for (const pattern of userPatterns) {
+          // Check if the AI response addresses this pattern's topic
+          const patternKeywords = extractPatternKeywords(pattern.description);
+          const responseAddressesPattern = patternKeywords.some(kw => 
+            finalOutput.toLowerCase().includes(kw.toLowerCase())
+          );
+          
+          if (responseAddressesPattern) {
+            await markPatternAddressed(pattern.id, supaSvc);
+            console.log('[MEMORY] Marked pattern as addressed:', pattern.description);
+          }
+        }
+      }
+      
+      console.log('[MEMORY] ========== INSIGHT EXTRACTION END ==========');
+    } catch (memError) {
+      console.error('[MEMORY-ERROR] ========== EXTRACTION FAILED ==========');
+      console.error('[MEMORY-ERROR] Error:', memError);
+      console.error('[MEMORY-ERROR] Stack:', (memError as Error).stack);
+      console.error('[MEMORY-ERROR] User ID:', user.id);
+      console.error('[MEMORY-ERROR] Message:', text?.substring(0, 100));
+    }
 
     // Helper to extract keywords from pattern description
     function extractPatternKeywords(description: string): string[] {

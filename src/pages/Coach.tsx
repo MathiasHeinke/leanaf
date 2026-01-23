@@ -55,8 +55,8 @@ const CoachPage = () => {
       );
     }
     
-    const trainingCoachIds = ['sascha', 'ares'];
-    const chatMode: 'training' | 'specialized' = trainingCoachIds.includes(selectedCoach.id) ? 'training' : 'specialized';
+    // ARES is the only coach - always use training mode
+    const chatMode: 'training' | 'specialized' = 'training';
     
     return (
       <div className="h-screen relative">

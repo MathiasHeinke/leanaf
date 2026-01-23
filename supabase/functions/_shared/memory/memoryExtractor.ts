@@ -49,10 +49,13 @@ export async function extractInsightsFromMessage(
   source: 'chat' | 'journal',
   existingInsights: string[]
 ): Promise<ExtractedInsight[]> {
-  // Skip very short messages
-  if (message.length < 20) {
+  // Skip very short messages (lowered threshold for German fitness context)
+  if (message.length < 15) {
+    console.log('[MemoryExtractor] Skipping short message:', message.length, 'chars');
     return [];
   }
+  
+  console.log('[MemoryExtractor] Processing message for insights, length:', message.length);
 
   const existingContext = existingInsights.length > 0
     ? `\n\nBEREITS BEKANNTE INSIGHTS (KEINE DUPLIKATE!):\n${existingInsights.join('\n')}`
