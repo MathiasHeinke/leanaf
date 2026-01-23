@@ -26,6 +26,16 @@ export interface UserHealthContext {
     avgCarbs: number | null;
     avgFat: number | null;
     mealsLogged: number;
+    recentMeals: { 
+      text: string; 
+      title: string;
+      calories: number; 
+      protein: number; 
+      carbs: number; 
+      fats: number; 
+      date: string;
+      meal_type: string;
+    }[];
     workoutsThisWeek: number;
     lastWorkoutDate: string | null;
     lastWorkoutType: string | null;
@@ -86,14 +96,15 @@ export async function loadUserHealthContext(
     .order('date', { ascending: false })
     .limit(5);
 
-  // 3. Mahlzeiten der letzten 7 Tage aggregieren
+  // 3. Mahlzeiten der letzten 7 Tage aggregieren - inkl. text und title für Details
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   const { data: meals } = await supabase
     .from('meals')
-    .select('calories, protein, carbs, fats, date')
+    .select('text, title, calories, protein, carbs, fats, date, meal_type')
     .eq('user_id', userId)
     .gte('date', sevenDaysAgo)
-    .order('date', { ascending: false });
+    .order('date', { ascending: false })
+    .limit(15);
 
   // 4. Workouts der letzten 7 Tage
   const { data: workouts } = await supabase
@@ -190,12 +201,25 @@ export async function loadUserHealthContext(
     tdee: profile?.tdee || null,
   };
 
+  // Build recentMeals array with detailed info
+  const recentMeals = (meals || []).slice(0, 5).map((m: any) => ({
+    text: m.text || '',
+    title: m.title || 'Mahlzeit',
+    calories: m.calories || 0,
+    protein: m.protein || 0,
+    carbs: m.carbs || 0,
+    fats: m.fats || 0,
+    date: m.date,
+    meal_type: m.meal_type || 'unknown'
+  }));
+
   const recentActivity = {
     avgCalories,
     avgProtein,
     avgCarbs,
     avgFat,
     mealsLogged: mealCount,
+    recentMeals,
     workoutsThisWeek: workoutCount,
     lastWorkoutDate: lastWorkout?.date || null,
     lastWorkoutType: lastWorkout?.workout_type || null,
@@ -287,12 +311,19 @@ function identifyKnowledgeGaps(
     });
   }
 
-  // Mittlere Priorität
-  if (recentActivity.mealsLogged < 3) {
+  // Mittlere Priorität - nur fragen wenn GAR KEINE Meals geloggt
+  if (recentActivity.mealsLogged === 0) {
     gaps.push({
       field: 'nutrition_tracking',
       importance: 'medium',
-      question: 'Kannst du mir sagen was du heute schon gegessen hast? Ohne Tracking kann ich dir nicht optimal helfen.',
+      question: 'Hast du heute schon etwas gegessen? Mit Tracking-Daten kann ich dir besser helfen.',
+    });
+  } else if (recentActivity.mealsLogged < 3) {
+    // Bei 1-2 Meals: Nur low-priority Hinweis, nicht aktiv nachfragen
+    gaps.push({
+      field: 'nutrition_tracking',
+      importance: 'low',
+      question: 'Mehr Mahlzeiten-Tracking wuerde mir helfen, deine Ernaehrung besser zu analysieren.',
     });
   }
 
@@ -384,12 +415,24 @@ function generatePromptSummary(
   lines.push('-- Aktivität (letzte 7 Tage) --');
   
   if (recentActivity.mealsLogged > 0) {
-    lines.push(`Ernährung: ${recentActivity.mealsLogged} Mahlzeiten geloggt`);
+    lines.push('Ernaehrung: ' + recentActivity.mealsLogged + ' Mahlzeiten in den letzten 7 Tagen');
+    
+    // DETAILLIERTE Mahlzeiten anzeigen
+    if (recentActivity.recentMeals && recentActivity.recentMeals.length > 0) {
+      lines.push('Letzte Mahlzeiten:');
+      recentActivity.recentMeals.slice(0, 5).forEach((m: any) => {
+        const name = m.title || m.text || 'Mahlzeit';
+        const mealType = m.meal_type !== 'unknown' ? ' (' + m.meal_type + ')' : '';
+        lines.push('  - ' + name + mealType + ': ' + m.calories + 'kcal, ' + m.protein + 'g P, ' + m.carbs + 'g C, ' + m.fats + 'g F [' + m.date + ']');
+      });
+    }
+    
+    // Zusaetzlich Durchschnitt
     if (recentActivity.avgCalories) {
-      lines.push(`  Ø ${recentActivity.avgCalories} kcal, ${recentActivity.avgProtein}g Protein, ${recentActivity.avgCarbs}g Carbs, ${recentActivity.avgFat}g Fett`);
+      lines.push('Durchschnitt: ' + recentActivity.avgCalories + ' kcal/Mahlzeit, ' + recentActivity.avgProtein + 'g Protein');
     }
   } else {
-    lines.push('Ernährung: Keine Mahlzeiten geloggt');
+    lines.push('Ernaehrung: Keine Mahlzeiten geloggt');
   }
 
   if (recentActivity.workoutsThisWeek > 0) {

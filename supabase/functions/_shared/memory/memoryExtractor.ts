@@ -6,47 +6,49 @@ import { ExtractedInsight, InsightCategory, INSIGHT_CATEGORIES } from './types.t
 
 const EXTRACTION_SYSTEM_PROMPT = `Du bist ein Insight-Extractor für einen KI-Fitness-Coach.
 
-Deine Aufgabe: Analysiere die User-Nachricht und extrahiere KONKRETE, FAKTISCHE Informationen über den User.
+Deine Aufgabe: Analysiere die User-Nachricht und extrahiere WICHTIGE Informationen über den User.
 
 KATEGORIEN:
-- körper: Gewicht, Größe, Körperbau, Verletzungen
+- koerper: Gewicht, Groesse, Koerperbau, Verletzungen
 - gesundheit: Krankheiten, Medikamente, Blutwerte, Allergien
-- ernährung: Essgewohnheiten, Diäten, Unverträglichkeiten, Kaffee/Alkohol
+- ernaehrung: Essgewohnheiten, Diaeten, Unvertraeglichkeiten, Kaffee/Alkohol-Konsum
 - training: Trainingsgewohnheiten, Sportarten, Leistungsniveau
-- schlaf: Schlafgewohnheiten, Schlafqualität, Schlafprobleme
-- stress: Stresslevel, Stressoren, Coping
-- emotionen: Emotionale Zustände, Motivation, Frustrationen
-- gewohnheiten: Tagesablauf, Routinen, Laster
-- wissen: Was der User über Fitness/Ernährung weiß oder nicht weiß
-- ziele: Konkrete Ziele, Deadlines, Motivationen
-- privat: Beruf, Familie, Lebensumstände
+- schlaf: Schlafgewohnheiten, Schlafqualitaet, Schlafprobleme
+- stress: Stresslevel, Stressoren
+- emotionen: Motivation, Frustrationen, mentaler Zustand
+- gewohnheiten: Tagesablauf, Routinen
+- ziele: Konkrete Ziele, Motivationen
+- privat: Beruf, Familie, Lebensumstaende
+- substanzen: Supplements, Peptide, Medikamente die der User nimmt (Retatrutide, Semaglutide, Tirzepatide, etc.)
 - muster: Wiederholte Verhaltensweisen
 
 REGELN:
-1. Extrahiere NUR KONKRETE FAKTEN, keine Vermutungen
-2. Jeder Insight muss SPEZIFISCH sein ("trinkt 5 Tassen Kaffee" nicht "trinkt Kaffee")
-3. Zitiere die relevante Stelle aus der Nachricht
+1. Extrahiere SOWOHL konkrete Fakten ("trinkt 5 Kaffee") ALS AUCH relevante Aussagen ("trinkt viel Kaffee")
+2. Bei Mengenangaben: Schaetze wenn noetig ("viel Kaffee" -> "hoher Kaffeekonsum")
+3. Peptide/Medikamente/Supplements IMMER extrahieren wenn erwaehnt - das ist KRITISCH!
 4. Bewerte Confidence: 0.9+ bei klaren Aussagen, 0.7-0.9 bei Implikationen
-5. Bewerte Importance: critical (Gesundheit!), high (wichtig für Coaching), medium (nützlich), low (nice-to-know)
+5. Bewerte Importance: critical (Gesundheit/Medikamente/Peptide), high (wichtig fuer Coaching), medium (nuetzlich)
 6. KEINE Duplikate zu existierenden Insights
-7. Wenn nichts Neues, gib leeres Array zurück
-8. Extrahiere IMPLIZITE FAKTEN aus Fragen:
+7. Extrahiere IMPLIZITE FAKTEN aus Fragen:
    - "Sind 4 Tassen Kaffee schlimm?" -> User trinkt 4 Tassen Kaffee/Tag
    - "Ist 1800kcal zu wenig?" -> User isst ca. 1800kcal
-   - "Reicht 150g Protein?" -> User isst ca. 150g Protein
    - Bei solchen Fragen: confidence 0.85 (implizit aber klar)
 
-Antworte NUR mit einem JSON-Array:
-[
-  {
-    "category": "ernährung",
-    "subcategory": "koffein",
-    "insight": "Trinkt 5-6 Tassen Kaffee pro Tag",
-    "rawQuote": "ich trink so 5-6 Kaffee am Tag",
-    "confidence": 0.95,
-    "importance": "high"
-  }
-]`;
+Antworte IMMER mit einem JSON-Objekt in diesem Format:
+{
+  "insights": [
+    {
+      "category": "gesundheit",
+      "subcategory": "peptide",
+      "insight": "Nimmt Retatrutide",
+      "rawQuote": "ich nehme Retatrutide",
+      "confidence": 0.95,
+      "importance": "critical"
+    }
+  ]
+}
+
+Wenn nichts Neues, gib zurueck: {"insights": []}`;
 
 export async function extractInsightsFromMessage(
   message: string,
@@ -54,13 +56,13 @@ export async function extractInsightsFromMessage(
   source: 'chat' | 'journal',
   existingInsights: string[]
 ): Promise<ExtractedInsight[]> {
-  // Skip very short messages (lowered threshold for German fitness context)
-  if (message.length < 15) {
+  // Skip very short messages - reduced threshold to catch short but relevant messages
+  if (message.length < 10) {
     console.log('[MemoryExtractor] Skipping short message:', message.length, 'chars');
     return [];
   }
   
-  console.log('[MemoryExtractor] Processing message for insights, length:', message.length);
+  console.log('[MemoryExtractor] Processing message for insights, length:', message.length, 'chars');
 
   const existingContext = existingInsights.length > 0
     ? `\n\nBEREITS BEKANNTE INSIGHTS (KEINE DUPLIKATE!):\n${existingInsights.join('\n')}`
@@ -105,12 +107,39 @@ export async function extractInsightsFromMessage(
       return [];
     }
 
-    // Parse JSON response
+    // Parse JSON response - handle various OpenAI response structures
+    console.log('[MemoryExtractor] Raw LLM response:', content.substring(0, 500));
+    
     const parsed = JSON.parse(content);
-    const insights = Array.isArray(parsed) ? parsed : (parsed.insights || []);
+    let insights: any[] = [];
+    
+    if (Array.isArray(parsed)) {
+      insights = parsed;
+    } else if (typeof parsed === 'object' && parsed !== null) {
+      // Try common response wrapper keys
+      insights = parsed.insights 
+        || parsed.extracted_insights 
+        || parsed.data 
+        || parsed.results 
+        || parsed.extracted
+        || [];
+      
+      // If still empty but object has array-like values, try first array found
+      if (insights.length === 0) {
+        const values = Object.values(parsed);
+        for (const val of values) {
+          if (Array.isArray(val) && val.length > 0) {
+            insights = val;
+            break;
+          }
+        }
+      }
+    }
+    
+    console.log('[MemoryExtractor] Parsed', insights.length, 'raw insights from response');
 
     // Validate and filter insights
-    return insights.filter((insight: any) => 
+    const validInsights = insights.filter((insight: any) => 
       isValidInsight(insight)
     ).map((insight: any) => ({
       category: insight.category as InsightCategory,
@@ -120,6 +149,9 @@ export async function extractInsightsFromMessage(
       confidence: Math.min(1, Math.max(0, insight.confidence || 0.8)),
       importance: validateImportance(insight.importance)
     }));
+    
+    console.log('[MemoryExtractor] Validated', validInsights.length, 'insights after filtering');
+    return validInsights;
 
   } catch (error) {
     console.error('[MemoryExtractor] Error:', error);
