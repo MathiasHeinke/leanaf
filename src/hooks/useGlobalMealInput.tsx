@@ -183,12 +183,19 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
     setIsAnalyzing(true);
     
     try {
-      // Get current session for authorization
-      const session = await supabase.auth.getSession();
+      // Force session refresh to ensure valid JWT
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError || !refreshData.session?.access_token) {
+        console.error('❌ [analyzeMealText] Session refresh failed:', refreshError);
+        toast.error('Sitzung abgelaufen - bitte erneut anmelden');
+        return null;
+      }
+      
+      const accessToken = refreshData.session.access_token;
       console.log('🔍 [analyzeMealText] Starting analysis with:', {
         text: text.trim(),
         imageCount: images.length,
-        imageUrls: images.map(url => url.substring(0, 60) + '...')
+        hasValidToken: !!accessToken
       });
       
       const { data, error } = await supabase.functions.invoke('analyze-meal', {
@@ -197,7 +204,7 @@ export const MealInputProvider: React.FC<{ children: ReactNode }> = ({ children 
           images: images.length > 0 ? images : null
         },
         headers: {
-          Authorization: `Bearer ${session.data.session?.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         }
       });
 
