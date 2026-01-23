@@ -266,7 +266,7 @@ export const PersonaEditor: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-6">
+      <div className="w-full px-4 py-6 md:px-8 lg:px-12">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -288,7 +288,7 @@ export const PersonaEditor: React.FC = () => {
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {personas.map((persona) => (
               <Card 
                 key={persona.id} 
