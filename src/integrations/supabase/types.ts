@@ -593,6 +593,75 @@ export type Database = {
         }
         Relationships: []
       }
+      bloodwork_reference_ranges: {
+        Row: {
+          coaching_tips: string | null
+          created_at: string
+          description: string | null
+          female_normal_max: number | null
+          female_normal_min: number | null
+          female_optimal_max: number | null
+          female_optimal_min: number | null
+          higher_is_better: boolean | null
+          id: string
+          lower_is_better: boolean | null
+          male_normal_max: number | null
+          male_normal_min: number | null
+          male_optimal_max: number | null
+          male_optimal_min: number | null
+          marker_name: string
+          normal_max: number | null
+          normal_min: number | null
+          optimal_max: number | null
+          optimal_min: number | null
+          unit: string
+        }
+        Insert: {
+          coaching_tips?: string | null
+          created_at?: string
+          description?: string | null
+          female_normal_max?: number | null
+          female_normal_min?: number | null
+          female_optimal_max?: number | null
+          female_optimal_min?: number | null
+          higher_is_better?: boolean | null
+          id?: string
+          lower_is_better?: boolean | null
+          male_normal_max?: number | null
+          male_normal_min?: number | null
+          male_optimal_max?: number | null
+          male_optimal_min?: number | null
+          marker_name: string
+          normal_max?: number | null
+          normal_min?: number | null
+          optimal_max?: number | null
+          optimal_min?: number | null
+          unit: string
+        }
+        Update: {
+          coaching_tips?: string | null
+          created_at?: string
+          description?: string | null
+          female_normal_max?: number | null
+          female_normal_min?: number | null
+          female_optimal_max?: number | null
+          female_optimal_min?: number | null
+          higher_is_better?: boolean | null
+          id?: string
+          lower_is_better?: boolean | null
+          male_normal_max?: number | null
+          male_normal_min?: number | null
+          male_optimal_max?: number | null
+          male_optimal_min?: number | null
+          marker_name?: string
+          normal_max?: number | null
+          normal_min?: number | null
+          optimal_max?: number | null
+          optimal_min?: number | null
+          unit?: string
+        }
+        Relationships: []
+      }
       body_analysis_log: {
         Row: {
           analysis_result: Json
@@ -5613,6 +5682,171 @@ export type Database = {
         }
         Relationships: []
       }
+      user_bloodwork: {
+        Row: {
+          alt: number | null
+          apob: number | null
+          ast: number | null
+          bun: number | null
+          cortisol: number | null
+          created_at: string
+          creatinine: number | null
+          dhea_s: number | null
+          egfr: number | null
+          estradiol: number | null
+          fasting_glucose: number | null
+          ferritin: number | null
+          folate: number | null
+          free_testosterone: number | null
+          fsh: number | null
+          ft3: number | null
+          ft4: number | null
+          ggt: number | null
+          hba1c: number | null
+          hdl: number | null
+          hematocrit: number | null
+          hemoglobin: number | null
+          homa_ir: number | null
+          homocysteine: number | null
+          hs_crp: number | null
+          id: string
+          igf1: number | null
+          insulin: number | null
+          iron: number | null
+          is_fasted: boolean | null
+          lab_name: string | null
+          ldl: number | null
+          lh: number | null
+          lpa: number | null
+          magnesium: number | null
+          notes: string | null
+          platelets: number | null
+          prolactin: number | null
+          rbc: number | null
+          rt3: number | null
+          shbg: number | null
+          test_date: string
+          total_cholesterol: number | null
+          total_testosterone: number | null
+          triglycerides: number | null
+          tsh: number | null
+          updated_at: string
+          user_id: string
+          vitamin_b12: number | null
+          vitamin_d: number | null
+          wbc: number | null
+          zinc: number | null
+        }
+        Insert: {
+          alt?: number | null
+          apob?: number | null
+          ast?: number | null
+          bun?: number | null
+          cortisol?: number | null
+          created_at?: string
+          creatinine?: number | null
+          dhea_s?: number | null
+          egfr?: number | null
+          estradiol?: number | null
+          fasting_glucose?: number | null
+          ferritin?: number | null
+          folate?: number | null
+          free_testosterone?: number | null
+          fsh?: number | null
+          ft3?: number | null
+          ft4?: number | null
+          ggt?: number | null
+          hba1c?: number | null
+          hdl?: number | null
+          hematocrit?: number | null
+          hemoglobin?: number | null
+          homa_ir?: number | null
+          homocysteine?: number | null
+          hs_crp?: number | null
+          id?: string
+          igf1?: number | null
+          insulin?: number | null
+          iron?: number | null
+          is_fasted?: boolean | null
+          lab_name?: string | null
+          ldl?: number | null
+          lh?: number | null
+          lpa?: number | null
+          magnesium?: number | null
+          notes?: string | null
+          platelets?: number | null
+          prolactin?: number | null
+          rbc?: number | null
+          rt3?: number | null
+          shbg?: number | null
+          test_date: string
+          total_cholesterol?: number | null
+          total_testosterone?: number | null
+          triglycerides?: number | null
+          tsh?: number | null
+          updated_at?: string
+          user_id: string
+          vitamin_b12?: number | null
+          vitamin_d?: number | null
+          wbc?: number | null
+          zinc?: number | null
+        }
+        Update: {
+          alt?: number | null
+          apob?: number | null
+          ast?: number | null
+          bun?: number | null
+          cortisol?: number | null
+          created_at?: string
+          creatinine?: number | null
+          dhea_s?: number | null
+          egfr?: number | null
+          estradiol?: number | null
+          fasting_glucose?: number | null
+          ferritin?: number | null
+          folate?: number | null
+          free_testosterone?: number | null
+          fsh?: number | null
+          ft3?: number | null
+          ft4?: number | null
+          ggt?: number | null
+          hba1c?: number | null
+          hdl?: number | null
+          hematocrit?: number | null
+          hemoglobin?: number | null
+          homa_ir?: number | null
+          homocysteine?: number | null
+          hs_crp?: number | null
+          id?: string
+          igf1?: number | null
+          insulin?: number | null
+          iron?: number | null
+          is_fasted?: boolean | null
+          lab_name?: string | null
+          ldl?: number | null
+          lh?: number | null
+          lpa?: number | null
+          magnesium?: number | null
+          notes?: string | null
+          platelets?: number | null
+          prolactin?: number | null
+          rbc?: number | null
+          rt3?: number | null
+          shbg?: number | null
+          test_date?: string
+          total_cholesterol?: number | null
+          total_testosterone?: number | null
+          triglycerides?: number | null
+          tsh?: number | null
+          updated_at?: string
+          user_id?: string
+          vitamin_b12?: number | null
+          vitamin_d?: number | null
+          wbc?: number | null
+          zinc?: number | null
+        }
+        Relationships: []
+      }
       user_credits: {
         Row: {
           created_at: string | null
@@ -7034,6 +7268,69 @@ export type Database = {
       get_day_context_tz: {
         Args: { p_day: string; p_timezone?: string; p_user: string }
         Returns: Json
+      }
+      get_latest_bloodwork: {
+        Args: { p_user_id: string }
+        Returns: {
+          alt: number | null
+          apob: number | null
+          ast: number | null
+          bun: number | null
+          cortisol: number | null
+          created_at: string
+          creatinine: number | null
+          dhea_s: number | null
+          egfr: number | null
+          estradiol: number | null
+          fasting_glucose: number | null
+          ferritin: number | null
+          folate: number | null
+          free_testosterone: number | null
+          fsh: number | null
+          ft3: number | null
+          ft4: number | null
+          ggt: number | null
+          hba1c: number | null
+          hdl: number | null
+          hematocrit: number | null
+          hemoglobin: number | null
+          homa_ir: number | null
+          homocysteine: number | null
+          hs_crp: number | null
+          id: string
+          igf1: number | null
+          insulin: number | null
+          iron: number | null
+          is_fasted: boolean | null
+          lab_name: string | null
+          ldl: number | null
+          lh: number | null
+          lpa: number | null
+          magnesium: number | null
+          notes: string | null
+          platelets: number | null
+          prolactin: number | null
+          rbc: number | null
+          rt3: number | null
+          shbg: number | null
+          test_date: string
+          total_cholesterol: number | null
+          total_testosterone: number | null
+          triglycerides: number | null
+          tsh: number | null
+          updated_at: string
+          user_id: string
+          vitamin_b12: number | null
+          vitamin_d: number | null
+          wbc: number | null
+          zinc: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "user_bloodwork"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_my_uid: { Args: never; Returns: Json }
       get_next_entry_sequence: {
