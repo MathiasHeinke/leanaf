@@ -1094,7 +1094,7 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   console.log('[ARES] Mode selected: ' + finalMode + ', Temp: ' + finalTemperature + ', Reason: ' + dialResult.reason);
   
   const userName = context.profile?.preferred_name || context.profile?.first_name || null;
-  const currentDate = getCurrentGermanDate();
+  // currentDate is defined later in CRITICAL FIX block (line ~1176) with proper German formatting
   const timeOfDay = getTimeOfDay();
   
   // Mode-specific style instruction (fallback if no persona prompt)
