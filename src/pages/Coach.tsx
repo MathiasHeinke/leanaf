@@ -1,9 +1,9 @@
 
 import React from 'react';
 import { useParams, Navigate } from 'react-router-dom';
-import EnhancedUnifiedCoachChat from "@/components/EnhancedUnifiedCoachChat";
 import { CoachSelection } from "@/components/CoachSelection";
 import { useAuth } from "@/hooks/useAuth";
+import AresChat from '@/components/ares/AresChat';
 
 import { COACH_REGISTRY } from '@/lib/coachRegistry';
 
@@ -55,18 +55,13 @@ const CoachPage = () => {
       );
     }
     
-    // ARES is the only coach - always use training mode
-    const chatMode: 'training' | 'specialized' = 'training';
-    
+    // ARES uses the new streaming chat component
     return (
       <div className="h-screen relative">
-        <EnhancedUnifiedCoachChat
-          mode={chatMode}
-          coach={selectedCoach}
-          useFullscreenLayout={true}
-          enableAdvancedFeatures={true}
+        <AresChat 
+          userId={user.id}
+          coachId="ares"
         />
-        
       </div>
     );
   }
