@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Target, Scale, Activity, Calendar, TrendingUp } from "lucide-react";
 import { formatNutritionalValue } from "@/utils/numberFormatting";
+import { formatGermanDate } from "@/utils/formatDate";
 
 interface GoalsData {
   currentWeight: number;
@@ -268,7 +269,7 @@ export const GoalsProgressWidget = () => {
               <div className="flex justify-between items-center">
                 <div>
                   <div className="text-sm font-medium text-orange-700 dark:text-orange-300">
-                    {new Date(goalsData.targetDate).toLocaleDateString('de-DE')}
+                    {formatGermanDate(goalsData.targetDate)}
                   </div>
                   <div className="text-xs text-orange-600 dark:text-orange-400">
                     {goalsData.daysRemaining > 0 

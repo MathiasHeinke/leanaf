@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckIcon, CalendarIcon } from 'lucide-react';
+import { parseDateParts } from '@/utils/formatDate';
 
 interface ImageTimelineProps {
   photos: Array<{
@@ -38,12 +39,16 @@ export const ImageTimeline: React.FC<ImageTimelineProps> = ({
     new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 
+  // BUG-004 FIX: Use centralized date parser to avoid "0.06.2026" issue
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const parts = parseDateParts(dateString);
+    if (!parts) {
+      return { day: 0, month: '—', year: 0 };
+    }
     return {
-      day: date.getDate(),
-      month: date.toLocaleDateString('de-DE', { month: 'short' }),
-      year: date.getFullYear()
+      day: parts.day,
+      month: parts.monthShort,
+      year: parts.year
     };
   };
 
