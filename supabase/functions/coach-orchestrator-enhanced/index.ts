@@ -1648,6 +1648,9 @@ Deno.serve(async (req) => {
   try {
     // Auth - Use getClaims() for fast JWT validation (recommended over getUser())
     const authHeader = req.headers.get('Authorization');
+    console.log('[ARES-AUTH] Token prefix:', authHeader?.substring(0, 40) || 'MISSING');
+    console.log('[ARES-AUTH] Token length:', authHeader?.length || 0);
+    
     if (!authHeader?.startsWith('Bearer ')) {
       console.warn('[ARES-AUTH] Missing or invalid Authorization header');
       return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'No authorization header', traceId }), {
@@ -1660,6 +1663,7 @@ Deno.serve(async (req) => {
     
     if (claimsError || !claimsData?.claims?.sub) {
       console.warn('[ARES-AUTH] JWT validation failed:', claimsError?.message || 'No sub claim');
+      console.warn('[ARES-AUTH] Claims data:', JSON.stringify(claimsData || {}));
       return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'Invalid or expired token', traceId }), {
         status: 401, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       });
@@ -1734,6 +1738,17 @@ Deno.serve(async (req) => {
       console.warn('[ARES-WARN] loadUserPersonaWithContext failed:', e);
       return { persona: null, personaPrompt: '' };
     });
+    
+    // Enhanced persona logging for debugging
+    if (userPersona) {
+      console.log('[PERSONA] Loaded persona: ' + userPersona.name + ' (id: ' + userPersona.id + ')');
+      console.log('[PERSONA] Dials: energy=' + (userPersona.dials?.energy || 'N/A') + 
+        ', humor=' + (userPersona.dials?.humor || 'N/A') + 
+        ', warmth=' + (userPersona.dials?.warmth || 'N/A') +
+        ', dialect=' + (userPersona.dialect || 'none'));
+    } else {
+      console.warn('[PERSONA] No persona loaded for user ' + user.id + ', using default');
+    }
 
     // Load conversation history (last 20 raw messages = ~10 pairs) for context
     // Schema uses: message_content, message_role, coach_personality (NOT message, response, coach_id)
