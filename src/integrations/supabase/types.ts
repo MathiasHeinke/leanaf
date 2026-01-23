@@ -5767,6 +5767,66 @@ export type Database = {
           },
         ]
       }
+      user_insights: {
+        Row: {
+          category: string
+          confidence: number | null
+          created_at: string | null
+          expires_at: string | null
+          extracted_at: string | null
+          id: string
+          importance: string | null
+          insight: string
+          is_active: boolean | null
+          last_relevant_at: string | null
+          raw_quote: string | null
+          related_insights: string[] | null
+          source: string
+          source_id: string | null
+          subcategory: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          confidence?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          extracted_at?: string | null
+          id?: string
+          importance?: string | null
+          insight: string
+          is_active?: boolean | null
+          last_relevant_at?: string | null
+          raw_quote?: string | null
+          related_insights?: string[] | null
+          source: string
+          source_id?: string | null
+          subcategory?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          confidence?: number | null
+          created_at?: string | null
+          expires_at?: string | null
+          extracted_at?: string | null
+          id?: string
+          importance?: string | null
+          insight?: string
+          is_active?: boolean | null
+          last_relevant_at?: string | null
+          raw_quote?: string | null
+          related_insights?: string[] | null
+          source?: string
+          source_id?: string | null
+          subcategory?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_medical_profile: {
         Row: {
           created_at: string
@@ -5811,6 +5871,45 @@ export type Database = {
           screening_completed_at?: string | null
           takes_medications?: boolean
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_patterns: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          description: string
+          id: string
+          insight_ids: string[]
+          is_addressed: boolean | null
+          pattern_type: string
+          suggestion: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          description: string
+          id?: string
+          insight_ids: string[]
+          is_addressed?: boolean | null
+          pattern_type: string
+          suggestion?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          description?: string
+          id?: string
+          insight_ids?: string[]
+          is_addressed?: boolean | null
+          pattern_type?: string
+          suggestion?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
