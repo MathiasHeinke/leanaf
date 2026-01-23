@@ -1200,6 +1200,20 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   if (healthContext) {
     console.log(`[ARES] Using intelligent prompt builder with ${healthContext.knowledgeGaps.length} knowledge gaps identified`);
     
+    // DEBUG: Log knowledge gaps details
+    if (healthContext.knowledgeGaps && healthContext.knowledgeGaps.length > 0) {
+      console.log('[ARES-GAPS] Knowledge gaps:', JSON.stringify(healthContext.knowledgeGaps));
+    }
+    
+    // DEBUG: Log recentMeals if available
+    const recentMeals = (healthContext.recentActivity as any)?.recentMeals;
+    if (recentMeals && recentMeals.length > 0) {
+      console.log('[ARES-MEALS] Recent meals loaded:', recentMeals.length);
+      console.log('[ARES-MEALS] First meal:', JSON.stringify(recentMeals[0]));
+    } else {
+      console.log('[ARES-MEALS] No recentMeals in healthContext');
+    }
+    
     // Convert conversation history to the format expected by intelligent prompt builder
     const formattedHistory: ConversationMessage[] = conversationHistory 
       ? convertConversationHistory(conversationHistory)
@@ -1230,6 +1244,16 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
 - get_user_plans / update_plan: Bestehende Pläne verwalten`;
 
     const finalSystemPrompt = systemPrompt + memoryNotes + toolsSection;
+    
+    // DEBUG: Log final prompt details
+    console.log('[ARES-PROMPT] Final system prompt length:', finalSystemPrompt.length);
+    console.log('[ARES-PROMPT] Contains meal names:', 
+      finalSystemPrompt.includes('Nudel') || 
+      finalSystemPrompt.includes('Mandarine') || 
+      finalSystemPrompt.includes('Mahlzeit:'));
+    console.log('[ARES-PROMPT] Contains insights section:', finalSystemPrompt.includes('ERKANNTE INSIGHTS'));
+    console.log('[ARES-PROMPT] Contains patterns section:', finalSystemPrompt.includes('ERKANNTE MUSTER'));
+    console.log('[ARES-PROMPT] First 2000 chars:', finalSystemPrompt.substring(0, 2000));
     
     return { 
       systemPrompt: finalSystemPrompt, 
