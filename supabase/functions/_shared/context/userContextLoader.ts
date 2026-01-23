@@ -160,9 +160,9 @@ export async function loadUserHealthContext(
   const currentWeight = weightLogs?.[0]?.weight || profile?.weight || null;
   const currentBodyFat = weightLogs?.[0]?.body_fat_percentage || profile?.body_fat_percentage || null;
 
-  // Alter berechnen
-  let age: number | null = null;
-  if (profile?.birth_date) {
+  // Alter: ZUERST direkt aus Profil, DANN aus birth_date berechnen
+  let age: number | null = profile?.age || null;
+  if (!age && profile?.birth_date) {
     const birthDate = new Date(profile.birth_date);
     const today = new Date();
     age = today.getFullYear() - birthDate.getFullYear();

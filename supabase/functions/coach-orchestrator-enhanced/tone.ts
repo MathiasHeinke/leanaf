@@ -1,4 +1,10 @@
-import type { CoachPersona } from './persona.ts';
+// CoachPersona type inline to avoid import issues
+type CoachPersona = {
+  name: string;
+  style_rules: string[];
+  sign_off?: string;
+  emojis?: string[];
+};
 
 export type ToneOpts = {
   addSignOff?: boolean;         // neu: default true, bei open-intake false setzen

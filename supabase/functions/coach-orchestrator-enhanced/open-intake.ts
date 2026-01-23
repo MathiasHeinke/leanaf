@@ -282,7 +282,8 @@ export async function llmOpenIntake({
     out.meta = out.meta || {};
     out.meta.suggestions = (out.meta.suggestions || []).slice(0, 3);
     const extraSignals = detectSoftSignals(userText);
-    const existingSignals: string[] = Array.isArray(out.meta.soft_signal) ? out.meta.soft_signal : [];
+    const existingSignals: string[] = Array.isArray(out.meta.soft_signal) ? out.meta.soft_signal : 
+                                       (out.meta.soft_signal ? [out.meta.soft_signal] : []);
     out.meta.soft_signal = Array.from(new Set([...existingSignals, ...extraSignals]));
     
     return out;

@@ -212,7 +212,7 @@ async function analyzeUserTrainingHistory(userId: string) {
       experienceLevel: 'beginner'
     };
 
-    const typedData = (exerciseData || []) as ExerciseSet[];
+    const typedData = (exerciseData || []) as unknown as ExerciseSet[];
     if (typedData.length > 0) {
       // Count unique workout days
       const workoutDays = new Set<string>();
@@ -444,12 +444,12 @@ async function generatePersonalizedStructure(daysPerWeek: number, goal: string, 
     ]
   };
 
-  return templates[daysPerWeek] || templates[3];
+  return templates[daysPerWeek as keyof typeof templates] || templates[3];
 }
 
 // Generate exercises with specific sets, reps, weights and RPE
-function generateExercisesWithDetails(exercises, goal, userAnalysis) {
-  return exercises.map(exercise => {
+function generateExercisesWithDetails(exercises: any[], goal: string, userAnalysis: any) {
+  return exercises.map((exercise: any) => {
     let sets, reps, rpe, weight = null;
     
     // Set parameters based on goal
@@ -494,14 +494,14 @@ function generateExercisesWithDetails(exercises, goal, userAnalysis) {
 }
 
 // Generate exercise-specific coaching notes
-function generateExerciseNotes(exercise, userAnalysis) {
+function generateExerciseNotes(exercise: any, userAnalysis: any) {
   const notes = [];
   
   if (userAnalysis.experienceLevel === 'beginner') {
     notes.push('Fokus auf saubere Technik');
   }
   
-  if (userAnalysis.favoriteExercises.some(fav => fav.name === exercise.name)) {
+  if (userAnalysis.favoriteExercises.some((fav: any) => fav.name === exercise.name)) {
     notes.push('Du trainierst diese Übung bereits regelmäßig');
   }
   
@@ -509,7 +509,7 @@ function generateExerciseNotes(exercise, userAnalysis) {
 }
 
 // Generate coaching principles based on user data and coach style
-function generateCoachingPrinciples(goal, experienceYears, userAnalysis, preferredCoach) {
+function generateCoachingPrinciples(goal: string, experienceYears: number, userAnalysis: any, preferredCoach: any) {
   const principles = [];
   
   // Base principles by goal
@@ -545,7 +545,7 @@ function generateCoachingPrinciples(goal, experienceYears, userAnalysis, preferr
 }
 
 // Generate progression recommendations
-function generateProgressionRecommendations(userAnalysis, goal) {
+function generateProgressionRecommendations(userAnalysis: any, goal: string) {
   const recommendations = {
     weekly_progression: {},
     volume_targets: {},
@@ -570,7 +570,7 @@ function generateProgressionRecommendations(userAnalysis, goal) {
 }
 
 // Generate personalized description
-function generatePersonalizedDescription(goal, daysPerWeek, userAnalysis, preferredCoach) {
+function generatePersonalizedDescription(goal: string, daysPerWeek: number, userAnalysis: any, preferredCoach: any) {
   let description = `Ein personalisierter ${daysPerWeek}-Tage-Plan für ${goal === 'hypertrophy' ? 'Muskelaufbau' : goal}. `;
   
   if (userAnalysis.totalWorkouts > 0) {
@@ -587,7 +587,7 @@ function generatePersonalizedDescription(goal, daysPerWeek, userAnalysis, prefer
 }
 
 // Generate detailed analysis text
-function generateDetailedAnalysis(userAnalysis, preferredCoach, goal, daysPerWeek) {
+function generateDetailedAnalysis(userAnalysis: any, preferredCoach: any, goal: string, daysPerWeek: number) {
   let analysis = `**Personalisierte Trainingsplan-Analyse:**\n\n`;
   
   if (userAnalysis.totalWorkouts > 0) {
@@ -599,7 +599,7 @@ function generateDetailedAnalysis(userAnalysis, preferredCoach, goal, daysPerWee
     
     if (userAnalysis.favoriteExercises.length > 0) {
       analysis += `🏋️ **Deine Top-Übungen:**\n`;
-      userAnalysis.favoriteExercises.slice(0, 3).forEach((ex, i) => {
+      userAnalysis.favoriteExercises.slice(0, 3).forEach((ex: any, i: number) => {
         analysis += `${i + 1}. ${ex.name} (${Math.round(ex.volume)}kg Volume)\n`;
       });
       analysis += `\n`;

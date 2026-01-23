@@ -1316,10 +1316,18 @@ ${memory.conversation_context?.mood_history?.length > 0
   systemPromptParts.push('Kopiere NIEMALS den Sprachstil aus frueheren Nachrichten im Verlauf.');
   systemPromptParts.push('');
   systemPromptParts.push('## USER CONTEXT (DEINE DATEN - DU KENNST DIESE!)');
+  systemPromptParts.push('WICHTIG: Frage NICHT nach Daten die hier stehen - du KENNST sie bereits!');
+  if (context.profile?.age) systemPromptParts.push('- Alter: ' + context.profile.age + ' Jahre');
+  if (context.profile?.height) systemPromptParts.push('- Groesse: ' + context.profile.height + ' cm');
+  if (context.profile?.gender) {
+    const genderText = context.profile.gender === 'male' ? 'maennlich' : 
+                       context.profile.gender === 'female' ? 'weiblich' : context.profile.gender;
+    systemPromptParts.push('- Geschlecht: ' + genderText);
+  }
   if (context.profile?.weight) systemPromptParts.push('- Aktuelles Gewicht: ' + context.profile.weight + ' kg');
   if (context.profile?.target_weight) systemPromptParts.push('- Zielgewicht: ' + context.profile.target_weight + ' kg');
   if (context.profile?.tdee) systemPromptParts.push('- Taeglicher Kalorienbedarf (TDEE): ' + context.profile.tdee + ' kcal');
-  if (userMoodContext?.streak && userMoodContext.streak > 0) systemPromptParts.push('- Aktuelle Streak: ' + userMoodContext.streak + ' Tage 🔥');
+  if (userMoodContext?.streak && userMoodContext.streak > 0) systemPromptParts.push('- Aktuelle Streak: ' + userMoodContext.streak + ' Tage');
   if (userMoodContext?.no_workout_days && userMoodContext.no_workout_days > 0) systemPromptParts.push('- Tage ohne Training: ' + userMoodContext.no_workout_days);
   systemPromptParts.push('');
   systemPromptParts.push('### Letzte Mahlzeiten (letzte 7 Tage):');
