@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProactiveCoaching } from '@/hooks/useProactiveCoaching';
-import { toast } from 'sonner';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { X, Heart, Target, Zap } from 'lucide-react';
+import { X, Zap } from 'lucide-react';
 
 interface ProactiveCoachNotificationsProps {
   onMessageClick?: (message: string) => void;
@@ -40,31 +39,11 @@ export const ProactiveCoachNotifications = ({ onMessageClick }: ProactiveCoachNo
     return null;
   }
 
-  const getIcon = () => {
-    switch (displayedMessage.personality) {
-      case 'hart':
-      case 'sascha':
-        return <Target className="h-4 w-4" />;
-      case 'soft':
-      case 'lucy':
-        return <Heart className="h-4 w-4" />;
-      default:
-        return <Zap className="h-4 w-4" />;
-    }
-  };
+  // ARES-only: always use Zap icon
+  const getIcon = () => <Zap className="h-4 w-4" />;
 
-  const getCoachName = () => {
-    switch (displayedMessage.personality) {
-      case 'hart':
-      case 'sascha':
-        return 'Sascha';
-      case 'soft':
-      case 'lucy':
-        return 'Lucy';
-      default:
-        return 'Kai';
-    }
-  };
+  // ARES-only: always return ARES
+  const getCoachName = () => 'ARES';
 
   const getBadgeVariant = () => {
     switch (displayedMessage.type) {

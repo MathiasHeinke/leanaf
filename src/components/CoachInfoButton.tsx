@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Info, X, BookOpen, Target, Heart, Brain, ChevronRight } from 'lucide-react';
+import { Info, X, BookOpen, Zap, Target, ChevronRight, Heart } from 'lucide-react';
 
 interface CoachInfo {
   id: string;
@@ -63,21 +63,8 @@ export const CoachInfoButton: React.FC<CoachInfoButtonProps> = ({ coach, classNa
     };
   }, [isOpen]);
 
-  const getIcon = () => {
-    switch (coach.id) {
-      case 'sascha':
-      case 'hart':
-        return Target;
-      case 'lucy':
-      case 'soft':
-        return Heart;
-      case 'kai':
-      case 'motivierend':
-        return Brain;
-      default:
-        return BookOpen;
-    }
-  };
+  // ARES-only: always use Zap icon
+  const Icon = Zap;
 
   const getColorClasses = (color: string) => {
     switch (color) {
@@ -85,7 +72,7 @@ export const CoachInfoButton: React.FC<CoachInfoButtonProps> = ({ coach, classNa
         return {
           button: 'hover:bg-red-50 dark:hover:bg-red-950/20',
           icon: 'text-red-600 dark:text-red-400',
-          gradient: 'from-red-500 to-red-600',
+          gradient: 'from-red-500 to-orange-600',
           badge: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300'
         };
       case 'pink':
@@ -104,16 +91,15 @@ export const CoachInfoButton: React.FC<CoachInfoButtonProps> = ({ coach, classNa
         };
       default:
         return {
-          button: 'hover:bg-muted/50',
-          icon: 'text-muted-foreground',
-          gradient: 'from-gray-500 to-gray-600',
-          badge: 'bg-muted text-muted-foreground'
+          button: 'hover:bg-red-50 dark:hover:bg-red-950/20',
+          icon: 'text-red-600 dark:text-red-400',
+          gradient: 'from-red-500 to-orange-600',
+          badge: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300'
         };
     }
   };
 
   const colors = getColorClasses(coach.color);
-  const Icon = getIcon();
 
   return (
     <>

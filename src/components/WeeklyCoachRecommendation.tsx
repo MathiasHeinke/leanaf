@@ -55,13 +55,8 @@ export const WeeklyCoachRecommendation = () => {
       if (response.data?.recommendation) {
         setCoachMessage(response.data.recommendation);
       } else {
-        // Fallback messages if API fails
-        const fallbackMessages = {
-          sascha: "Zeit für Pro! Erreiche deine Ziele 3x schneller.",
-          lucy: "Mit Pro wird alles leichter und nachhaltiger 💝",
-          kai: "Pro = Deine Transformation! Jetzt upgraden! 🔥💪"
-        };
-        setCoachMessage(fallbackMessages[coachPersonality as keyof typeof fallbackMessages] || fallbackMessages.sascha);
+        // ARES-only fallback message
+        setCoachMessage("Zeit für Pro! ARES wird dich 3x schneller ans Ziel bringen. ⚡");
       }
     } catch (error) {
       console.error('Error generating coach message:', error);
@@ -83,8 +78,9 @@ export const WeeklyCoachRecommendation = () => {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const coachPersonality = profile?.coach_personality || 'sascha';
-      setSelectedCoach(coachPersonality);
+      // ARES-only: ignore legacy coach_personality
+      const coachPersonality = 'ares';
+      setSelectedCoach('ares');
 
       // Check for existing recommendation
       const { data: existingRec } = await supabase

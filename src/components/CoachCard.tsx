@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, Target, Heart, Brain } from 'lucide-react';
+import { Check, Target, Zap } from 'lucide-react';
 import { CoachInfoButton } from './CoachInfoButton';
 
 interface CoachProfile {
@@ -55,16 +54,12 @@ export const CoachCard: React.FC<CoachCardProps> = ({
   };
 
   const handleImageLoad = () => {
-    console.log(`Image loaded successfully for coach ${coach.name}:`, coach.imageUrl);
     setImageError(false);
   };
 
   const handleCardClick = () => {
     if (!disabled) {
       onSelect(coach.id);
-    } else if (requiresPremium) {
-      // Show premium upgrade toast for locked coaches
-      console.log('Premium required for coach:', coach.name);
     }
   };
 
@@ -109,25 +104,9 @@ export const CoachCard: React.FC<CoachCardProps> = ({
     }
   };
 
-  const getCoachIcon = () => {
-    switch (coach.id) {
-      case 'sascha':
-        return Target;
-      case 'lucy':
-        return Heart;
-      case 'kai':
-        return Brain;
-      case 'ares':
-        return Target;
-      case 'vita':
-        return Heart;
-      default:
-        return Target;
-    }
-  };
-
+  // ARES-only: always use Zap icon
+  const CoachIcon = Zap;
   const colors = getCoachColors(coach.color);
-  const CoachIcon = getCoachIcon();
 
   return (
     <Card 
@@ -176,12 +155,12 @@ export const CoachCard: React.FC<CoachCardProps> = ({
                 onError={handleImageError}
                 onLoad={handleImageLoad}
               />
-              <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br ${coach.accentColor} flex items-center justify-center shadow-lg z-30`}>
+              <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-lg z-30`}>
                 <CoachIcon className="h-4 w-4 text-white" />
               </div>
             </div>
           ) : (
-            <div className={`w-24 h-24 mx-auto rounded-full bg-gradient-to-br ${coach.accentColor} flex items-center justify-center text-white text-2xl font-bold shadow-lg relative`}>
+            <div className={`w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg relative`}>
               {coach.avatar}
               <div className={`absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center z-30`}>
                 <CoachIcon className="h-4 w-4 text-white" />
