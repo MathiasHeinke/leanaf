@@ -22,7 +22,7 @@ interface QuickMindsetInputProps {
 
 export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: QuickMindsetInputProps) => {
   const [manualText, setManualText] = useState('');
-  const [analysisMode, setAnalysisMode] = useState<'simple' | 'kai'>('simple');
+  const [analysisMode, setAnalysisMode] = useState<'simple' | 'advanced'>('simple');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -104,7 +104,7 @@ export const QuickMindsetInput = ({ onMindsetAdded, currentDate = new Date() }: 
         photoUrl = photoPreview;
       }
 
-      if (analysisMode === 'kai' && textToAnalyze.length > 50) {
+      if (analysisMode === 'advanced' && textToAnalyze.length > 50) {
         // Use Kai's advanced analysis
         const kaiAnalysis = await requestKaiAnalysis(textToAnalyze);
         

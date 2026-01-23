@@ -44,7 +44,7 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Brain className="h-4 w-4 text-primary" />
-          Kai's Insights
+          Coach Insights
           <Badge variant="outline" className="text-xs">
             {insights.length} Erkenntnisse
           </Badge>
@@ -118,7 +118,7 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({
         {insights.length === 0 && (
           <div className="text-center py-4 text-muted-foreground">
             <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">Erstelle mehr Einträge für Kai's Insights</p>
+            <p className="text-sm">Erstelle mehr Einträge für Coach Insights</p>
             <p className="text-xs">Ab 3 Einträgen kann ich Muster erkennen</p>
           </div>
         )}

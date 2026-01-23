@@ -222,12 +222,12 @@ export const MindsetJournalEntryCard = ({ entry }: MindsetJournalEntryCardProps)
               </div>
             )}
 
-            {/* Kai Insights */}
+            {/* Coach Insights */}
             {entry.kai_insights && entry.kai_insights.length > 0 && (
               <div>
                 <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
                   <Brain className="h-4 w-4 text-violet-500" />
-                  Kai Insights
+                  Coach Insights
                 </h4>
                 <div className="space-y-2">
                   {entry.kai_insights.slice(0, 2).map((insight, index) => (

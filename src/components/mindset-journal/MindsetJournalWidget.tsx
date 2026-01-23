@@ -13,18 +13,18 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 interface MindsetJournalWidgetProps {
-  onKaiTransfer?: (text: string) => void;
+  onCoachTransfer?: (text: string) => void;
   className?: string;
   layout?: 'dashboard' | 'chat';
 }
 
 export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({ 
-  onKaiTransfer, 
+  onCoachTransfer, 
   className,
   layout = 'chat'
 }) => {
   const [manualText, setManualText] = useState('');
-  const [analysisMode, setAnalysisMode] = useState<'simple' | 'kai'>('simple');
+  const [analysisMode, setAnalysisMode] = useState<'simple' | 'advanced'>('advanced');
   const [showInsights, setShowInsights] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
@@ -94,8 +94,8 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
     try {
       setIsUploadingPhoto(true);
 
-      if (analysisMode === 'kai' && textToAnalyze.length > 50) {
-        // Use Kai's advanced analysis
+      if (analysisMode === 'advanced' && textToAnalyze.length > 50) {
+        // Use advanced AI analysis
         const kaiAnalysis = await requestKaiAnalysis(textToAnalyze);
         
         if (kaiAnalysis) {
@@ -160,10 +160,10 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
     }
   };
 
-  const handleTransferToKai = () => {
+  const handleTransferToCoach = () => {
     const textToTransfer = transcribedText || manualText;
-    if (textToTransfer.trim() && onKaiTransfer) {
-      onKaiTransfer(`Analysiere bitte diesen Tagebuch-Eintrag für mich: "${textToTransfer}"`);
+    if (textToTransfer.trim() && onCoachTransfer) {
+      onCoachTransfer(`Analysiere bitte diesen Tagebuch-Eintrag für mich: "${textToTransfer}"`);
       setManualText('');
       clearTranscription();
     }
@@ -290,13 +290,13 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
                 Basic
               </Button>
               <Button
-                variant={analysisMode === 'kai' ? "secondary" : "ghost"}
+                variant={analysisMode === 'advanced' ? "secondary" : "ghost"}
                 size="sm"
-                onClick={() => setAnalysisMode('kai')}
+                onClick={() => setAnalysisMode('advanced')}
                 className="rounded-l-none border-0 text-xs px-2 h-8"
               >
                 <Brain className="h-3 w-3 mr-1" />
-                Kai
+                Advanced
               </Button>
             </div>
           </div>
@@ -388,17 +388,17 @@ export const MindsetJournalWidget: React.FC<MindsetJournalWidgetProps> = ({
                 className="flex-1"
               >
                 <Send className="h-4 w-4 mr-2" />
-                {isUploadingPhoto ? 'Speichere...' : analysisMode === 'kai' ? 'Kai Analyse & Speichern' : 'Speichern'}
+                {isUploadingPhoto ? 'Speichere...' : analysisMode === 'advanced' ? 'Analyse & Speichern' : 'Speichern'}
               </Button>
               
-              {onKaiTransfer && (
+              {onCoachTransfer && (
                 <Button
                   variant="outline"
-                  onClick={handleTransferToKai}
+                  onClick={handleTransferToCoach}
                   disabled={!(transcribedText || manualText.trim())}
                   size="sm"
                 >
-                  → Kai Chat
+                  → Coach Chat
                 </Button>
               )}
             </div>

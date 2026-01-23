@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Brain, BookOpen, X } from 'lucide-react';
 
 interface FloatingMindsetJournalProps {
-  onKaiTransfer?: (text: string) => void;
+  onCoachTransfer?: (text: string) => void;
 }
 
 export const FloatingMindsetJournal: React.FC<FloatingMindsetJournalProps> = ({
-  onKaiTransfer
+  onCoachTransfer
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -112,7 +112,7 @@ export const FloatingMindsetJournal: React.FC<FloatingMindsetJournalProps> = ({
           </CardTitle>
         </CardHeader>
         <CardContent className="max-h-[70vh] overflow-y-auto">
-          <MindsetJournalWidget onKaiTransfer={onKaiTransfer} />
+          <MindsetJournalWidget onCoachTransfer={onCoachTransfer} />
         </CardContent>
       </Card>
     </motion.div>

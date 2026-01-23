@@ -270,7 +270,7 @@ export const JournalHistory = ({ timeRange }: JournalHistoryProps) => {
           <div className="text-sm text-muted-foreground">
             <p>🎤 Sprachaufnahmen</p>
             <p>📝 Gedanken & Reflexionen</p>
-            <p>🧠 KI-Analysen von Kai</p>
+            <p>🧠 Coach-Analysen</p>
             <p>📸 Bilder & Momente</p>
           </div>
         </CardContent>
@@ -320,7 +320,7 @@ export const JournalHistory = ({ timeRange }: JournalHistoryProps) => {
                     {day.entries.some(e => e.kai_insight) && (
                       <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300">
                         <Brain className="h-3 w-3 mr-1" />
-                        Kai
+                        Coach
                       </Badge>
                     )}
                   </div>

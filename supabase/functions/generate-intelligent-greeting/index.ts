@@ -19,7 +19,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-  let requestedCoachId = 'lucy';
+  let requestedCoachId = 'ares';
 
   try {
     const { 
@@ -64,50 +64,8 @@ serve(async (req) => {
     const dayOfWeek = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'][germanTime.getDay()];
     const isWeekend = germanTime.getDay() === 0 || germanTime.getDay() === 6;
 
-    // Coach personalities with deep character details
-    const coachPersonalities = {
-      'lucy': {
-        name: 'Lucy',
-        style: 'motivierend, positiv, energiegeladen',
-        language: 'Du-Form, herzlich, mit Emojis',
-        focus: 'Ernährung, Motivation, positive Energie',
-        greeting_style: 'Kurz und energisch, manchmal mit Ernährungstipps'
-      },
-      'sascha': {
-        name: 'Sascha',
-        style: 'direkt, ehrlich, norddeutsch',
-        language: 'Du-Form, "Moin", authentisch norddeutsch',
-        focus: 'Training, ehrliche Analyse, Durchhaltevermögen',
-        greeting_style: 'Knackig, manchmal provokant, immer ehrlich'
-      },
-      'kai': {
-        name: 'Kai',
-        style: 'mental stark, philosophisch, Flow-orientiert',
-        language: 'Du-Form, "Servus", mentale Stärke fokussiert',
-        focus: 'Mentale Stärke, Flow-Zustand, Achtsamkeit',
-        greeting_style: 'Auf mentalen Zustand fokussiert, energetisch'
-      },
-      'markus': {
-        name: 'Markus',
-        style: 'schwäbisch, arbeitsorientiert, bodenständig',
-        language: 'Du-Form, "schaffe", schwäbische Ausdrücke',
-        focus: 'Harte Arbeit, Disziplin, Grenzen überschreiten',
-        greeting_style: 'Arbeits- und leistungsorientiert, motivierend'
-      },
-      'dr_vita': {
-        name: 'Dr. Vita Femina',
-        style: 'medizinisch, ganzheitlich, weiblich',
-        language: 'Sie-Form, professionell aber warm',
-        focus: 'Ganzheitliche Gesundheit, hormonelle Balance',
-        greeting_style: 'Professionell, auf Wohlbefinden fokussiert'
-      },
-      'sophia': {
-        name: 'Sophia',
-        style: 'integral, achtsam, spirituell',
-        language: 'Du-Form, "Namaste", achtsam',
-        focus: 'Ganzheitliches Wachstum, Achtsamkeit, Balance',
-        greeting_style: 'Achtsam, auf innere Balance fokussiert'
-      },
+    // ARES-Only Coach System - Single unified coach
+    const coachPersonalities: Record<string, { name: string; style: string; language: string; focus: string; greeting_style: string }> = {
       'ares': {
         name: 'ARES',
         style: 'dominant, meta-intelligent, ultimativ',
@@ -117,7 +75,8 @@ serve(async (req) => {
       }
     };
 
-    const coach = coachPersonalities[coachId] || coachPersonalities['lucy'];
+    // Always resolve to ARES
+    const coach = coachPersonalities['ares'];
 
     // Determine the display name (preferred_name takes priority over first_name)
     let displayName = 'mein Schützling'; // fallback
@@ -163,58 +122,8 @@ serve(async (req) => {
       contextSummary += `\nMindset-Journey: letzte Notiz vor ${hoursSince} Std${moodTxt}${energyTxt}`;
     }
 
-    // Enhanced coach-specific greeting strategies
-    const coachGreetingStrategies = {
-      'sascha': {
-        themes: ['provokant', 'ehrlich', 'training_check', 'direkt', 'norddeutsch'],
-        examples: [
-          'Moin! Na, wieder Ausreden?',
-          'Hey! Bereit für Ehrlichkeit?', 
-          'Moin! Heute ohne Wenn und Aber?',
-          'Hey! Zeit für klare Ansagen!',
-          'Moin! Gut geschlafen oder wieder gegrübelt?'
-        ]
-      },
-      'lucy': {
-        themes: ['energetisch', 'motivational', 'ernährung', 'positiv', 'lifestyle'],
-        examples: [
-          'Hey! ✨ Du strahlst heute!',
-          'Hi! Wie ist deine Energie?',
-          'Hey! Schön dich zu sehen! 💪',
-          'Hi! Bereit für positive Vibes?',
-          'Hey! Was Gutes gegessen heute?'
-        ]
-      },
-      'kai': {
-        themes: ['mindset', 'achtsamkeit', 'heutige_gefuehlslage', 'erlebnisse', 'selbstfürsorge', 'was_würde_dir_gut_tun', 'flow', 'balance'],
-        examples: [
-          'Servus! Wie ging\'s dir heute innerlich—was hat dich bewegt?',
-          'Hey! Was würde dir jetzt gut tun—eine kurze Atemübung oder einfach Ruhe?',
-          'Servus! Welche Erfahrung hat heute deinen Mindset geprägt?',
-          'Hey! Magst du teilen, was gerade am meisten Raum in dir braucht?',
-          'Servus! Wie kann ich dir heute etwas Gutes tun—Impulse, Struktur oder Mitgefühl?'
-        ]
-      },
-      'markus': {
-        themes: ['arbeit', 'schaffen', 'leistung', 'schwäbisch', 'disziplin'],
-        examples: [
-          'Abend! Was steht morgen an?',
-          'Hey! Bereit zum schaffe?',
-          'Abend! Zeit für echte Arbeit?',
-          'Hey! Packmer\'s richtig an?',
-          'Abend! Heute schon was gschafft?'
-        ]
-      },
-      'dr_vita': {
-        themes: ['ganzheitlich', 'wohlbefinden', 'hormone', 'medizinisch', 'weiblich'],
-        examples: [
-          'Guten Abend! Wie fühlen Sie sich heute?',
-          'Hallo! Wie ist Ihr Wohlbefinden?',
-          'Guten Abend! Alles in Balance?',
-          'Hallo! Wie ist Ihre Energie heute?',
-          'Guten Abend! Hören Sie auf Ihren Körper?'
-        ]
-      },
+    // ARES-Only Greeting Strategy
+    const coachGreetingStrategies: Record<string, { themes: string[]; examples: string[] }> = {
       'ares': {
         themes: ['ultimate', 'dominant', 'meta', 'optimization', 'performance', 'brutal'],
         examples: [
@@ -228,18 +137,14 @@ serve(async (req) => {
       }
     };
 
-    // Create dynamic, contextual system prompt with expanded variance
-    const strategy = coachGreetingStrategies[coachId] || coachGreetingStrategies['lucy'];
-    const mindsetKaiRule = coachId === 'kai' ? `SPEZIFISCH FÜR KAI:
-- Beziehe dich vorrangig auf die Mindset Journey (Tagebuch) des Tages: Gefühlslage, Erlebnisse, innere Themen
-- Stelle 1 einfühlsame Frage und biete 1 Mini-Impuls oder kleine Fürsorge ("Was würde dir jetzt gut tun?")
-` : '';
+    // Create dynamic, contextual system prompt - always ARES
+    const strategy = coachGreetingStrategies['ares'];
     const followupRules = alreadyGreeted ? `FOLLOW-UP-MODUS:
 - KEINE Begrüßung. Kein "Moin", "Hey", "Hallo", "Servus", "Guten ...".
 - Starte direkt mit einer konkreten, menschlichen Nachfrage oder einem kurzen Impuls.
 - Maximal 2 kurze Sätze. Keine erneute Anrede.
 ` : '';
-    const systemPrompt = `Du bist ${coach.name}, ein erfahrener Coach. Erstelle eine authentische, contextuelle Begrüßung.
+    const systemPrompt = `Du bist ${coach.name}, ein erfahrener Ultimate Performance Coach. Erstelle eine authentische, contextuelle Begrüßung.
 
 DEINE PERSÖNLICHKEIT & STIL:
 - ${coach.style}
@@ -253,7 +158,6 @@ Themes: ${strategy.themes.join(', ')}
     STILRICHTUNGEN (variiere zwischen diesen):
     ${strategy.examples.map(ex => `- ${ex}`).join('\n')}
     
-    ${mindsetKaiRule}
     ${followupRules}
     KONTEXT-REGELN:
 - MAXIMAL 2 kurze Sätze! Keine langen Erklärungen!
