@@ -72,7 +72,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.analyze-meal]
-verify_jwt = true
+verify_jwt = false
 
 [functions.verify-meal]
 verify_jwt = true
