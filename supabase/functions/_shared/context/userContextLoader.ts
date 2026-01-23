@@ -71,11 +71,11 @@ export async function loadUserHealthContext(
 ): Promise<UserHealthContext> {
   console.log(`[USER-CONTEXT] Loading comprehensive health context for user: ${userId}`);
 
-  // 1. Profil laden (profiles.id = auth.users.id, not user_id!)
+  // 1. Profil laden (profiles.user_id = auth.users.id)
   const { data: profile } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', userId)
+    .eq('user_id', userId)
     .single();
 
   // 2. Letzte Gewichtsmessungen
