@@ -20,6 +20,9 @@ export const Layout = ({ children }: LayoutProps) => {
   const isFromCoachChat = document.referrer.includes('/coach/');
   const shouldSlideIn = isDashboard && isFromCoachChat;
   
+  // Check if on admin route for full-width layout
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  
   // Detect if running in Lovable Preview mode
   const isPreviewMode = window.location.hostname.includes('lovable.app');
   
@@ -47,7 +50,11 @@ export const Layout = ({ children }: LayoutProps) => {
         {/* Main Content with proper SidebarInset */}
         <SidebarInset className="flex-1 flex flex-col min-w-0">
           <GlobalHeader />
-          <main className={`container mx-auto px-3 pb-0 pt-2 max-w-md relative z-10 flex-1 ${shouldSlideIn ? 'animate-slide-in-right' : ''}`}>
+          <main className={`relative z-10 flex-1 pb-0 pt-2 ${
+            isAdminRoute 
+              ? 'w-full px-4 md:px-8 lg:px-12' 
+              : 'container mx-auto px-3 max-w-md'
+          } ${shouldSlideIn ? 'animate-slide-in-right' : ''}`}>
             {children}
           </main>
           <Footer />
