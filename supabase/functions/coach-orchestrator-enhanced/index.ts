@@ -15,6 +15,15 @@ import {
   type ResolvedPersona,
 } from '../_shared/persona/index.ts';
 
+// Phase 3: Intelligent Context Loading
+import {
+  loadUserHealthContext,
+  buildIntelligentSystemPrompt,
+  convertConversationHistory,
+  type UserHealthContext,
+  type ConversationMessage,
+} from '../_shared/context/index.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -1076,7 +1085,7 @@ function formatConversationHistory(conversations: any[]): string {
   return formatted;
 }
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt }: {
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext }: {
   persona: any;
   context: any;
   ragSources: any;
@@ -1085,6 +1094,7 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   userMoodContext?: UserMoodContext;
   conversationHistory?: any[];
   personaPrompt?: string; // Phase 2: Persona-specific prompt section
+  healthContext?: UserHealthContext | null; // Phase 3: Extended health context
 }) {
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
   const ritualContext = getRitualContext();
@@ -1092,6 +1102,55 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   const finalTemperature = ritualContext?.temperature || dialResult.temperature;
   
   console.log(`[ARES] Mode selected: ${finalMode}, Temp: ${finalTemperature}, Reason: ${dialResult.reason}`);
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // Phase 3: Use Intelligent Prompt Builder when healthContext is available
+  // ═══════════════════════════════════════════════════════════════════════════════
+  if (healthContext) {
+    console.log(`[ARES] Using intelligent prompt builder with ${healthContext.knowledgeGaps.length} knowledge gaps identified`);
+    
+    // Convert conversation history to the format expected by intelligent prompt builder
+    const formattedHistory: ConversationMessage[] = conversationHistory 
+      ? convertConversationHistory(conversationHistory)
+      : [];
+    
+    const systemPrompt = buildIntelligentSystemPrompt({
+      userContext: healthContext,
+      persona: persona,
+      conversationHistory: formattedHistory,
+      personaPrompt: personaPrompt || '',
+      ragKnowledge: ragSources?.knowledge_chunks || [],
+      currentMessage: text,
+    });
+    
+    // Add memory and tools section that the intelligent builder doesn't include
+    const memory = context.memory;
+    const memoryNotes = memory?.conversation_context?.user_notes?.length > 0 
+      ? `\n\n== VOM USER ZUM MERKEN ==\n${memory.conversation_context.user_notes.map((n: any) => `- "${n.note}" (${new Date(n.timestamp).toLocaleDateString('de-DE')})`).join('\n')}`
+      : '';
+    
+    const toolsSection = `
+
+== TOOLS (bei Bedarf automatisch nutzen) ==
+- get_meta_analysis: Ganzheitliche Analyse der User-Daten
+- create_workout_plan / create_nutrition_plan / create_supplement_plan: Pläne erstellen
+- get_user_plans / update_plan: Bestehende Pläne verwalten`;
+
+    const finalSystemPrompt = systemPrompt + memoryNotes + toolsSection;
+    
+    return { 
+      systemPrompt: finalSystemPrompt, 
+      completePrompt: finalSystemPrompt + "\n\nUser: " + text, 
+      dial: { temp: finalTemperature, archetype: finalMode },
+      temperature: finalTemperature,
+      mode: finalMode
+    };
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // Fallback: Original prompt building logic when healthContext is not available
+  // ═══════════════════════════════════════════════════════════════════════════════
+  console.log(`[ARES] Using fallback prompt builder (no healthContext)`);
   
   const userName = context.profile?.preferred_name || context.profile?.first_name || null;
   const currentDate = getCurrentGermanDate();
@@ -1685,6 +1744,12 @@ Deno.serve(async (req) => {
       throw e;
     });
 
+    // Phase 3: Load extended health context for intelligent prompts
+    const healthContext = await loadUserHealthContext(user.id, supaSvc).catch((e) => {
+      console.warn('[ARES-WARN] loadUserHealthContext failed, using minimal context:', e);
+      return null;
+    });
+
     const persona = await loadPersona({ coachId }).catch((e) => {
       console.error('[ARES-ERROR] loadPersona', traceId, e);
       throw e;
@@ -1738,6 +1803,7 @@ Deno.serve(async (req) => {
     } as any);
 
     // Build prompt with memory, conversation history, and Phase 2 persona prompt
+    // Phase 3: Pass healthContext for intelligent prompts
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
       persona: userPersona || persona, 
       context, 
@@ -1746,7 +1812,8 @@ Deno.serve(async (req) => {
       images, 
       userMoodContext, 
       conversationHistory: conversationHistory ?? undefined,
-      personaPrompt: personaPrompt || undefined // Phase 2: Include persona-specific prompt
+      personaPrompt: personaPrompt || undefined, // Phase 2: Include persona-specific prompt
+      healthContext: healthContext || undefined, // Phase 3: Include health context
     });
 
     // Store system prompt AND user input for full LLM tracing
