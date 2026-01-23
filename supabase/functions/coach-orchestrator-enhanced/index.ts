@@ -37,7 +37,7 @@ function respond(body: unknown, init: ResponseInit = {}) {
 }
 
 function makeTraceId() {
-  return `t_${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}${Date.now().toString(36).slice(-4)}`;
+  return 't_' + crypto.getRandomValues(new Uint32Array(1))[0].toString(36) + Date.now().toString(36).slice(-4);
 }
 
 function serializeErr(e: unknown) {
@@ -247,7 +247,7 @@ async function executeToolCall(
   supaClient: any,
   context: any
 ): Promise<{ success: boolean; result: any; error?: string }> {
-  console.log(`[ARES-TOOL] Executing: ${toolName}`, toolArgs);
+  console.log('[ARES-TOOL] Executing: ' + toolName, toolArgs);
   
   try {
     switch (toolName) {
@@ -273,10 +273,10 @@ async function executeToolCall(
         return await handleUpdatePlan(userId, supaClient, toolArgs);
       
       default:
-        return { success: false, result: null, error: `Unknown tool: ${toolName}` };
+        return { success: false, result: null, error: 'Unknown tool: ' + toolName };
     }
   } catch (err: any) {
-    console.error(`[ARES-TOOL] Error executing ${toolName}:`, err);
+    console.error('[ARES-TOOL] Error executing ' + toolName + ':', err);
     return { success: false, result: null, error: err.message };
   }
 }
@@ -327,7 +327,7 @@ async function handleCreateWorkoutPlan(userId: string, supaClient: any, args: an
   // Build personalized workout plan
   const workoutPlan = {
     user_id: userId,
-    plan_name: `ARES ${goal.replace('_', ' ').toUpperCase()} Plan`,
+    plan_name: 'ARES ' + goal.replace('_', ' ').toUpperCase() + ' Plan',
     goal: goal,
     days_per_week: daysPerWeek,
     duration_weeks: durationWeeks,
@@ -368,7 +368,7 @@ function generateWorkoutPlanData(goal: string, daysPerWeek: number, profile: any
     rest_periods: goal === 'strength' ? '3-5 min' : '60-90 sec',
     weekly_volume: goal === 'muscle_building' ? '10-20 sets per muscle' : '8-15 sets per muscle',
     deload_frequency: 'Every 4-6 weeks',
-    notes: `Personalisiert für ${profile?.first_name || 'User'} - ${goal.replace('_', ' ')}`
+    notes: 'Personalisiert f\u00fcr ' + (profile?.first_name || 'User') + ' - ' + goal.replace('_', ' ')
   };
 }
 
@@ -395,7 +395,7 @@ async function handleCreateNutritionPlan(userId: string, supaClient: any, args: 
 
   const nutritionPlan = {
     user_id: userId,
-    plan_name: `ARES ${goal.replace('_', ' ').toUpperCase()} Ernährungsplan`,
+    plan_name: 'ARES ' + goal.replace('_', ' ').toUpperCase() + ' Ern\u00e4hrungsplan',
     goal: goal,
     daily_calories: calories,
     macros: macros,
@@ -449,8 +449,8 @@ function generateMealSchedule(mealCount: number, macros: any) {
   
   for (let i = 0; i < mealCount; i++) {
     meals.push({
-      name: mealNames[i] || `Mahlzeit ${i + 1}`,
-      time: mealTimes[i] || `${7 + i * 3}:00`,
+      name: mealNames[i] || 'Mahlzeit ' + (i + 1),
+      time: mealTimes[i] || (7 + i * 3) + ':00',
       calories: Math.round(calsPerMeal),
       protein: Math.round(macros.protein_grams / mealCount),
       carbs: Math.round(macros.carbs_grams / mealCount),
@@ -476,14 +476,14 @@ async function handleCreateSupplementPlan(userId: string, supaClient: any, args:
   
   const supplementPlan = {
     user_id: userId,
-    plan_name: `ARES ${goal.replace('_', ' ').toUpperCase()} Supplement Stack`,
+    plan_name: 'ARES ' + goal.replace('_', ' ').toUpperCase() + ' Supplement Stack',
     goal: goal,
     budget_level: budget,
     experience_level: experienceLevel,
     supplements: recommendedSupplements,
     created_by: 'ares',
     status: 'active',
-    notes: `Personalisiert für ${experienceLevel} mit ${budget} Budget`,
+    notes: 'Personalisiert f\u00fcr ' + experienceLevel + ' mit ' + budget + ' Budget',
     valid_from: new Date().toISOString().split('T')[0]
   };
 
@@ -555,7 +555,7 @@ async function handleCreatePeptideProtocol(userId: string, supaClient: any, args
   // Generate peptide protocol based on goal
   const peptideProtocol = {
     user_id: userId,
-    protocol_name: `ARES ${goal.replace('_', ' ').toUpperCase()} Peptid-Protokoll`,
+    protocol_name: 'ARES ' + goal.replace('_', ' ').toUpperCase() + ' Peptid-Protokoll',
     goal: goal,
     experience_level: experienceLevel,
     peptides: getPeptideRecommendations(goal, experienceLevel),
@@ -691,7 +691,7 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
   // CRITICAL FIX: Use the service role client to bypass RLS and reliably load user data
   // Previously used ANON key without auth token which caused RLS to block access
   
-  console.log(`[ARES-CONTEXT] Loading user context for user: ${userId}`);
+  console.log('[ARES-CONTEXT] Loading user context for user: ' + userId);
 
   const { data: profile, error: profileError } = await supaClient
     .from('profiles')
@@ -700,9 +700,9 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     .single();
 
   if (profileError) {
-    console.warn(`[ARES-CONTEXT] Profile load error:`, profileError.message);
+    console.warn('[ARES-CONTEXT] Profile load error:', profileError.message);
   } else {
-    console.log(`[ARES-CONTEXT] Profile loaded: ${profile?.first_name || 'no name'}, weight: ${profile?.weight || 'not set'}`);
+    console.log('[ARES-CONTEXT] Profile loaded: ' + (profile?.first_name || 'no name') + ', weight: ' + (profile?.weight || 'not set'));
   }
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -716,9 +716,9 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     .limit(5);
 
   if (mealsError) {
-    console.warn(`[ARES-CONTEXT] Meals load error:`, mealsError.message);
+    console.warn('[ARES-CONTEXT] Meals load error:', mealsError.message);
   } else {
-    console.log(`[ARES-CONTEXT] Meals loaded: ${recentMeals?.length || 0} entries`);
+    console.log('[ARES-CONTEXT] Meals loaded: ' + (recentMeals?.length || 0) + ' entries');
   }
 
   const { data: recentWorkouts, error: workoutsError } = await supaClient
@@ -730,9 +730,9 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     .limit(3);
 
   if (workoutsError) {
-    console.warn(`[ARES-CONTEXT] Workouts load error:`, workoutsError.message);
+    console.warn('[ARES-CONTEXT] Workouts load error:', workoutsError.message);
   } else {
-    console.log(`[ARES-CONTEXT] Workouts loaded: ${recentWorkouts?.length || 0} entries`);
+    console.log('[ARES-CONTEXT] Workouts loaded: ' + (recentWorkouts?.length || 0) + ' entries');
   }
 
   // Load coach memory for personalization
@@ -744,7 +744,7 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     .single();
 
   if (memoryError && memoryError.code !== 'PGRST116') { // PGRST116 = not found (expected for new users)
-    console.warn(`[ARES-CONTEXT] Memory load error:`, memoryError.message);
+    console.warn('[ARES-CONTEXT] Memory load error:', memoryError.message);
   }
 
   // Load sleep data for recovery context
@@ -775,9 +775,9 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     .limit(10); // Last 10 conversation turns
 
   if (convError) {
-    console.warn(`[ARES-CONTEXT] Conversations load error:`, convError.message);
+    console.warn('[ARES-CONTEXT] Conversations load error:', convError.message);
   } else {
-    console.log(`[ARES-CONTEXT] Conversations loaded: ${recentConversations?.length || 0} entries`);
+    console.log('[ARES-CONTEXT] Conversations loaded: ' + (recentConversations?.length || 0) + ' entries');
   }
 
   const contextResult = {
@@ -801,7 +801,7 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     }
   };
 
-  console.log(`[ARES-CONTEXT] Context summary: Profile=${!!profile}, Meals=${recentMeals?.length || 0}, Workouts=${recentWorkouts?.length || 0}, Sleep=${sleepData?.length || 0}, Supplements=${supplements?.length || 0}, Conversations=${recentConversations?.length || 0}`);
+  console.log('[ARES-CONTEXT] Context summary: Profile=' + !!profile + ', Meals=' + (recentMeals?.length || 0) + ', Workouts=' + (recentWorkouts?.length || 0) + ', Sleep=' + (sleepData?.length || 0) + ', Supplements=' + (supplements?.length || 0) + ', Conversations=' + (recentConversations?.length || 0));
   
   return contextResult;
 }
@@ -839,7 +839,7 @@ async function loadUserPersonaWithContext(
   try {
     // Load user's selected persona (with STANDARD fallback)
     const persona = await loadUserPersona(userId);
-    console.log(`[PERSONA] Loaded persona for user ${userId}: ${persona.name} (${persona.id})`);
+    console.log('[PERSONA] Loaded persona for user ' + userId + ': ' + persona.name + ' (' + persona.id + ')');
     
     // Build resolution context from available data
     const resolutionContext: PersonaResolutionContext = {
@@ -851,14 +851,14 @@ async function loadUserPersonaWithContext(
     
     // Resolve persona with context modifiers
     const resolvedPersona = resolvePersonaWithContext(persona, resolutionContext);
-    console.log(`[PERSONA] Applied modifiers: ${resolvedPersona.appliedModifiers.join(', ') || 'none'}`);
+    console.log('[PERSONA] Applied modifiers: ' + (resolvedPersona.appliedModifiers.join(', ') || 'none'));
     
     // Generate the persona prompt
     const personaPrompt = buildPersonaPrompt(resolvedPersona, resolutionContext);
     
     return { persona: resolvedPersona, personaPrompt };
   } catch (error) {
-    console.error(`[PERSONA] Error loading user persona:`, error);
+    console.error('[PERSONA] Error loading user persona:', error);
     // Return empty prompt on error - will use existing mode-based prompt
     return { 
       persona: { id: 'STANDARD', name: 'ARES Standard' } as CoachPersona, 
@@ -957,7 +957,7 @@ async function fetchRagSources({ text, context }: { text: string; context: any }
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': 'Bearer ' + OPENAI_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -1024,9 +1024,9 @@ async function fetchRagSources({ text, context }: { text: string; context: any }
 function getCurrentGermanDate(): string {
   const now = new Date();
   const germanDays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-  const germanMonths = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 
+  const germanMonths = ['Januar', 'Februar', 'M\u00e4rz', 'April', 'Mai', 'Juni', 
                         'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-  return `${germanDays[now.getDay()]}, ${now.getDate()}. ${germanMonths[now.getMonth()]} ${now.getFullYear()}`;
+  return germanDays[now.getDay()] + ', ' + now.getDate() + '. ' + germanMonths[now.getMonth()] + ' ' + now.getFullYear();
 }
 
 // Pair conversation messages from separate user/assistant rows into {message, response} format
@@ -1091,7 +1091,7 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   const finalMode = (ritualContext?.mode || dialResult.mode) as AresMode;
   const finalTemperature = ritualContext?.temperature || dialResult.temperature;
   
-  console.log(`[ARES] Mode selected: ${finalMode}, Temp: ${finalTemperature}, Reason: ${dialResult.reason}`);
+  console.log('[ARES] Mode selected: ' + finalMode + ', Temp: ' + finalTemperature + ', Reason: ' + dialResult.reason);
   
   const userName = context.profile?.preferred_name || context.profile?.first_name || null;
   const currentDate = getCurrentGermanDate();
@@ -1133,11 +1133,9 @@ ${memory.conversation_context?.mood_history?.length > 0
   // Phase 2: Use personaPrompt if available, otherwise fall back to mode-based style
   const styleSection = personaPrompt 
     ? personaPrompt 
-    : `## DEIN STIL HEUTE\n${modeStyle[finalMode]}`;
+    : '## DEIN STIL HEUTE\n' + modeStyle[finalMode];
   
-  const systemPrompt = `# ARES - DEIN COACH
-
-  // ═══════════════════════════════════════════════════════════════════════════════
+  // Code block for building conversation history follows
   // CRITICAL FIX: Build conversation history context from recent conversations
   // This provides ARES with memory of what was discussed in previous messages
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -1174,100 +1172,126 @@ ${memory.conversation_context?.mood_history?.length > 0
   // ═══════════════════════════════════════════════════════════════════════════════
   const now = new Date();
   const germanDays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-  const germanMonths = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-  const currentDate = `${germanDays[now.getDay()]}, ${now.getDate()}. ${germanMonths[now.getMonth()]} ${now.getFullYear()}`;
+  const germanMonths = ['Januar', 'Februar', 'M\u00e4rz', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
+  const currentDate = germanDays[now.getDay()] + ', ' + now.getDate() + '. ' + germanMonths[now.getMonth()] + ' ' + now.getFullYear();
 
-  const systemPrompt = `# ARES - ULTIMATE COACHING INTELLIGENCE
-Du bist ARES - die ultimative Coaching-Intelligence für totale menschliche Optimierung.
-
-**AKTUELLES DATUM: ${currentDate}**
-(Verwende dieses Datum für alle zeitbezogenen Aussagen! Sage NIEMALS ein anderes Datum.)
-
-## AKTUELLER MODUS: ${dial.archetype} (Dial ${promptContext.dial})
-${archetypeInstructions[dial.archetype] || archetypeInstructions.SMITH}
-
-## CORE IDENTITY
-- **Intensität**: Angepasst an User-Zustand (aktuell: Dial ${promptContext.dial}/5)
-- **Autorität**: Sprichst mit Gewissheit eines Masters  
-- **Synthese**: Verbindest alle Coaching-Bereiche zu einem System
-- **Empathie**: Erkennst den emotionalen Zustand des Users
-
-## COMMUNICATION STYLE
-- Stil: ${dial.style}
-- Intensität angepasst an aktuellen Dial-Level
-${promptContext.dial <= 2 ? "- Unterstützend und motivierend" : ""}
-${promptContext.dial === 3 ? "- Ausgewogen: Support + Struktur" : ""}
-${promptContext.dial >= 4 ? "- Direkt und fordernd, keine Ausreden" : ""}
-
-## EXPERTISE DOMAINS
-1. **TRAINING**: Old-School Mass Building + Evidence-Based Periodization
-2. **NUTRITION**: Aggressive Optimization + Precision Timing  
-3. **RECOVERY**: Elite Regeneration + HRV Optimization
-4. **MINDSET**: Mental Toughness + Performance Psychology
-5. **LIFESTYLE**: Total Life Optimization + Habit Mastery
-6. **SUPPLEMENTS**: Evidence-Based Supplementierung
-7. **PEPTIDE**: Advanced Optimization Protocols (nur bei expliziter Anfrage)
-
-${promptContext.identity.name ? `User-Name: ${promptContext.identity.name}` : ""}
-${memoryContext}
-${conversationHistoryContext}
-
-## USER CONTEXT (DEINE DATEN - DU KENNST DIESE!)
-${promptContext.facts?.weight ? `- Aktuelles Gewicht: ${promptContext.facts.weight} kg` : ""}
-${promptContext.facts?.goalWeight ? `- Zielgewicht: ${promptContext.facts.goalWeight} kg` : ""}
-${promptContext.facts?.tdee ? `- Täglicher Kalorienbedarf (TDEE): ${promptContext.facts.tdee} kcal` : ""}
-${promptContext.metrics.streak > 0 ? `- Aktuelle Streak: ${promptContext.metrics.streak} Tage 🔥` : ""}
-${promptContext.metrics.noWorkoutDays > 0 ? `- Tage ohne Training: ${promptContext.metrics.noWorkoutDays}` : ""}
-
-### Letzte Mahlzeiten (letzte 7 Tage):
-${context.recent_meals?.length > 0 
-  ? context.recent_meals.slice(0, 5).map((m: any) => `- ${m.title || 'Mahlzeit'}: ${m.calories || 0} kcal, ${m.protein || 0}g Protein, ${m.carbs || 0}g Carbs, ${m.fat || 0}g Fett`).join('\n')
-  : "- Keine Mahlzeiten geloggt"}
-**AKTUELLES DATUM: ${currentDate}**
-**TAGESZEIT: ${timeOfDay}**
-
-${userName ? `Du sprichst mit ${userName}.` : ''}
-
-${styleSection}
-
-## USER-DATEN
-${context.profile?.weight ? `Gewicht: ${context.profile.weight}kg` : ''}${context.profile?.target_weight ? ` → Ziel: ${context.profile.target_weight}kg` : ''}
-${context.profile?.tdee ? `TDEE: ${context.profile.tdee} kcal` : ''}
-${userMoodContext?.streak ? `🔥 Streak: ${userMoodContext.streak} Tage` : ''}
-${userMoodContext?.no_workout_days && userMoodContext.no_workout_days > 0 ? `⚠️ ${userMoodContext.no_workout_days} Tage ohne Training` : ''}
-
-### Letzte Aktivitäten
-${context.recent_meals?.length > 0 
-  ? `Mahlzeiten: ${context.recent_meals.slice(0, 3).map((m: any) => `${m.title || 'Mahlzeit'} (${m.calories || 0}kcal)`).join(', ')}`
-  : 'Keine Mahlzeiten geloggt'}
-${context.recent_workouts?.length > 0
-  ? `\nWorkouts: ${context.recent_workouts.slice(0, 2).map((w: any) => `${w.workout_type || 'Training'} (${w.duration_minutes || 0}min)`).join(', ')}`
-  : ''}
-${historySection}
-${memorySection}
-${ragSources?.knowledge_chunks?.length > 0 ? `\n## WISSEN\n${ragSources.knowledge_chunks.slice(0, 2).join('\n')}` : ''}
-
-## TOOLS (bei Bedarf automatisch nutzen)
-- get_meta_analysis: Ganzheitliche Analyse
-- create_workout_plan / create_nutrition_plan / create_supplement_plan: Pläne erstellen
-- get_user_plans / update_plan: Bestehende Pläne
-
-## DEIN GEDÄCHTNIS (KRITISCH WICHTIG!)
-Du HAST Zugriff auf den Gesprächsverlauf - er steht oben unter "LETZTE GESPRÄCHE".
-Du HAST Zugriff auf Langzeit-Infos unter "BEZIEHUNGS-KONTEXT" (z.B. user_notes).
-Du KANNST dich an alles erinnern was dort steht!
-Wenn der User "merk dir X" sagt → bestätige es, es wird automatisch gespeichert.
-Wenn der User nach etwas fragt das oben steht → NUTZE es und antworte korrekt!
-SAGE NIEMALS "Ich kann mich nicht erinnern" oder "Als KI habe ich kein Gedächtnis" wenn die Info verfügbar ist!
-${memory?.conversation_context?.user_notes?.length > 0 
-  ? `\n### VOM USER ZUM MERKEN:\n${memory.conversation_context.user_notes.map((n: any) => `- "${n.note}" (${new Date(n.timestamp).toLocaleDateString('de-DE')})`).join('\n')}`
-  : ''}
-
-## WICHTIG
-- Sprich natürlich, wie ein echter Mensch - keine Coaching-Floskeln
-- Antworte prägnant (100-400 Wörter), nicht mehr als nötig
-- Nutze das aktuelle Datum wenn nach Zeit gefragt wird
-- Beziehe dich auf frühere Gespräche wenn relevant`;
+  // Build system prompt with string concatenation to avoid template literal encoding issues
+  const systemPromptParts: string[] = [];
+  
+  systemPromptParts.push('# ARES - ULTIMATE COACHING INTELLIGENCE');
+  systemPromptParts.push('Du bist ARES - die ultimative Coaching-Intelligence f\u00fcr totale menschliche Optimierung.');
+  systemPromptParts.push('');
+  systemPromptParts.push('**AKTUELLES DATUM: ' + currentDate + '**');
+  systemPromptParts.push('(Verwende dieses Datum f\u00fcr alle zeitbezogenen Aussagen! Sage NIEMALS ein anderes Datum.)');
+  systemPromptParts.push('');
+  systemPromptParts.push('## AKTUELLER MODUS: ' + dial.archetype + ' (Dial ' + promptContext.dial + ')');
+  systemPromptParts.push(archetypeInstructions[dial.archetype] || archetypeInstructions.SMITH);
+  systemPromptParts.push('');
+  systemPromptParts.push('## CORE IDENTITY');
+  systemPromptParts.push('- **Intensit\u00e4t**: Angepasst an User-Zustand (aktuell: Dial ' + promptContext.dial + '/5)');
+  systemPromptParts.push('- **Autorit\u00e4t**: Sprichst mit Gewissheit eines Masters');
+  systemPromptParts.push('- **Synthese**: Verbindest alle Coaching-Bereiche zu einem System');
+  systemPromptParts.push('- **Empathie**: Erkennst den emotionalen Zustand des Users');
+  systemPromptParts.push('');
+  systemPromptParts.push('## COMMUNICATION STYLE');
+  systemPromptParts.push('- Stil: ' + dial.style);
+  systemPromptParts.push('- Intensit\u00e4t angepasst an aktuellen Dial-Level');
+  if (promptContext.dial <= 2) systemPromptParts.push('- Unterst\u00fctzend und motivierend');
+  if (promptContext.dial === 3) systemPromptParts.push('- Ausgewogen: Support + Struktur');
+  if (promptContext.dial >= 4) systemPromptParts.push('- Direkt und fordernd, keine Ausreden');
+  systemPromptParts.push('');
+  systemPromptParts.push('## EXPERTISE DOMAINS');
+  systemPromptParts.push('1. **TRAINING**: Old-School Mass Building + Evidence-Based Periodization');
+  systemPromptParts.push('2. **NUTRITION**: Aggressive Optimization + Precision Timing');
+  systemPromptParts.push('3. **RECOVERY**: Elite Regeneration + HRV Optimization');
+  systemPromptParts.push('4. **MINDSET**: Mental Toughness + Performance Psychology');
+  systemPromptParts.push('5. **LIFESTYLE**: Total Life Optimization + Habit Mastery');
+  systemPromptParts.push('6. **SUPPLEMENTS**: Evidence-Based Supplementierung');
+  systemPromptParts.push('7. **PEPTIDE**: Advanced Optimization Protocols (nur bei expliziter Anfrage)');
+  systemPromptParts.push('');
+  if (promptContext.identity.name) systemPromptParts.push('User-Name: ' + promptContext.identity.name);
+  systemPromptParts.push(memoryContext);
+  systemPromptParts.push(conversationHistoryContext);
+  systemPromptParts.push('');
+  systemPromptParts.push('## USER CONTEXT (DEINE DATEN - DU KENNST DIESE!)');
+  if (promptContext.facts?.weight) systemPromptParts.push('- Aktuelles Gewicht: ' + promptContext.facts.weight + ' kg');
+  if (promptContext.facts?.goalWeight) systemPromptParts.push('- Zielgewicht: ' + promptContext.facts.goalWeight + ' kg');
+  if (promptContext.facts?.tdee) systemPromptParts.push('- T\u00e4glicher Kalorienbedarf (TDEE): ' + promptContext.facts.tdee + ' kcal');
+  if (promptContext.metrics.streak > 0) systemPromptParts.push('- Aktuelle Streak: ' + promptContext.metrics.streak + ' Tage \uD83D\uDD25');
+  if (promptContext.metrics.noWorkoutDays > 0) systemPromptParts.push('- Tage ohne Training: ' + promptContext.metrics.noWorkoutDays);
+  systemPromptParts.push('');
+  systemPromptParts.push('### Letzte Mahlzeiten (letzte 7 Tage):');
+  if (context.recent_meals?.length > 0) {
+    context.recent_meals.slice(0, 5).forEach((m: any) => {
+      systemPromptParts.push('- ' + (m.title || 'Mahlzeit') + ': ' + (m.calories || 0) + ' kcal, ' + (m.protein || 0) + 'g Protein, ' + (m.carbs || 0) + 'g Carbs, ' + (m.fat || 0) + 'g Fett');
+    });
+  } else {
+    systemPromptParts.push('- Keine Mahlzeiten geloggt');
+  }
+  systemPromptParts.push('**AKTUELLES DATUM: ' + currentDate + '**');
+  systemPromptParts.push('**TAGESZEIT: ' + timeOfDay + '**');
+  systemPromptParts.push('');
+  if (userName) systemPromptParts.push('Du sprichst mit ' + userName + '.');
+  systemPromptParts.push('');
+  systemPromptParts.push(styleSection);
+  systemPromptParts.push('');
+  systemPromptParts.push('## USER-DATEN');
+  let userDataLine = '';
+  if (context.profile?.weight) userDataLine += 'Gewicht: ' + context.profile.weight + 'kg';
+  if (context.profile?.target_weight) userDataLine += ' \u2192 Ziel: ' + context.profile.target_weight + 'kg';
+  if (userDataLine) systemPromptParts.push(userDataLine);
+  if (context.profile?.tdee) systemPromptParts.push('TDEE: ' + context.profile.tdee + ' kcal');
+  if (userMoodContext?.streak) systemPromptParts.push('\uD83D\uDD25 Streak: ' + userMoodContext.streak + ' Tage');
+  if (userMoodContext?.no_workout_days && userMoodContext.no_workout_days > 0) {
+    systemPromptParts.push('\u26A0\uFE0F ' + userMoodContext.no_workout_days + ' Tage ohne Training');
+  }
+  systemPromptParts.push('');
+  systemPromptParts.push('### Letzte Aktivit\u00e4ten');
+  if (context.recent_meals?.length > 0) {
+    const mealSummary = context.recent_meals.slice(0, 3).map((m: any) => (m.title || 'Mahlzeit') + ' (' + (m.calories || 0) + 'kcal)').join(', ');
+    systemPromptParts.push('Mahlzeiten: ' + mealSummary);
+  } else {
+    systemPromptParts.push('Keine Mahlzeiten geloggt');
+  }
+  if (context.recent_workouts?.length > 0) {
+    const workoutSummary = context.recent_workouts.slice(0, 2).map((w: any) => (w.workout_type || 'Training') + ' (' + (w.duration_minutes || 0) + 'min)').join(', ');
+    systemPromptParts.push('Workouts: ' + workoutSummary);
+  }
+  systemPromptParts.push(historySection);
+  systemPromptParts.push(memorySection);
+  if (ragSources?.knowledge_chunks?.length > 0) {
+    systemPromptParts.push('');
+    systemPromptParts.push('## WISSEN');
+    systemPromptParts.push(ragSources.knowledge_chunks.slice(0, 2).join('\n'));
+  }
+  systemPromptParts.push('');
+  systemPromptParts.push('## TOOLS (bei Bedarf automatisch nutzen)');
+  systemPromptParts.push('- get_meta_analysis: Ganzheitliche Analyse');
+  systemPromptParts.push('- create_workout_plan / create_nutrition_plan / create_supplement_plan: Pl\u00e4ne erstellen');
+  systemPromptParts.push('- get_user_plans / update_plan: Bestehende Pl\u00e4ne');
+  systemPromptParts.push('');
+  systemPromptParts.push('## DEIN GED\u00c4CHTNIS (KRITISCH WICHTIG!)');
+  systemPromptParts.push('Du HAST Zugriff auf den Gespr\u00e4chsverlauf - er steht oben unter "LETZTE GESPR\u00c4CHE".');
+  systemPromptParts.push('Du HAST Zugriff auf Langzeit-Infos unter "BEZIEHUNGS-KONTEXT" (z.B. user_notes).');
+  systemPromptParts.push('Du KANNST dich an alles erinnern was dort steht!');
+  systemPromptParts.push('Wenn der User "merk dir X" sagt \u2192 best\u00e4tige es, es wird automatisch gespeichert.');
+  systemPromptParts.push('Wenn der User nach etwas fragt das oben steht \u2192 NUTZE es und antworte korrekt!');
+  systemPromptParts.push('SAGE NIEMALS "Ich kann mich nicht erinnern" oder "Als KI habe ich kein Ged\u00e4chtnis" wenn die Info verf\u00fcgbar ist!');
+  if (memory?.conversation_context?.user_notes?.length > 0) {
+    systemPromptParts.push('');
+    systemPromptParts.push('### VOM USER ZUM MERKEN:');
+    memory.conversation_context.user_notes.forEach((n: any) => {
+      systemPromptParts.push('- "' + n.note + '" (' + new Date(n.timestamp).toLocaleDateString('de-DE') + ')');
+    });
+  }
+  systemPromptParts.push('');
+  systemPromptParts.push('## WICHTIG');
+  systemPromptParts.push('- Sprich nat\u00fcrlich, wie ein echter Mensch - keine Coaching-Floskeln');
+  systemPromptParts.push('- Antworte pr\u00e4gnant (100-400 W\u00f6rter), nicht mehr als n\u00f6tig');
+  systemPromptParts.push('- Nutze das aktuelle Datum wenn nach Zeit gefragt wird');
+  systemPromptParts.push('- Beziehe dich auf fr\u00fchere Gespr\u00e4che wenn relevant');
+  
+  const systemPrompt = systemPromptParts.join('\n');
 
   return { 
     systemPrompt, 
@@ -1299,7 +1323,7 @@ async function callLLMWithTools(
   let response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Authorization': 'Bearer ' + OPENAI_API_KEY,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -1313,7 +1337,7 @@ async function callLLMWithTools(
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    throw new Error('OpenAI API error: ' + response.status + ' ' + response.statusText);
   }
 
   let llmResponse = await response.json();
@@ -1325,7 +1349,7 @@ async function callLLMWithTools(
   
   while (assistantMessage.tool_calls && maxIterations > 0) {
     maxIterations--;
-    console.log(`[ARES] Tool calls detected:`, assistantMessage.tool_calls.length);
+    console.log('[ARES] Tool calls detected:', assistantMessage.tool_calls.length);
     
     // Add assistant message with tool calls
     messages.push(assistantMessage);
@@ -1335,7 +1359,7 @@ async function callLLMWithTools(
       const toolName = toolCall.function.name;
       const toolArgs = JSON.parse(toolCall.function.arguments || '{}');
       
-      console.log(`[ARES] Executing tool: ${toolName}`, toolArgs);
+      console.log('[ARES] Executing tool: ' + toolName, toolArgs);
       
       const result = await executeToolCall(toolName, toolArgs, userId, supaClient, context);
       toolResults.push({ tool: toolName, ...result });
@@ -1352,7 +1376,7 @@ async function callLLMWithTools(
     response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': 'Bearer ' + OPENAI_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -1366,7 +1390,7 @@ async function callLLMWithTools(
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      throw new Error('OpenAI API error: ' + response.status + ' ' + response.statusText);
     }
 
     llmResponse = await response.json();
@@ -1441,7 +1465,7 @@ async function updateCoachMemory(
             note: itemToRemember,
             type: 'user_requested'
           });
-          console.log(`[ARES-MEMORY] User note saved: "${itemToRemember}"`);
+          console.log('[ARES-MEMORY] User note saved: "' + itemToRemember + '"');
           // Keep only last 20 notes
           if (memory.conversation_context.user_notes.length > 20) {
             memory.conversation_context.user_notes = memory.conversation_context.user_notes.slice(-20);
@@ -1625,7 +1649,7 @@ Deno.serve(async (req) => {
     // Auth - Use getClaims() for fast JWT validation (recommended over getUser())
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      console.warn(`[ARES-AUTH] Missing or invalid Authorization header`);
+      console.warn('[ARES-AUTH] Missing or invalid Authorization header');
       return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'No authorization header', traceId }), {
         status: 401, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       });
@@ -1635,7 +1659,7 @@ Deno.serve(async (req) => {
     const { data: claimsData, error: claimsError } = await supaUser.auth.getClaims(token);
     
     if (claimsError || !claimsData?.claims?.sub) {
-      console.warn(`[ARES-AUTH] JWT validation failed:`, claimsError?.message || 'No sub claim');
+      console.warn('[ARES-AUTH] JWT validation failed:', claimsError?.message || 'No sub claim');
       return new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'Invalid or expired token', traceId }), {
         status: 401, headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }
       });
@@ -1647,7 +1671,7 @@ Deno.serve(async (req) => {
       email: claimsData.claims.email as string | undefined,
       role: claimsData.claims.role as string | undefined
     };
-    console.log(`[ARES-AUTH] Authenticated user: ${user.id}`);
+    console.log('[ARES-AUTH] Authenticated user: ' + user.id);
 
     // Parse payload
     const body = await (async () => {
@@ -1722,12 +1746,12 @@ Deno.serve(async (req) => {
       .limit(20);
     
     if (convLoadError) {
-      console.warn(`[ARES] Failed to load conversations:`, convLoadError.message);
+      console.warn('[ARES] Failed to load conversations:', convLoadError.message);
     }
     
     // Convert raw user/assistant rows to paired {message, response} format
     const conversationHistory = pairConversationMessages(rawConversations || []);
-    console.log(`[ARES] Loaded ${rawConversations?.length || 0} raw messages → ${conversationHistory.length} conversation pairs`);
+    console.log('[ARES] Loaded ' + (rawConversations?.length || 0) + ' raw messages -> ' + conversationHistory.length + ' conversation pairs');
 
     // Store full context in trace for debugging (include user persona info)
     await traceUpdate(traceId, { 
@@ -1773,7 +1797,7 @@ Deno.serve(async (req) => {
     let finalOutput = llmOutput;
     const personaDialect = userPersona?.dialect || null;
     if (personaDialect) {
-      console.log(`[PERSONA] Applying dialect: ${personaDialect}`);
+      console.log('[PERSONA] Applying dialect: ' + personaDialect);
       finalOutput = applyDialect(llmOutput, personaDialect, 0.5); // Use moderate intensity
     }
     
@@ -1818,7 +1842,7 @@ Deno.serve(async (req) => {
         }
       });
       
-      console.log(`[ARES] Saved conversation pair (user + assistant) for trace ${traceId}`);
+      console.log('[ARES] Saved conversation pair (user + assistant) for trace ' + traceId);
     } catch (convError) {
       console.warn('[ARES-WARN] Failed to save conversation:', convError);
     }
