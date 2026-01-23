@@ -30,6 +30,7 @@ import Imprint from "./pages/Imprint";
 import Marketing from "./pages/Marketing";
 import NotFound from "./pages/NotFound";
 import { AdminPage } from "./pages/Admin";
+import { PersonaEditor } from "./pages/Admin/PersonaEditor";
 import TransformationJourneyPage from "./pages/TransformationJourney";
 
 import { MealInputProvider } from "@/hooks/useGlobalMealInput";
@@ -77,6 +78,7 @@ const App = () => (
                       <Route path="/imprint" element={<Imprint />} />
                       <Route path="/marketing" element={<Marketing />} />
                       <Route path="/admin" element={<AdminPage />} />
+                      <Route path="/admin/personas" element={<PersonaEditor />} />
                       {/* Redirect old subscription route */}
                       <Route path="/subscription" element={<Navigate to="/credits" replace />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -18,8 +18,10 @@ import {
   Bug,
   Settings,
   Check,
-  Loader2
+  Loader2,
+  Users
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
 import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
 import { SecurityMonitor } from '@/components/SecurityMonitor';
@@ -136,6 +138,21 @@ export const AdminPage = () => {
           {/* 🔒🏥 SYSTEM & SECURITY - Combined Overview */}
           <TabsContent value="system" className="space-y-6 mt-6 safe-area-pb-6">
             <div className="grid grid-cols-1 gap-6">
+
+              {/* Coach Personas Editor Link */}
+              <Link to="/admin/personas">
+                <Card className="bg-background border-border dark:bg-card dark:border-border hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                      <Users className="w-5 h-5 mr-2" />
+                      Coach Personas Editor
+                    </CardTitle>
+                    <CardDescription>
+                      Verwalte die Coach-Persönlichkeiten: Dials, Floskeln, Beispiel-Antworten
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
 
               {/* Embedding Status & RAG System */}
               <EmbeddingStatus />
