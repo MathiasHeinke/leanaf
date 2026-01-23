@@ -1631,7 +1631,7 @@ ${memory.conversation_context?.mood_history?.length > 0
   // Letzte Aktivitaeten
   systemPromptParts.push('### Letzte Aktivitaeten');
   if (context.recent_meals?.length > 0) {
-    const mealSummary = context.recent_meals.slice(0, 3).map((m: any) => (m.title || 'Mahlzeit') + ' (' + (m.calories || 0) + 'kcal, ' + (m.protein || 0) + 'g P)').join(', ');
+    const mealSummary = context.recent_meals.slice(0, 3).map((m: any) => (m.text || 'Mahlzeit') + ' (' + (m.calories || 0) + 'kcal, ' + (m.protein || 0) + 'g P)').join(', ');
     systemPromptParts.push('Mahlzeiten: ' + mealSummary);
   }
   if (context.recent_workouts?.length > 0) {
@@ -2180,10 +2180,23 @@ Deno.serve(async (req) => {
     });
 
     // Phase 3: Load extended health context for intelligent prompts
-    const healthContext = await loadUserHealthContext(user.id, supaSvc).catch((e) => {
+    let healthContext = await loadUserHealthContext(user.id, supaSvc).catch((e) => {
       console.warn('[ARES-WARN] loadUserHealthContext failed, using minimal context:', e);
       return null;
     });
+    
+    // Merge ARES-context meals into healthContext for complete prompt injection
+    if (healthContext && contextResult.recent_meals?.length > 0) {
+      console.log('[ARES-FIX] Merging ' + contextResult.recent_meals.length + ' meals from contextResult into healthContext');
+      healthContext.recentActivity = healthContext.recentActivity || {} as any;
+      healthContext.recentActivity.mealsLogged = contextResult.recent_meals.length;
+      healthContext.recentActivity.avgCalories = Math.round(
+        contextResult.recent_meals.reduce((sum: number, m: any) => sum + (m.calories || 0), 0) / contextResult.recent_meals.length
+      );
+      healthContext.recentActivity.avgProtein = Math.round(
+        contextResult.recent_meals.reduce((sum: number, m: any) => sum + (m.protein || 0), 0) / contextResult.recent_meals.length
+      );
+    }
 
     const persona = await loadPersona({ coachId }).catch((e) => {
       console.error('[ARES-ERROR] loadPersona', traceId, e);
