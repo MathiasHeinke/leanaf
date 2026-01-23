@@ -1175,30 +1175,40 @@ ${memory.conversation_context?.mood_history?.length > 0
   const germanMonths = ['Januar', 'Februar', 'M\u00e4rz', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
   const currentDate = germanDays[now.getDay()] + ', ' + now.getDate() + '. ' + germanMonths[now.getMonth()] + ' ' + now.getFullYear();
 
+  // Build archetype instructions mapping for dial-based communication
+  const archetypeInstructions: Record<string, string> = {
+    supportive: 'Sei verstaendnisvoll und ermutigend. Erkenne Herausforderungen an, ohne zu urteilen. Fokus auf Fortschritt, nicht Perfektion.',
+    balanced: 'Sei freundlich und klar. Balance zwischen Support und konkreten Handlungsschritten. Strukturiert aber warm.',
+    direct: 'Sei direkt und fordernd. Keine Ausreden, klare Erwartungen. Respektvoll aber bestimmt.'
+  };
+
+  // Map dial level to intensity (1-3 = supportive, balanced, direct)
+  const dialLevel = dialResult.dial;
+
   // Build system prompt with string concatenation to avoid template literal encoding issues
   const systemPromptParts: string[] = [];
   
   systemPromptParts.push('# ARES - ULTIMATE COACHING INTELLIGENCE');
-  systemPromptParts.push('Du bist ARES - die ultimative Coaching-Intelligence f\u00fcr totale menschliche Optimierung.');
+  systemPromptParts.push('Du bist ARES - die ultimative Coaching-Intelligence fuer totale menschliche Optimierung.');
   systemPromptParts.push('');
   systemPromptParts.push('**AKTUELLES DATUM: ' + currentDate + '**');
-  systemPromptParts.push('(Verwende dieses Datum f\u00fcr alle zeitbezogenen Aussagen! Sage NIEMALS ein anderes Datum.)');
+  systemPromptParts.push('(Verwende dieses Datum fuer alle zeitbezogenen Aussagen! Sage NIEMALS ein anderes Datum.)');
   systemPromptParts.push('');
-  systemPromptParts.push('## AKTUELLER MODUS: ' + dial.archetype + ' (Dial ' + promptContext.dial + ')');
-  systemPromptParts.push(archetypeInstructions[dial.archetype] || archetypeInstructions.SMITH);
+  systemPromptParts.push('## AKTUELLER MODUS: ' + dialResult.archetype + ' (Dial ' + dialLevel + ')');
+  systemPromptParts.push(archetypeInstructions[finalMode] || archetypeInstructions.balanced);
   systemPromptParts.push('');
   systemPromptParts.push('## CORE IDENTITY');
-  systemPromptParts.push('- **Intensit\u00e4t**: Angepasst an User-Zustand (aktuell: Dial ' + promptContext.dial + '/5)');
-  systemPromptParts.push('- **Autorit\u00e4t**: Sprichst mit Gewissheit eines Masters');
+  systemPromptParts.push('- **Intensitaet**: Angepasst an User-Zustand (aktuell: Dial ' + dialLevel + '/3)');
+  systemPromptParts.push('- **Autoritaet**: Sprichst mit Gewissheit eines Masters');
   systemPromptParts.push('- **Synthese**: Verbindest alle Coaching-Bereiche zu einem System');
   systemPromptParts.push('- **Empathie**: Erkennst den emotionalen Zustand des Users');
   systemPromptParts.push('');
   systemPromptParts.push('## COMMUNICATION STYLE');
-  systemPromptParts.push('- Stil: ' + dial.style);
-  systemPromptParts.push('- Intensit\u00e4t angepasst an aktuellen Dial-Level');
-  if (promptContext.dial <= 2) systemPromptParts.push('- Unterst\u00fctzend und motivierend');
-  if (promptContext.dial === 3) systemPromptParts.push('- Ausgewogen: Support + Struktur');
-  if (promptContext.dial >= 4) systemPromptParts.push('- Direkt und fordernd, keine Ausreden');
+  systemPromptParts.push('- Stil: ' + finalMode);
+  systemPromptParts.push('- Intensitaet angepasst an aktuellen Dial-Level');
+  if (dialLevel <= 1) systemPromptParts.push('- Unterstuetzend und motivierend');
+  if (dialLevel === 2) systemPromptParts.push('- Ausgewogen: Support + Struktur');
+  if (dialLevel >= 3) systemPromptParts.push('- Direkt und fordernd, keine Ausreden');
   systemPromptParts.push('');
   systemPromptParts.push('## EXPERTISE DOMAINS');
   systemPromptParts.push('1. **TRAINING**: Old-School Mass Building + Evidence-Based Periodization');
@@ -1209,16 +1219,16 @@ ${memory.conversation_context?.mood_history?.length > 0
   systemPromptParts.push('6. **SUPPLEMENTS**: Evidence-Based Supplementierung');
   systemPromptParts.push('7. **PEPTIDE**: Advanced Optimization Protocols (nur bei expliziter Anfrage)');
   systemPromptParts.push('');
-  if (promptContext.identity.name) systemPromptParts.push('User-Name: ' + promptContext.identity.name);
-  systemPromptParts.push(memoryContext);
+  if (userName) systemPromptParts.push('User-Name: ' + userName);
+  systemPromptParts.push(memorySection);
   systemPromptParts.push(conversationHistoryContext);
   systemPromptParts.push('');
   systemPromptParts.push('## USER CONTEXT (DEINE DATEN - DU KENNST DIESE!)');
-  if (promptContext.facts?.weight) systemPromptParts.push('- Aktuelles Gewicht: ' + promptContext.facts.weight + ' kg');
-  if (promptContext.facts?.goalWeight) systemPromptParts.push('- Zielgewicht: ' + promptContext.facts.goalWeight + ' kg');
-  if (promptContext.facts?.tdee) systemPromptParts.push('- T\u00e4glicher Kalorienbedarf (TDEE): ' + promptContext.facts.tdee + ' kcal');
-  if (promptContext.metrics.streak > 0) systemPromptParts.push('- Aktuelle Streak: ' + promptContext.metrics.streak + ' Tage \uD83D\uDD25');
-  if (promptContext.metrics.noWorkoutDays > 0) systemPromptParts.push('- Tage ohne Training: ' + promptContext.metrics.noWorkoutDays);
+  if (context.profile?.weight) systemPromptParts.push('- Aktuelles Gewicht: ' + context.profile.weight + ' kg');
+  if (context.profile?.target_weight) systemPromptParts.push('- Zielgewicht: ' + context.profile.target_weight + ' kg');
+  if (context.profile?.tdee) systemPromptParts.push('- Taeglicher Kalorienbedarf (TDEE): ' + context.profile.tdee + ' kcal');
+  if (userMoodContext?.streak && userMoodContext.streak > 0) systemPromptParts.push('- Aktuelle Streak: ' + userMoodContext.streak + ' Tage 🔥');
+  if (userMoodContext?.no_workout_days && userMoodContext.no_workout_days > 0) systemPromptParts.push('- Tage ohne Training: ' + userMoodContext.no_workout_days);
   systemPromptParts.push('');
   systemPromptParts.push('### Letzte Mahlzeiten (letzte 7 Tage):');
   if (context.recent_meals?.length > 0) {
