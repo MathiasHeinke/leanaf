@@ -68,8 +68,8 @@ interface CoachPersona {
   phrase_frequency: number;
   language_style: string | null;
   dialect: string | null;
-  phrases: string[] | null;
-  example_responses: PersonaExampleResponse[] | null;
+  phrases: string[];
+  example_responses: PersonaExampleResponse[];
   is_active: boolean;
   sort_order: number;
 }
@@ -116,7 +116,13 @@ export const PersonaEditor: React.FC = () => {
         .order('sort_order', { ascending: true });
       
       if (error) throw error;
-      setPersonas(data || []);
+      // Map DB data to local type with proper array handling
+      const mapped: CoachPersona[] = (data || []).map((p: any) => ({
+        ...p,
+        phrases: Array.isArray(p.phrases) ? p.phrases : [],
+        example_responses: Array.isArray(p.example_responses) ? p.example_responses : [],
+      }));
+      setPersonas(mapped);
     } catch (err) {
       console.error('Error loading personas:', err);
       toast.error('Fehler beim Laden der Personas');
@@ -209,7 +215,7 @@ export const PersonaEditor: React.FC = () => {
           language_style: editedPersona.language_style,
           dialect: editedPersona.dialect,
           phrases: editedPersona.phrases,
-          example_responses: editedPersona.example_responses,
+          example_responses: editedPersona.example_responses as { context: string; response: string }[],
           is_active: editedPersona.is_active
         })
         .eq('id', editedPersona.id);
