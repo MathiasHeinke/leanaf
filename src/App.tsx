@@ -29,6 +29,7 @@ import NotFound from "./pages/NotFound";
 import { AdminPage } from "./pages/Admin";
 import { PersonaEditor } from "./pages/Admin/PersonaEditor";
 import TransformationJourneyPage from "./pages/TransformationJourney";
+import Bloodwork from "./pages/Bloodwork";
 
 import { MealInputProvider } from "@/hooks/useGlobalMealInput";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -66,6 +67,7 @@ const App = () => (
                       <Route path="/history" element={<HistoryPage />} />
                       <Route path="/analyse" element={<AnalysePage />} />
                       <Route path="/backupanalyse" element={<BackupAnalysePage />} />
+                      <Route path="/bloodwork" element={<Bloodwork />} />
                       <Route path="/achievements" element={<Achievements />} />
                       <Route path="/terms" element={<Terms />} />
                       <Route path="/privacy" element={<Privacy />} />
