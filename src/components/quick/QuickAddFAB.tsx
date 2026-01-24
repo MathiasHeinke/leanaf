@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import { QuickActionsMenu, ActionType } from "./QuickActionsMenu";
 import { toast } from "@/components/ui/sonner";
 import { quickAddBus } from "@/components/quick/quickAddBus";
@@ -10,6 +11,7 @@ const QuickSupplementsModal = lazy(() => import("@/components/quick/QuickSupplem
 const QuickFluidModal = lazy(() => import("@/components/quick/QuickFluidModal"));
 
 export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' | 'partial' | 'due'>> }> = ({ statuses }) => {
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [mealOpen, setMealOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
@@ -50,10 +52,15 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       setFluidOpen(true);
       return;
     }
+    if (type === "bloodwork") {
+      setMenuOpen(false);
+      navigate('/bloodwork?tab=entry');
+      return;
+    }
 
     if (type === "coach") toast.info("Coach-Zugang kommt bald ✨");
     setMenuOpen(false);
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     const unsub = quickAddBus.subscribe((action) => {
