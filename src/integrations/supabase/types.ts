@@ -4142,6 +4142,96 @@ export type Database = {
         }
         Relationships: []
       }
+      nad_blood_levels: {
+        Row: {
+          created_at: string | null
+          id: string
+          lactate: number | null
+          lactate_pyruvate_ratio: number | null
+          measured_at: string | null
+          nad_level: number | null
+          nad_unit: string | null
+          notes: string | null
+          pyruvate: number | null
+          test_provider: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lactate?: number | null
+          lactate_pyruvate_ratio?: number | null
+          measured_at?: string | null
+          nad_level?: number | null
+          nad_unit?: string | null
+          notes?: string | null
+          pyruvate?: number | null
+          test_provider?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lactate?: number | null
+          lactate_pyruvate_ratio?: number | null
+          measured_at?: string | null
+          nad_level?: number | null
+          nad_unit?: string | null
+          notes?: string | null
+          pyruvate?: number | null
+          test_provider?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      nad_tracking: {
+        Row: {
+          brand: string | null
+          created_at: string | null
+          dose_mg: number
+          formulation: string | null
+          id: string
+          is_active: boolean | null
+          resveratrol_dose_mg: number | null
+          started_at: string | null
+          supplement_type: string
+          timing: string | null
+          updated_at: string | null
+          user_id: string
+          with_resveratrol: boolean | null
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string | null
+          dose_mg?: number
+          formulation?: string | null
+          id?: string
+          is_active?: boolean | null
+          resveratrol_dose_mg?: number | null
+          started_at?: string | null
+          supplement_type?: string
+          timing?: string | null
+          updated_at?: string | null
+          user_id: string
+          with_resveratrol?: boolean | null
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string | null
+          dose_mg?: number
+          formulation?: string | null
+          id?: string
+          is_active?: boolean | null
+          resveratrol_dose_mg?: number | null
+          started_at?: string | null
+          supplement_type?: string
+          timing?: string | null
+          updated_at?: string | null
+          user_id?: string
+          with_resveratrol?: boolean | null
+        }
+        Relationships: []
+      }
       nootropic_stacks: {
         Row: {
           administration_route: string | null

@@ -6,11 +6,13 @@ import {
   Flame, 
   Brain,
   Dna,
-  Zap
+  Zap,
+  Battery
 } from 'lucide-react';
 import { MitochondrialDashboard } from '@/components/mitochondrial';
 import { EpitalonDashboard } from '@/components/epitalon';
 import { NootropicDashboard } from '@/components/nootropic';
+import { NADDashboard } from '@/components/nad';
 
 export function Phase2Overview() {
   return (
@@ -38,7 +40,7 @@ export function Phase2Overview() {
 
       {/* Phase 2 Tabs */}
       <Tabs defaultValue="mitochondrial">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="mitochondrial" className="flex items-center gap-1">
             <Flame className="w-4 h-4" />
             <span className="hidden sm:inline">Mito</span>
@@ -50,6 +52,10 @@ export function Phase2Overview() {
           <TabsTrigger value="nootropics" className="flex items-center gap-1">
             <Brain className="w-4 h-4" />
             <span className="hidden sm:inline">Nootropics</span>
+          </TabsTrigger>
+          <TabsTrigger value="nad" className="flex items-center gap-1">
+            <Battery className="w-4 h-4" />
+            <span className="hidden sm:inline">NAD+</span>
           </TabsTrigger>
           <TabsTrigger value="training" className="flex items-center gap-1">
             <Zap className="w-4 h-4" />
@@ -67,6 +73,10 @@ export function Phase2Overview() {
 
         <TabsContent value="nootropics" className="mt-6">
           <NootropicDashboard />
+        </TabsContent>
+
+        <TabsContent value="nad" className="mt-6">
+          <NADDashboard />
         </TabsContent>
 
         <TabsContent value="training" className="mt-6">
