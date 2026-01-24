@@ -640,54 +640,86 @@ export type Database = {
       }
       bio_age_tracking: {
         Row: {
+          age_difference: number | null
           calculated_bio_age: number | null
           calculation_method: string | null
+          chronological_age: number | null
           created_at: string | null
           dunedin_pace: number | null
           hba1c: number | null
+          hdl: number | null
           hscrp: number | null
           id: string
           ldl: number | null
           measured_at: string | null
+          measurement_type: string | null
           notes: string | null
+          previous_measurement_id: string | null
+          proxy_inputs: Json | null
           test_date: string | null
           test_provider: string | null
+          test_report_url: string | null
+          triglycerides: number | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          age_difference?: number | null
           calculated_bio_age?: number | null
           calculation_method?: string | null
+          chronological_age?: number | null
           created_at?: string | null
           dunedin_pace?: number | null
           hba1c?: number | null
+          hdl?: number | null
           hscrp?: number | null
           id?: string
           ldl?: number | null
           measured_at?: string | null
+          measurement_type?: string | null
           notes?: string | null
+          previous_measurement_id?: string | null
+          proxy_inputs?: Json | null
           test_date?: string | null
           test_provider?: string | null
+          test_report_url?: string | null
+          triglycerides?: number | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          age_difference?: number | null
           calculated_bio_age?: number | null
           calculation_method?: string | null
+          chronological_age?: number | null
           created_at?: string | null
           dunedin_pace?: number | null
           hba1c?: number | null
+          hdl?: number | null
           hscrp?: number | null
           id?: string
           ldl?: number | null
           measured_at?: string | null
+          measurement_type?: string | null
           notes?: string | null
+          previous_measurement_id?: string | null
+          proxy_inputs?: Json | null
           test_date?: string | null
           test_provider?: string | null
+          test_report_url?: string | null
+          triglycerides?: number | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bio_age_tracking_previous_measurement_id_fkey"
+            columns: ["previous_measurement_id"]
+            isOneToOne: false
+            referencedRelation: "bio_age_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bloodwork_reference_ranges: {
         Row: {
@@ -2336,6 +2368,63 @@ export type Database = {
         }
         Relationships: []
       }
+      epitalon_cycles: {
+        Row: {
+          created_at: string | null
+          current_day: number | null
+          cycle_ended_at: string | null
+          cycle_number: number
+          cycle_started_at: string | null
+          dose_mg: number
+          duration_days: number
+          id: string
+          injection_site_rotation: string[] | null
+          injections_completed: number | null
+          last_injection_site: string | null
+          next_cycle_due: string | null
+          notes: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_day?: number | null
+          cycle_ended_at?: string | null
+          cycle_number?: number
+          cycle_started_at?: string | null
+          dose_mg?: number
+          duration_days?: number
+          id?: string
+          injection_site_rotation?: string[] | null
+          injections_completed?: number | null
+          last_injection_site?: string | null
+          next_cycle_due?: string | null
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_day?: number | null
+          cycle_ended_at?: string | null
+          cycle_number?: number
+          cycle_started_at?: string | null
+          dose_mg?: number
+          duration_days?: number
+          id?: string
+          injection_site_rotation?: string[] | null
+          injections_completed?: number | null
+          last_injection_site?: string | null
+          next_cycle_due?: string | null
+          notes?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       exercise_sessions: {
         Row: {
           coach_persona: string | null
@@ -3849,6 +3938,63 @@ export type Database = {
         }
         Relationships: []
       }
+      mitochondrial_protocols: {
+        Row: {
+          created_at: string | null
+          current_cycle_week: number | null
+          cycle_started_at: string | null
+          cycle_weeks_off: number | null
+          cycle_weeks_on: number | null
+          dose_amount: number
+          dose_unit: string
+          frequency_per_week: number
+          id: string
+          is_active: boolean | null
+          preferred_days: string[] | null
+          protocol_phase: number | null
+          substance_name: string
+          timing: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_cycle_week?: number | null
+          cycle_started_at?: string | null
+          cycle_weeks_off?: number | null
+          cycle_weeks_on?: number | null
+          dose_amount: number
+          dose_unit?: string
+          frequency_per_week?: number
+          id?: string
+          is_active?: boolean | null
+          preferred_days?: string[] | null
+          protocol_phase?: number | null
+          substance_name: string
+          timing?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_cycle_week?: number | null
+          cycle_started_at?: string | null
+          cycle_weeks_off?: number | null
+          cycle_weeks_on?: number | null
+          dose_amount?: number
+          dose_unit?: string
+          frequency_per_week?: number
+          id?: string
+          is_active?: boolean | null
+          preferred_days?: string[] | null
+          protocol_phase?: number | null
+          substance_name?: string
+          timing?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       monthly_challenges: {
         Row: {
           challenge: string
@@ -3993,6 +4139,66 @@ export type Database = {
           workout_volume_total?: number | null
           workouts_count?: number | null
           year?: number
+        }
+        Relationships: []
+      }
+      nootropic_stacks: {
+        Row: {
+          administration_route: string | null
+          baseline_focus_score: number | null
+          created_at: string | null
+          current_cycle_week: number | null
+          current_focus_score: number | null
+          cycle_started_at: string | null
+          cycle_weeks_off: number | null
+          cycle_weeks_on: number | null
+          dose_mcg: number
+          id: string
+          is_active: boolean | null
+          is_on_cycle: boolean | null
+          protocol_phase: number | null
+          substance_name: string
+          timing: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          administration_route?: string | null
+          baseline_focus_score?: number | null
+          created_at?: string | null
+          current_cycle_week?: number | null
+          current_focus_score?: number | null
+          cycle_started_at?: string | null
+          cycle_weeks_off?: number | null
+          cycle_weeks_on?: number | null
+          dose_mcg?: number
+          id?: string
+          is_active?: boolean | null
+          is_on_cycle?: boolean | null
+          protocol_phase?: number | null
+          substance_name: string
+          timing?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          administration_route?: string | null
+          baseline_focus_score?: number | null
+          created_at?: string | null
+          current_cycle_week?: number | null
+          current_focus_score?: number | null
+          cycle_started_at?: string | null
+          cycle_weeks_off?: number | null
+          cycle_weeks_on?: number | null
+          dose_mcg?: number
+          id?: string
+          is_active?: boolean | null
+          is_on_cycle?: boolean | null
+          protocol_phase?: number | null
+          substance_name?: string
+          timing?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
