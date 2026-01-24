@@ -5622,6 +5622,7 @@ export type Database = {
           secondary_dose_mg: number | null
           senolytic_type: string | null
           side_effects: Json | null
+          status: string | null
           substance: string
           updated_at: string | null
           user_id: string
@@ -5647,6 +5648,7 @@ export type Database = {
           secondary_dose_mg?: number | null
           senolytic_type?: string | null
           side_effects?: Json | null
+          status?: string | null
           substance?: string
           updated_at?: string | null
           user_id: string
@@ -5672,6 +5674,7 @@ export type Database = {
           secondary_dose_mg?: number | null
           senolytic_type?: string | null
           side_effects?: Json | null
+          status?: string | null
           substance?: string
           updated_at?: string | null
           user_id?: string

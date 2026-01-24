@@ -64,9 +64,10 @@ export function useSenolytCycles() {
         duration_days: c.duration_days || 2,
         cycle_number: c.cycle_number || 1,
         cycle_started_at: c.cycle_started_at,
-        cycle_ended_at: c.cycle_ended_at,
+        cycle_ended_at: c.cycle_completed_at, // Use cycle_completed_at from DB
         current_day: c.current_day || 0,
-        status: c.status as SenolytCycle['status'],
+        status: (c as { status?: string }).status as SenolytCycle['status'] || 
+          (c.cycle_completed_at ? 'completed' : c.cycle_started_at ? 'active' : 'scheduled'),
         next_cycle_due: c.next_cycle_due,
         preferred_cycle_day: c.preferred_cycle_day || 1,
         doses_taken: c.doses_taken || 0,
@@ -175,7 +176,7 @@ export function useSenolytCycles() {
 
       if (isLastDay) {
         updateData.status = 'completed';
-        updateData.cycle_ended_at = new Date().toISOString();
+        updateData.cycle_completed_at = new Date().toISOString();
         updateData.next_cycle_due = addMonths(new Date(), 1).toISOString();
       } else {
         updateData.current_day = cycle.current_day + 1;
