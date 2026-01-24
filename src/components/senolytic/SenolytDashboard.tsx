@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Leaf, Plus, History, AlertCircle, TrendingUp } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, Leaf, Plus, History, AlertCircle, TrendingUp, Calendar } from 'lucide-react';
 import { useSenolytCycles } from '@/hooks/useSenolytCycles';
 import { SenolytCycleCard } from './SenolytCycleCard';
 import { SenolytDoseLogger } from './SenolytDoseLogger';
 import { StartSenolytCycleDialog } from './StartSenolytCycleDialog';
 import { SenolytCountdownWidget } from './SenolytCountdownWidget';
+import { SenolytCalendar } from './SenolytCalendar';
 
 export function SenolytDashboard() {
   const { 
@@ -16,6 +18,7 @@ export function SenolytDashboard() {
     loading, 
     isNextCycleDue, 
     getCycleStats,
+    getNextCycleDate,
     refetch 
   } = useSenolytCycles();
 
@@ -154,16 +157,41 @@ export function SenolytDashboard() {
         <SenolytCountdownWidget />
       )}
 
-      {/* History */}
-      {showHistory && completedCycles.length > 0 && (
-        <div className="space-y-4">
-          <h3 className="font-medium text-sm text-muted-foreground">
-            Abgeschlossene Zyklen
-          </h3>
-          {completedCycles.map((cycle) => (
-            <SenolytCycleCard key={cycle.id} cycle={cycle} isActive={false} />
-          ))}
-        </div>
+      {/* Tabs for History and Calendar */}
+      {(completedCycles.length > 0 || cycles.length > 0) && (
+        <Tabs defaultValue="history" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Historie ({completedCycles.length})
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Kalender
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="history" className="mt-4 space-y-4">
+            {completedCycles.length > 0 ? (
+              completedCycles.map((cycle) => (
+                <SenolytCycleCard key={cycle.id} cycle={cycle} isActive={false} />
+              ))
+            ) : (
+              <Card className="border-dashed">
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  Noch keine abgeschlossenen Zyklen
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="calendar" className="mt-4">
+            <SenolytCalendar 
+              cycles={cycles} 
+              nextCycleDate={getNextCycleDate()} 
+            />
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* Start Dialog */}
