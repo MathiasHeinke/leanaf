@@ -23,7 +23,8 @@ import {
   Moon,
   Clock,
   TestTube,
-  ChevronDown
+  ChevronDown,
+  FlaskConical
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -52,6 +53,7 @@ import { BugReportDialog } from "./BugReportDialog";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "ARES Protokoll", url: "/protocol", icon: FlaskConical },
   { title: "Workout", url: "/training", icon: Dumbbell },
   { title: "Transformation", url: "/transformation", icon: TrendingUp },
   { title: "Blutwerte", url: "/bloodwork", icon: TestTube },
