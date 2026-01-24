@@ -422,6 +422,51 @@ export type Database = {
         }
         Relationships: []
       }
+      aromatase_management: {
+        Row: {
+          activated_reason: string | null
+          cdg_dose_mg: number | null
+          cdg_frequency: string | null
+          created_at: string | null
+          dim_dose_mg: number | null
+          id: string
+          last_estrogen_check: string | null
+          last_estrogen_value: number | null
+          stack_active: boolean | null
+          updated_at: string | null
+          user_id: string
+          zinc_dose_mg: number | null
+        }
+        Insert: {
+          activated_reason?: string | null
+          cdg_dose_mg?: number | null
+          cdg_frequency?: string | null
+          created_at?: string | null
+          dim_dose_mg?: number | null
+          id?: string
+          last_estrogen_check?: string | null
+          last_estrogen_value?: number | null
+          stack_active?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          zinc_dose_mg?: number | null
+        }
+        Update: {
+          activated_reason?: string | null
+          cdg_dose_mg?: number | null
+          cdg_frequency?: string | null
+          created_at?: string | null
+          dim_dose_mg?: number | null
+          id?: string
+          last_estrogen_check?: string | null
+          last_estrogen_value?: number | null
+          stack_active?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          zinc_dose_mg?: number | null
+        }
+        Relationships: []
+      }
       auth_debug_logs: {
         Row: {
           auth_event: string | null
@@ -590,6 +635,57 @@ export type Database = {
           id?: string | null
           metadata?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      bio_age_tracking: {
+        Row: {
+          calculated_bio_age: number | null
+          calculation_method: string | null
+          created_at: string | null
+          dunedin_pace: number | null
+          hba1c: number | null
+          hscrp: number | null
+          id: string
+          ldl: number | null
+          measured_at: string | null
+          notes: string | null
+          test_date: string | null
+          test_provider: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          calculated_bio_age?: number | null
+          calculation_method?: string | null
+          created_at?: string | null
+          dunedin_pace?: number | null
+          hba1c?: number | null
+          hscrp?: number | null
+          id?: string
+          ldl?: number | null
+          measured_at?: string | null
+          notes?: string | null
+          test_date?: string | null
+          test_provider?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          calculated_bio_age?: number | null
+          calculation_method?: string | null
+          created_at?: string | null
+          dunedin_pace?: number | null
+          hba1c?: number | null
+          hscrp?: number | null
+          id?: string
+          ldl?: number | null
+          measured_at?: string | null
+          notes?: string | null
+          test_date?: string | null
+          test_provider?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -4029,46 +4125,126 @@ export type Database = {
         }
         Relationships: []
       }
+      peptide_intake_log: {
+        Row: {
+          created_at: string | null
+          dose_mcg: number | null
+          dose_unit: string | null
+          id: string
+          injection_site: string | null
+          notes: string | null
+          peptide_name: string
+          protocol_id: string | null
+          skip_reason: string | null
+          skipped: boolean | null
+          taken_at: string | null
+          timing: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dose_mcg?: number | null
+          dose_unit?: string | null
+          id?: string
+          injection_site?: string | null
+          notes?: string | null
+          peptide_name: string
+          protocol_id?: string | null
+          skip_reason?: string | null
+          skipped?: boolean | null
+          taken_at?: string | null
+          timing?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dose_mcg?: number | null
+          dose_unit?: string | null
+          id?: string
+          injection_site?: string | null
+          notes?: string | null
+          peptide_name?: string
+          protocol_id?: string | null
+          skip_reason?: string | null
+          skipped?: boolean | null
+          taken_at?: string | null
+          timing?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "peptide_intake_log_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "peptide_protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       peptide_protocols: {
         Row: {
           coach_id: string
           created_at: string | null
+          current_cycle_day: number | null
+          current_injection_site: number | null
           current_week: number | null
+          cycle_pattern: Json | null
+          cycle_started_at: string | null
           cycle_weeks: number | null
           goal: string | null
           id: string
+          injection_sites: Json | null
           is_active: boolean | null
           name: string
           notes: string | null
           peptides: Json
+          phase: number | null
+          timing: string | null
+          titration_schedule: Json | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           coach_id?: string
           created_at?: string | null
+          current_cycle_day?: number | null
+          current_injection_site?: number | null
           current_week?: number | null
+          cycle_pattern?: Json | null
+          cycle_started_at?: string | null
           cycle_weeks?: number | null
           goal?: string | null
           id?: string
+          injection_sites?: Json | null
           is_active?: boolean | null
           name: string
           notes?: string | null
           peptides?: Json
+          phase?: number | null
+          timing?: string | null
+          titration_schedule?: Json | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           coach_id?: string
           created_at?: string | null
+          current_cycle_day?: number | null
+          current_injection_site?: number | null
           current_week?: number | null
+          cycle_pattern?: Json | null
+          cycle_started_at?: string | null
           cycle_weeks?: number | null
           goal?: string | null
           id?: string
+          injection_sites?: Json | null
           is_active?: boolean | null
           name?: string
           notes?: string | null
           peptides?: Json
+          phase?: number | null
+          timing?: string | null
+          titration_schedule?: Json | null
           updated_at?: string | null
           user_id?: string
         }
@@ -4820,6 +4996,51 @@ export type Database = {
           last_used_at?: string | null
           query_embedding?: string
           query_text?: string
+        }
+        Relationships: []
+      }
+      senolytic_cycles: {
+        Row: {
+          created_at: string | null
+          cycle_completed_at: string | null
+          cycle_started_at: string | null
+          dose_per_kg: number | null
+          duration_days: number | null
+          id: string
+          next_cycle_due: string | null
+          notes: string | null
+          protocol: string | null
+          substance: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          cycle_completed_at?: string | null
+          cycle_started_at?: string | null
+          dose_per_kg?: number | null
+          duration_days?: number | null
+          id?: string
+          next_cycle_due?: string | null
+          notes?: string | null
+          protocol?: string | null
+          substance?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          cycle_completed_at?: string | null
+          cycle_started_at?: string | null
+          dose_per_kg?: number | null
+          duration_days?: number | null
+          id?: string
+          next_cycle_due?: string | null
+          notes?: string | null
+          protocol?: string | null
+          substance?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -5592,6 +5813,60 @@ export type Database = {
           },
         ]
       }
+      training_tracking: {
+        Row: {
+          created_at: string | null
+          date: string
+          id: string
+          notes: string | null
+          strength_completed: boolean | null
+          strength_exercises: Json | null
+          strength_type: string | null
+          updated_at: string | null
+          user_id: string
+          vo2max_completed: boolean | null
+          vo2max_peak_hr: number | null
+          vo2max_protocol: string | null
+          zone2_avg_hr: number | null
+          zone2_minutes: number | null
+          zone2_type: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          id?: string
+          notes?: string | null
+          strength_completed?: boolean | null
+          strength_exercises?: Json | null
+          strength_type?: string | null
+          updated_at?: string | null
+          user_id: string
+          vo2max_completed?: boolean | null
+          vo2max_peak_hr?: number | null
+          vo2max_protocol?: string | null
+          zone2_avg_hr?: number | null
+          zone2_minutes?: number | null
+          zone2_type?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          id?: string
+          notes?: string | null
+          strength_completed?: boolean | null
+          strength_exercises?: Json | null
+          strength_type?: string | null
+          updated_at?: string | null
+          user_id?: string
+          vo2max_completed?: boolean | null
+          vo2max_peak_hr?: number | null
+          vo2max_protocol?: string | null
+          zone2_avg_hr?: number | null
+          zone2_minutes?: number | null
+          zone2_type?: string | null
+        }
+        Relationships: []
+      }
       unmet_tool_events: {
         Row: {
           client_event_id: string | null
@@ -6323,6 +6598,63 @@ export type Database = {
           id?: string
           profile?: Json
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_protocol_status: {
+        Row: {
+          created_at: string | null
+          current_phase: number | null
+          id: string
+          is_paused: boolean | null
+          pause_reason: string | null
+          paused_at: string | null
+          phase_0_checklist: Json | null
+          phase_0_completed_at: string | null
+          phase_1_started_at: string | null
+          phase_1_target_kfa: number | null
+          phase_2_started_at: string | null
+          phase_3_started_at: string | null
+          phase_started_at: string | null
+          protocol_mode: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_phase?: number | null
+          id?: string
+          is_paused?: boolean | null
+          pause_reason?: string | null
+          paused_at?: string | null
+          phase_0_checklist?: Json | null
+          phase_0_completed_at?: string | null
+          phase_1_started_at?: string | null
+          phase_1_target_kfa?: number | null
+          phase_2_started_at?: string | null
+          phase_3_started_at?: string | null
+          phase_started_at?: string | null
+          protocol_mode?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_phase?: number | null
+          id?: string
+          is_paused?: boolean | null
+          pause_reason?: string | null
+          paused_at?: string | null
+          phase_0_checklist?: Json | null
+          phase_0_completed_at?: string | null
+          phase_1_started_at?: string | null
+          phase_1_target_kfa?: number | null
+          phase_2_started_at?: string | null
+          phase_3_started_at?: string | null
+          phase_started_at?: string | null
+          protocol_mode?: string | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

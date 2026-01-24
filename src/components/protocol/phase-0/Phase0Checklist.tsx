@@ -1,0 +1,412 @@
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useProtocolStatus, Phase0Checklist as Phase0ChecklistType } from '@/hooks/useProtocolStatus';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { 
+  ChevronDown, 
+  Check, 
+  X, 
+  AlertTriangle,
+  Cigarette,
+  Moon,
+  Sparkles,
+  Brain,
+  Smartphone,
+  Dumbbell,
+  TrendingDown,
+  TestTube,
+  Rocket,
+  Loader2
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+
+interface CheckItem {
+  key: keyof Phase0ChecklistType;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  subChecks?: string[];
+  autoValidate?: boolean;
+}
+
+const CHECKLIST_ITEMS: CheckItem[] = [
+  {
+    key: 'toxin_free',
+    title: 'Toxin-Frei',
+    description: 'Kein Rauchen, Alkohol fast null, kein Plastik/Teflon',
+    icon: Cigarette,
+    subChecks: ['Nicht rauchen', 'Max 1-2 Drinks/Woche', 'Kein Teflon/Plastik beim Kochen']
+  },
+  {
+    key: 'sleep_score',
+    title: 'Schlaf-Hygiene',
+    description: '≥7.5h Schlaf, dunkel, kühl (16-18°C)',
+    icon: Moon,
+    autoValidate: true
+  },
+  {
+    key: 'bio_sanierung',
+    title: 'Bio-Sanierung',
+    description: 'Zähne saniert, Amalgam entfernt, Clean Beauty',
+    icon: Sparkles,
+    subChecks: ['Zähne saniert', 'Kein Amalgam', 'Clean Beauty Produkte']
+  },
+  {
+    key: 'psycho_hygiene',
+    title: 'Psycho-Hygiene',
+    description: 'Safe Haven, keine Energievampire, Stress-Routine',
+    icon: Brain,
+    subChecks: ['Stabiles Umfeld', 'Keine toxischen Beziehungen', 'Stress-Ausgleich']
+  },
+  {
+    key: 'digital_hygiene',
+    title: 'Digitale Hygiene',
+    description: 'Handyfreies Schlafzimmer, kein Doomscrolling',
+    icon: Smartphone,
+    subChecks: ['Handy nicht im Schlafzimmer', 'Max 30min Social Media', 'Blaufilter abends']
+  },
+  {
+    key: 'protein_training',
+    title: 'Protein & Training',
+    description: '≥1.8g/kg Protein + ≥180 Min Zone 2/Woche',
+    icon: Dumbbell,
+    autoValidate: true
+  },
+  {
+    key: 'kfa_trend',
+    title: 'KFA-Trend',
+    description: 'KFA bekannt und fallend (Männer <20%)',
+    icon: TrendingDown,
+    autoValidate: true
+  },
+  {
+    key: 'bloodwork_baseline',
+    title: 'Blutwerte-Baseline',
+    description: 'Testosteron, E2, Leber, Niere, HbA1c, hsCRP, Hämatokrit',
+    icon: TestTube,
+    autoValidate: true
+  }
+];
+
+const REQUIRED_MARKERS = [
+  'total_testosterone', 'estradiol', 'hba1c', 'hscrp', 
+  'ast', 'alt', 'ggt', 'creatinine', 'hematocrit'
+];
+
+export function Phase0Checklist() {
+  const { user } = useAuth();
+  const { 
+    status, 
+    phase0Progress, 
+    canUnlockPhase1, 
+    updatePhase0Check,
+    unlockPhase1 
+  } = useProtocolStatus();
+  
+  const [openItems, setOpenItems] = useState<string[]>([]);
+  const [validating, setValidating] = useState(false);
+
+  // Auto-validate from existing data
+  useEffect(() => {
+    if (!user?.id || !status) return;
+    
+    const validateFromData = async () => {
+      setValidating(true);
+      
+      try {
+        // 1. Validate Sleep (last 14 days avg)
+        const { data: sleepData } = await (supabase as any)
+          .from('sleep_tracking')
+          .select('sleep_hours')
+          .eq('user_id', user.id)
+          .gte('date', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+          .order('date', { ascending: false });
+        
+        if (sleepData && sleepData.length >= 7) {
+          const avgSleep = sleepData.reduce((acc: number, d: any) => acc + (d.sleep_hours || 0), 0) / sleepData.length;
+          if (avgSleep >= 7.5 && !status.phase_0_checklist.sleep_score.completed) {
+            await updatePhase0Check('sleep_score', {
+              completed: true,
+              avg_hours: Math.round(avgSleep * 10) / 10,
+              validated_at: new Date().toISOString()
+            });
+          }
+        }
+
+        // 2. Validate Bloodwork Baseline
+        const { data: bloodwork } = await supabase
+          .from('user_bloodwork')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('test_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+          .order('test_date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (bloodwork) {
+          const presentMarkers = REQUIRED_MARKERS.filter(marker => {
+            const value = (bloodwork as any)[marker];
+            return value !== null && value !== undefined;
+          });
+          
+          if (presentMarkers.length >= 6 && !status.phase_0_checklist.bloodwork_baseline.completed) {
+            await updatePhase0Check('bloodwork_baseline', {
+              completed: true,
+              markers_present: presentMarkers,
+              validated_at: new Date().toISOString()
+            });
+          }
+        }
+
+        // 3. Validate KFA Trend
+        const { data: weightData } = await (supabase as any)
+          .from('weight_history')
+          .select('weight, body_fat_percentage')
+          .eq('user_id', user.id)
+          .not('body_fat_percentage', 'is', null)
+          .order('date', { ascending: false })
+          .limit(5);
+
+        if (weightData && weightData.length >= 2) {
+          const latestKfa = weightData[0].body_fat_percentage;
+          const oldestKfa = weightData[weightData.length - 1].body_fat_percentage;
+          
+          if (latestKfa && oldestKfa && latestKfa < oldestKfa) {
+            const trend = latestKfa < 20 ? 'optimal' : 'improving';
+            if (!status.phase_0_checklist.kfa_trend.completed) {
+              await updatePhase0Check('kfa_trend', {
+                completed: true,
+                current_kfa: latestKfa,
+                trend,
+                validated_at: new Date().toISOString()
+              });
+            }
+          }
+        }
+
+      } catch (err) {
+        console.error('Validation error:', err);
+      } finally {
+        setValidating(false);
+      }
+    };
+
+    validateFromData();
+  }, [user?.id, status?.id]);
+
+  const toggleItem = (key: string) => {
+    setOpenItems(prev => 
+      prev.includes(key) 
+        ? prev.filter(k => k !== key)
+        : [...prev, key]
+    );
+  };
+
+  const handleManualCheck = async (key: keyof Phase0ChecklistType, completed: boolean) => {
+    await updatePhase0Check(key, {
+      completed,
+      confirmed_at: completed ? new Date().toISOString() : null
+    });
+    
+    if (completed) {
+      toast.success('Check bestätigt ✓');
+    }
+  };
+
+  const handleUnlock = async () => {
+    const success = await unlockPhase1();
+    if (success) {
+      // Could trigger celebration animation here
+    }
+  };
+
+  if (!status) return null;
+
+  const checklist = status.phase_0_checklist;
+
+  return (
+    <div className="space-y-4">
+      {/* Intro Card */}
+      <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            Via Negativa: Erst entfernen, was schadet
+          </CardTitle>
+          <CardDescription>
+            Bevor du optimierst, musst du das Fundament legen. Ein Haus baut man nicht auf Treibsand.
+            Diese 8 Punkte sind nicht verhandelbar.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {/* Progress */}
+      <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Fortschritt Phase 0</span>
+            <span className="text-sm text-muted-foreground">{phase0Progress}/8</span>
+          </div>
+          <Progress value={(phase0Progress / 8) * 100} />
+        </div>
+        
+        {canUnlockPhase1 && (
+          <Button onClick={handleUnlock} className="shrink-0">
+            <Rocket className="w-4 h-4 mr-2" />
+            Phase 1 starten
+          </Button>
+        )}
+      </div>
+
+      {/* Checklist Items */}
+      <div className="space-y-3">
+        {CHECKLIST_ITEMS.map((item) => {
+          const Icon = item.icon;
+          const checkData = checklist[item.key];
+          const isCompleted = checkData?.completed;
+          const isOpen = openItems.includes(item.key);
+          
+          return (
+            <Collapsible 
+              key={item.key} 
+              open={isOpen}
+              onOpenChange={() => toggleItem(item.key)}
+            >
+              <Card className={cn(
+                "transition-all",
+                isCompleted && "border-emerald-500/50 bg-emerald-500/5"
+              )}>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "p-2 rounded-lg",
+                        isCompleted ? "bg-emerald-500/20" : "bg-muted"
+                      )}>
+                        <Icon className={cn(
+                          "w-5 h-5",
+                          isCompleted ? "text-emerald-500" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-base">{item.title}</CardTitle>
+                          {item.autoValidate && (
+                            <Badge variant="outline" className="text-xs">
+                              Auto-Validiert
+                            </Badge>
+                          )}
+                        </div>
+                        <CardDescription className="text-sm">
+                          {item.description}
+                        </CardDescription>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {isCompleted ? (
+                          <div className="p-1 rounded-full bg-emerald-500">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                        ) : (
+                          <div className="p-1 rounded-full bg-muted">
+                            <X className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                        <ChevronDown className={cn(
+                          "w-4 h-4 transition-transform",
+                          isOpen && "rotate-180"
+                        )} />
+                      </div>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    {item.subChecks ? (
+                      <div className="space-y-3 border-t pt-4">
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Bestätige, dass du diese Punkte erfüllst:
+                        </p>
+                        {item.subChecks.map((subCheck, idx) => (
+                          <div key={idx} className="flex items-center gap-3">
+                            <Checkbox 
+                              id={`${item.key}-${idx}`}
+                              checked={isCompleted}
+                              onCheckedChange={(checked) => {
+                                if (checked && idx === item.subChecks!.length - 1) {
+                                  handleManualCheck(item.key, true);
+                                }
+                              }}
+                            />
+                            <label 
+                              htmlFor={`${item.key}-${idx}`}
+                              className="text-sm cursor-pointer"
+                            >
+                              {subCheck}
+                            </label>
+                          </div>
+                        ))}
+                        
+                        {!isCompleted && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleManualCheck(item.key, true)}
+                            className="mt-2"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Alle erfüllt - Bestätigen
+                          </Button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="border-t pt-4">
+                        {item.autoValidate ? (
+                          <div className="space-y-2">
+                            {validating ? (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Validiere aus deinen Daten...
+                              </div>
+                            ) : isCompleted ? (
+                              <div className="flex items-center gap-2 text-sm text-emerald-500">
+                                <Check className="w-4 h-4" />
+                                Automatisch validiert aus deinen Tracking-Daten
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground">
+                                Wird automatisch validiert sobald genug Daten vorhanden sind.
+                                {item.key === 'bloodwork_baseline' && (
+                                  <Button 
+                                    variant="link" 
+                                    className="px-0 h-auto"
+                                    onClick={() => window.location.href = '/bloodwork'}
+                                  >
+                                    → Blutwerte eintragen
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
