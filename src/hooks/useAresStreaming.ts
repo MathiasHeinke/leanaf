@@ -13,13 +13,16 @@ import { supabase } from '@/integrations/supabase/client';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface StreamEvent {
-  type: 'context_ready' | 'content' | 'error' | 'done';
+  type: 'thinking' | 'context_ready' | 'content' | 'error' | 'done';
   content?: string;
   delta?: string;
   traceId?: string;
   error?: string;
   redirect?: 'blocking';
   reason?: string;
+  step?: string;
+  message?: string;
+  done?: boolean;
   metrics?: {
     firstTokenMs?: number;
     totalTokens?: number;
@@ -35,7 +38,13 @@ interface StreamMetrics {
   loadedModules: string[];
 }
 
-type StreamState = 'idle' | 'connecting' | 'context_loading' | 'streaming' | 'complete' | 'error';
+export interface ThinkingStep {
+  step: string;
+  message: string;
+  complete: boolean;
+}
+
+type StreamState = 'idle' | 'connecting' | 'thinking' | 'context_loading' | 'streaming' | 'complete' | 'error';
 
 export interface UseAresStreamingOptions {
   onStreamStart?: () => void;
@@ -53,6 +62,7 @@ export interface UseAresStreamingReturn {
   error: string | null;
   traceId: string | null;
   metrics: StreamMetrics;
+  thinkingSteps: ThinkingStep[];
   stopStream: () => void;
   clearState: () => void;
 }
@@ -75,6 +85,7 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
   const [streamState, setStreamState] = useState<StreamState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
+  const [thinkingSteps, setThinkingSteps] = useState<ThinkingStep[]>([]);
   const [metrics, setMetrics] = useState<StreamMetrics>({
     firstTokenMs: null,
     totalTokens: 0,
@@ -115,6 +126,7 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
     setStreamingContent('');
     setError(null);
     setTraceId(null);
+    setThinkingSteps([]);
     setMetrics({
       firstTokenMs: null,
       totalTokens: 0,
@@ -157,6 +169,7 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
     setStreamingContent('');
     setError(null);
     setTraceId(null);
+    setThinkingSteps([]);
     setMetrics({
       firstTokenMs: null,
       totalTokens: 0,
@@ -255,6 +268,22 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
             const event: StreamEvent = JSON.parse(trimmed.slice(6));
 
             switch (event.type) {
+              case 'thinking':
+                // Handle thinking step events
+                setStreamState('thinking');
+                if (event.step && event.message) {
+                  setThinkingSteps(prev => {
+                    const existing = prev.find(s => s.step === event.step);
+                    if (existing) {
+                      return prev.map(s => 
+                        s.step === event.step ? { ...s, complete: event.done ?? true } : s
+                      );
+                    }
+                    return [...prev, { step: event.step!, message: event.message!, complete: event.done ?? false }];
+                  });
+                }
+                break;
+
               case 'context_ready':
                 setStreamState('streaming');
                 if (event.loadedModules) {
@@ -341,11 +370,12 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
   return {
     sendMessage,
     streamingContent,
-    isStreaming: streamState === 'connecting' || streamState === 'context_loading' || streamState === 'streaming',
+    isStreaming: streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading' || streamState === 'streaming',
     streamState,
     error,
     traceId,
     metrics,
+    thinkingSteps,
     stopStream,
     clearState
   };
