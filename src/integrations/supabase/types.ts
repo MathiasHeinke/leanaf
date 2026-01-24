@@ -2652,6 +2652,84 @@ export type Database = {
         }
         Relationships: []
       }
+      extended_fasting_cycles: {
+        Row: {
+          abort_reason: string | null
+          actual_duration_days: number | null
+          autophagy_indicators: Json | null
+          created_at: string | null
+          current_day: number | null
+          daily_logs: Json | null
+          electrolytes_taken: boolean | null
+          ended_at: string | null
+          entered_ketosis_day: number | null
+          fasting_type: string
+          id: string
+          next_fast_due: string | null
+          notes: string | null
+          peak_ketones_mmol: number | null
+          planned_duration_days: number
+          refeeding_duration_days: number | null
+          refeeding_log: Json | null
+          refeeding_started_at: string | null
+          started_at: string | null
+          status: string | null
+          supplements_paused: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          abort_reason?: string | null
+          actual_duration_days?: number | null
+          autophagy_indicators?: Json | null
+          created_at?: string | null
+          current_day?: number | null
+          daily_logs?: Json | null
+          electrolytes_taken?: boolean | null
+          ended_at?: string | null
+          entered_ketosis_day?: number | null
+          fasting_type?: string
+          id?: string
+          next_fast_due?: string | null
+          notes?: string | null
+          peak_ketones_mmol?: number | null
+          planned_duration_days?: number
+          refeeding_duration_days?: number | null
+          refeeding_log?: Json | null
+          refeeding_started_at?: string | null
+          started_at?: string | null
+          status?: string | null
+          supplements_paused?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          abort_reason?: string | null
+          actual_duration_days?: number | null
+          autophagy_indicators?: Json | null
+          created_at?: string | null
+          current_day?: number | null
+          daily_logs?: Json | null
+          electrolytes_taken?: boolean | null
+          ended_at?: string | null
+          entered_ketosis_day?: number | null
+          fasting_type?: string
+          id?: string
+          next_fast_due?: string | null
+          notes?: string | null
+          peak_ketones_mmol?: number | null
+          planned_duration_days?: number
+          refeeding_duration_days?: number | null
+          refeeding_log?: Json | null
+          refeeding_started_at?: string | null
+          started_at?: string | null
+          status?: string | null
+          supplements_paused?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       failed_login_attempts: {
         Row: {
           attempt_time: string | null
@@ -3499,6 +3577,173 @@ export type Database = {
           date?: string
           generated_at?: string | null
           id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      longterm_bioage_tracking: {
+        Row: {
+          age_difference: number | null
+          aging_rate: number | null
+          biological_age: number | null
+          change_from_previous: number | null
+          chronological_age_months: number | null
+          chronological_age_years: number
+          created_at: string | null
+          dunedin_pace: number | null
+          grimage: number | null
+          hannum_clock_age: number | null
+          horvath_clock_age: number | null
+          id: string
+          improvement_percent: number | null
+          measured_at: string | null
+          notable_interventions: string[] | null
+          notes: string | null
+          phenoage: number | null
+          previous_measurement_id: string | null
+          protocol_phase_at_test: number | null
+          proxy_calculated_age: number | null
+          proxy_inputs: Json | null
+          telomere_length_kb: number | null
+          telomere_percentile: number | null
+          test_provider: string | null
+          test_report_url: string | null
+          test_type: string | null
+          user_id: string
+        }
+        Insert: {
+          age_difference?: number | null
+          aging_rate?: number | null
+          biological_age?: number | null
+          change_from_previous?: number | null
+          chronological_age_months?: number | null
+          chronological_age_years: number
+          created_at?: string | null
+          dunedin_pace?: number | null
+          grimage?: number | null
+          hannum_clock_age?: number | null
+          horvath_clock_age?: number | null
+          id?: string
+          improvement_percent?: number | null
+          measured_at?: string | null
+          notable_interventions?: string[] | null
+          notes?: string | null
+          phenoage?: number | null
+          previous_measurement_id?: string | null
+          protocol_phase_at_test?: number | null
+          proxy_calculated_age?: number | null
+          proxy_inputs?: Json | null
+          telomere_length_kb?: number | null
+          telomere_percentile?: number | null
+          test_provider?: string | null
+          test_report_url?: string | null
+          test_type?: string | null
+          user_id: string
+        }
+        Update: {
+          age_difference?: number | null
+          aging_rate?: number | null
+          biological_age?: number | null
+          change_from_previous?: number | null
+          chronological_age_months?: number | null
+          chronological_age_years?: number
+          created_at?: string | null
+          dunedin_pace?: number | null
+          grimage?: number | null
+          hannum_clock_age?: number | null
+          horvath_clock_age?: number | null
+          id?: string
+          improvement_percent?: number | null
+          measured_at?: string | null
+          notable_interventions?: string[] | null
+          notes?: string | null
+          phenoage?: number | null
+          previous_measurement_id?: string | null
+          protocol_phase_at_test?: number | null
+          proxy_calculated_age?: number | null
+          proxy_inputs?: Json | null
+          telomere_length_kb?: number | null
+          telomere_percentile?: number | null
+          test_provider?: string | null
+          test_report_url?: string | null
+          test_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "longterm_bioage_tracking_previous_measurement_id_fkey"
+            columns: ["previous_measurement_id"]
+            isOneToOne: false
+            referencedRelation: "longterm_bioage_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      maintenance_protocols: {
+        Row: {
+          continued_from_phase: number | null
+          created_at: string | null
+          current_streak_days: number | null
+          dose_adjustments: Json | null
+          dose_amount: number
+          dose_unit: string
+          frequency: string
+          frequency_days: number | null
+          id: string
+          is_active: boolean | null
+          last_taken_at: string | null
+          longest_streak_days: number | null
+          protocol_phase: number | null
+          started_in_phase: number | null
+          substance_category: string
+          substance_name: string
+          timing: string
+          total_doses_taken: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          continued_from_phase?: number | null
+          created_at?: string | null
+          current_streak_days?: number | null
+          dose_adjustments?: Json | null
+          dose_amount: number
+          dose_unit?: string
+          frequency?: string
+          frequency_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_taken_at?: string | null
+          longest_streak_days?: number | null
+          protocol_phase?: number | null
+          started_in_phase?: number | null
+          substance_category?: string
+          substance_name: string
+          timing?: string
+          total_doses_taken?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          continued_from_phase?: number | null
+          created_at?: string | null
+          current_streak_days?: number | null
+          dose_adjustments?: Json | null
+          dose_amount?: number
+          dose_unit?: string
+          frequency?: string
+          frequency_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          last_taken_at?: string | null
+          longest_streak_days?: number | null
+          protocol_phase?: number | null
+          started_in_phase?: number | null
+          substance_category?: string
+          substance_name?: string
+          timing?: string
+          total_doses_taken?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -5017,6 +5262,66 @@ export type Database = {
         }
         Relationships: []
       }
+      reta_micro_log: {
+        Row: {
+          appetite_score: number | null
+          cravings_controlled: boolean | null
+          created_at: string | null
+          days_since_last_dose: number | null
+          dose_mg: number
+          energy_level: number | null
+          gi_severity: number | null
+          gi_side_effects: string[] | null
+          id: string
+          injected_at: string
+          injection_site: string | null
+          notes: string | null
+          satiety_duration_hours: number | null
+          target_interval_days: number | null
+          user_id: string
+          waist_cm: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          appetite_score?: number | null
+          cravings_controlled?: boolean | null
+          created_at?: string | null
+          days_since_last_dose?: number | null
+          dose_mg: number
+          energy_level?: number | null
+          gi_severity?: number | null
+          gi_side_effects?: string[] | null
+          id?: string
+          injected_at?: string
+          injection_site?: string | null
+          notes?: string | null
+          satiety_duration_hours?: number | null
+          target_interval_days?: number | null
+          user_id: string
+          waist_cm?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          appetite_score?: number | null
+          cravings_controlled?: boolean | null
+          created_at?: string | null
+          days_since_last_dose?: number | null
+          dose_mg?: number
+          energy_level?: number | null
+          gi_severity?: number | null
+          gi_side_effects?: string[] | null
+          id?: string
+          injected_at?: string
+          injection_site?: string | null
+          notes?: string | null
+          satiety_duration_hours?: number | null
+          target_interval_days?: number | null
+          user_id?: string
+          waist_cm?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       roadmap_items: {
         Row: {
           category: string
@@ -5298,42 +5603,75 @@ export type Database = {
       senolytic_cycles: {
         Row: {
           created_at: string | null
+          current_day: number | null
           cycle_completed_at: string | null
+          cycle_number: number | null
           cycle_started_at: string | null
           dose_per_kg: number | null
+          doses_taken: number | null
           duration_days: number | null
+          fasting_during_cycle: boolean | null
           id: string
           next_cycle_due: string | null
           notes: string | null
+          preferred_cycle_day: number | null
+          primary_dose_mg: number | null
           protocol: string | null
+          protocol_name: string | null
+          quercetin_preload: boolean | null
+          secondary_dose_mg: number | null
+          senolytic_type: string | null
+          side_effects: Json | null
           substance: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
           created_at?: string | null
+          current_day?: number | null
           cycle_completed_at?: string | null
+          cycle_number?: number | null
           cycle_started_at?: string | null
           dose_per_kg?: number | null
+          doses_taken?: number | null
           duration_days?: number | null
+          fasting_during_cycle?: boolean | null
           id?: string
           next_cycle_due?: string | null
           notes?: string | null
+          preferred_cycle_day?: number | null
+          primary_dose_mg?: number | null
           protocol?: string | null
+          protocol_name?: string | null
+          quercetin_preload?: boolean | null
+          secondary_dose_mg?: number | null
+          senolytic_type?: string | null
+          side_effects?: Json | null
           substance?: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
           created_at?: string | null
+          current_day?: number | null
           cycle_completed_at?: string | null
+          cycle_number?: number | null
           cycle_started_at?: string | null
           dose_per_kg?: number | null
+          doses_taken?: number | null
           duration_days?: number | null
+          fasting_during_cycle?: boolean | null
           id?: string
           next_cycle_due?: string | null
           notes?: string | null
+          preferred_cycle_day?: number | null
+          primary_dose_mg?: number | null
           protocol?: string | null
+          protocol_name?: string | null
+          quercetin_preload?: boolean | null
+          secondary_dose_mg?: number | null
+          senolytic_type?: string | null
+          side_effects?: Json | null
           substance?: string
           updated_at?: string | null
           user_id?: string
@@ -7967,6 +8305,13 @@ export type Database = {
       get_next_entry_sequence: {
         Args: { p_date: string; p_user_id: string }
         Returns: number
+      }
+      get_next_reta_micro_date: {
+        Args: { p_user_id: string }
+        Returns: {
+          days_remaining: number
+          next_date: string
+        }[]
       }
       get_or_cache_query_embedding: {
         Args: { query_embedding: string; query_text: string }
