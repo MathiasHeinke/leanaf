@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { SenolytDashboard } from '@/components/senolytic';
 import { MaintenanceDashboard } from '@/components/maintenance';
+import { ExtendedFastingDashboard } from '@/components/fasting';
+import { LongtermTrendsDashboard } from '@/components/trends';
 
 export function Phase3Overview() {
   // TODO: Calculate from real bloodwork data
@@ -238,30 +240,12 @@ export function Phase3Overview() {
 
         {/* Fasting Tab */}
         <TabsContent value="fasting" className="mt-6">
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Utensils className="w-12 h-12 text-muted-foreground mb-4" />
-              <h3 className="font-medium mb-2">Extended Fasting</h3>
-              <p className="text-sm text-muted-foreground">
-                5-7 Tage Fastenzyklen mit Ketose-Tracking
-              </p>
-              <Badge variant="outline" className="mt-4">Kommt bald</Badge>
-            </CardContent>
-          </Card>
+          <ExtendedFastingDashboard />
         </TabsContent>
 
         {/* Bio-Age Tab */}
         <TabsContent value="bioage" className="mt-6">
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Heart className="w-12 h-12 text-muted-foreground mb-4" />
-              <h3 className="font-medium mb-2">Langzeit Bio-Age Tracking</h3>
-              <p className="text-sm text-muted-foreground">
-                12+ Monate Trends, Aging Rate, Telomere
-              </p>
-              <Badge variant="outline" className="mt-4">Kommt bald</Badge>
-            </CardContent>
-          </Card>
+          <LongtermTrendsDashboard chronologicalAge={chronoAge} />
         </TabsContent>
       </Tabs>
     </div>
