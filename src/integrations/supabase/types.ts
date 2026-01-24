@@ -5722,6 +5722,7 @@ export type Database = {
           split_type: string | null
           total_duration_minutes: number | null
           total_volume_kg: number | null
+          training_type: string | null
           updated_at: string
           user_id: string
         }
@@ -5734,6 +5735,7 @@ export type Database = {
           split_type?: string | null
           total_duration_minutes?: number | null
           total_volume_kg?: number | null
+          training_type?: string | null
           updated_at?: string
           user_id: string
         }
@@ -5746,6 +5748,7 @@ export type Database = {
           split_type?: string | null
           total_duration_minutes?: number | null
           total_volume_kg?: number | null
+          training_type?: string | null
           updated_at?: string
           user_id?: string
         }
