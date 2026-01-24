@@ -1,17 +1,28 @@
 /**
- * ARES Streaming Edge Function
+ * ARES Streaming Edge Function - Hybrid AI Version
+ * Lovable AI (Gemini) as Primary + Perplexity for Research + OpenAI Fallback
+ * 
  * True SSE streaming with full ARES context (Persona, Memory, Knowledge, Bloodwork)
  * 
- * Phase 1: No tool execution - falls back to coach-orchestrator-enhanced for tool-requiring messages
- * 
- * @version 1.0.0
- * @date 2026-01-23
+ * @version 2.0.0 - Hybrid AI
+ * @date 2026-01-24
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { cors } from '../_shared/ares/cors.ts';
 import { newTraceId } from '../_shared/ares/ids.ts';
 import { traceStart, traceUpdate, traceDone, traceFail } from '../_shared/ares/trace.ts';
+
+// Hybrid AI Model Router
+import {
+  routeMessage,
+  detectTaskType,
+  getProviderConfig,
+  getFallbackChain,
+  type AIProvider,
+  type ModelChoice,
+  type RoutingContext,
+} from '../_shared/ai/modelRouter.ts';
 
 // Phase 2: Coach Personas Integration
 import {
@@ -59,11 +70,15 @@ import {
   type BloodworkContext,
 } from '../_shared/bloodwork/index.ts';
 
-// Environment
+// Environment - Multiple AI Providers
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+// AI Providers (Hybrid Setup)
+const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -288,8 +303,13 @@ Deno.serve(async (req) => {
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
     return new Response(JSON.stringify({ 
       ok: true, 
-      version: '1.0-streaming',
+      version: '2.0-hybrid',
       streaming: true,
+      providers: {
+        lovable: !!LOVABLE_API_KEY,
+        openai: !!OPENAI_API_KEY,
+        perplexity: !!PERPLEXITY_API_KEY
+      },
       traceId 
     }), {
       status: 200,
@@ -297,10 +317,16 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Validate secrets
-  if (!SVC || !OPENAI_API_KEY) {
-    const error = !SVC ? 'SVC missing' : 'OPENAI_API_KEY missing';
-    return new Response(JSON.stringify({ ok: false, error, traceId }), {
+  // Validate secrets - need at least one AI provider
+  if (!SVC) {
+    return new Response(JSON.stringify({ ok: false, error: 'SVC missing', traceId }), {
+      status: 500,
+      headers: { ...headers, 'Content-Type': 'application/json' }
+    });
+  }
+  
+  if (!LOVABLE_API_KEY && !OPENAI_API_KEY) {
+    return new Response(JSON.stringify({ ok: false, error: 'No AI provider configured (need LOVABLE_API_KEY or OPENAI_API_KEY)', traceId }), {
       status: 500,
       headers: { ...headers, 'Content-Type': 'application/json' }
     });
@@ -535,38 +561,109 @@ Deno.serve(async (req) => {
           });
 
           // ═══════════════════════════════════════════════════════════════════
-          // PHASE 3: Call OpenAI with streaming
+          // PHASE 3: Call AI with Hybrid Provider Selection
           // ═══════════════════════════════════════════════════════════════════
-          console.log('[ARES-STREAM] Calling OpenAI...');
           
-          const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${OPENAI_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o',
-              stream: true,
-              temperature: 0.7,
-              max_tokens: 1500,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: text }
-              ]
-            })
-          });
-
-          if (!openaiResponse.ok) {
-            const errorText = await openaiResponse.text();
-            console.error('[ARES-STREAM] OpenAI error:', openaiResponse.status, errorText);
-            enqueue({ type: 'error', error: 'AI service error' });
-            await traceFail(traceId, { status: openaiResponse.status, error: errorText });
+          // Determine routing based on message content
+          const routingContext: RoutingContext = {
+            hasImages: false,
+            messageLength: text.length,
+            conversationLength: conversationHistory.length,
+          };
+          
+          const modelChoice = routeMessage(text, routingContext);
+          console.log('[ARES-STREAM] Model routing:', modelChoice.provider, modelChoice.model, '-', modelChoice.reason);
+          
+          // Get fallback chain
+          const fallbackProviders = getFallbackChain(modelChoice.provider);
+          let aiResponse: Response | null = null;
+          let usedProvider: AIProvider = modelChoice.provider;
+          let usedModel = modelChoice.model;
+          
+          // Try providers in fallback order
+          for (const provider of fallbackProviders) {
+            const config = getProviderConfig(provider);
+            const apiKey = Deno.env.get(config.apiKeyEnv);
+            
+            if (!apiKey) {
+              console.warn(`[ARES-STREAM] ${provider} API key not found, skipping...`);
+              continue;
+            }
+            
+            // Adjust model for fallback provider
+            let model = modelChoice.model;
+            if (provider !== modelChoice.provider) {
+              if (provider === 'lovable') {
+                model = 'google/gemini-2.5-flash';
+              } else if (provider === 'openai') {
+                model = 'gpt-4o-mini';
+              }
+            }
+            
+            console.log(`[ARES-STREAM] Trying ${provider}/${model}...`);
+            
+            try {
+              const response = await fetch(config.baseUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${apiKey}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  model,
+                  stream: true,
+                  temperature: 0.7,
+                  max_tokens: 1500,
+                  messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: text }
+                  ]
+                })
+              });
+              
+              if (response.ok) {
+                aiResponse = response;
+                usedProvider = provider;
+                usedModel = model;
+                console.log(`[ARES-STREAM] Success with ${provider}/${model}`);
+                break;
+              }
+              
+              // Handle rate limits
+              if (response.status === 429 || response.status === 402) {
+                console.warn(`[ARES-STREAM] ${provider} rate limited (${response.status}), trying fallback...`);
+                continue;
+              }
+              
+              // Server errors
+              if (response.status >= 500) {
+                console.warn(`[ARES-STREAM] ${provider} server error (${response.status}), trying fallback...`);
+                continue;
+              }
+              
+              // Client error - log but continue to fallback
+              const errorText = await response.text();
+              console.error(`[ARES-STREAM] ${provider} error:`, response.status, errorText);
+              
+            } catch (fetchError) {
+              console.error(`[ARES-STREAM] ${provider} fetch failed:`, fetchError);
+            }
+          }
+          
+          if (!aiResponse) {
+            enqueue({ type: 'error', error: 'All AI providers failed' });
+            await traceFail(traceId, { error: 'All AI providers failed' });
             controller.close();
             return;
           }
+          
+          // Log which provider was used for analytics
+          await traceUpdate(traceId, {
+            status: 'streaming',
+            llm_input: { provider: usedProvider, model: usedModel, routing: modelChoice.reason }
+          });
 
-          const reader = openaiResponse.body?.getReader();
+          const reader = aiResponse.body?.getReader();
           if (!reader) {
             enqueue({ type: 'error', error: 'No response stream' });
             controller.close();

@@ -135,3 +135,6 @@ verify_jwt = true
 [functions.ares-streaming]
 verify_jwt = false
 
+[functions.ares-research]
+verify_jwt = true
+
