@@ -15,11 +15,10 @@ interface BioAgeInputFormProps {
   onCancel: () => void;
 }
 
-const TEST_TYPES = [
+const TEST_TYPES: { id: 'truage' | 'glycanage' | 'dunedinpace' | 'proxy' | 'other'; name: string; description: string }[] = [
   { id: 'truage', name: 'TruAge (Epigenetic)', description: 'DunedinPACE + Multiple Clocks' },
   { id: 'glycanage', name: 'GlycanAge', description: 'Glycan-basierte Messung' },
-  { id: 'dunedin_only', name: 'DunedinPACE Only', description: 'Nur PACE Score' },
-  { id: 'phenoage', name: 'PhenoAge', description: 'Levine Clock' },
+  { id: 'dunedinpace', name: 'DunedinPACE Only', description: 'Nur PACE Score' },
   { id: 'proxy', name: 'Proxy (Blutwerte)', description: 'Berechnung aus Biomarkern' },
   { id: 'other', name: 'Anderer Test', description: 'Sonstiger epigenetischer Test' },
 ];
@@ -28,7 +27,7 @@ export function BioAgeInputForm({ chronologicalAge, onSuccess, onCancel }: BioAg
   const { addMeasurement } = useLongtermBioAge();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const [testType, setTestType] = useState<string>('');
+  const [testType, setTestType] = useState<'truage' | 'glycanage' | 'dunedinpace' | 'proxy' | 'other' | ''>('');
   const [dunedinPace, setDunedinPace] = useState('');
   const [biologicalAge, setBiologicalAge] = useState('');
   const [horvathAge, setHorvathAge] = useState('');
@@ -41,7 +40,7 @@ export function BioAgeInputForm({ chronologicalAge, onSuccess, onCancel }: BioAg
   const parsedBioAge = parseLocaleFloat(biologicalAge);
   const parsedPace = parseLocaleFloat(dunedinPace);
   
-  const isValid = testType && biologicalAge && !isNaN(parsedBioAge) && parsedBioAge > 0;
+  const isValid = testType !== '' && biologicalAge && !isNaN(parsedBioAge) && parsedBioAge > 0;
 
   const handleSubmit = async () => {
     if (!isValid) return;
@@ -51,7 +50,7 @@ export function BioAgeInputForm({ chronologicalAge, onSuccess, onCancel }: BioAg
       const input: AddMeasurementInput = {
         chronological_age_years: chronologicalAge,
         biological_age: parsedBioAge,
-        test_type: testType,
+        test_type: testType as 'truage' | 'glycanage' | 'dunedinpace' | 'proxy' | 'other',
         test_provider: testProvider || undefined,
         dunedin_pace: !isNaN(parsedPace) && parsedPace > 0 ? parsedPace : undefined,
         horvath_clock_age: horvathAge ? parseLocaleFloat(horvathAge) : undefined,
@@ -80,7 +79,7 @@ export function BioAgeInputForm({ chronologicalAge, onSuccess, onCancel }: BioAg
         {/* Test Type */}
         <div className="space-y-2">
           <Label>Test-Typ *</Label>
-          <Select value={testType} onValueChange={setTestType}>
+          <Select value={testType} onValueChange={(v) => setTestType(v as typeof testType)}>
             <SelectTrigger>
               <SelectValue placeholder="Test-Typ wählen" />
             </SelectTrigger>
