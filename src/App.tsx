@@ -31,6 +31,7 @@ import { PersonaEditor } from "./pages/Admin/PersonaEditor";
 import TransformationJourneyPage from "./pages/TransformationJourney";
 import Bloodwork from "./pages/Bloodwork";
 import ProtocolPage from "./pages/Protocol";
+import DashboardPage from "./pages/DashboardPage";
 
 import { MealInputProvider } from "@/hooks/useGlobalMealInput";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -70,6 +71,7 @@ const App = () => (
                       <Route path="/backupanalyse" element={<BackupAnalysePage />} />
                       <Route path="/bloodwork" element={<Bloodwork />} />
                       <Route path="/protocol" element={<ProtocolPage />} />
+                      <Route path="/protocol/dashboard" element={<DashboardPage />} />
                       <Route path="/achievements" element={<Achievements />} />
                       <Route path="/terms" element={<Terms />} />
                       <Route path="/privacy" element={<Privacy />} />
