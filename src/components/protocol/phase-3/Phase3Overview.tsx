@@ -13,6 +13,7 @@ import {
   Utensils
 } from 'lucide-react';
 import { SenolytDashboard } from '@/components/senolytic';
+import { MaintenanceDashboard } from '@/components/maintenance';
 
 export function Phase3Overview() {
   // TODO: Calculate from real bloodwork data
@@ -232,16 +233,7 @@ export function Phase3Overview() {
 
         {/* Maintenance Tab */}
         <TabsContent value="maintenance" className="mt-6">
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Pill className="w-12 h-12 text-muted-foreground mb-4" />
-              <h3 className="font-medium mb-2">Maintenance-Protokolle</h3>
-              <p className="text-sm text-muted-foreground">
-                Ca-AKG, TRT, Glycin - kontinuierliche Einnahme-Tracker
-              </p>
-              <Badge variant="outline" className="mt-4">Kommt bald</Badge>
-            </CardContent>
-          </Card>
+          <MaintenanceDashboard />
         </TabsContent>
 
         {/* Fasting Tab */}
