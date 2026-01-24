@@ -7,12 +7,14 @@ import {
   Brain,
   Dna,
   Zap,
-  Battery
+  Battery,
+  Heart
 } from 'lucide-react';
 import { MitochondrialDashboard } from '@/components/mitochondrial';
 import { EpitalonDashboard } from '@/components/epitalon';
 import { NootropicDashboard } from '@/components/nootropic';
 import { NADDashboard } from '@/components/nad';
+import { BioAgeDashboard } from '@/components/bioage';
 
 export function Phase2Overview() {
   return (
@@ -40,7 +42,7 @@ export function Phase2Overview() {
 
       {/* Phase 2 Tabs */}
       <Tabs defaultValue="mitochondrial">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="mitochondrial" className="flex items-center gap-1">
             <Flame className="w-4 h-4" />
             <span className="hidden sm:inline">Mito</span>
@@ -56,6 +58,10 @@ export function Phase2Overview() {
           <TabsTrigger value="nad" className="flex items-center gap-1">
             <Battery className="w-4 h-4" />
             <span className="hidden sm:inline">NAD+</span>
+          </TabsTrigger>
+          <TabsTrigger value="bioage" className="flex items-center gap-1">
+            <Heart className="w-4 h-4" />
+            <span className="hidden sm:inline">Bio-Age</span>
           </TabsTrigger>
           <TabsTrigger value="training" className="flex items-center gap-1">
             <Zap className="w-4 h-4" />
@@ -77,6 +83,10 @@ export function Phase2Overview() {
 
         <TabsContent value="nad" className="mt-6">
           <NADDashboard />
+        </TabsContent>
+
+        <TabsContent value="bioage" className="mt-6">
+          <BioAgeDashboard chronologicalAge={35} />
         </TabsContent>
 
         <TabsContent value="training" className="mt-6">
