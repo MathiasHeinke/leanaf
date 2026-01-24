@@ -21,7 +21,8 @@ import {
   Zap,
   Sun,
   Moon,
-  Clock
+  Clock,
+  TestTube
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -51,6 +52,7 @@ const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Workout", url: "/training", icon: Dumbbell },
   { title: "Transformation", url: "/transformation", icon: TrendingUp },
+  { title: "Blutwerte", url: "/bloodwork", icon: TestTube },
   { title: "History", url: "/history", icon: HistoryIcon },
   { title: "Analyse", url: "/analyse", icon: BarChart3 },
   { title: "Erfolge", url: "/achievements", icon: Trophy },
