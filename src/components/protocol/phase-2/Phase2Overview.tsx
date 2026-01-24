@@ -9,6 +9,7 @@ import {
   Zap
 } from 'lucide-react';
 import { MitochondrialDashboard } from '@/components/mitochondrial';
+import { EpitalonDashboard } from '@/components/epitalon';
 
 export function Phase2Overview() {
   return (
@@ -60,7 +61,7 @@ export function Phase2Overview() {
         </TabsContent>
 
         <TabsContent value="epitalon" className="mt-6">
-          <EpitalonPlaceholder />
+          <EpitalonDashboard />
         </TabsContent>
 
         <TabsContent value="nootropics" className="mt-6">
@@ -75,42 +76,6 @@ export function Phase2Overview() {
   );
 }
 
-function EpitalonPlaceholder() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Dna className="w-5 h-5 text-purple-500" />
-          <CardTitle className="text-lg">Telomer-Schutz (Khavinson-Protokoll)</CardTitle>
-        </div>
-        <CardDescription>
-          Epitalon: 10mg täglich für 10-20 Tage, 2x pro Jahr
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="p-3 rounded-lg bg-muted/50">
-          <div className="flex items-center justify-between mb-2">
-            <span className="font-medium">Epitalon</span>
-            <Badge variant="outline" className="text-purple-500 border-purple-500">
-              Telomerase-Aktivator
-            </Badge>
-          </div>
-          <p className="text-sm text-muted-foreground mb-2">
-            Aktiviert Telomerase, verlangsamt zelluläre Alterung.
-          </p>
-          <div className="text-sm space-y-1">
-            <div><span className="font-medium">Dosis:</span> 10mg täglich</div>
-            <div><span className="font-medium">Dauer:</span> 10-20 Tage</div>
-            <div><span className="font-medium">Frequenz:</span> Alle 4-6 Monate</div>
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground mt-4 text-center">
-          Epitalon-Manager wird in Block C implementiert
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
 
 function NootropicsPlaceholder() {
   return (
