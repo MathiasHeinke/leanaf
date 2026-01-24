@@ -22,7 +22,8 @@ import {
   Sun,
   Moon,
   Clock,
-  TestTube
+  TestTube,
+  ChevronDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -37,16 +38,17 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { BugReportDialog } from "./BugReportDialog";
-import { FeatureRequestDialog } from "./FeatureRequestDialog";
-import { LevelBadge } from "./LevelBadge";
-import { useProfileCompletion } from "@/hooks/useProfileCompletion";
-import { Badge } from "@/components/ui/badge";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -76,11 +78,12 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { t } = useTranslation();
   const { userPoints } = usePointsSystem();
-  const { isProfileComplete } = useProfileCompletion();
   const { toggleTheme, getThemeStatus, getThemeIcon } = useAutoDarkMode();
   const navigate = useNavigate();
   const location = useLocation();
   const [userGender, setUserGender] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [legalOpen, setLegalOpen] = useState(false);
   
   const collapsed = state === "collapsed";
 
@@ -155,16 +158,12 @@ export function AppSidebar() {
   };
 
   const getNavClass = (path: string) => {
-    // ✅ UNLIMITED MODE: All navigation always enabled
     return isActive(path) 
       ? "bg-accent text-accent-foreground font-medium" 
       : "hover:bg-accent/50";
   };
 
-  const isNavDisabled = (path: string) => {
-    // ✅ UNLIMITED MODE: Never disable navigation
-    return false;
-  };
+  const isNavDisabled = () => false;
 
   const handleNavigation = (url: string, disabled: boolean = false) => {
     if (!disabled) {
@@ -212,7 +211,6 @@ export function AppSidebar() {
           <>
             {!collapsed ? (
               <div className="flex items-start gap-3 px-2">
-                {/* Level Icon links */}
                 <div className="flex-shrink-0 flex items-center justify-center h-6 w-6" style={{ color: userPoints.level_name === 'Gold' ? '#FFD700' : userPoints.level_name === 'Silver' ? '#C0C0C0' : userPoints.level_name === 'Bronze' ? '#CD7F32' : '#4A90E2' }}>
                   {userPoints.level_name === 'Rookie' && <Star className="w-5 h-5" />}
                   {userPoints.level_name === 'Bronze' && <Award className="w-5 h-5" />}
@@ -220,13 +218,11 @@ export function AppSidebar() {
                   {(userPoints.level_name === 'Gold' || userPoints.level_name === 'Platinum' || userPoints.level_name === 'Diamond' || userPoints.level_name === 'Master' || userPoints.level_name === 'Grandmaster') && <Crown className="w-5 h-5" />}
                 </div>
                 
-                {/* Level Text und Progress rechts daneben */}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-foreground mb-2">
                     Level {userPoints.current_level} {userPoints.level_name} | {userPoints.total_points.toLocaleString()} Punkte
                   </div>
                   
-                  {/* Kleinere Progress Bar ohne Prozente */}
                   <Progress 
                     value={((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100} 
                     className="h-1.5"
@@ -235,7 +231,6 @@ export function AppSidebar() {
               </div>
             ) : (
               <div className="flex justify-center px-2">
-                {/* Nur das Level Icon im collapsed State */}
                 <div className="flex items-center justify-center h-6 w-6" style={{ color: userPoints.level_name === 'Gold' ? '#FFD700' : userPoints.level_name === 'Silver' ? '#C0C0C0' : userPoints.level_name === 'Bronze' ? '#CD7F32' : '#4A90E2' }}>
                   {userPoints.level_name === 'Rookie' && <Star className="w-5 h-5" />}
                   {userPoints.level_name === 'Bronze' && <Award className="w-5 h-5" />}
@@ -248,22 +243,22 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
 
-      <SidebarContent className="gap-6">
-        {/* Gender-specific Coach Navigation */}
+      <SidebarContent className="gap-2">
+        {/* Main Navigation with ARES/FREYA integrated */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* ARES/FREYA - hervorgehoben aber in der Navigation */}
               {user && (
                 <SidebarMenuItem>
                   <SidebarMenuButton 
                     asChild 
-                    className={getNavClass(userGender === 'male' ? '/coach/ares' : '/coach/freya')}
+                    className={`${getNavClass(userGender === 'male' ? '/coach/ares' : '/coach/freya')} font-semibold`}
                     size={collapsed ? "sm" : "default"}
                   >
                     <button
-                      onClick={() => handleNavigation(userGender === 'male' ? '/coach/ares' : '/coach/freya', isNavDisabled(userGender === 'male' ? '/coach/ares' : '/coach/freya'))}
-                      className="flex items-center w-full relative"
-                      disabled={isNavDisabled(userGender === 'male' ? '/coach/ares' : '/coach/freya')}
+                      onClick={() => handleNavigation(userGender === 'male' ? '/coach/ares' : '/coach/freya')}
+                      className="flex items-center w-full"
                     >
                       {userGender === 'male' ? (
                         <Zap className={`h-4 w-4 ${collapsed ? "" : "mr-3"} text-amber-500`} />
@@ -271,25 +266,14 @@ export function AppSidebar() {
                         <Crown className={`h-4 w-4 ${collapsed ? "" : "mr-3"} text-purple-500`} />
                       )}
                       {!collapsed && (
-                        <span className="font-medium">
-                          {userGender === 'male' ? 'ARES' : 'FREYA'}
-                        </span>
+                        <span>{userGender === 'male' ? 'ARES' : 'FREYA'}</span>
                       )}
                     </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
-        {/* Main Navigation */}
-        <SidebarGroup>
-          <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
-            Navigation
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
+              {/* Rest der Navigation */}
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton 
@@ -298,131 +282,140 @@ export function AppSidebar() {
                     size={collapsed ? "sm" : "default"}
                   >
                     <button
-                      onClick={() => handleNavigation(item.url, isNavDisabled(item.url))}
-                      className="flex items-center w-full relative"
-                      disabled={isNavDisabled(item.url)}
-                    >
-                      <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
-                      {!collapsed && (
-                        <div className="flex items-center justify-between w-full">
-                          <span>{item.key ? t(item.key) : item.title}</span>
-                        </div>
-                      )}
-                    </button>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Settings & More */}
-        <SidebarGroup>
-          <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
-            Einstellungen
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {settingsItems.map((item) => {
-                // Only show Admin item for admin users or in development
-                if (item.adminOnly && !(user?.email?.includes('admin') || process.env.NODE_ENV === 'development')) {
-                  return null;
-                }
-                
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton 
-                      asChild 
-                      className={getNavClass(item.url)}
-                      size={collapsed ? "sm" : "default"}
-                    >
-                      <button
-                        onClick={() => handleNavigation(item.url)}
-                        className="flex items-center w-full"
-                      >
-                        <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
-                        {!collapsed && (
-                          <span>{item.key ? t(item.key) : item.title}</span>
-                        )}
-                      </button>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-              
-              {/* Bug Report */}
-              <SidebarMenuItem>
-                <BugReportDialog 
-                  trigger={
-                    <SidebarMenuButton 
-                      className="hover:bg-accent/50 w-full justify-start"
-                      size={collapsed ? "sm" : "default"}
-                    >
-                      <Bug className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
-                      {!collapsed && <span>Bug melden</span>}
-                    </SidebarMenuButton>
-                  }
-                />
-              </SidebarMenuItem>
-
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Legal */}
-        <SidebarGroup>
-          <SidebarGroupLabel className={collapsed ? "sr-only" : ""}>
-            Rechtliches
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {legalItems.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton 
-                    asChild 
-                    className={getNavClass(item.url)}
-                    size={collapsed ? "sm" : "default"}
-                  >
-                    <button
-                      onClick={() => handleNavigation(item.url)}
+                      onClick={() => handleNavigation(item.url, isNavDisabled())}
                       className="flex items-center w-full"
                     >
                       <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
                       {!collapsed && (
-                        <span>{item.title}</span>
+                        <span>{item.key ? t(item.key) : item.title}</span>
                       )}
                     </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              
-              {/* Dark Mode Toggle */}
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  onClick={toggleTheme}
-                  className="hover:bg-accent/50"
-                  size={collapsed ? "sm" : "default"}
-                  title={getThemeTooltip()}
-                >
-                  {renderThemeIcon()}
-                  {!collapsed && <span className="ml-3">Dark Mode</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* Logout */}
-              <SidebarMenuItem>
-                <SidebarMenuButton 
-                  onClick={handleSignOut}
-                  className="hover:bg-accent/50 text-destructive hover:text-destructive"
-                  size={collapsed ? "sm" : "default"}
-                >
-                  <LogOut className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
-                  {!collapsed && <span>{t('header.logout')}</span>}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Einstellungen - Collapsible */}
+        <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <SidebarGroup>
+            <CollapsibleTrigger asChild>
+              <SidebarGroupLabel className={`cursor-pointer flex items-center justify-between hover:bg-accent/30 rounded-md px-2 py-1 ${collapsed ? "sr-only" : ""}`}>
+                <span>Einstellungen</span>
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${settingsOpen ? 'rotate-180' : ''}`} />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {settingsItems.map((item) => {
+                    if (item.adminOnly && !(user?.email?.includes('admin') || process.env.NODE_ENV === 'development')) {
+                      return null;
+                    }
+                    
+                    return (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton 
+                          asChild 
+                          className={getNavClass(item.url)}
+                          size={collapsed ? "sm" : "default"}
+                        >
+                          <button
+                            onClick={() => handleNavigation(item.url)}
+                            className="flex items-center w-full"
+                          >
+                            <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+                            {!collapsed && (
+                              <span>{item.key ? t(item.key) : item.title}</span>
+                            )}
+                          </button>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                  
+                  {/* Dark Mode Toggle */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      onClick={toggleTheme}
+                      className="hover:bg-accent/50"
+                      size={collapsed ? "sm" : "default"}
+                      title={getThemeTooltip()}
+                    >
+                      {renderThemeIcon()}
+                      {!collapsed && <span className="ml-3">Dark Mode</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  
+                  {/* Bug Report */}
+                  <SidebarMenuItem>
+                    <BugReportDialog 
+                      trigger={
+                        <SidebarMenuButton 
+                          className="hover:bg-accent/50 w-full justify-start"
+                          size={collapsed ? "sm" : "default"}
+                        >
+                          <Bug className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+                          {!collapsed && <span>Bug melden</span>}
+                        </SidebarMenuButton>
+                      }
+                    />
+                  </SidebarMenuItem>
+
+                  {/* Logout */}
+                  <SidebarMenuItem>
+                    <SidebarMenuButton 
+                      onClick={handleSignOut}
+                      className="hover:bg-accent/50 text-destructive hover:text-destructive"
+                      size={collapsed ? "sm" : "default"}
+                    >
+                      <LogOut className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+                      {!collapsed && <span>{t('header.logout')}</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
+
+        {/* Rechtliches - Collapsible */}
+        <Collapsible open={legalOpen} onOpenChange={setLegalOpen}>
+          <SidebarGroup>
+            <CollapsibleTrigger asChild>
+              <SidebarGroupLabel className={`cursor-pointer flex items-center justify-between hover:bg-accent/30 rounded-md px-2 py-1 ${collapsed ? "sr-only" : ""}`}>
+                <span>Rechtliches</span>
+                <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${legalOpen ? 'rotate-180' : ''}`} />
+              </SidebarGroupLabel>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {legalItems.map((item) => (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton 
+                        asChild 
+                        className={getNavClass(item.url)}
+                        size={collapsed ? "sm" : "default"}
+                      >
+                        <button
+                          onClick={() => handleNavigation(item.url)}
+                          className="flex items-center w-full"
+                        >
+                          <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+                          {!collapsed && (
+                            <span>{item.title}</span>
+                          )}
+                        </button>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </SidebarGroup>
+        </Collapsible>
       </SidebarContent>
     </Sidebar>
   );
