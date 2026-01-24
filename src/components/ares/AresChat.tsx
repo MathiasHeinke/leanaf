@@ -1,19 +1,24 @@
 /**
  * ARES Chat Component
  * Real-time streaming chat interface for ARES coach
+ * Design upgraded to match EnhancedUnifiedCoachChat visual style
  * 
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Loader2, StopCircle, Sparkles, Brain, Activity, Heart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Loader2, Sparkles, Brain, Activity, Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useAresStreaming } from '@/hooks/useAresStreaming';
 import ReactMarkdown from 'react-markdown';
+import { ChatLayout } from '@/components/layouts/ChatLayout';
+import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
+import { EnhancedChatInput } from '@/components/EnhancedChatInput';
+import FireBackdrop, { FireBackdropHandle } from '@/components/FireBackdrop';
+import { useShadowState } from '@/hooks/useShadowState';
+import { SmartChip } from '@/components/ui/smart-chip';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -25,6 +30,7 @@ interface Message {
   content: string;
   timestamp: Date;
   traceId?: string | null;
+  mediaUrls?: string[];
 }
 
 interface AresChatProps {
@@ -42,10 +48,10 @@ interface AresChatProps {
 
 function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1 text-muted-foreground">
-      <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
-      <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
-      <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+    <div className="flex items-center gap-1.5 py-2">
+      <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+      <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+      <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
     </div>
   );
 }
@@ -62,15 +68,15 @@ function ContextBadges({ modules }: { modules: string[] }) {
   if (modules.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1 mb-2">
+    <div className="flex flex-wrap gap-1.5 mb-3">
       {modules.map(mod => (
         <Badge 
           key={mod} 
           variant="secondary" 
-          className="text-xs py-0 px-1.5 flex items-center gap-1"
+          className="text-xs py-0.5 px-2 flex items-center gap-1.5 bg-primary/10 text-primary border-primary/20"
         >
           {icons[mod]}
-          {mod}
+          <span className="capitalize">{mod}</span>
         </Badge>
       ))}
     </div>
@@ -85,20 +91,86 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
       'flex w-full mb-4',
       isUser ? 'justify-end' : 'justify-start'
     )}>
-      <div className={cn(
-        'max-w-[85%] rounded-2xl px-4 py-3',
-        isUser 
-          ? 'bg-primary text-primary-foreground rounded-br-md' 
-          : 'bg-muted rounded-bl-md'
-      )}>
-        {isUser ? (
-          <p className="whitespace-pre-wrap">{message.content}</p>
-        ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
-            {isStreaming && (
-              <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5" />
-            )}
+      <div className="flex flex-col max-w-[80%]">
+        {/* Message Bubble with Glassmorphism */}
+        <div className={cn(
+          'rounded-2xl px-4 py-3 backdrop-blur-sm',
+          isUser 
+            ? 'bg-primary/20 border border-primary/30 text-foreground rounded-br-md' 
+            : 'bg-muted/30 border border-border/30 rounded-bl-md'
+        )}>
+          {/* Media Preview for User Messages */}
+          {isUser && message.mediaUrls && message.mediaUrls.length > 0 && (
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {message.mediaUrls.map((url, idx) => (
+                <img 
+                  key={idx} 
+                  src={url} 
+                  alt="Anhang" 
+                  className="w-20 h-20 object-cover rounded-lg border border-border/30"
+                />
+              ))}
+            </div>
+          )}
+          
+          {isUser ? (
+            <p className="whitespace-pre-wrap text-foreground">{message.content}</p>
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown
+                skipHtml={true}
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0 text-foreground">{children}</p>,
+                  strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+                  ul: ({ children }) => <ul className="list-disc ml-4 mb-2 text-foreground">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal ml-4 mb-2 text-foreground">{children}</ol>,
+                  li: ({ children }) => <li className="mb-1 text-foreground">{children}</li>,
+                  code: ({ children }) => (
+                    <code className="bg-muted/50 backdrop-blur-sm px-1.5 py-0.5 rounded text-sm font-mono">
+                      {children}
+                    </code>
+                  ),
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-2 border-primary/50 pl-3 italic text-muted-foreground">
+                      {children}
+                    </blockquote>
+                  ),
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+              {isStreaming && (
+                <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer: Avatar + Timestamp */}
+        {!isUser && (
+          <div className="flex items-center gap-2 mt-2 ml-1">
+            <Avatar className="h-5 w-5 flex-shrink-0">
+              <AvatarImage src="/coaches/ares.png" alt="ARES" />
+              <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
+            </Avatar>
+            <span className="text-xs text-muted-foreground">
+              {message.timestamp.toLocaleTimeString('de-DE', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
+          </div>
+        )}
+        
+        {/* User message timestamp */}
+        {isUser && (
+          <div className="flex items-center justify-end gap-2 mt-1.5 mr-1">
+            <span className="text-xs text-muted-foreground">
+              {message.timestamp.toLocaleTimeString('de-DE', {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
           </div>
         )}
       </div>
@@ -122,10 +194,19 @@ export default function AresChat({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
   const [contextModules, setContextModules] = useState<string[]>([]);
+  const [bannerCollapsed, setBannerCollapsed] = useState(false);
 
   // Refs
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fireBackdropRef = useRef<FireBackdropHandle>(null);
+
+  // Shadow state for choice chips
+  const {
+    pendingChips,
+    scheduleChips,
+    clearChips,
+    setUserTyping
+  } = useShadowState();
 
   // Streaming hook
   const {
@@ -140,6 +221,8 @@ export default function AresChat({
   } = useAresStreaming({
     onStreamStart: () => {
       console.log('[AresChat] Stream started');
+      // Trigger fire animation on stream start
+      fireBackdropRef.current?.ignite({ to: 0.7, durationMs: 3000 });
     },
     onStreamEnd: (content, traceId) => {
       console.log('[AresChat] Stream ended, traceId:', traceId);
@@ -158,6 +241,14 @@ export default function AresChat({
       
       setContextModules([]);
       onResponseReceived?.(content, traceId);
+      
+      // Schedule choice chips after delay
+      if (traceId) {
+        scheduleChips(traceId, 6500);
+      }
+      
+      // Fire ignite on response complete
+      fireBackdropRef.current?.ignite({ to: 0.9, durationMs: 4000 });
     },
     onError: (err) => {
       console.error('[AresChat] Error:', err);
@@ -170,139 +261,202 @@ export default function AresChat({
   // Auto-scroll on new content
   useEffect(() => {
     if (scrollAreaRef.current) {
-      const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollElement) {
-        scrollElement.scrollTop = scrollElement.scrollHeight;
-      }
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
   }, [messages, streamingContent]);
 
-  // Handle send
-  const handleSend = useCallback(async () => {
-    const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+  // Handle send with media support
+  const handleSendWithMedia = useCallback(async (message: string, mediaUrls?: string[]) => {
+    const trimmed = message.trim();
+    if (!trimmed && (!mediaUrls || mediaUrls.length === 0)) return;
+    if (isStreaming) return;
+
+    // Clear choice chips when user sends new message
+    clearChips();
 
     // Add user message immediately
     const userMessage: Message = {
       id: `msg-${Date.now()}`,
       role: 'user',
       content: trimmed,
-      timestamp: new Date()
+      timestamp: new Date(),
+      mediaUrls
     };
     
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     onMessageSent?.(trimmed);
 
-    // Send to ARES
+    // Send to ARES (mediaUrls not yet supported in streaming hook - TODO: extend hook)
     await sendMessage(trimmed, coachId);
-  }, [input, isStreaming, sendMessage, coachId, onMessageSent]);
+  }, [isStreaming, sendMessage, coachId, onMessageSent, clearChips]);
 
-  // Handle keyboard
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }, [handleSend]);
+  // Handle chip click
+  const handleChipClick = useCallback((chip: string) => {
+    clearChips();
+    setInput(chip);
+    // Optionally auto-send
+    handleSendWithMedia(chip);
+  }, [clearChips, handleSendWithMedia]);
 
-  // Handle stop
-  const handleStop = useCallback(() => {
-    stopStream();
-  }, [stopStream]);
+  // Handle daily reset
+  const handleDailyReset = useCallback(() => {
+    setMessages([]);
+  }, []);
+
+  // Chat input component
+  const chatInputComponent = (
+    <div className="space-y-2">
+      {/* Choice Chips */}
+      {pendingChips.length > 0 && !isStreaming && (
+        <div className="flex flex-wrap gap-2 px-1">
+          {pendingChips.map((chip, idx) => (
+            <SmartChip
+              key={idx}
+              variant="secondary"
+              size="sm"
+              onClick={() => handleChipClick(chip)}
+            >
+              {chip}
+            </SmartChip>
+          ))}
+          <button
+            onClick={clearChips}
+            className="text-muted-foreground hover:text-foreground text-sm px-2"
+            aria-label="Vorschläge schließen"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      
+      <EnhancedChatInput
+        inputText={input}
+        setInputText={setInput}
+        onSendMessage={handleSendWithMedia}
+        isLoading={isStreaming}
+        placeholder="Schreibe ARES..."
+        onTypingChange={setUserTyping}
+      />
+    </div>
+  );
 
   return (
-    <div className={cn('flex flex-col h-full bg-background', className)}>
-      {/* Messages area */}
-      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
-        <div className="max-w-3xl mx-auto">
-          {/* Existing messages */}
-          {messages.map(msg => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))}
+    <>
+      {/* Fire Backdrop */}
+      <FireBackdrop ref={fireBackdropRef} chatMode />
+      
+      <ChatLayout
+        chatInput={chatInputComponent}
+        bannerCollapsed={bannerCollapsed}
+      >
+        {/* Collapsible Header */}
+        <CollapsibleCoachHeader
+          coach={{
+            name: 'ARES',
+            id: 'ares',
+            imageUrl: '/coaches/ares.png',
+            specialization: 'Unified Expert Coach'
+          }}
+          onCollapseChange={setBannerCollapsed}
+          onDailyReset={handleDailyReset}
+        />
 
-          {/* Streaming message */}
-          {isStreaming && (
-            <div className="flex justify-start mb-4">
-              <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-muted px-4 py-3">
-                {/* Context badges */}
-                <ContextBadges modules={contextModules} />
-                
-                {streamState === 'connecting' || streamState === 'context_loading' ? (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">
-                      {streamState === 'connecting' ? 'Verbinde...' : 'Lade Kontext...'}
+        {/* Messages Container */}
+        <div 
+          ref={scrollAreaRef}
+          className="flex-1 overflow-y-auto px-2 py-4"
+        >
+          <div className="max-w-3xl mx-auto space-y-1">
+            {/* Empty state */}
+            {messages.length === 0 && !isStreaming && (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                  <Sparkles className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Willkommen bei ARES
+                </h3>
+                <p className="text-muted-foreground text-sm max-w-sm">
+                  Dein persönlicher AI-Coach für Training, Ernährung und Gesundheit. 
+                  Stelle eine Frage oder teile deine Ziele.
+                </p>
+              </div>
+            )}
+
+            {/* Existing messages */}
+            {messages.map(msg => (
+              <MessageBubble key={msg.id} message={msg} />
+            ))}
+
+            {/* Streaming message */}
+            {isStreaming && (
+              <div className="flex justify-start mb-4">
+                <div className="flex flex-col max-w-[80%]">
+                  <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
+                    {/* Context badges */}
+                    <ContextBadges modules={contextModules} />
+                    
+                    {streamState === 'connecting' || streamState === 'context_loading' ? (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm">
+                          {streamState === 'connecting' ? 'Verbinde...' : 'Lade Kontext...'}
+                        </span>
+                      </div>
+                    ) : streamingContent ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown
+                          skipHtml={true}
+                          components={{
+                            p: ({ children }) => <p className="mb-2 last:mb-0 text-foreground">{children}</p>,
+                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                            ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                          }}
+                        >
+                          {streamingContent}
+                        </ReactMarkdown>
+                        <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
+                      </div>
+                    ) : (
+                      <TypingIndicator />
+                    )}
+                  </div>
+                  
+                  {/* Streaming avatar */}
+                  <div className="flex items-center gap-2 mt-2 ml-1">
+                    <Avatar className="h-5 w-5 flex-shrink-0">
+                      <AvatarImage src="/coaches/ares.png" alt="ARES" />
+                      <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-muted-foreground">
+                      schreibt...
                     </span>
                   </div>
-                ) : streamingContent ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{streamingContent}</ReactMarkdown>
-                    <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5" />
-                  </div>
-                ) : (
-                  <TypingIndicator />
-                )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Error display */}
-          {error && (
-            <div className="flex justify-center mb-4">
-              <Badge variant="destructive" className="text-sm">
-                Fehler: {error}
-              </Badge>
-            </div>
-          )}
-        </div>
-      </ScrollArea>
+            {/* Error display */}
+            {error && (
+              <div className="flex justify-center mb-4">
+                <Badge variant="destructive" className="text-sm px-3 py-1">
+                  Fehler: {error}
+                </Badge>
+              </div>
+            )}
 
-      {/* Input area */}
-      <div className="border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
-        <div className="max-w-3xl mx-auto">
-          {/* Metrics display during streaming */}
-          {isStreaming && metrics.firstTokenMs !== null && (
-            <div className="flex items-center gap-4 mb-2 text-xs text-muted-foreground">
-              <span>Erste Antwort: {metrics.firstTokenMs}ms</span>
-              <span>Tokens: {metrics.totalTokens}</span>
-            </div>
-          )}
-
-          <div className="flex items-end gap-2">
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Schreibe ARES..."
-              disabled={isStreaming}
-              className="min-h-[44px] max-h-[200px] resize-none"
-              rows={1}
-            />
-            
-            {isStreaming ? (
-              <Button
-                onClick={handleStop}
-                variant="destructive"
-                size="icon"
-                className="shrink-0"
-              >
-                <StopCircle className="w-5 h-5" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim()}
-                size="icon"
-                className="shrink-0"
-              >
-                <Send className="w-5 h-5" />
-              </Button>
+            {/* Metrics during streaming (optional debug) */}
+            {isStreaming && metrics.firstTokenMs !== null && (
+              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/60">
+                <span>⚡ {metrics.firstTokenMs}ms</span>
+                <span>📝 {metrics.totalTokens} tokens</span>
+              </div>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </ChatLayout>
+    </>
   );
 }
