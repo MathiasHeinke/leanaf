@@ -3,15 +3,15 @@
  * Real-time streaming chat interface for ARES coach
  * Design upgraded to match EnhancedUnifiedCoachChat visual style
  * 
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, Sparkles, Brain, Activity, Heart } from 'lucide-react';
+import { Loader2, Sparkles, Brain, Activity, Heart, Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { useAresStreaming } from '@/hooks/useAresStreaming';
+import { useAresStreaming, ThinkingStep } from '@/hooks/useAresStreaming';
 import ReactMarkdown from 'react-markdown';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
 import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
@@ -19,6 +19,10 @@ import { EnhancedChatInput } from '@/components/EnhancedChatInput';
 import FireBackdrop, { FireBackdropHandle } from '@/components/FireBackdrop';
 import { useShadowState } from '@/hooks/useShadowState';
 import { SmartChip } from '@/components/ui/smart-chip';
+import { COACH_REGISTRY } from '@/lib/coachRegistry';
+
+// ARES Profile Image from registry
+const ARES_IMAGE_URL = COACH_REGISTRY.ares.imageUrl || '/coaches/ares.png';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -52,6 +56,30 @@ function TypingIndicator() {
       <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
       <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
       <div className="w-2 h-2 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+    </div>
+  );
+}
+
+function ThinkingIndicator({ steps }: { steps: ThinkingStep[] }) {
+  if (steps.length === 0) return null;
+  
+  return (
+    <div className="space-y-1.5 py-2">
+      {steps.map((step, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          {step.complete ? (
+            <Check className="w-3 h-3 text-primary" />
+          ) : (
+            <Loader2 className="w-3 h-3 animate-spin text-primary/60" />
+          )}
+          <span className={cn(
+            "transition-colors",
+            step.complete ? 'text-foreground' : 'text-muted-foreground'
+          )}>
+            {step.message}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -150,7 +178,7 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
         {!isUser && (
           <div className="flex items-center gap-2 mt-2 ml-1">
             <Avatar className="h-5 w-5 flex-shrink-0">
-              <AvatarImage src="/coaches/ares.png" alt="ARES" />
+              <AvatarImage src={ARES_IMAGE_URL} alt="ARES" />
               <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
             </Avatar>
             <span className="text-xs text-muted-foreground">
@@ -217,6 +245,7 @@ export default function AresChat({
     error,
     traceId,
     metrics,
+    thinkingSteps,
     stopStream
   } = useAresStreaming({
     onStreamStart: () => {
@@ -355,7 +384,7 @@ export default function AresChat({
           coach={{
             name: 'ARES',
             id: 'ares',
-            imageUrl: '/coaches/ares.png',
+            imageUrl: ARES_IMAGE_URL,
             specialization: 'Unified Expert Coach'
           }}
           onCollapseChange={setBannerCollapsed}
@@ -393,18 +422,34 @@ export default function AresChat({
             {isStreaming && (
               <div className="flex justify-start mb-4">
                 <div className="flex flex-col max-w-[80%]">
+                  {/* Avatar + "ARES schreibt..." header */}
+                  <div className="flex items-center gap-2 mb-2 ml-1">
+                    <Avatar className="h-5 w-5 flex-shrink-0">
+                      <AvatarImage src={ARES_IMAGE_URL} alt="ARES" />
+                      <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-muted-foreground">
+                      ARES {streamState === 'streaming' ? 'schreibt...' : 'denkt nach...'}
+                    </span>
+                  </div>
+                  
                   <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
-                    {/* Context badges */}
-                    <ContextBadges modules={contextModules} />
+                    {/* Thinking steps (Gemini-style) */}
+                    {(streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading') && (
+                      <>
+                        {thinkingSteps.length > 0 ? (
+                          <ThinkingIndicator steps={thinkingSteps} />
+                        ) : (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-sm">Denke nach...</span>
+                          </div>
+                        )}
+                      </>
+                    )}
                     
-                    {streamState === 'connecting' || streamState === 'context_loading' ? (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">
-                          {streamState === 'connecting' ? 'Verbinde...' : 'Lade Kontext...'}
-                        </span>
-                      </div>
-                    ) : streamingContent ? (
+                    {/* Streaming content */}
+                    {streamState === 'streaming' && streamingContent && (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown
                           skipHtml={true}
@@ -419,20 +464,12 @@ export default function AresChat({
                         </ReactMarkdown>
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
                       </div>
-                    ) : (
+                    )}
+                    
+                    {/* Fallback typing indicator */}
+                    {streamState === 'streaming' && !streamingContent && (
                       <TypingIndicator />
                     )}
-                  </div>
-                  
-                  {/* Streaming avatar */}
-                  <div className="flex items-center gap-2 mt-2 ml-1">
-                    <Avatar className="h-5 w-5 flex-shrink-0">
-                      <AvatarImage src="/coaches/ares.png" alt="ARES" />
-                      <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
-                    </Avatar>
-                    <span className="text-xs text-muted-foreground">
-                      schreibt...
-                    </span>
                   </div>
                 </div>
               </div>

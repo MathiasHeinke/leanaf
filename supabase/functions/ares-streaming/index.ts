@@ -70,11 +70,14 @@ const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface StreamEvent {
-  type: 'context_ready' | 'content' | 'error' | 'done';
+  type: 'thinking' | 'context_ready' | 'content' | 'error' | 'done';
   content?: string;
   delta?: string;
   traceId?: string;
   error?: string;
+  step?: string;
+  message?: string;
+  done?: boolean;
   metrics?: {
     firstTokenMs?: number;
     totalTokens?: number;
@@ -392,41 +395,53 @@ Deno.serve(async (req) => {
 
         try {
           // ═══════════════════════════════════════════════════════════════════
-          // PHASE 1: Load all context in parallel
+          // PHASE 1: Load all context in parallel with thinking events
           // ═══════════════════════════════════════════════════════════════════
           console.log('[ARES-STREAM] Loading context...');
           const contextStart = performance.now();
 
-          const [
-            personaResult,
-            healthContext,
-            knowledgeContext,
-            bloodworkContext,
-            insightsResult,
-            conversationsResult
-          ] = await Promise.all([
+          // Send initial thinking event
+          enqueue({ type: 'thinking', step: 'start', message: 'Denke nach...', done: false });
+
+          // Load all in parallel, but send thinking events as each completes
+          const results = await Promise.allSettled([
             // Persona
-            loadUserPersona(userId).catch(e => {
+            loadUserPersona(userId).then(r => {
+              enqueue({ type: 'thinking', step: 'persona', message: 'Persona geladen', done: true });
+              return r;
+            }).catch(e => {
               console.warn('[ARES-STREAM] Persona load failed:', e);
               return null;
             }),
             // Health context
-            loadUserHealthContext(userId, supaSvc).catch(e => {
+            loadUserHealthContext(userId, supaSvc).then(r => {
+              if (r) enqueue({ type: 'thinking', step: 'health', message: 'Gesundheitsdaten analysiert', done: true });
+              return r;
+            }).catch(e => {
               console.warn('[ARES-STREAM] Health context failed:', e);
               return null;
             }),
             // Knowledge
-            loadRelevantKnowledge(text, supaSvc, { maxTopics: 5 }).catch(e => {
+            loadRelevantKnowledge(text, supaSvc, { maxTopics: 5 }).then(r => {
+              if (r?.topics?.length) enqueue({ type: 'thinking', step: 'knowledge', message: `${r.topics.length} Wissensquellen gefunden`, done: true });
+              return r;
+            }).catch(e => {
               console.warn('[ARES-STREAM] Knowledge load failed:', e);
               return null;
             }),
             // Bloodwork
-            loadBloodworkContext(userId, supaSvc).catch(e => {
+            loadBloodworkContext(userId, supaSvc).then(r => {
+              if (r?.hasData) enqueue({ type: 'thinking', step: 'bloodwork', message: 'Blutwerte geprüft', done: true });
+              return r;
+            }).catch(e => {
               console.warn('[ARES-STREAM] Bloodwork load failed:', e);
               return null;
             }),
             // Insights
-            loadRelevantInsights(userId, text, 10, supaSvc).catch(e => {
+            loadRelevantInsights(userId, text, 10, supaSvc).then(r => {
+              if (r.length > 0) enqueue({ type: 'thinking', step: 'memory', message: `${r.length} Erinnerungen durchsucht`, done: true });
+              return r;
+            }).catch(e => {
               console.warn('[ARES-STREAM] Insights load failed:', e);
               return [] as UserInsight[];
             }),
@@ -438,13 +453,27 @@ Deno.serve(async (req) => {
               .eq('coach_personality', coachId)
               .order('created_at', { ascending: false })
               .limit(12)
-              .then(r => r.data || [])
+              .then(r => {
+                if (r.data?.length) enqueue({ type: 'thinking', step: 'history', message: 'Gesprächsverlauf geladen', done: true });
+                return r.data || [];
+              })
               .catch(() => [])
           ]);
 
+          // Extract results
+          const personaResult = results[0].status === 'fulfilled' ? results[0].value : null;
+          const healthContext = results[1].status === 'fulfilled' ? results[1].value : null;
+          const knowledgeContext = results[2].status === 'fulfilled' ? results[2].value : null;
+          const bloodworkContext = results[3].status === 'fulfilled' ? results[3].value : null;
+          const insightsResult = results[4].status === 'fulfilled' ? results[4].value : [];
+          const conversationsResult = results[5].status === 'fulfilled' ? results[5].value : [];
+
+          // Mark thinking complete
+          enqueue({ type: 'thinking', step: 'start', message: 'Formuliere Antwort...', done: true });
+
           // Convert conversations to proper format
           const conversationHistory: ConversationMessage[] = [];
-          const rawConvs = conversationsResult.reverse(); // Chronological order
+          const rawConvs = (conversationsResult as any[]).reverse(); // Chronological order
           for (const msg of rawConvs) {
             conversationHistory.push({
               role: msg.message_role as 'user' | 'assistant',
@@ -473,7 +502,7 @@ Deno.serve(async (req) => {
           if (healthContext) loadedModules.push('health');
           if (knowledgeContext?.topics?.length) loadedModules.push('knowledge');
           if (bloodworkContext?.hasData) loadedModules.push('bloodwork');
-          if (insightsResult.length > 0) loadedModules.push('memory');
+          if ((insightsResult as UserInsight[]).length > 0) loadedModules.push('memory');
 
           const contextTime = Math.round(performance.now() - contextStart);
           console.log('[ARES-STREAM] Context loaded in', contextTime, 'ms. Modules:', loadedModules.join(', '));
@@ -493,10 +522,10 @@ Deno.serve(async (req) => {
           const systemPrompt = buildStreamingSystemPrompt(
             persona,
             personaPrompt,
-            healthContext,
-            knowledgeContext,
-            bloodworkContext,
-            insightsResult,
+            healthContext as UserHealthContext | null,
+            knowledgeContext as KnowledgeContext | null,
+            bloodworkContext as BloodworkContext | null,
+            insightsResult as UserInsight[],
             conversationHistory
           );
 
