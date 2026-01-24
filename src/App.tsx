@@ -32,6 +32,8 @@ import TransformationJourneyPage from "./pages/TransformationJourney";
 import Bloodwork from "./pages/Bloodwork";
 import ProtocolPage from "./pages/Protocol";
 import DashboardPage from "./pages/DashboardPage";
+import TrainingPage from "./pages/TrainingPage";
+import IntakePage from "./pages/IntakePage";
 
 import { MealInputProvider } from "@/hooks/useGlobalMealInput";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -72,6 +74,8 @@ const App = () => (
                       <Route path="/bloodwork" element={<Bloodwork />} />
                       <Route path="/protocol" element={<ProtocolPage />} />
                       <Route path="/protocol/dashboard" element={<DashboardPage />} />
+                      <Route path="/protocol/training" element={<TrainingPage />} />
+                      <Route path="/protocol/intake" element={<IntakePage />} />
                       <Route path="/achievements" element={<Achievements />} />
                       <Route path="/terms" element={<Terms />} />
                       <Route path="/privacy" element={<Privacy />} />
