@@ -39,7 +39,7 @@ export interface LongtermBioAgeMeasurement {
   created_at: string;
 }
 
-interface AddMeasurementInput {
+export interface AddMeasurementInput {
   test_type: LongtermBioAgeMeasurement['test_type'];
   test_provider?: string;
   test_report_url?: string;
