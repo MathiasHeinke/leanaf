@@ -96,7 +96,7 @@ export default function ProtocolPage() {
           <div>
             <h1 className="text-2xl font-bold">ARES Protokoll</h1>
             <p className="text-sm text-muted-foreground">
-              Dein Weg zu Ästhetik & Langlebigkeit
+              Dein Weg zu Ästhetik, Maskulinität & Langlebigkeit
             </p>
           </div>
         </div>
