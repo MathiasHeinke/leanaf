@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { MitochondrialDashboard } from '@/components/mitochondrial';
 import { EpitalonDashboard } from '@/components/epitalon';
+import { NootropicDashboard } from '@/components/nootropic';
 
 export function Phase2Overview() {
   return (
@@ -65,7 +66,7 @@ export function Phase2Overview() {
         </TabsContent>
 
         <TabsContent value="nootropics" className="mt-6">
-          <NootropicsPlaceholder />
+          <NootropicDashboard />
         </TabsContent>
 
         <TabsContent value="training" className="mt-6">
@@ -76,53 +77,6 @@ export function Phase2Overview() {
   );
 }
 
-
-function NootropicsPlaceholder() {
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5 text-cyan-500" />
-          <CardTitle className="text-lg">Nootropic Stack</CardTitle>
-        </div>
-        <CardDescription>
-          Kognitive Performance und Neuroplastizität
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium">Semax</span>
-              <Badge variant="outline">BDNF ↑</Badge>
-            </div>
-            <div className="text-sm">
-              400-600mcg nasal, morgens nüchtern
-            </div>
-          </div>
-
-          <div className="p-3 rounded-lg bg-muted/50">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-medium">Selank</span>
-              <Badge variant="outline">Anxiolytisch</Badge>
-            </div>
-            <div className="text-sm">
-              300-400mcg nasal, bei Bedarf
-            </div>
-          </div>
-
-          <div className="text-sm text-muted-foreground">
-            <Zap className="w-4 h-4 inline mr-1" />
-            Cycling: 4 Wochen on / 2 Wochen off
-          </div>
-        </div>
-        <p className="text-sm text-muted-foreground mt-4 text-center">
-          Nootropic-Tracker wird in Block D implementiert
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
 
 function TrainingPlaceholder() {
   return (
