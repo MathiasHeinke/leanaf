@@ -10,12 +10,14 @@ import {
   Heart,
   Sparkles,
   Pill,
-  Utensils
+  Utensils,
+  Syringe
 } from 'lucide-react';
 import { SenolytDashboard } from '@/components/senolytic';
 import { MaintenanceDashboard } from '@/components/maintenance';
 import { ExtendedFastingDashboard } from '@/components/fasting';
 import { LongtermTrendsDashboard } from '@/components/trends';
+import { RapamycinDashboard } from '@/components/rapamycin';
 
 export function Phase3Overview() {
   // TODO: Calculate from real bloodwork data
@@ -48,7 +50,7 @@ export function Phase3Overview() {
 
       {/* Tabbed Navigation */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="text-xs sm:text-sm">
             <TrendingUp className="w-4 h-4 mr-1 hidden sm:inline" />
             Übersicht
@@ -60,6 +62,10 @@ export function Phase3Overview() {
           <TabsTrigger value="maintenance" className="text-xs sm:text-sm">
             <Pill className="w-4 h-4 mr-1 hidden sm:inline" />
             Maintenance
+          </TabsTrigger>
+          <TabsTrigger value="rapamycin" className="text-xs sm:text-sm">
+            <Syringe className="w-4 h-4 mr-1 hidden sm:inline" />
+            Rapamycin
           </TabsTrigger>
           <TabsTrigger value="fasting" className="text-xs sm:text-sm">
             <Utensils className="w-4 h-4 mr-1 hidden sm:inline" />
@@ -176,6 +182,12 @@ export function Phase3Overview() {
                   note="Telomere"
                 />
                 <MaintenanceItem 
+                  title="Rapamycin"
+                  frequency="Wöchentlich (8 on/4 off)"
+                  dose="5-6mg"
+                  note="mTOR"
+                />
+                <MaintenanceItem 
                   title="Prolongiertes Fasten"
                   frequency="Alle 3-6 Monate"
                   dose="5-7 Tage"
@@ -236,6 +248,11 @@ export function Phase3Overview() {
         {/* Maintenance Tab */}
         <TabsContent value="maintenance" className="mt-6">
           <MaintenanceDashboard />
+        </TabsContent>
+
+        {/* Rapamycin Tab */}
+        <TabsContent value="rapamycin" className="mt-6">
+          <RapamycinDashboard />
         </TabsContent>
 
         {/* Fasting Tab */}

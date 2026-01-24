@@ -5262,6 +5262,75 @@ export type Database = {
         }
         Relationships: []
       }
+      rapamycin_log: {
+        Row: {
+          blood_panel_id: string | null
+          blood_pressure_diastolic: number | null
+          blood_pressure_systolic: number | null
+          created_at: string | null
+          cycle_active: boolean | null
+          days_since_last_dose: number | null
+          dose_mg: number
+          id: string
+          infection_notes: string | null
+          infection_signs: boolean | null
+          medical_disclaimer_accepted: boolean | null
+          notes: string | null
+          pause_reason: string | null
+          side_effects: Json | null
+          taken_at: string
+          taken_fasted: boolean | null
+          target_interval_days: number | null
+          user_id: string
+          week_number: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          blood_panel_id?: string | null
+          blood_pressure_diastolic?: number | null
+          blood_pressure_systolic?: number | null
+          created_at?: string | null
+          cycle_active?: boolean | null
+          days_since_last_dose?: number | null
+          dose_mg?: number
+          id?: string
+          infection_notes?: string | null
+          infection_signs?: boolean | null
+          medical_disclaimer_accepted?: boolean | null
+          notes?: string | null
+          pause_reason?: string | null
+          side_effects?: Json | null
+          taken_at?: string
+          taken_fasted?: boolean | null
+          target_interval_days?: number | null
+          user_id: string
+          week_number?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          blood_panel_id?: string | null
+          blood_pressure_diastolic?: number | null
+          blood_pressure_systolic?: number | null
+          created_at?: string | null
+          cycle_active?: boolean | null
+          days_since_last_dose?: number | null
+          dose_mg?: number
+          id?: string
+          infection_notes?: string | null
+          infection_signs?: boolean | null
+          medical_disclaimer_accepted?: boolean | null
+          notes?: string | null
+          pause_reason?: string | null
+          side_effects?: Json | null
+          taken_at?: string
+          taken_fasted?: boolean | null
+          target_interval_days?: number | null
+          user_id?: string
+          week_number?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: []
+      }
       reta_micro_log: {
         Row: {
           appetite_score: number | null
@@ -8002,6 +8071,18 @@ export type Database = {
           quality_score: number | null
           title: string | null
           ts: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_rapamycin_stats: {
+        Row: {
+          active_cycle_doses: number | null
+          avg_dose: number | null
+          avg_interval: number | null
+          first_taken: string | null
+          last_taken: string | null
+          total_doses: number | null
           user_id: string | null
         }
         Relationships: []
