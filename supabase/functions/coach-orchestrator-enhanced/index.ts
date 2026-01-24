@@ -50,10 +50,21 @@ import {
   type BloodworkContext,
 } from '../_shared/bloodwork/index.ts';
 
+// Phase 6: Hybrid AI Model Router (Lovable AI + Perplexity + OpenAI)
+import {
+  routeMessage,
+  callWithFallback,
+  getProviderConfig,
+  type ModelChoice,
+  type AIProvider,
+} from '../_shared/ai/modelRouter.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 const json = (status: number, body: any) =>
   new Response(JSON.stringify(body), { 
@@ -268,6 +279,28 @@ const ARES_TOOLS = [
         required: ["plan_id", "plan_type", "updates"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_scientific_evidence",
+      description: "Durchsucht aktuelle wissenschaftliche Studien und PubMed. Nutze bei Fragen zu Evidenz, Studien, Peptid-Forschung, 'laut Wissenschaft' oder wenn der User nach Belegen fragt.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Suchanfrage (wird automatisch auf Englisch uebersetzt fuer bessere Ergebnisse)"
+          },
+          focus: {
+            type: "string",
+            enum: ["peptides", "nutrition", "training", "supplements", "longevity", "hormones"],
+            description: "Themenbereich fuer fokussierte akademische Suche"
+          }
+        },
+        required: ["query"]
+      }
+    }
   }
 ];
 
@@ -307,6 +340,9 @@ async function executeToolCall(
       case 'update_plan':
         return await handleUpdatePlan(userId, supaClient, toolArgs);
       
+      case 'search_scientific_evidence':
+        return await handleSearchScientificEvidence(toolArgs);
+      
       default:
         return { success: false, result: null, error: 'Unknown tool: ' + toolName };
     }
@@ -314,6 +350,97 @@ async function executeToolCall(
     console.error('[ARES-TOOL] Error executing ' + toolName + ':', err);
     return { success: false, result: null, error: err.message };
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PERPLEXITY SCIENTIFIC RESEARCH HANDLER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function handleSearchScientificEvidence(args: { query: string; focus?: string }): Promise<{ success: boolean; result: any; error?: string }> {
+  const apiKey = PERPLEXITY_API_KEY;
+  
+  if (!apiKey) {
+    console.warn('[ARES-RESEARCH] Perplexity API key not configured, falling back to knowledge base');
+    return { 
+      success: false, 
+      result: null, 
+      error: 'Perplexity API not configured - using internal knowledge base instead' 
+    };
+  }
+
+  const focusContext = args.focus ? `Focus area: ${args.focus}. ` : '';
+  const systemPrompt = `You are a scientific research assistant. ${focusContext}Provide evidence-based answers with specific study citations (author, year, journal). Include PubMed IDs when available. Be concise but comprehensive.`;
+
+  try {
+    console.log('[ARES-RESEARCH] Querying Perplexity for:', args.query, 'focus:', args.focus);
+    
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'sonar-reasoning',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: args.query }
+        ],
+        search_mode: 'academic',
+        search_domain_filter: getAcademicDomains(args.focus),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[ARES-RESEARCH] Perplexity error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return { success: false, result: null, error: 'Research API rate limited - try again in a moment' };
+      }
+      if (response.status === 402) {
+        return { success: false, result: null, error: 'Research API credits exhausted' };
+      }
+      
+      return { success: false, result: null, error: `Research API error: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || 'No results found';
+    const citations = data.citations || [];
+
+    console.log('[ARES-RESEARCH] Success - found', citations.length, 'citations');
+
+    return {
+      success: true,
+      result: {
+        summary: content,
+        citations: citations,
+        query: args.query,
+        focus: args.focus,
+        model: 'perplexity-sonar-reasoning',
+        search_mode: 'academic'
+      }
+    };
+  } catch (err: any) {
+    console.error('[ARES-RESEARCH] Exception:', err);
+    return { success: false, result: null, error: err.message };
+  }
+}
+
+function getAcademicDomains(focus?: string): string[] {
+  const baseDomains = ['pubmed.ncbi.nlm.nih.gov', 'scholar.google.com', 'ncbi.nlm.nih.gov'];
+  
+  const focusDomains: Record<string, string[]> = {
+    peptides: ['examine.com', 'frontiersin.org', 'nature.com'],
+    nutrition: ['examine.com', 'nutrition.org', 'ajcn.nutrition.org'],
+    training: ['journals.lww.com', 'springer.com', 'frontiersin.org'],
+    supplements: ['examine.com', 'ods.od.nih.gov', 'consumerlab.com'],
+    longevity: ['aging-us.com', 'nature.com', 'cell.com'],
+    hormones: ['endocrine.org', 'nature.com', 'frontiersin.org']
+  };
+  
+  return [...baseDomains, ...(focus && focusDomains[focus] ? focusDomains[focus] : [])];
 }
 
 async function handleMetaAnalysis(userId: string, supaClient: any, args: any, context: any) {
@@ -1827,35 +1954,57 @@ async function callLLMWithTools(
   userId: string,
   supaClient: any,
   context: any
-) {
+): Promise<{ content: string; toolResults: any[]; providerUsed?: string; modelUsed?: string }> {
   // Phase 7: Dynamische Token-Limits basierend auf Fragestellung
   const complexity = detectQuestionComplexity(userMessage);
   console.log('[ARES] Question complexity:', complexity.level, '- max_tokens:', complexity.maxTokens);
   
-  const messages = [
+  const messages: any[] = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userMessage }
   ];
   
-  // First LLM call with tools
-  let response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + OPENAI_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: messages,
-      tools: ARES_TOOLS,
-      tool_choice: 'auto',
-      max_tokens: complexity.maxTokens,
-      temperature: temperature,
-    }),
+  // Hybrid AI Routing: Determine best provider based on message content
+  const modelChoice = routeMessage(userMessage, {
+    messageLength: userMessage.length,
+    requiresTools: true, // Orchestrator always has tools available
   });
+  
+  console.log('[ARES-HYBRID] Route decision:', modelChoice.provider, modelChoice.model, '-', modelChoice.reason);
+
+  // For tool calls, we use OpenAI as it has the most reliable function calling
+  // For pure chat without tools, we can use Lovable AI (Gemini)
+  let providerUsed = 'openai';
+  let modelUsed = 'gpt-4o';
+  
+  // First LLM call with tools - OpenAI for reliability
+  let response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
 
   if (!response.ok) {
-    throw new Error('OpenAI API error: ' + response.status + ' ' + response.statusText);
+    // Try Lovable AI fallback for non-tool responses
+    console.log('[ARES-HYBRID] OpenAI failed, trying Lovable AI fallback...');
+    try {
+      const fallbackResult = await callWithFallback(
+        messages.slice(1), // Remove system prompt, it's passed separately
+        { provider: 'lovable', model: 'google/gemini-2.5-flash', reason: 'OpenAI fallback' },
+        { stream: false, systemPrompt }
+      );
+      
+      if (fallbackResult.response.ok) {
+        const data = await fallbackResult.response.json();
+        providerUsed = fallbackResult.usedProvider;
+        modelUsed = fallbackResult.usedModel;
+        return {
+          content: data.choices?.[0]?.message?.content || 'Keine Antwort erhalten',
+          toolResults: [],
+          providerUsed,
+          modelUsed
+        };
+      }
+    } catch (fallbackErr) {
+      console.error('[ARES-HYBRID] Fallback also failed:', fallbackErr);
+    }
+    throw new Error('All AI providers failed');
   }
 
   let llmResponse = await response.json();
@@ -1891,24 +2040,10 @@ async function callLLMWithTools(
     }
     
     // Call LLM again with tool results
-    response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + OPENAI_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: messages,
-        tools: ARES_TOOLS,
-        tool_choice: 'auto',
-        max_tokens: 4000,
-        temperature: temperature,
-      }),
-    });
+    response = await callOpenAIWithTools(messages, 4000, temperature);
 
     if (!response.ok) {
-      throw new Error('OpenAI API error: ' + response.status + ' ' + response.statusText);
+      throw new Error('OpenAI API error during tool loop: ' + response.status);
     }
 
     llmResponse = await response.json();
@@ -1917,8 +2052,29 @@ async function callLLMWithTools(
   
   return {
     content: assistantMessage.content,
-    toolResults: toolResults
+    toolResults: toolResults,
+    providerUsed,
+    modelUsed
   };
+}
+
+// Helper function for OpenAI tool calls
+async function callOpenAIWithTools(messages: any[], maxTokens: number, temperature: number): Promise<Response> {
+  return fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + OPENAI_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: messages,
+      tools: ARES_TOOLS,
+      tool_choice: 'auto',
+      max_tokens: maxTokens,
+      temperature: temperature,
+    }),
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
