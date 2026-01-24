@@ -152,12 +152,23 @@ export const QuickWeightInput = ({ onWeightAdded, todaysWeight, currentDate }: Q
       // Upload new photos if any
       let newPhotoUrls: string[] = [];
       if (selectedFiles.length > 0) {
-        const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
-        if (uploadResult.success) {
-          newPhotoUrls = uploadResult.urls;
-        } else {
-          console.error('📸 [QuickWeightInput] Photo upload failed:', uploadResult.errors);
-          toast.error('Fehler beim Hochladen der Bilder');
+        try {
+          const uploadResult = await uploadFilesWithProgress(selectedFiles, user.id);
+          if (uploadResult.success && uploadResult.urls.length > 0) {
+            newPhotoUrls = uploadResult.urls;
+            console.log('📸 [QuickWeightInput] Photos uploaded successfully:', newPhotoUrls);
+          } else if (uploadResult.errors.length > 0) {
+            console.error('📸 [QuickWeightInput] Photo upload failed:', uploadResult.errors);
+            toast.error(`Upload fehlgeschlagen: ${uploadResult.errors[0]}`);
+            return;
+          } else {
+            console.error('📸 [QuickWeightInput] Photo upload returned no URLs');
+            toast.error('Fehler beim Hochladen der Bilder');
+            return;
+          }
+        } catch (uploadError: any) {
+          console.error('📸 [QuickWeightInput] Photo upload exception:', uploadError);
+          toast.error(`Upload-Fehler: ${uploadError.message || 'Unbekannter Fehler'}`);
           return;
         }
       }
