@@ -2026,11 +2026,11 @@ async function callLLMWithTools(
         // Check if model returned tool calls (unlikely with Gemini, but handle it)
         const message = data.choices?.[0]?.message;
         if (message?.tool_calls && message.tool_calls.length > 0) {
-          // Fall through to OpenAI for tool execution
-          console.log('[ARES-HYBRID] Lovable returned tool calls, switching to OpenAI');
-          response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
-          providerUsed = 'openai';
-          modelUsed = 'gpt-4o';
+          // Gemini returned tool calls - process them with Gemini (has good function calling now)
+          console.log('[ARES-HYBRID] Gemini returned tool calls, processing...');
+          response = await callLovableWithTools(messages, complexity.maxTokens, temperature, 'google/gemini-3-pro-preview');
+          providerUsed = 'lovable';
+          modelUsed = 'google/gemini-3-pro-preview';
         } else {
           return {
             content: message?.content || 'Keine Antwort erhalten',
@@ -2040,32 +2040,34 @@ async function callLLMWithTools(
           };
         }
       } else {
-        // Fall through to OpenAI
-        console.log('[ARES-HYBRID] Lovable failed, falling back to OpenAI');
-        response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
-        providerUsed = 'openai';
-        modelUsed = 'gpt-4o';
+        // Fall through to GPT-5 via Lovable
+        console.log('[ARES-HYBRID] Gemini failed, falling back to GPT-5');
+        response = await callLovableWithTools(messages, complexity.maxTokens, temperature, 'openai/gpt-5');
+        providerUsed = 'lovable';
+        modelUsed = 'openai/gpt-5';
       }
     } catch (lovableErr) {
       console.warn('[ARES-HYBRID] Lovable AI error:', lovableErr);
+      // Final fallback to OpenAI direct (if Lovable gateway is down)
       response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
       providerUsed = 'openai';
       modelUsed = 'gpt-4o';
     }
   } else {
-    // For tool execution, use OpenAI directly
-    response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
-    providerUsed = 'openai';
-    modelUsed = 'gpt-4o';
+    // For tool execution, use Gemini 3 Pro via Lovable
+    console.log('[ARES-HYBRID] Tool execution - using Gemini 3 Pro');
+    response = await callLovableWithTools(messages, complexity.maxTokens, temperature, 'google/gemini-3-pro-preview');
+    providerUsed = 'lovable';
+    modelUsed = 'google/gemini-3-pro-preview';
   }
 
   if (!response.ok) {
-    // Final fallback attempt
-    console.log('[ARES-HYBRID] Primary failed, trying final fallback...');
+    // Final fallback attempt - use GPT-5 via Lovable gateway
+    console.log('[ARES-HYBRID] Primary failed, trying GPT-5 fallback...');
     try {
       const fallbackResult = await callWithFallback(
         messages.slice(1),
-        { provider: 'lovable', model: 'google/gemini-2.5-flash', reason: 'Final fallback' },
+        { provider: 'lovable', model: 'openai/gpt-5', reason: 'Final fallback to GPT-5' },
         { stream: false, systemPrompt }
       );
       
@@ -2136,6 +2138,31 @@ async function callLLMWithTools(
 }
 
 // Helper function for OpenAI tool calls
+// Helper function for Lovable AI tool calls (Gemini 3 Pro with function calling)
+async function callLovableWithTools(messages: any[], maxTokens: number, temperature: number, model: string = 'google/gemini-3-pro-preview'): Promise<Response> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    console.warn('[ARES] LOVABLE_API_KEY not found, falling back to OpenAI');
+    return callOpenAIWithTools(messages, maxTokens, temperature);
+  }
+  
+  return fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + LOVABLE_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: model,
+      messages: messages,
+      tools: ARES_TOOLS,
+      tool_choice: 'auto',
+      max_tokens: maxTokens,
+    }),
+  });
+}
+
+// OpenAI tool calls (GPT-4o) - used as fallback
 async function callOpenAIWithTools(messages: any[], maxTokens: number, temperature: number): Promise<Response> {
   return fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -2661,18 +2688,89 @@ Deno.serve(async (req) => {
       status: 'prompt_built', 
       system_prompt: systemPrompt, 
       complete_prompt: completePrompt,
-      llm_input: { user_message: text, temperature, model: 'gpt-4o' }
+      llm_input: { user_message: text, temperature }
     } as any);
 
-    // Call LLM with Function Calling
-    const { content: llmOutput, toolResults } = await callLLMWithTools(
-      systemPrompt, 
-      text, 
-      temperature,
-      user.id,
-      supaSvc,
-      context
-    );
+    // Phase 6: Hybrid Model Routing - Select optimal provider based on query type
+    const hasImages = images && images.length > 0;
+    const routingContext = {
+      hasImages,
+      messageLength: text.length,
+      conversationLength: conversationHistory?.length || 0,
+    };
+    
+    const modelChoice = routeMessage(text, routingContext);
+    console.log(`[ARES] Routing decision: ${modelChoice.provider}/${modelChoice.model} - ${modelChoice.reason}`);
+    
+    let llmOutput: string;
+    let toolResults: any[] = [];
+    
+    // Research queries - delegate to ares-research edge function
+    if (modelChoice.provider === 'perplexity') {
+      console.log('[ARES] Research query detected - calling ares-research function');
+      try {
+        const researchResponse = await fetch(`${SUPABASE_URL}/functions/v1/ares-research`, {
+          method: 'POST',
+          headers: {
+            'Authorization': authHeader || '',
+            'Content-Type': 'application/json',
+            'x-trace-id': traceId,
+          },
+          body: JSON.stringify({
+            query: text,
+            language: 'de',
+            maxResults: 5,
+          }),
+        });
+        
+        if (researchResponse.ok) {
+          const researchData = await researchResponse.json();
+          llmOutput = researchData.answer || 'Keine Forschungsergebnisse gefunden.';
+          if (researchData.citations && researchData.citations.length > 0) {
+            llmOutput += '\n\n**Quellen:**\n' + researchData.citations.map((c: string, i: number) => `${i + 1}. ${c}`).join('\n');
+          }
+          console.log(`[ARES] Research complete - ${researchData.citations?.length || 0} citations`);
+        } else {
+          console.warn('[ARES] Research function failed, falling back to Gemini');
+          const fallbackResult = await callLLMWithTools(
+            systemPrompt, 
+            text, 
+            temperature,
+            user.id,
+            supaSvc,
+            context
+          );
+          llmOutput = fallbackResult.content;
+          toolResults = fallbackResult.toolResults;
+        }
+      } catch (researchError) {
+        console.error('[ARES] Research error:', researchError);
+        const fallbackResult = await callLLMWithTools(
+          systemPrompt, 
+          text, 
+          temperature,
+          user.id,
+          supaSvc,
+          context
+        );
+        llmOutput = fallbackResult.content;
+        toolResults = fallbackResult.toolResults;
+      }
+    } else {
+      // Non-research queries - use Gemini via Lovable AI with tool support
+      console.log(`[ARES] Using ${modelChoice.model} for ${modelChoice.reason}`);
+      const { content, toolResults: results } = await callLLMWithTools(
+        systemPrompt, 
+        text, 
+        temperature,
+        user.id,
+        supaSvc,
+        context,
+        modelChoice.model // Pass the selected model
+      );
+      llmOutput = content;
+      toolResults = results;
+    }
 
     const duration_ms = Math.round(performance.now() - started);
     
