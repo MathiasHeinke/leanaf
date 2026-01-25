@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProtocolStatus, Phase0Checklist as Phase0ChecklistType } from '@/hooks/useProtocolStatus';
+import { usePhase0ItemProgress } from '@/hooks/usePhase0ItemProgress';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { 
-  ChevronDown, 
-  Check, 
-  X, 
   AlertTriangle,
   Cigarette,
   Moon,
@@ -21,18 +16,16 @@ import {
   Dumbbell,
   TrendingDown,
   TestTube,
-  Rocket,
-  Loader2
+  Rocket
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Phase0ChecklistItem } from './Phase0ChecklistItem';
 
 interface CheckItem {
   key: keyof Phase0ChecklistType;
   title: string;
   description: string;
   icon: React.ElementType;
-  subChecks?: string[];
   autoValidate?: boolean;
 }
 
@@ -42,7 +35,6 @@ const CHECKLIST_ITEMS: CheckItem[] = [
     title: 'Toxin-Frei',
     description: 'Kein Rauchen, Alkohol fast null, kein Plastik/Teflon',
     icon: Cigarette,
-    subChecks: ['Nicht rauchen', 'Max 1-2 Drinks/Woche', 'Kein Teflon/Plastik beim Kochen']
   },
   {
     key: 'sleep_score',
@@ -56,21 +48,18 @@ const CHECKLIST_ITEMS: CheckItem[] = [
     title: 'Bio-Sanierung',
     description: 'Zähne saniert, Amalgam entfernt, Clean Beauty',
     icon: Sparkles,
-    subChecks: ['Zähne saniert', 'Kein Amalgam', 'Clean Beauty Produkte']
   },
   {
     key: 'psycho_hygiene',
     title: 'Psycho-Hygiene',
     description: 'Safe Haven, keine Energievampire, Stress-Routine',
     icon: Brain,
-    subChecks: ['Stabiles Umfeld', 'Keine toxischen Beziehungen', 'Stress-Ausgleich']
   },
   {
     key: 'digital_hygiene',
     title: 'Digitale Hygiene',
     description: 'Handyfreies Schlafzimmer, kein Doomscrolling',
     icon: Smartphone,
-    subChecks: ['Handy nicht im Schlafzimmer', 'Max 30min Social Media', 'Blaufilter abends']
   },
   {
     key: 'protein_training',
@@ -110,6 +99,7 @@ export function Phase0Checklist() {
     unlockPhase1 
   } = useProtocolStatus();
   
+  const { itemProgress, loading: progressLoading } = usePhase0ItemProgress(status?.phase_0_checklist || null);
   const [openItems, setOpenItems] = useState<string[]>([]);
   const [validating, setValidating] = useState(false);
 
@@ -268,142 +258,22 @@ export function Phase0Checklist() {
       {/* Checklist Items */}
       <div className="space-y-3">
         {CHECKLIST_ITEMS.map((item) => {
-          const Icon = item.icon;
           const checkData = checklist[item.key];
           const isCompleted = checkData?.completed;
           const isOpen = openItems.includes(item.key);
+          const progress = itemProgress[item.key];
           
           return (
-            <Collapsible 
-              key={item.key} 
-              open={isOpen}
-              onOpenChange={() => toggleItem(item.key)}
-            >
-              <Card className={cn(
-                "transition-all",
-                isCompleted && "border-emerald-500/50 bg-emerald-500/5"
-              )}>
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "p-2 rounded-lg",
-                        isCompleted ? "bg-emerald-500/20" : "bg-muted"
-                      )}>
-                        <Icon className={cn(
-                          "w-5 h-5",
-                          isCompleted ? "text-emerald-500" : "text-muted-foreground"
-                        )} />
-                      </div>
-                      
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-base">{item.title}</CardTitle>
-                          {item.autoValidate && (
-                            <Badge variant="outline" className="text-xs">
-                              Auto-Validiert
-                            </Badge>
-                          )}
-                        </div>
-                        <CardDescription className="text-sm">
-                          {item.description}
-                        </CardDescription>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        {isCompleted ? (
-                          <div className="p-1 rounded-full bg-emerald-500">
-                            <Check className="w-4 h-4 text-white" />
-                          </div>
-                        ) : (
-                          <div className="p-1 rounded-full bg-muted">
-                            <X className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                        )}
-                        <ChevronDown className={cn(
-                          "w-4 h-4 transition-transform",
-                          isOpen && "rotate-180"
-                        )} />
-                      </div>
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                
-                <CollapsibleContent>
-                  <CardContent className="pt-0">
-                    {item.subChecks ? (
-                      <div className="space-y-3 border-t pt-4">
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Bestätige, dass du diese Punkte erfüllst:
-                        </p>
-                        {item.subChecks.map((subCheck, idx) => (
-                          <div key={idx} className="flex items-center gap-3">
-                            <Checkbox 
-                              id={`${item.key}-${idx}`}
-                              checked={isCompleted}
-                              onCheckedChange={(checked) => {
-                                if (checked && idx === item.subChecks!.length - 1) {
-                                  handleManualCheck(item.key, true);
-                                }
-                              }}
-                            />
-                            <label 
-                              htmlFor={`${item.key}-${idx}`}
-                              className="text-sm cursor-pointer"
-                            >
-                              {subCheck}
-                            </label>
-                          </div>
-                        ))}
-                        
-                        {!isCompleted && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleManualCheck(item.key, true)}
-                            className="mt-2"
-                          >
-                            <Check className="w-4 h-4 mr-2" />
-                            Alle erfüllt - Bestätigen
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="border-t pt-4">
-                        {item.autoValidate ? (
-                          <div className="space-y-2">
-                            {validating ? (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Validiere aus deinen Daten...
-                              </div>
-                            ) : isCompleted ? (
-                              <div className="flex items-center gap-2 text-sm text-emerald-500">
-                                <Check className="w-4 h-4" />
-                                Automatisch validiert aus deinen Tracking-Daten
-                              </div>
-                            ) : (
-                              <div className="text-sm text-muted-foreground">
-                                Wird automatisch validiert sobald genug Daten vorhanden sind.
-                                {item.key === 'bloodwork_baseline' && (
-                                  <Button 
-                                    variant="link" 
-                                    className="px-0 h-auto"
-                                    onClick={() => window.location.href = '/bloodwork'}
-                                  >
-                                    → Blutwerte eintragen
-                                  </Button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
+            <Phase0ChecklistItem
+              key={item.key}
+              item={item}
+              progress={progress}
+              isCompleted={isCompleted}
+              isOpen={isOpen}
+              isValidating={validating || progressLoading}
+              onToggle={() => toggleItem(item.key)}
+              onManualCheck={(completed) => handleManualCheck(item.key, completed)}
+            />
           );
         })}
       </div>
