@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Dumbbell, Heart, Zap } from "lucide-react";
+import { Dumbbell, Heart, Zap, Thermometer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -44,6 +44,13 @@ const TRAINING_OPTIONS = [
     icon: Zap,
     iconColor: 'text-yellow-500',
   },
+  {
+    value: 'sauna' as TrainingType,
+    label: 'Sauna',
+    description: '≥80°C, mind. 15-20 Min',
+    icon: Thermometer,
+    iconColor: 'text-amber-500',
+  },
 ];
 
 export function LogTrainingDialog({ open, onOpenChange, onSuccess }: LogTrainingDialogProps) {
@@ -65,9 +72,13 @@ export function LogTrainingDialog({ open, onOpenChange, onSuccess }: LogTraining
           user_id: user.id,
           session_date: date,
           training_type: type,
-          total_duration_minutes: type === 'zone2' ? duration : null,
-          // Store vo2max protocol in session_data JSONB
-          session_data: type === 'vo2max' ? { protocol: '4x4' } : {},
+          total_duration_minutes: (type === 'zone2' || type === 'sauna') ? duration : null,
+          // Store protocol info in session_data JSONB
+          session_data: type === 'vo2max' 
+            ? { protocol: '4x4' } 
+            : type === 'sauna' 
+              ? { temperature: '80+', unit: 'celsius' }
+              : {},
         });
 
       if (error) throw error;
@@ -145,8 +156,8 @@ export function LogTrainingDialog({ open, onOpenChange, onSuccess }: LogTraining
             </RadioGroup>
           </div>
 
-          {/* Duration (only for Zone 2) */}
-          {type === 'zone2' && (
+          {/* Duration (for Zone 2 and Sauna) */}
+          {(type === 'zone2' || type === 'sauna') && (
             <div className="space-y-2">
               <Label htmlFor="duration">Dauer (Minuten)</Label>
               <Input
@@ -157,6 +168,11 @@ export function LogTrainingDialog({ open, onOpenChange, onSuccess }: LogTraining
                 min={1}
                 max={300}
               />
+              {type === 'sauna' && (
+                <p className="text-xs text-muted-foreground">
+                  ≥80°C für optimale Heat Shock Protein Aktivierung
+                </p>
+              )}
             </div>
           )}
         </div>

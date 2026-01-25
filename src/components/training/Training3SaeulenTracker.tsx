@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrainingPillarCard } from "./TrainingPillarCard";
 import { LogTrainingDialog } from "./LogTrainingDialog";
 import { useWeeklyTraining } from "@/hooks/useWeeklyTraining";
-import { Dumbbell, Heart, Zap, Plus, Calendar, Trophy } from "lucide-react";
+import { Dumbbell, Heart, Zap, Plus, Calendar, Trophy, Thermometer } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -68,8 +68,8 @@ export function Training3SaeulenTracker() {
             </div>
           )}
 
-          {/* 3 Pillars Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* 4 Pillars Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <TrainingPillarCard
               title="RPT Krafttraining"
               description="Reverse Pyramid Training"
@@ -102,6 +102,17 @@ export function Training3SaeulenTracker() {
               goal={stats.vo2maxGoal}
               unit="Session"
               progress={stats.vo2maxProgress}
+            />
+            <TrainingPillarCard
+              title="Sauna"
+              description="≥80°C Heat Shock"
+              icon={Thermometer}
+              iconColor="text-amber-500"
+              iconBgColor="bg-amber-500/10"
+              current={stats.saunaSessions}
+              goal={stats.saunaGoal}
+              unit="Sessions"
+              progress={stats.saunaProgress}
             />
           </div>
         </CardContent>

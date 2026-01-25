@@ -14,6 +14,7 @@ import {
   Dumbbell,
   TrendingDown,
   TestTube,
+  Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Phase0ChecklistItem } from './Phase0ChecklistItem';
@@ -30,8 +31,8 @@ interface CheckItem {
 const CHECKLIST_ITEMS: CheckItem[] = [
   {
     key: 'toxin_free',
-    title: 'Toxin-Frei',
-    description: 'Kein Rauchen, Alkohol fast null, kein Plastik/Teflon',
+    title: 'Toxin-Frei + Sauna',
+    description: 'Kein Rauchen, Alkohol null, kein Plastik/Teflon, Sauna ≥80°C',
     icon: Cigarette,
   },
   {
@@ -79,6 +80,12 @@ const CHECKLIST_ITEMS: CheckItem[] = [
     description: 'Testosteron, E2, Leber, Niere, HbA1c, hsCRP, Hämatokrit',
     icon: TestTube,
     autoValidate: true
+  },
+  {
+    key: 'tracking_measurement',
+    title: 'Tracking & Messung',
+    description: 'Wearables, Journal, Blut-/Hormontests regelmäßig',
+    icon: Activity,
   }
 ];
 

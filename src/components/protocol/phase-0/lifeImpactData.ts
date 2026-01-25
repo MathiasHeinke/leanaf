@@ -37,6 +37,10 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
       'Nikotin verengt Gefäße (Vasokonstriktion) – macht Citrullin, Cialis und TRT wirkungslos.',
       'Rauchen zerstört Kollagen schneller als GHK-Cu es aufbauen kann. Rauchen = Falten.',
       'Endokrine Disruptoren (PFOA, BPA, Phthalate) aus Plastik/Teflon senken Testosteron und stören Schilddrüse.',
+      'Sauna bei ≥80°C aktiviert Heat Shock Proteins (HSPs) – die zelluläre Reparatur-Truppe.',
+      'Finnische Kuopio-Studie (20+ Jahre): 4-7× Sauna/Woche senkt Gesamtmortalität um ~40%, Demenz um 65%.',
+      'Sauna erhöht Puls auf 120-150 bpm – fast identisch mit Zone 2 Cardio, nur entspannter.',
+      'Im Schweiß werden Schwermetalle (Blei, Cadmium) und BPA ausgeschieden.',
     ],
     subItems: [
       { label: 'Kein Rauchen/Vaping', explanation: 'Nikotin verengt Gefäße – Vollgas mit angezogener Handbremse' },
@@ -45,6 +49,7 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
       { label: 'Teflon-Pfannen ersetzt', explanation: 'Edelstahl, Gusseisen oder Keramik nutzen' },
       { label: 'Naturfasern auf der Haut', explanation: 'Kein Polyester (Mikroplastik wird transdermal aufgenommen)' },
       { label: 'Wasserfilter installiert', explanation: 'Leitungswasser enthält Medikamentenrückstände' },
+      { label: 'Regelmäßig Sauna (≥80°C)', explanation: '4-7×/Woche – Heat Shock Proteins, -40% Mortalität (Kuopio-Studie)' },
     ],
     aresQuote: 'Retatrutid und TRT sind wirkungslos wenn du rauchst und trinkst. Du kannst ein schlechtes Fundament nicht wegspritzen.',
   },
@@ -217,6 +222,33 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
       { label: 'Hämatokrit', explanation: 'Wichtig bei TRT' },
     ],
     aresQuote: 'Blinde Optimierung ist Glücksspiel. Daten sind dein Kompass.',
+  },
+
+  tracking_measurement: {
+    key: 'tracking_measurement',
+    impact: {
+      years: 0,
+      label: 'Fundament',
+      color: 'success',
+    },
+    whyTitle: 'Wer nicht misst, weiß nichts',
+    whyContent: [
+      'Ohne Daten keine Optimierung – du weißt nicht ob Interventionen wirken.',
+      'Wearables machen unsichtbare Veränderungen sichtbar (HRV, Schlafphasen, Resting HR).',
+      'Ein Journal dokumentiert Energie, Stimmung, Nebenwirkungen – Pattern Recognition.',
+      'Regelmäßige Blut- und Hormontests zeigen versteckte Probleme BEVOR Symptome auftreten.',
+      'Trends über Zeit sind wichtiger als Einzelwerte – nur mit Daten erkennst du sie.',
+      'ARES erwartet Daten. Ohne Daten keine personalisierten Empfehlungen.',
+    ],
+    subItems: [
+      { label: 'Wearable nutzen', explanation: 'Apple Watch, Oura, Whoop – Schlaf, HRV, Aktivität tracken' },
+      { label: 'Gewicht/KFA regelmäßig tracken', explanation: 'Mind. 1× pro Woche, besser täglich morgens nüchtern' },
+      { label: 'Mahlzeiten erfassen', explanation: 'Makros kennen – App oder Dashboard nutzen' },
+      { label: 'Training dokumentieren', explanation: 'Jede Session eintragen (im Dashboard)' },
+      { label: 'Bluttest alle 3-6 Monate', explanation: 'Marker verfolgen, Trends erkennen, Sicherheit' },
+      { label: 'Journal führen (optional)', explanation: 'Energie, Stimmung, Besonderheiten notieren' },
+    ],
+    aresQuote: 'Wer nicht misst, weiß nichts. Und wer nichts weiß, kann nichts ändern.',
   },
 };
 
