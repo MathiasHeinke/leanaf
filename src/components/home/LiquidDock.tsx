@@ -107,18 +107,18 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
 
           {/* CENTER: ARES (The Hero - Spartan Helm) */}
           <div className="relative">
-            {/* Pulsating GOLD glow behind ARES */}
+            {/* Subtle white glow behind ARES */}
             <motion.div
               animate={{ 
-                scale: [1, 1.2, 1],
-                opacity: [0.2, 0.4, 0.2]
+                scale: [1, 1.15, 1],
+                opacity: [0.3, 0.5, 0.3]
               }}
               transition={{
-                duration: 2.5,
+                duration: 3,
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
-              className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 blur-xl"
+              className="absolute inset-0 rounded-full bg-white blur-xl"
             />
             
             <motion.button
@@ -128,23 +128,22 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
               onClick={onAresChat}
               className={cn(
                 "relative w-16 h-16 flex items-center justify-center rounded-full",
-                // Metallic brushed aluminum/platinum effect
-                "bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300",
-                "dark:bg-gradient-to-b dark:from-slate-400 dark:via-slate-300 dark:to-slate-500",
-                // Inner lighting for 3D metal effect
-                "shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.1)]",
-                // Outer elevation
-                "shadow-xl shadow-black/25",
-                // Premium border
-                "border border-white/60 dark:border-white/40",
+                // Premium white to soft gray gradient
+                "bg-gradient-to-b from-white via-gray-50 to-gray-100",
+                "dark:bg-gradient-to-b dark:from-gray-100 dark:via-gray-200 dark:to-gray-300",
+                // Subtle inner shadow for depth
+                "shadow-[inset_0_2px_6px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(0,0,0,0.05)]",
+                // Soft outer elevation
+                "shadow-lg shadow-black/15",
+                // Clean border
+                "border border-gray-200/60 dark:border-gray-300/50",
                 "z-10"
               )}
               aria-label="ARES Chat öffnen"
             >
-              {/* Spartan Helm with Gold shimmer */}
+              {/* Professional Spartan Helm - Dark Gray */}
               <SpartanHelm 
-                className="w-10 h-10 drop-shadow-[0_0_8px_rgba(218,165,32,0.5)]" 
-                animated={true}
+                className="w-8 h-8 text-gray-700 dark:text-gray-600" 
               />
             </motion.button>
           </div>
