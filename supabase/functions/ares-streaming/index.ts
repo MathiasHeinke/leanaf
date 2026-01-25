@@ -103,7 +103,8 @@ const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Gemini 3 Pro is a Reasoning Model - needs more tokens for internal thinking
-const ARES_MIN_TOKENS = 2000;
+// KRITISCH: Minimum 2500 um abgeschnittene Antworten zu verhindern!
+const ARES_MIN_TOKENS = 2500;
 
 function detectQuestionComplexity(text: string): { level: 'simple' | 'moderate' | 'complex'; maxTokens: number } {
   const lowerText = text.toLowerCase();
@@ -120,12 +121,12 @@ function detectQuestionComplexity(text: string): { level: 'simple' | 'moderate' 
   
   // Gemini 3 Pro Reasoning Model needs MUCH more room than standard models
   if (complexMatches >= 2 || (complexMatches >= 1 && isLongQuestion)) {
-    return { level: 'complex', maxTokens: 4000 }; // Full power for research/analysis
+    return { level: 'complex', maxTokens: 5000 }; // Full power for research/analysis
   }
   if (complexMatches >= 1 || isLongQuestion) {
-    return { level: 'moderate', maxTokens: 3000 }; // Detailed explanations
+    return { level: 'moderate', maxTokens: 4000 }; // Detailed explanations
   }
-  return { level: 'simple', maxTokens: ARES_MIN_TOKENS }; // Minimum 2000 for persona + context
+  return { level: 'simple', maxTokens: ARES_MIN_TOKENS }; // Minimum 2500 für alle
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -863,8 +864,8 @@ Deno.serve(async (req) => {
                   model,
                   stream: true,
                   temperature: 0.7,
-                  // Semantic Router priority, then High-IQ Setup fallback - MINIMUM 1500 garantiert
-                  max_tokens: Math.max(semanticMaxTokens || detectQuestionComplexity(text).maxTokens, 1500),
+                  // KRITISCH: Minimum 2500 tokens für ALLE Antworten um Abschneiden zu verhindern
+                  max_tokens: Math.max(semanticMaxTokens || detectQuestionComplexity(text).maxTokens, 2500),
                   messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: text }
