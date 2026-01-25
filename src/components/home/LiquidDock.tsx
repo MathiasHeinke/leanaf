@@ -127,7 +127,7 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
               transition={springConfig}
               onClick={onAresChat}
               className={cn(
-                "relative w-16 h-16 flex items-center justify-center rounded-full",
+                "relative w-16 h-16 flex items-center justify-center rounded-full overflow-hidden",
                 // Premium white to soft gray gradient
                 "bg-gradient-to-b from-white via-gray-50 to-gray-100",
                 "dark:bg-gradient-to-b dark:from-gray-100 dark:via-gray-200 dark:to-gray-300",
@@ -141,12 +141,32 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
               )}
               aria-label="ARES Chat öffnen"
             >
-              {/* Spartan Helm Image */}
+              {/* Spartan Helm Image - larger, with gray tint */}
               <img 
                 src={spartanHelm} 
                 alt="ARES"
-                className="w-8 h-8 object-contain"
+                className="w-10 h-10 object-contain opacity-70 grayscale-[20%] relative z-10"
               />
+              
+              {/* Shimmer/Mirror Reflection Effect */}
+              <motion.div
+                className="absolute inset-0 rounded-full overflow-hidden pointer-events-none"
+              >
+                <motion.div
+                  className="absolute inset-0 w-[200%]"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%)',
+                    transform: 'skewX(-12deg)',
+                  }}
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ 
+                    repeat: Infinity, 
+                    duration: 3.5, 
+                    ease: "easeInOut", 
+                    repeatDelay: 2.5 
+                  }}
+                />
+              </motion.div>
             </motion.button>
           </div>
 
