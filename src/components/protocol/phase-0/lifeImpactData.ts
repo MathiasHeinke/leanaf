@@ -269,6 +269,6 @@ export const PHASE0_INTRO = {
   title: 'Via Negativa: Erst entfernen, was schadet',
   subtitle: 'Das Multiplikator-Prinzip der Langlebigkeit',
   formula: '0 (Lifestyle) × 10 (Rapamycin) = 0',
-  mainQuote: 'Willst du 120+ werden und die beste Version von dir selbst? Dann gibt es keine Verhandlung. ARES erträgt keine Heuchler – er will Macher. Shit in = Shit out.',
+  mainQuote: 'Willst du 120+ werden und die beste Version von dir selbst? Dann gibt es keine Verhandlung. Shit in = Shit out.',
   warningQuote: 'Sie können ein schlechtes Fundament nicht wegspritzen. Die Protokolle sind der Turbolader – aber Sie müssen erst den Motor stellen und die Karosserie entrosten.',
 };
