@@ -7,7 +7,8 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, Sparkles, Brain, Activity, Heart, Check, Zap, ExternalLink } from 'lucide-react';
+import { Loader2, Sparkles, Brain, Activity, Heart, Zap, ExternalLink } from 'lucide-react';
+import { RotatingThinkingIndicator } from './RotatingThinkingIndicator';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -93,29 +94,7 @@ function StreamingTextRenderer({ content }: { content: string }) {
   );
 }
 
-function ThinkingIndicator({ steps }: { steps: ThinkingStep[] }) {
-  if (steps.length === 0) return null;
-  
-  return (
-    <div className="space-y-1.5 py-2">
-      {steps.map((step, i) => (
-        <div key={i} className="flex items-center gap-2 text-sm">
-          {step.complete ? (
-            <Check className="w-3 h-3 text-primary" />
-          ) : (
-            <Loader2 className="w-3 h-3 animate-spin text-primary/60" />
-          )}
-          <span className={cn(
-            "transition-colors",
-            step.complete ? 'text-foreground' : 'text-muted-foreground'
-          )}>
-            {step.message}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
+// ThinkingIndicator moved to RotatingThinkingIndicator.tsx with cognitive humanization
 
 function ContextBadges({ modules }: { modules: string[] }) {
   const icons: Record<string, React.ReactNode> = {
@@ -587,7 +566,7 @@ export default function AresChat({
               {(streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading') && (
                 <>
                   {thinkingSteps.length > 0 ? (
-                    <ThinkingIndicator steps={thinkingSteps} />
+                    <RotatingThinkingIndicator steps={thinkingSteps} />
                   ) : (
                     <TypingIndicator />
                   )}
