@@ -68,30 +68,43 @@ export function formatInsightWithTime(insight: UserInsight): string {
 
 /**
  * Erstellt eine Memory-Section für den System-Prompt mit Zeitkontext
+ * OPTIMIERT: "Critical Memory Injection" nach Gemini's Empfehlung
  */
 export function buildTimeAwareMemorySection(insights: UserInsight[]): string {
   if (!insights || insights.length === 0) return '';
 
   const sections: string[] = [];
-  sections.push('== DEIN GEDÄCHTNIS ÜBER DEN USER ==');
-  sections.push('(Nutze diese Informationen aktiv und beziehe dich auf den Zeitpunkt!)');
+  sections.push('## 🧠 MEMORY & KONTEXT (WICHTIG)');
+  sections.push('Nutze dieses Wissen aktiv. Frage NICHT nach Dingen, die du bereits weißt!');
   sections.push('');
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // KRITISCHE INSIGHTS IMMER ZUERST (unabhängig von Kategorie)
+  // 1. KRITISCHE FAKTEN - ALLE, mit Kategorie-Label für besseren Kontext
   // ═══════════════════════════════════════════════════════════════════════════════
   const criticalInsights = insights.filter(i => i.importance === 'critical');
   if (criticalInsights.length > 0) {
-    sections.push('### ⚠️ KRITISCH (IMMER BEACHTEN)');
+    sections.push('### 🔥 KRITISCHE FAKTEN (Beachte diese IMMER!)');
     criticalInsights.forEach(insight => {
       const timeAgo = formatTimeAgo(insight.extractedAt);
-      sections.push(`- ⚠️ ${insight.insight} (${timeAgo})`);
+      // MIT Kategorie-Label für besseren semantischen Kontext
+      sections.push(`- [${insight.category.toUpperCase()}] ${insight.insight} (${timeAgo})`);
     });
     sections.push('');
   }
 
-  // Nicht-kritische Insights nach Kategorie gruppieren
-  const nonCritical = insights.filter(i => i.importance !== 'critical');
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 2. NICHT-KRITISCHE - Sortiert nach Importance → Datum (neueste zuerst)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const nonCritical = insights
+    .filter(i => i.importance !== 'critical')
+    .sort((a, b) => {
+      // Erst nach Importance (high vor medium vor low)
+      const importanceOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+      const impDiff = (importanceOrder[a.importance] ?? 2) - (importanceOrder[b.importance] ?? 2);
+      if (impDiff !== 0) return impDiff;
+      // Dann nach Datum (neueste zuerst)
+      return new Date(b.extractedAt).getTime() - new Date(a.extractedAt).getTime();
+    });
   
   const byCategory: Record<string, UserInsight[]> = {};
   for (const insight of nonCritical) {
@@ -101,7 +114,7 @@ export function buildTimeAwareMemorySection(insights: UserInsight[]): string {
     byCategory[insight.category].push(insight);
   }
 
-  // Sortiere Kategorien nach Wichtigkeit
+  // Kategorien nach Priorität sortieren
   const categoryOrder = ['substanzen', 'gesundheit', 'ziele', 'training', 'ernaehrung', 'koerper', 'schlaf', 'stress', 'gewohnheiten', 'privat'];
   const sortedCategories = Object.keys(byCategory).sort((a, b) => {
     const indexA = categoryOrder.indexOf(a);
@@ -113,8 +126,8 @@ export function buildTimeAwareMemorySection(insights: UserInsight[]): string {
     const categoryInsights = byCategory[category];
     sections.push(`### ${category.toUpperCase()}`);
     
-    // ERHÖHT: 6 statt 3 Insights pro Kategorie
-    categoryInsights.slice(0, 6).forEach(insight => {
+    // ERHÖHT: 8 Insights pro Kategorie (Gemini's Empfehlung für große Kontextfenster)
+    categoryInsights.slice(0, 8).forEach(insight => {
       const importance = insight.importance === 'high' ? '❗ ' : '';
       const timeAgo = formatTimeAgo(insight.extractedAt);
       sections.push(`- ${importance}${insight.insight} (${timeAgo})`);
