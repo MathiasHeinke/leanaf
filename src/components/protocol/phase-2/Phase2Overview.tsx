@@ -15,6 +15,7 @@ import { EpitalonDashboard } from '@/components/epitalon';
 import { NootropicDashboard } from '@/components/nootropic';
 import { NADDashboard } from '@/components/nad';
 import { BioAgeDashboard } from '@/components/bioage';
+import { TrainingDashboard } from './TrainingDashboard';
 
 export function Phase2Overview() {
   return (
@@ -90,40 +91,9 @@ export function Phase2Overview() {
         </TabsContent>
 
         <TabsContent value="training" className="mt-6">
-          <TrainingPlaceholder />
+          <TrainingDashboard />
         </TabsContent>
       </Tabs>
     </div>
-  );
-}
-
-
-function TrainingPlaceholder() {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Training-Anpassung Phase 2</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Intensität</span>
-            <Badge className="bg-blue-500">+10% Gewicht</Badge>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Volumen</span>
-            <span className="font-medium">Leicht reduziert</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">Zone 2</span>
-            <span className="font-medium">180-200 Min/Woche</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm">VO2max</span>
-            <span className="font-medium">2x/Woche (Norwegian 4x4)</span>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

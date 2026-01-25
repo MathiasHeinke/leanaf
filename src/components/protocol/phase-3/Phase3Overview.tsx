@@ -2,6 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { 
   Infinity, 
   Leaf, 
@@ -11,19 +13,26 @@ import {
   Sparkles,
   Pill,
   Utensils,
-  Syringe
+  Syringe,
+  Plus,
+  AlertCircle
 } from 'lucide-react';
 import { SenolytDashboard } from '@/components/senolytic';
 import { MaintenanceDashboard } from '@/components/maintenance';
 import { ExtendedFastingDashboard } from '@/components/fasting';
 import { LongtermTrendsDashboard } from '@/components/trends';
 import { RapamycinDashboard } from '@/components/rapamycin';
+import { useBioAge } from '@/hooks/useBioAge';
+import { Link } from 'react-router-dom';
 
 export function Phase3Overview() {
-  // TODO: Calculate from real bloodwork data
-  const bioAge = 35;
-  const chronoAge = 42;
-  const dunedinPace = 0.85;
+  const { latestMeasurement, loading } = useBioAge();
+  
+  // Live data with fallbacks
+  const bioAge = latestMeasurement?.calculated_bio_age ?? null;
+  const chronoAge = latestMeasurement?.chronological_age ?? 40;
+  const dunedinPace = latestMeasurement?.dunedin_pace ?? null;
+  const ageDiff = bioAge !== null ? chronoAge - bioAge : null;
 
   return (
     <div className="space-y-6">
@@ -83,73 +92,120 @@ export function Phase3Overview() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Heart className="w-5 h-5 text-red-500" />
+                <Heart className="w-5 h-5 text-destructive" />
                 <CardTitle className="text-lg">Biologisches Alter</CardTitle>
               </div>
               <CardDescription>
-                Basierend auf deinen Biomarkern (HbA1c, hsCRP, LDL)
+                Basierend auf deinen Biomarkern (DunedinPACE / Proxy-Berechnung)
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-6">
-                {/* Bio Age Gauge */}
-                <div className="text-center">
-                  <div className="relative inline-flex items-center justify-center w-32 h-32">
-                    <svg className="w-full h-full transform -rotate-90">
-                      <circle
-                        cx="64"
-                        cy="64"
-                        r="56"
-                        stroke="currentColor"
-                        strokeWidth="12"
-                        fill="none"
-                        className="text-muted"
-                      />
-                      <circle
-                        cx="64"
-                        cy="64"
-                        r="56"
-                        stroke="currentColor"
-                        strokeWidth="12"
-                        fill="none"
-                        strokeDasharray={`${(bioAge / chronoAge) * 352} 352`}
-                        className="text-emerald-500"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-3xl font-bold">{bioAge}</span>
-                      <span className="text-xs text-muted-foreground">Jahre</span>
-                    </div>
+              {loading ? (
+                <div className="grid grid-cols-2 gap-6">
+                  <Skeleton className="h-32 w-32 mx-auto rounded-full" />
+                  <div className="space-y-4">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-2 w-full" />
+                    <Skeleton className="h-16 w-full" />
                   </div>
-                  <div className="mt-2">
-                    <span className="text-sm text-muted-foreground">
-                      Chronologisch: {chronoAge}
-                    </span>
-                  </div>
-                  <Badge className="mt-2 bg-emerald-500">
-                    -{chronoAge - bioAge} Jahre
-                  </Badge>
                 </div>
+              ) : bioAge === null ? (
+                // Empty state - no measurements yet
+                <div className="text-center py-8">
+                  <AlertCircle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="font-medium mb-2">Noch keine Bio-Age Messung</h3>
+                  <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+                    Führe einen DunedinPACE Epigenetik-Test durch oder nutze die Proxy-Berechnung 
+                    basierend auf Blutmarkern (HbA1c, hsCRP, Lipide).
+                  </p>
+                  <Link to="/protocol?tab=bioage">
+                    <Button>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Bio-Age hinzufügen
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Bio Age Gauge */}
+                  <div className="text-center">
+                    <div className="relative inline-flex items-center justify-center w-32 h-32">
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="12"
+                          fill="none"
+                          className="text-muted"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="12"
+                          fill="none"
+                          strokeDasharray={`${(bioAge / chronoAge) * 352} 352`}
+                          className={ageDiff !== null && ageDiff > 0 ? "text-emerald-500" : "text-amber-500"}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-3xl font-bold">{bioAge}</span>
+                        <span className="text-xs text-muted-foreground">Jahre</span>
+                      </div>
+                    </div>
+                    <div className="mt-2">
+                      <span className="text-sm text-muted-foreground">
+                        Chronologisch: {chronoAge}
+                      </span>
+                    </div>
+                    {ageDiff !== null && (
+                      <Badge className={ageDiff > 0 ? "mt-2 bg-emerald-500" : "mt-2 bg-amber-500"}>
+                        {ageDiff > 0 ? `-${ageDiff}` : `+${Math.abs(ageDiff)}`} Jahre
+                      </Badge>
+                    )}
+                  </div>
 
-                {/* DunedinPACE */}
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium">DunedinPACE</span>
-                      <span className="text-sm">{dunedinPace}</span>
-                    </div>
-                    <Progress value={(1 - dunedinPace) * 100} className="h-2" />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      &lt;0.85 = langsamer als normal altern
-                    </p>
-                  </div>
-                  
-                  <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                    <Sparkles className="w-4 h-4 inline mr-1 text-purple-500" />
-                    Du alterst ~15% langsamer als der Durchschnitt
+                  {/* DunedinPACE or Interpretation */}
+                  <div className="space-y-4">
+                    {dunedinPace !== null ? (
+                      <>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium">DunedinPACE</span>
+                            <span className="text-sm font-mono">{dunedinPace.toFixed(2)}</span>
+                          </div>
+                          <Progress value={(1 - Math.min(dunedinPace, 1.5) / 1.5) * 100} className="h-2" />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {dunedinPace < 0.85 ? '< 0.85 = langsamer als normal altern' : 
+                             dunedinPace < 1.0 ? '< 1.0 = leicht verlangsamt' : 
+                             '≥ 1.0 = normale oder beschleunigte Alterung'}
+                          </p>
+                        </div>
+                        
+                        <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                          <Sparkles className="w-4 h-4 inline mr-1 text-primary" />
+                          {dunedinPace < 0.85 
+                            ? `Du alterst ~${Math.round((1 - dunedinPace) * 100)}% langsamer als der Durchschnitt`
+                            : dunedinPace < 1.0
+                            ? `Du alterst leicht langsamer als der Durchschnitt`
+                            : `Optimierungspotenzial vorhanden`
+                          }
+                        </div>
+                      </>
+                    ) : (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-sm text-muted-foreground">
+                          Bio-Age basiert auf Proxy-Berechnung (Blutmarker). 
+                          Für genauere Ergebnisse: DunedinPACE Epigenetik-Test durchführen.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
