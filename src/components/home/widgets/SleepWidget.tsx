@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
-import { usePlusData } from '@/hooks/usePlusData';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SleepWidgetProps {
   size: WidgetSize;
@@ -12,13 +13,57 @@ interface SleepWidgetProps {
 
 export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
   const navigate = useNavigate();
-  const { sleepDurationToday } = usePlusData();
+
+  // Fetch sleep data for last 7 days
+  const { data: sleepData } = useQuery({
+    queryKey: ['sleep-weekly'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { todayHours: 0, weeklyAvg: 0, sparkline: [] as number[] };
+      
+      const dates: string[] = [];
+      const today = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        dates.push(d.toISOString().slice(0, 10));
+      }
+      
+      const { data: sleepRecords } = await supabase
+        .from('sleep_tracking')
+        .select('date, sleep_hours')
+        .eq('user_id', user.id)
+        .in('date', dates);
+      
+      // Create a map of date -> hours
+      const sleepMap = new Map<string, number>();
+      sleepRecords?.forEach(r => {
+        sleepMap.set(r.date, Number(r.sleep_hours) || 0);
+      });
+      
+      // Build sparkline (percentage of 8h target)
+      const sparkline = dates.map(d => {
+        const hours = sleepMap.get(d) || 0;
+        return Math.min((hours / 8) * 100, 100);
+      });
+      
+      const todayStr = today.toISOString().slice(0, 10);
+      const todayHours = sleepMap.get(todayStr) || 0;
+      
+      // Calculate weekly average
+      const totalHours = Array.from(sleepMap.values()).reduce((a, b) => a + b, 0);
+      const daysWithData = sleepMap.size;
+      const weeklyAvg = daysWithData > 0 ? totalHours / daysWithData : 0;
+      
+      return { todayHours, weeklyAvg, sparkline };
+    },
+    staleTime: 60000
+  });
   
-  const sleepHours = sleepDurationToday || 0;
-  const sleepStatus = sleepHours >= 7 ? 'good' : sleepHours >= 5 ? 'ok' : 'low';
-  
-  // Fake sparkline data for sleep chart (would come from last 7 days)
-  const sleepSparkline = [40, 60, 30, 80, 50, 70, 90];
+  const sleepHours = sleepData?.todayHours || 0;
+  const weeklyAvg = sleepData?.weeklyAvg || 0;
+  const sleepSparkline = sleepData?.sparkline?.length ? sleepData.sparkline : [0, 0, 0, 0, 0, 0, 0];
+  const sleepStatus = sleepHours >= 7 ? 'good' : sleepHours >= 5 ? 'ok' : sleepHours > 0 ? 'low' : 'none';
 
   const statusColors = {
     good: {
@@ -35,6 +80,11 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
       bg: "bg-destructive/10",
       text: "text-destructive",
       bar: "bg-destructive/40"
+    },
+    none: {
+      bg: "bg-muted",
+      text: "text-muted-foreground",
+      bar: "bg-muted-foreground/20"
     }
   };
 
@@ -88,7 +138,9 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
             <p className="text-xs text-muted-foreground">Heute</p>
           </div>
           <div className="text-right">
-            <p className="text-sm font-medium text-muted-foreground">Ø 7,2h</p>
+            <p className="text-sm font-medium text-muted-foreground">
+              {weeklyAvg > 0 ? `Ø ${weeklyAvg.toFixed(1)}h` : '--'}
+            </p>
             <p className="text-xs text-muted-foreground">Wochenschnitt</p>
           </div>
         </div>
