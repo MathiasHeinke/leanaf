@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, Sparkles, Brain, Activity, Heart, Check, Zap } from 'lucide-react';
+import { Loader2, Sparkles, Brain, Activity, Heart, Check, Zap, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -201,9 +201,10 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
                       href={href} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="text-primary hover:text-primary/80 underline underline-offset-2"
+                      className="text-primary hover:text-primary/80 underline underline-offset-2 inline-flex items-center gap-1"
                     >
                       {children}
+                      <ExternalLink className="w-3 h-3 inline-block flex-shrink-0" />
                     </a>
                   ),
                 }}
@@ -432,7 +433,7 @@ export default function AresChat({
   // NOT when streaming ends - user keeps scroll freedom until next interaction
 
   // Handle send with media support
-  const handleSendWithMedia = useCallback(async (message: string, mediaUrls?: string[]) => {
+  const handleSendWithMedia = useCallback(async (message: string, mediaUrls?: string[], researchPlus?: boolean) => {
     const trimmed = message.trim();
     if (!trimmed && (!mediaUrls || mediaUrls.length === 0)) return;
     if (isStreaming) return;
@@ -456,8 +457,8 @@ export default function AresChat({
     setInput('');
     onMessageSent?.(trimmed);
 
-    // Send to ARES (mediaUrls not yet supported in streaming hook - TODO: extend hook)
-    await sendMessage(trimmed, coachId);
+    // Send to ARES with optional Research Plus flag
+    await sendMessage(trimmed, coachId, researchPlus);
   }, [isStreaming, sendMessage, coachId, onMessageSent, clearChips]);
 
   // Handle chip click
@@ -619,9 +620,9 @@ export default function AresChat({
               </div>
             )}
 
-            {/* Metrics during streaming (optional debug) */}
-            {isStreaming && metrics.firstTokenMs !== null && (
-              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/60">
+            {/* Debug metrics - only in development */}
+            {import.meta.env.DEV && isStreaming && metrics.firstTokenMs !== null && (
+              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/40">
                 <span>⚡ {metrics.firstTokenMs}ms</span>
                 <span>📝 {metrics.totalTokens} tokens</span>
               </div>

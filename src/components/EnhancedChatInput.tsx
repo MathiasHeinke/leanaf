@@ -5,17 +5,19 @@ import {
   Loader2, 
   Mic, 
   MessageSquare,
-  ImagePlus
+  ImagePlus,
+  FlaskConical
 } from 'lucide-react';
 import { useVoiceOverlay } from '@/hooks/useVoiceOverlay';
 import { VoiceOverlay } from '@/components/VoiceOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
+import { cn } from '@/lib/utils';
 
 interface EnhancedChatInputProps {
   inputText: string;
   setInputText: (text: string) => void;
-  onSendMessage: (message: string, mediaUrls?: string[], selectedTool?: string | null) => void;
+  onSendMessage: (message: string, mediaUrls?: string[], researchPlus?: boolean) => void;
   isLoading: boolean;
   placeholder?: string;
   className?: string;
@@ -34,6 +36,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [researchPlusMode, setResearchPlusMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsContainerRef = useRef<HTMLDivElement>(null);
   const { isVoiceOverlayOpen, openVoiceOverlay, closeVoiceOverlay } = useVoiceOverlay();
@@ -111,9 +114,10 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
   const handleSend = useCallback(() => {
     const text = inputText.trim();
     if (!text && attachments.length === 0) return;
-    onSendMessage(text, attachments.length ? attachments : undefined);
+    onSendMessage(text, attachments.length ? attachments : undefined, researchPlusMode);
     setInputText('');
     setAttachments([]);
+    setResearchPlusMode(false); // Reset after sending
   }, [inputText, attachments, onSendMessage, setInputText]);
 
   // Handle key press
@@ -268,6 +272,24 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
               aria-label="Foto oder Datei hinzufügen"
             >
               <ImagePlus className="w-6 h-6" />
+            </Button>
+
+            {/* ③ Research Plus Button */}
+            <Button
+              type="button"
+              variant={researchPlusMode ? "default" : "ghost"}
+              onClick={() => setResearchPlusMode(!researchPlusMode)}
+              disabled={isLoading}
+              className={cn(
+                "w-11 h-11 p-0 transition-all duration-200",
+                researchPlusMode 
+                  ? "bg-primary/20 text-primary ring-2 ring-primary/50 hover:bg-primary/30" 
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-label="Research Plus - Tiefe wissenschaftliche Recherche"
+              title="Research Plus aktivieren"
+            >
+              <FlaskConical className="w-6 h-6" />
             </Button>
 
           </div>

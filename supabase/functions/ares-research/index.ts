@@ -14,6 +14,7 @@ interface ResearchRequest {
   language?: 'de' | 'en';
   maxResults?: number;
   stream?: boolean; // Enable SSE streaming
+  deepResearch?: boolean; // Research Plus mode - uses sonar-deep-research
 }
 
 serve(async (req) => {
@@ -54,7 +55,7 @@ serve(async (req) => {
     }
 
     const body: ResearchRequest = await req.json();
-    const { query, focus, language = 'de', maxResults = 5, stream = true } = body;
+    const { query, focus, language = 'de', maxResults = 5, stream = true, deepResearch = false } = body;
 
     if (!query || query.trim().length < 3) {
       return new Response(
@@ -63,7 +64,11 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[ARES-Research] ${traceId} Query: "${query}", Focus: ${focus || 'general'}, Stream: ${stream}`);
+    // Select model based on deepResearch flag
+    const model = deepResearch ? 'sonar-deep-research' : 'sonar-pro';
+    const searchMode = deepResearch ? 'academic' : undefined;
+    
+    console.log(`[ARES-Research] ${traceId} Query: "${query}", Focus: ${focus || 'general'}, Stream: ${stream}, DeepResearch: ${deepResearch}, Model: ${model}`);
 
     // Build research-optimized prompt
     const focusContext = focus ? getFocusContext(focus) : '';
@@ -91,12 +96,12 @@ serve(async (req) => {
             enqueue({ 
               type: 'research_status', 
               step: 'searching', 
-              message: 'Durchsuche akademische Datenbanken...',
+              message: deepResearch ? 'Durchsuche akademische Datenbanken...' : 'Suche relevante Quellen...',
               complete: false
             });
 
             // Call Perplexity with streaming enabled
-            console.log(`[ARES-Research] ${traceId} Calling Perplexity with stream=true`);
+            console.log(`[ARES-Research] ${traceId} Calling Perplexity with model=${model}, stream=true`);
             const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
               method: 'POST',
               headers: {
@@ -104,13 +109,13 @@ serve(async (req) => {
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                model: 'sonar-deep-research',
+                model: model,
                 messages: [
                   { role: 'system', content: systemPrompt },
                   { role: 'user', content: researchQuery }
                 ],
-                search_mode: 'academic',
-                search_domain_filter: getAcademicDomains(focus),
+                ...(searchMode && { search_mode: searchMode }),
+                ...(deepResearch && { search_domain_filter: getAcademicDomains(focus) }),
                 temperature: 0.1,
                 stream: true, // Enable Perplexity streaming
               }),
@@ -217,13 +222,19 @@ serve(async (req) => {
               complete: true
             });
 
+            // Append formatted citations as Markdown links
+            if (citations.length > 0) {
+              const formattedCitations = formatCitationsAsMarkdown(citations.slice(0, maxResults));
+              enqueue({ type: 'content', delta: formattedCitations });
+            }
+
             // Send done event with metadata
             enqueue({ 
               type: 'done', 
               traceId,
               citations: citations.slice(0, maxResults),
-              model: 'sonar-deep-research',
-              searchMode: 'academic'
+              model: model,
+              searchMode: searchMode || 'default'
             });
 
             console.log(`[ARES-Research] ${traceId} Stream complete - ${citations.length} citations`);
@@ -268,7 +279,7 @@ serve(async (req) => {
     // ═══════════════════════════════════════════════════════════════════════════
     // BLOCKING MODE (legacy fallback)
     // ═══════════════════════════════════════════════════════════════════════════
-    console.log(`[ARES-Research] ${traceId} Using blocking mode`);
+    console.log(`[ARES-Research] ${traceId} Using blocking mode with model=${model}`);
     const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -276,13 +287,13 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'sonar-deep-research',
+        model: model,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: researchQuery }
         ],
-        search_mode: 'academic',
-        search_domain_filter: getAcademicDomains(focus),
+        ...(searchMode && { search_mode: searchMode }),
+        ...(deepResearch && { search_domain_filter: getAcademicDomains(focus) }),
         temperature: 0.1,
       }),
     });
@@ -327,8 +338,8 @@ serve(async (req) => {
       JSON.stringify({
         answer,
         citations: citations.slice(0, maxResults),
-        model: 'sonar-deep-research',
-        searchMode: 'academic'
+        model: model,
+        searchMode: searchMode || 'default'
       }),
       { 
         status: 200, 
@@ -348,9 +359,26 @@ serve(async (req) => {
   }
 });
 
+// Format citations as clickable Markdown links
+function formatCitationsAsMarkdown(citations: string[]): string {
+  if (!citations.length) return '';
+  
+  let markdown = '\n\n---\n\n**📚 Quellen:**\n\n';
+  citations.forEach((url, i) => {
+    try {
+      const domain = new URL(url).hostname.replace('www.', '');
+      markdown += `${i + 1}. [${domain}](${url})\n`;
+    } catch {
+      markdown += `${i + 1}. ${url}\n`;
+    }
+  });
+  
+  return markdown;
+}
+
 function buildResearchSystemPrompt(language: string, focusContext: string): string {
   if (language === 'de') {
-    return `Du bist ein wissenschaftlicher Recherche-Assistent f${'\u00fc'}r ARES, einen Elite-Fitness-Coach.
+    return `Du bist ein wissenschaftlicher Recherche-Assistent für ARES, einen Elite-Fitness-Coach.
 
 AUFGABE:
 - Suche nach aktuellen, peer-reviewed Studien und wissenschaftlicher Evidenz
@@ -358,10 +386,17 @@ AUFGABE:
 - Zitiere konkrete Studien mit Autoren und Jahr
 - Antworte auf Deutsch, auch wenn du auf Englisch suchst
 
-FORMAT:
-1. Kurze Zusammenfassung der Evidenzlage (2-3 S${'\u00e4'}tze)
+FORMATIERUNG (WICHTIG):
+- Verwende **fett** für wichtige Begriffe und Zahlen
+- Gliedere mit Überschriften (## Ergebnis, ## Dosierung, etc.)
+- Nutze Bullet-Points für Aufzählungen
+- Inline-Zitate mit [1], [2] etc.
+
+STRUKTUR:
+1. Kurze Zusammenfassung der Evidenzlage (2-3 Sätze)
 2. Wichtigste Studienergebnisse mit Quellenangabe
-3. Praktische Implikationen f${'\u00fc'}r Training/Ern${'\u00e4'}hrung
+3. Praktische Implikationen für Training/Ernährung
+4. Limitationen (falls relevant)
 
 ${focusContext}
 
@@ -375,10 +410,17 @@ TASK:
 - Prioritize meta-analyses, RCTs, and systematic reviews
 - Cite specific studies with authors and year
 
+FORMATTING (IMPORTANT):
+- Use **bold** for key terms and numbers
+- Structure with headings (## Results, ## Dosage, etc.)
+- Use bullet points for lists
+- Inline citations with [1], [2] etc.
+
 FORMAT:
 1. Brief summary of evidence (2-3 sentences)
 2. Key study findings with citations
 3. Practical implications for training/nutrition
+4. Limitations (if relevant)
 
 ${focusContext}
 
