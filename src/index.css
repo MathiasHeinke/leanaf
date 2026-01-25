@@ -580,3 +580,15 @@
     box-shadow: var(--shadow-card);
   }
 }
+
+/* Streaming text fade-in animation */
+@keyframes fadeInWord {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

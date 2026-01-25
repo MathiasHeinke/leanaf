@@ -61,6 +61,36 @@ function TypingIndicator() {
   );
 }
 
+/**
+ * Streaming text with fade-in effect on new content
+ * Renders the last few words with a fade animation
+ */
+function StreamingTextRenderer({ content }: { content: string }) {
+  // Split into words for fade effect on recent additions
+  const words = content.split(/(\s+)/);
+  const fadeCount = 6; // Number of recent tokens to fade
+  
+  return (
+    <span>
+      {words.map((word, i) => {
+        const isRecent = i >= words.length - fadeCount;
+        return (
+          <span
+            key={i}
+            className={isRecent ? 'animate-fade-in-word' : ''}
+            style={isRecent ? { 
+              animation: 'fadeInWord 0.15s ease-out forwards',
+              opacity: 0 
+            } : undefined}
+          >
+            {word}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 function ThinkingIndicator({ steps }: { steps: ThinkingStep[] }) {
   if (steps.length === 0) return null;
   
@@ -372,22 +402,17 @@ export default function AresChat({
     return () => scrollArea.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Reset scroll lock when streaming ends or new message sent
-  useEffect(() => {
-    if (!isStreaming) {
-      // Small delay to allow final scroll, then reset
-      const timer = setTimeout(() => {
-        userScrolledUpRef.current = false;
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isStreaming]);
+  // Reset scroll lock when NEW message starts (user sends message)
+  // NOT when streaming ends - user keeps scroll freedom until next interaction
 
   // Handle send with media support
   const handleSendWithMedia = useCallback(async (message: string, mediaUrls?: string[]) => {
     const trimmed = message.trim();
     if (!trimmed && (!mediaUrls || mediaUrls.length === 0)) return;
     if (isStreaming) return;
+
+    // Reset scroll lock when user sends new message
+    userScrolledUpRef.current = false;
 
     // Clear choice chips when user sends new message
     clearChips();
@@ -545,30 +570,10 @@ export default function AresChat({
                       </>
                     )}
                     
-                    {/* Streaming content */}
+                    {/* Streaming content with fade-in effect */}
                     {streamState === 'streaming' && streamingContent && (
                       <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown
-                          skipHtml={true}
-                          components={{
-                            p: ({ children }) => <p className="mb-2 last:mb-0 text-foreground">{children}</p>,
-                            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                            ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
-                            a: ({ href, children }) => (
-                              <a 
-                                href={href} 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="text-primary hover:text-primary/80 underline underline-offset-2"
-                              >
-                                {children}
-                              </a>
-                            ),
-                          }}
-                        >
-                          {streamingContent}
-                        </ReactMarkdown>
+                        <StreamingTextRenderer content={streamingContent} />
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
                       </div>
                     )}
