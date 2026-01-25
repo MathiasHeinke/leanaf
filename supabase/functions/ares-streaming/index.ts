@@ -454,10 +454,67 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if message requires tools - redirect to blocking endpoint
+    // Check if message requires tools
     if (requiresToolExecution(text)) {
       const toolReason = getToolExecutionReason(text);
-      console.log('[ARES-STREAM] Message requires tools, redirecting to blocking. Reason:', toolReason);
+      console.log('[ARES-STREAM] Message requires tools. Reason:', toolReason);
+      
+      // RESEARCH: Call ares-research directly and pipe SSE stream through
+      if (toolReason === 'research_scientific_evidence') {
+        console.log('[ARES-STREAM] Research detected - piping ares-research SSE directly');
+        
+        try {
+          const researchResponse = await fetch(`${SUPABASE_URL}/functions/v1/ares-research`, {
+            method: 'POST',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+              'Accept': 'text/event-stream',
+              'X-Trace-Id': traceId,
+            },
+            body: JSON.stringify({
+              query: text,
+              language: 'de',
+              maxResults: 5,
+              userId: userId,
+            }),
+          });
+          
+          if (!researchResponse.ok) {
+            console.error('[ARES-STREAM] Research call failed:', researchResponse.status);
+            return new Response(JSON.stringify({ 
+              error: `Research failed: ${researchResponse.status}`,
+              traceId 
+            }), {
+              status: researchResponse.status,
+              headers: { ...headers, 'Content-Type': 'application/json' }
+            });
+          }
+          
+          // Pipe the SSE stream directly to client
+          return new Response(researchResponse.body, {
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive',
+              'X-Trace-Id': traceId,
+              ...headers
+            }
+          });
+        } catch (researchError) {
+          console.error('[ARES-STREAM] Research error:', researchError);
+          return new Response(JSON.stringify({ 
+            error: researchError instanceof Error ? researchError.message : 'Research failed',
+            traceId 
+          }), {
+            status: 500,
+            headers: { ...headers, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+      
+      // OTHER TOOLS: Redirect to blocking endpoint
+      console.log('[ARES-STREAM] Non-research tool, redirecting to blocking');
       return new Response(JSON.stringify({ 
         redirect: 'blocking', 
         reason: toolReason,
