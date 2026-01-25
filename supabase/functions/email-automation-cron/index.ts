@@ -1,31 +1,41 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.51.0';
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL") ?? "",
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-);
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface User {
+interface OnboardingUser {
+  id: string;
+  user_id: string;
+  sequence_step: number;
+  profiles: {
+    user_id: string;
+    email: string;
+    display_name: string;
+  };
+}
+
+interface InactiveUser {
   user_id: string;
   email: string;
   display_name: string;
-  created_at: string;
+  last_activity: string;
+  last_activity_type?: string;
 }
 
-const handler = async (req: Request): Promise<Response> => {
+Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Starting email automation cron job...');
+    console.log('[email-automation-cron] Starting...');
 
     // Get users for onboarding emails
     await processOnboardingEmails();
@@ -36,31 +46,26 @@ const handler = async (req: Request): Promise<Response> => {
     // Update onboarding sequences
     await updateOnboardingSequences();
 
-    console.log('Email automation cron job completed successfully');
+    console.log('[email-automation-cron] Completed successfully');
 
     return new Response(JSON.stringify({ 
       success: true, 
       message: 'Email automation processed successfully' 
     }), {
       status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
 
-  } catch (error: any) {
-    console.error("Error in email automation cron:", error);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[email-automation-cron] Error:', message);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      }
+      JSON.stringify({ error: message }),
+      { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
     );
   }
-};
+});
 
 async function processOnboardingEmails() {
   const now = new Date();
@@ -77,13 +82,13 @@ async function processOnboardingEmails() {
     .eq('paused', false);
 
   if (error) {
-    console.error('Error fetching onboarding users:', error);
+    console.error('[email-automation-cron] Error fetching onboarding users:', error);
     return;
   }
 
-  console.log(`Processing ${onboardingUsers?.length || 0} onboarding emails`);
+  console.log(`[email-automation-cron] Processing ${onboardingUsers?.length || 0} onboarding emails`);
 
-  for (const user of onboardingUsers || []) {
+  for (const user of (onboardingUsers || []) as OnboardingUser[]) {
     try {
       // Send onboarding email
       const { error: emailError } = await supabase.functions.invoke('send-marketing-email', {
@@ -102,19 +107,20 @@ async function processOnboardingEmails() {
       });
 
       if (emailError) {
-        console.error(`Failed to send onboarding email to ${user.profiles.email}:`, emailError);
+        console.error(`[email-automation-cron] Failed to send onboarding email to ${user.profiles.email}:`, emailError);
         continue;
       }
 
       // Update sequence
       const nextStep = user.sequence_step + 1;
-      let nextEmailAt = null;
+      let nextEmailAt: string | null = null;
       let completed = false;
 
       if (nextStep <= 3) {
         // Schedule next email
         const daysToAdd = nextStep === 2 ? 3 : 7; // Day 3, then week 1
-        nextEmailAt = new Date(now.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+        const nextDate = new Date(now.getTime() + (daysToAdd * 24 * 60 * 60 * 1000));
+        nextEmailAt = nextDate.toISOString();
       } else {
         completed = true;
       }
@@ -123,16 +129,17 @@ async function processOnboardingEmails() {
         .from('onboarding_sequences')
         .update({
           sequence_step: nextStep,
-          next_email_at: nextEmailAt?.toISOString(),
+          next_email_at: nextEmailAt,
           completed,
           updated_at: now.toISOString()
         })
         .eq('id', user.id);
 
-      console.log(`Onboarding email sent to ${user.profiles.email}, step ${user.sequence_step}`);
+      console.log(`[email-automation-cron] Onboarding email sent to ${user.profiles.email}, step ${user.sequence_step}`);
 
     } catch (error) {
-      console.error(`Error processing onboarding for user ${user.user_id}:`, error);
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      console.error(`[email-automation-cron] Error processing onboarding for user ${user.user_id}:`, msg);
     }
   }
 }
@@ -152,13 +159,13 @@ async function processReengagementEmails() {
     });
 
   if (error) {
-    console.error('Error fetching inactive users:', error);
+    console.error('[email-automation-cron] Error fetching inactive users:', error);
     return;
   }
 
-  console.log(`Processing ${inactiveUsers?.length || 0} re-engagement emails`);
+  console.log(`[email-automation-cron] Processing ${inactiveUsers?.length || 0} re-engagement emails`);
 
-  for (const user of inactiveUsers || []) {
+  for (const user of (inactiveUsers || []) as InactiveUser[]) {
     try {
       // Determine days inactive and last activity
       const lastActivityDate = new Date(user.last_activity);
@@ -182,27 +189,26 @@ async function processReengagementEmails() {
       });
 
       if (emailError) {
-        console.error(`Failed to send re-engagement email to ${user.email}:`, emailError);
+        console.error(`[email-automation-cron] Failed to send re-engagement email to ${user.email}:`, emailError);
         continue;
       }
 
-      console.log(`Re-engagement email sent to ${user.email}, ${daysInactive} days inactive`);
+      console.log(`[email-automation-cron] Re-engagement email sent to ${user.email}, ${daysInactive} days inactive`);
 
     } catch (error) {
-      console.error(`Error processing re-engagement for user ${user.user_id}:`, error);
+      const msg = error instanceof Error ? error.message : 'Unknown';
+      console.error(`[email-automation-cron] Error processing re-engagement for user ${user.user_id}:`, msg);
     }
   }
 }
 
 async function updateOnboardingSequences() {
-  const now = new Date();
-  
   // Pause onboarding for active users
   const { error: pauseError } = await supabase
     .rpc('pause_onboarding_for_active_users');
 
   if (pauseError) {
-    console.error('Error pausing onboarding for active users:', pauseError);
+    console.error('[email-automation-cron] Error pausing onboarding for active users:', pauseError);
   }
 
   // Create onboarding sequences for new users
@@ -210,8 +216,6 @@ async function updateOnboardingSequences() {
     .rpc('create_onboarding_sequences_for_new_users');
 
   if (createError) {
-    console.error('Error creating onboarding sequences:', createError);
+    console.error('[email-automation-cron] Error creating onboarding sequences:', createError);
   }
 }
-
-serve(handler);
