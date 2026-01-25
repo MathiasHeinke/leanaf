@@ -15,12 +15,14 @@ interface MacroProgressBarProps {
 
 const MacroProgressBar: React.FC<MacroProgressBarProps> = ({ label, current, goal, color }) => {
   const percent = Math.min((current / goal) * 100, 100);
+  const isOver = current > goal;
   
   const colorClasses: Record<string, string> = {
     emerald: 'bg-emerald-500',
     blue: 'bg-blue-500',
     amber: 'bg-amber-500',
     orange: 'bg-orange-500',
+    purple: 'bg-purple-500',
   };
   
   return (
@@ -31,10 +33,16 @@ const MacroProgressBar: React.FC<MacroProgressBarProps> = ({ label, current, goa
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className={cn("h-full rounded-full", colorClasses[color] || 'bg-primary')}
+          className={cn(
+            "h-full rounded-full",
+            isOver ? "bg-destructive" : (colorClasses[color] || 'bg-primary')
+          )}
         />
       </div>
-      <span className="text-xs font-medium w-16 text-right">{Math.round(current)}/{goal}g</span>
+      <span className={cn(
+        "text-xs font-medium w-16 text-right",
+        isOver && "text-destructive"
+      )}>{Math.round(current)}/{goal}g</span>
     </div>
   );
 };
@@ -80,13 +88,18 @@ export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size }) => {
           </div>
         </div>
         
-        {/* Calorie Progress Bar */}
+        {/* Calorie Progress Bar - Purple, Red when over */}
         <div className="h-2 w-full bg-muted rounded-full overflow-hidden mb-4">
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${caloriePercent}%` }}
             transition={{ duration: 0.6 }}
-            className="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full"
+            className={cn(
+              "h-full rounded-full",
+              calories > calorieGoal 
+                ? "bg-destructive" 
+                : "bg-gradient-to-r from-purple-600 to-violet-400"
+            )}
           />
         </div>
         
