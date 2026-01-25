@@ -1,6 +1,8 @@
 /**
  * Memory Module - Central export point
  * 
+ * ARES 3.0 PRO: Enhanced with semantic memory (pgvector)
+ * 
  * Das Memory Extraction System extrahiert automatisch Erkenntnisse aus User-Nachrichten,
  * speichert sie in der Datenbank und erkennt Muster.
  * 
@@ -11,7 +13,8 @@
  *   saveInsights, 
  *   loadRelevantInsights,
  *   detectPatterns,
- *   runMemoryCleanup
+ *   searchInsightsSemantic,  // ARES 3.0 PRO: Semantic search
+ *   saveInsightWithEmbedding  // ARES 3.0 PRO: Save with embeddings
  * } from '../_shared/memory/index.ts';
  * ```
  */
@@ -24,7 +27,8 @@ export type {
   UserPattern,
   InsightCategory,
   ImportanceLevel,
-  InsightSource
+  InsightSource,
+  SemanticSearchResult  // ARES 3.0 PRO
 } from './types.ts';
 
 export { INSIGHT_CATEGORIES } from './types.ts';
@@ -43,6 +47,16 @@ export {
   formatInsightWithTime,
   buildTimeAwareMemorySection
 } from './memoryStore.ts';
+
+// ARES 3.0 PRO: Semantic Memory (pgvector)
+export {
+  generateEmbedding,
+  searchInsightsSemantic,
+  findSimilarInsights,
+  markInsightsReferenced,
+  supersedeInsight,
+  saveInsightWithEmbedding
+} from './semanticMemory.ts';
 
 // Pattern Detection
 export { 

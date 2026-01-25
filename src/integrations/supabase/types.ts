@@ -7065,18 +7065,23 @@ export type Database = {
           category: string
           confidence: number | null
           created_at: string | null
+          embedding: string | null
           expires_at: string | null
           extracted_at: string | null
           id: string
           importance: string | null
           insight: string
           is_active: boolean | null
+          is_current: boolean | null
+          last_referenced_at: string | null
           last_relevant_at: string | null
           raw_quote: string | null
+          reference_count: number | null
           related_insights: string[] | null
           source: string
           source_id: string | null
           subcategory: string | null
+          superseded_by: string | null
           updated_at: string | null
           user_id: string
         }
@@ -7084,18 +7089,23 @@ export type Database = {
           category: string
           confidence?: number | null
           created_at?: string | null
+          embedding?: string | null
           expires_at?: string | null
           extracted_at?: string | null
           id?: string
           importance?: string | null
           insight: string
           is_active?: boolean | null
+          is_current?: boolean | null
+          last_referenced_at?: string | null
           last_relevant_at?: string | null
           raw_quote?: string | null
+          reference_count?: number | null
           related_insights?: string[] | null
           source: string
           source_id?: string | null
           subcategory?: string | null
+          superseded_by?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -7103,22 +7113,35 @@ export type Database = {
           category?: string
           confidence?: number | null
           created_at?: string | null
+          embedding?: string | null
           expires_at?: string | null
           extracted_at?: string | null
           id?: string
           importance?: string | null
           insight?: string
           is_active?: boolean | null
+          is_current?: boolean | null
+          last_referenced_at?: string | null
           last_relevant_at?: string | null
           raw_quote?: string | null
+          reference_count?: number | null
           related_insights?: string[] | null
           source?: string
           source_id?: string | null
           subcategory?: string | null
+          superseded_by?: string | null
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_insights_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "user_insights"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_medical_profile: {
         Row: {
@@ -8318,6 +8341,19 @@ export type Database = {
         Args: { p_d: string; p_user: string }
         Returns: number
       }
+      find_similar_insights: {
+        Args: {
+          p_category: string
+          p_new_embedding: string
+          p_threshold?: number
+          p_user_id: string
+        }
+        Returns: {
+          id: string
+          insight: string
+          similarity: number
+        }[]
+      }
       get_coach_analytics_7d: { Args: { p_user_id: string }; Returns: Json }
       get_credits_status: { Args: never; Returns: Json }
       get_day_context: {
@@ -8616,6 +8652,24 @@ export type Database = {
           similarity: number
         }[]
       }
+      search_user_insights_semantic: {
+        Args: {
+          p_limit?: number
+          p_query_embedding: string
+          p_similarity_threshold?: number
+          p_user_id: string
+        }
+        Returns: {
+          category: string
+          extracted_at: string
+          id: string
+          importance: string
+          insight: string
+          raw_quote: string
+          similarity: number
+          subcategory: string
+        }[]
+      }
       search_vita_knowledge_hybrid: {
         Args: {
           match_count?: number
@@ -8658,6 +8712,14 @@ export type Database = {
           similarity: number
           title: string
         }[]
+      }
+      supersede_insight: {
+        Args: { p_new_insight_id: string; p_old_insight_id: string }
+        Returns: undefined
+      }
+      update_insight_reference: {
+        Args: { p_insight_ids: string[] }
+        Returns: undefined
       }
       update_user_points_and_level: {
         Args: {
