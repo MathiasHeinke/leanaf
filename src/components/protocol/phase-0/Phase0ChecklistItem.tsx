@@ -13,12 +13,17 @@ import {
   TrendingDown,
   TrendingUp,
   Minus,
-  Info
+  Info,
+  Skull,
+  Heart,
+  Quote
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ItemProgress } from '@/hooks/usePhase0ItemProgress';
 import { Phase0Checklist } from '@/hooks/useProtocolStatus';
 import { useNavigate } from 'react-router-dom';
+import { LIFE_IMPACT_DATA } from './lifeImpactData';
+import { LifeImpactBadge } from './LifeImpactBadge';
 
 interface Phase0ChecklistItemProps {
   item: {
@@ -47,44 +52,61 @@ export function Phase0ChecklistItem({
 }: Phase0ChecklistItemProps) {
   const navigate = useNavigate();
   const Icon = item.icon;
+  
+  // Get extended life impact data
+  const lifeData = LIFE_IMPACT_DATA[item.key];
 
   const getTrendIcon = () => {
     if (!progress?.stats?.trend) return null;
     switch (progress.stats.trend) {
-      case 'down': return <TrendingDown className="w-4 h-4 text-emerald-500" />;
-      case 'up': return <TrendingUp className="w-4 h-4 text-red-500" />;
+      case 'down': return <TrendingDown className="w-4 h-4 text-primary" />;
+      case 'up': return <TrendingUp className="w-4 h-4 text-destructive" />;
       default: return <Minus className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
   const getStatusColor = () => {
-    if (isCompleted) return 'text-emerald-500';
+    if (isCompleted) return 'text-primary';
     if (progress?.status === 'in_progress') return 'text-amber-500';
     return 'text-muted-foreground';
   };
+
+  // Use extended sub-items from life impact data if available
+  const displaySubItems = lifeData?.subItems || progress?.subItems || [];
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <Card className={cn(
         "transition-all",
-        isCompleted && "border-emerald-500/50 bg-emerald-500/5"
+        isCompleted && "border-primary/50 bg-primary/5"
       )}>
         <CollapsibleTrigger asChild>
           <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors pb-3">
             <div className="flex items-center gap-4">
               <div className={cn(
                 "p-2 rounded-lg shrink-0",
-                isCompleted ? "bg-emerald-500/20" : "bg-muted"
+                isCompleted ? "bg-primary/20" : "bg-muted"
               )}>
                 <Icon className={cn(
                   "w-5 h-5",
-                  isCompleted ? "text-emerald-500" : "text-muted-foreground"
+                  isCompleted ? "text-primary" : "text-muted-foreground"
                 )} />
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="text-base">{item.title}</CardTitle>
+                  
+                  {/* Life Impact Badge */}
+                  {lifeData && (
+                    <LifeImpactBadge 
+                      years={lifeData.impact.years}
+                      label={lifeData.impact.label}
+                      color={lifeData.impact.color}
+                      size="sm"
+                    />
+                  )}
+                  
                   {item.autoValidate && (
                     <Badge variant="outline" className="text-xs shrink-0">
                       Auto
@@ -111,7 +133,7 @@ export function Phase0ChecklistItem({
                       value={progress.progress} 
                       className={cn(
                         "h-1.5",
-                        isCompleted && "[&>div]:bg-emerald-500"
+                        isCompleted && "[&>div]:bg-primary"
                       )}
                     />
                   </div>
@@ -120,8 +142,8 @@ export function Phase0ChecklistItem({
               
               <div className="flex items-center gap-2 shrink-0">
                 {isCompleted ? (
-                  <div className="p-1 rounded-full bg-emerald-500">
-                    <Check className="w-4 h-4 text-white" />
+                  <div className="p-1 rounded-full bg-primary">
+                    <Check className="w-4 h-4 text-primary-foreground" />
                   </div>
                 ) : (
                   <div className="p-1 rounded-full bg-muted">
@@ -140,12 +162,54 @@ export function Phase0ChecklistItem({
         <CollapsibleContent>
           <CardContent className="pt-0">
             <div className="border-t pt-4 space-y-4">
-              {/* Explanation */}
-              {progress && (
-                <div className="flex gap-2 p-3 rounded-lg bg-muted/50">
-                  <Info className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                  <p className="text-sm text-muted-foreground">
-                    {progress.explanation}
+              
+              {/* Life Impact Warning Section */}
+              {lifeData && lifeData.impact.years !== 0 && (
+                <div className={cn(
+                  "p-3 rounded-lg border",
+                  lifeData.impact.years < 0 
+                    ? "bg-destructive/10 border-destructive/30" 
+                    : "bg-primary/10 border-primary/30"
+                )}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {lifeData.impact.years < 0 ? (
+                      <Skull className="w-4 h-4 text-destructive" />
+                    ) : (
+                      <Heart className="w-4 h-4 text-primary" />
+                    )}
+                    <span className={cn(
+                      "text-sm font-semibold",
+                      lifeData.impact.years < 0 ? "text-destructive" : "text-primary"
+                    )}>
+                      LEBENSZEIT-IMPACT: {lifeData.impact.label}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Scientific "Why" Section */}
+              {lifeData && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{lifeData.whyTitle}</span>
+                  </div>
+                  <ul className="space-y-1.5 pl-6">
+                    {lifeData.whyContent.map((content, idx) => (
+                      <li key={idx} className="text-sm text-muted-foreground list-disc">
+                        {content}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* ARES Quote */}
+              {lifeData?.aresQuote && (
+                <div className="flex gap-2 p-3 rounded-lg bg-muted/50 border-l-2 border-amber-500">
+                  <Quote className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <p className="text-sm italic text-muted-foreground">
+                    "{lifeData.aresQuote}"
                   </p>
                 </div>
               )}
@@ -167,7 +231,7 @@ export function Phase0ChecklistItem({
                       <div className="text-xs text-muted-foreground">Durchschnitt</div>
                       <div className={cn(
                         "text-lg font-semibold",
-                        progress.stats.average >= progress.stats.targetValue ? "text-emerald-500" : "text-amber-500"
+                        progress.stats.average >= progress.stats.targetValue ? "text-primary" : "text-amber-500"
                       )}>
                         {progress.stats.average}
                         <span className="text-sm text-muted-foreground">
@@ -190,8 +254,8 @@ export function Phase0ChecklistItem({
                       <div className="text-xs text-muted-foreground">Trend</div>
                       <div className={cn(
                         "text-lg font-semibold flex items-center gap-1",
-                        progress.stats.trend === 'down' ? "text-emerald-500" : 
-                        progress.stats.trend === 'up' ? "text-red-500" : "text-muted-foreground"
+                        progress.stats.trend === 'down' ? "text-primary" : 
+                        progress.stats.trend === 'up' ? "text-destructive" : "text-muted-foreground"
                       )}>
                         {progress.stats.trend === 'down' ? '↓ Fallend' : 
                          progress.stats.trend === 'up' ? '↑ Steigend' : '→ Stabil'}
@@ -201,57 +265,64 @@ export function Phase0ChecklistItem({
                 </div>
               )}
 
-              {/* Sub-items checklist */}
-              {progress?.subItems && progress.subItems.length > 0 && (
+              {/* Sub-items checklist - Using extended data */}
+              {displaySubItems.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">
                     {item.autoValidate ? 'Status der Teilziele:' : 'Bestätige diese Punkte:'}
                   </p>
-                  {progress.subItems.map((subItem, idx) => (
-                    <div 
-                      key={idx} 
-                      className={cn(
-                        "flex items-start gap-3 p-2 rounded-lg transition-colors",
-                        subItem.completed ? "bg-emerald-500/10" : "bg-muted/30"
-                      )}
-                    >
-                      {item.autoValidate ? (
-                        <div className={cn(
-                          "mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0",
-                          subItem.completed ? "bg-emerald-500" : "bg-muted"
-                        )}>
-                          {subItem.completed ? (
-                            <Check className="w-3 h-3 text-white" />
-                          ) : (
-                            <X className="w-3 h-3 text-muted-foreground" />
+                  {displaySubItems.map((subItem, idx) => {
+                    // For manual items, check if all are completed based on parent completion
+                    const isSubCompleted = item.autoValidate 
+                      ? (progress?.subItems?.[idx]?.completed ?? false)
+                      : isCompleted;
+                    
+                    return (
+                      <div 
+                        key={idx} 
+                        className={cn(
+                          "flex items-start gap-3 p-2 rounded-lg transition-colors",
+                          isSubCompleted ? "bg-primary/10" : "bg-muted/30"
+                        )}
+                      >
+                        {item.autoValidate ? (
+                          <div className={cn(
+                            "mt-0.5 w-4 h-4 rounded-full flex items-center justify-center shrink-0",
+                            isSubCompleted ? "bg-primary" : "bg-muted"
+                          )}>
+                            {isSubCompleted ? (
+                              <Check className="w-3 h-3 text-primary-foreground" />
+                            ) : (
+                              <X className="w-3 h-3 text-muted-foreground" />
+                            )}
+                          </div>
+                        ) : (
+                          <Checkbox 
+                            id={`${item.key}-${idx}`}
+                            checked={isCompleted}
+                            className="mt-0.5"
+                            disabled={isCompleted}
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <label 
+                            htmlFor={`${item.key}-${idx}`}
+                            className={cn(
+                              "text-sm cursor-pointer block",
+                              isSubCompleted && "text-primary"
+                            )}
+                          >
+                            {subItem.label}
+                          </label>
+                          {subItem.explanation && (
+                            <span className="text-xs text-muted-foreground">
+                              {subItem.explanation}
+                            </span>
                           )}
                         </div>
-                      ) : (
-                        <Checkbox 
-                          id={`${item.key}-${idx}`}
-                          checked={isCompleted}
-                          className="mt-0.5"
-                          disabled={isCompleted}
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <label 
-                          htmlFor={`${item.key}-${idx}`}
-                          className={cn(
-                            "text-sm cursor-pointer block",
-                            subItem.completed && "text-emerald-600 dark:text-emerald-400"
-                          )}
-                        >
-                          {subItem.label}
-                        </label>
-                        {subItem.explanation && (
-                          <span className="text-xs text-muted-foreground">
-                            {subItem.explanation}
-                          </span>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -265,7 +336,7 @@ export function Phase0ChecklistItem({
                         Validiere aus deinen Daten...
                       </div>
                     ) : isCompleted ? (
-                      <div className="flex items-center gap-2 text-sm text-emerald-500">
+                      <div className="flex items-center gap-2 text-sm text-primary">
                         <Check className="w-4 h-4" />
                         Automatisch validiert ✓
                       </div>

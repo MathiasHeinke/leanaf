@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useProtocolStatus, Phase0Checklist as Phase0ChecklistType } from '@/hooks/useProtocolStatus';
 import { usePhase0ItemProgress } from '@/hooks/usePhase0ItemProgress';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { 
-  AlertTriangle,
+  Skull,
   Cigarette,
   Moon,
   Sparkles,
@@ -16,10 +14,10 @@ import {
   Dumbbell,
   TrendingDown,
   TestTube,
-  Rocket
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Phase0ChecklistItem } from './Phase0ChecklistItem';
+import { PHASE0_INTRO } from './lifeImpactData';
 
 interface CheckItem {
   key: keyof Phase0ChecklistType;
@@ -213,17 +211,33 @@ export function Phase0Checklist() {
 
   return (
     <div className="space-y-4">
-      {/* Intro Card */}
-      <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
-            Via Negativa: Erst entfernen, was schadet
-          </CardTitle>
-          <CardDescription>
-            Bevor du optimierst, musst du das Fundament legen. Ein Haus baut man nicht auf Treibsand.
-            Diese 8 Punkte sind nicht verhandelbar.
+      {/* Intro Card - ARES Mentality */}
+      <Card className="bg-gradient-to-br from-destructive/10 via-amber-500/10 to-orange-500/10 border-destructive/30">
+        <CardHeader className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-destructive/20">
+              <Skull className="w-6 h-6 text-destructive" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">{PHASE0_INTRO.title}</CardTitle>
+              <p className="text-sm text-muted-foreground">{PHASE0_INTRO.subtitle}</p>
+            </div>
+          </div>
+          
+          {/* Multiplier Formula */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-background/50 border border-border font-mono text-sm">
+            <span className="text-destructive">{PHASE0_INTRO.formula}</span>
+          </div>
+          
+          {/* Main Quote */}
+          <CardDescription className="text-sm leading-relaxed">
+            <span className="font-semibold text-foreground">{PHASE0_INTRO.mainQuote}</span>
           </CardDescription>
+          
+          {/* Warning Quote */}
+          <p className="text-xs text-muted-foreground italic border-l-2 border-amber-500/50 pl-3">
+            "{PHASE0_INTRO.warningQuote}"
+          </p>
         </CardHeader>
       </Card>
 
