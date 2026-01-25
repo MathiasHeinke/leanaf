@@ -1,6 +1,6 @@
 /**
- * AresHome - Premium Apple-like Homescreen
- * The new main entry point with XP beam, focus card, and chat overlay
+ * AresHome - Premium Sci-Fi Cockpit
+ * Dynamic action cards, live metrics, and contextual AI chat
  */
 
 import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
@@ -8,10 +8,8 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePointsSystem } from '@/hooks/usePointsSystem';
 import { useBioAge } from '@/hooks/useBioAge';
-import { useProtocolStatus } from '@/hooks/useProtocolStatus';
 import { usePlusData } from '@/hooks/usePlusData';
 import { useAresGreeting } from '@/hooks/useAresGreeting';
-import { useDailyFocus } from '@/hooks/useDailyFocus';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useGlobalMealInput } from '@/hooks/useGlobalMealInput';
 import { useFrequentMeals, type Daypart } from '@/hooks/useFrequentMeals';
@@ -20,8 +18,8 @@ import { ExperienceBeam } from '@/components/home/ExperienceBeam';
 import { AresTopNav } from '@/components/home/AresTopNav';
 import { AresGreeting } from '@/components/home/AresGreeting';
 import { BioAgeBadge } from '@/components/home/BioAgeBadge';
-import { DynamicFocusCard } from '@/components/home/DynamicFocusCard';
-import { BentoStatsGrid } from '@/components/home/BentoStatsGrid';
+import { ActionCardStack } from '@/components/home/ActionCardStack';
+import { MetricWidgetGrid } from '@/components/home/MetricWidgetGrid';
 import { FloatingDock } from '@/components/home/FloatingDock';
 import { ChatOverlay } from '@/components/home/ChatOverlay';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,6 +35,7 @@ export default function AresHome() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [showChat, setShowChat] = useState(false);
+  const [chatContext, setChatContext] = useState<string | null>(null);
   const [mealOpen, setMealOpen] = useState(false);
 
   // Meal input hook (same as Dashboard)
@@ -74,11 +73,15 @@ export default function AresHome() {
   // Data hooks
   const { userPoints } = usePointsSystem();
   const { latestMeasurement } = useBioAge();
-  const { status: protocolStatus, phase0Progress } = useProtocolStatus();
   const plusData = usePlusData();
   const { userName, streak } = useAresGreeting();
-  const { focusTask } = useDailyFocus();
   const { profileData } = useUserProfile();
+
+  // Chat context trigger from action cards
+  const handleActionTrigger = useCallback((context: string) => {
+    setChatContext(context);
+    setTimeout(() => setShowChat(true), 150);
+  }, []);
 
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
@@ -159,9 +162,6 @@ export default function AresHome() {
   const bioAge = latestMeasurement?.calculated_bio_age || null;
   const realAge = latestMeasurement?.chronological_age || null;
 
-  // Nutrition from plusData
-  const todaySummary = plusData.today;
-  const goals = plusData.goals;
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
@@ -193,41 +193,16 @@ export default function AresHome() {
           />
         </div>
 
-        {/* Hero: Dynamic Focus Card */}
-        <DynamicFocusCard 
-          task={focusTask} 
-          onInteract={() => setShowChat(true)} 
-        />
+        {/* Action Card Stack - Tinder-style prioritized cards */}
+        <ActionCardStack onTriggerChat={handleActionTrigger} />
 
-        {/* Bento Stats Grid */}
-        <BentoStatsGrid 
-          calories={{
-            current: todaySummary?.total_calories || 0,
-            target: goals?.calories || 2000
-          }}
-          protein={{
-            current: todaySummary?.total_protein || 0,
-            target: goals?.protein || 150
-          }}
-          carbs={{
-            current: todaySummary?.total_carbs || 0,
-            target: goals?.carbs || 200
-          }}
-          fats={{
-            current: todaySummary?.total_fats || 0,
-            target: goals?.fats || 65
-          }}
-          protocolPhase={protocolStatus?.current_phase || 0}
-          protocolProgress={{
-            completed: phase0Progress || 0,
-            total: 9
-          }}
-          weeklyWorkouts={{
-            completed: plusData.workoutLoggedToday ? 1 : 0,
-            target: 4
-          }}
-          onNavigateToDashboard={() => navigate('/dashboard')}
-        />
+        {/* Live Metrics Section */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+            Live Metriken
+          </h3>
+          <MetricWidgetGrid />
+        </div>
       </main>
 
       {/* Floating Dock */}
@@ -427,10 +402,14 @@ export default function AresHome() {
         />
       )}
 
-      {/* Chat Overlay */}
+      {/* Chat Overlay with Context */}
       <ChatOverlay 
         isOpen={showChat} 
-        onClose={() => setShowChat(false)} 
+        onClose={() => { 
+          setShowChat(false); 
+          setChatContext(null); 
+        }}
+        initialContext={chatContext}
       />
     </div>
   );
