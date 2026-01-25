@@ -40,6 +40,7 @@ export default function AresHome() {
   const { user, loading: authLoading } = useAuth();
   const [showChat, setShowChat] = useState(false);
   const [chatContext, setChatContext] = useState<string | null>(null);
+  const [chatPrompt, setChatPrompt] = useState<string | null>(null);  // Direct prompt with metrics
   const [mealOpen, setMealOpen] = useState(false);
   const [showStats, setShowStats] = useState(false);
 
@@ -83,8 +84,20 @@ export default function AresHome() {
   const { profileData } = useUserProfile();
 
   // Chat context trigger from action cards
-  const handleActionTrigger = useCallback((context: string) => {
-    setChatContext(context);
+  const handleActionTrigger = useCallback((contextOrPrompt: string) => {
+    // Detect if this is a direct prompt (contains metrics) or a context key
+    const isDirectPrompt = contextOrPrompt.includes('kcal') || 
+                           contextOrPrompt.includes('Analysiere') || 
+                           contextOrPrompt.includes('METRIKEN') ||
+                           contextOrPrompt.length > 100;
+    
+    if (isDirectPrompt) {
+      setChatPrompt(contextOrPrompt);
+      setChatContext(null);
+    } else {
+      setChatContext(contextOrPrompt);
+      setChatPrompt(null);
+    }
     setTimeout(() => setShowChat(true), 150);
   }, []);
 
@@ -557,9 +570,11 @@ export default function AresHome() {
         isOpen={showChat} 
         onClose={() => { 
           setShowChat(false); 
-          setChatContext(null); 
+          setChatContext(null);
+          setChatPrompt(null);
         }}
         initialContext={chatContext}
+        initialPrompt={chatPrompt}
       />
     </div>
   );

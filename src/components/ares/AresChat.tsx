@@ -44,6 +44,7 @@ interface AresChatProps {
   userId: string;
   coachId?: string;
   initialMessages?: Message[];
+  autoStartPrompt?: string;  // Auto-send this prompt on mount
   onMessageSent?: (message: string) => void;
   onResponseReceived?: (response: string, traceId: string | null) => void;
   onXPAwarded?: (xp: number, toolsUsed: string[]) => void;
@@ -237,6 +238,7 @@ export default function AresChat({
   userId,
   coachId = 'ares',
   initialMessages = [],
+  autoStartPrompt,
   onMessageSent,
   onResponseReceived,
   onXPAwarded,
@@ -249,6 +251,7 @@ export default function AresChat({
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [lastXPGain, setLastXPGain] = useState<{ amount: number; timestamp: number } | null>(null);
+  const [hasAutoSent, setHasAutoSent] = useState(false);  // Prevent double auto-send
 
   // Refs
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -410,6 +413,19 @@ export default function AresChat({
 
   // Reset scroll lock when NEW message starts (user sends message)
   // NOT when streaming ends - user keeps scroll freedom until next interaction
+
+  // Auto-send prompt when provided (e.g., from action cards with metrics)
+  useEffect(() => {
+    if (autoStartPrompt && historyLoaded && !hasAutoSent && !isStreaming) {
+      // Delay slightly for UX - let the UI settle first
+      const timer = setTimeout(() => {
+        console.log('[AresChat] Auto-sending prompt:', autoStartPrompt.substring(0, 50) + '...');
+        handleSendWithMedia(autoStartPrompt);
+        setHasAutoSent(true);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [autoStartPrompt, historyLoaded, hasAutoSent, isStreaming]);
 
   // Handle send with media support
   const handleSendWithMedia = useCallback(async (message: string, mediaUrls?: string[], researchPlus?: boolean) => {

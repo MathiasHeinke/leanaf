@@ -16,6 +16,7 @@ interface ChatOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   initialContext?: string | null;
+  initialPrompt?: string | null;  // Direct prompt with metrics
 }
 
 // Context prompts for AI - triggered by action cards
@@ -31,7 +32,8 @@ const CONTEXT_PROMPTS: Record<string, string> = {
 export const ChatOverlay: React.FC<ChatOverlayProps> = ({ 
   isOpen, 
   onClose, 
-  initialContext 
+  initialContext,
+  initialPrompt
 }) => {
   const { user } = useAuth();
   const aresCoach = COACH_REGISTRY.ares;
@@ -82,8 +84,9 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
 
   if (!user) return null;
 
-  // Get the initial message based on context
-  const contextPrompt = initialContext ? CONTEXT_PROMPTS[initialContext] : undefined;
+  // Get the prompt - prefer direct prompt, fallback to context lookup
+  const autoStartPrompt = initialPrompt || (initialContext ? CONTEXT_PROMPTS[initialContext] : undefined);
+  const hasAutoStart = Boolean(autoStartPrompt);
 
   return (
     <AnimatePresence>
@@ -126,7 +129,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                 <div>
                   <h2 className="text-base font-semibold text-foreground">ARES</h2>
                   <p className="text-[11px] text-muted-foreground">
-                    {initialContext ? 'Hat eine Erkenntnis...' : 'Dein Coach • Online'}
+                    {hasAutoStart ? 'Hat eine Erkenntnis...' : 'Dein Coach • Online'}
                   </p>
                 </div>
               </div>
@@ -144,6 +147,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
               <AresChat 
                 userId={user.id}
                 coachId="ares"
+                autoStartPrompt={autoStartPrompt}
                 className="h-full"
               />
             </div>
