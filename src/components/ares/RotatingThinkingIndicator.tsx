@@ -4,10 +4,10 @@
  * Transforms technical backend steps into a cognitive "thought stream"
  * with smooth animations and human-readable messages.
  * 
- * @version 1.0.0
+ * @version 1.1.0 - Fixed layout clipping, added minimum display time
  */
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BrainCircuit, 
@@ -63,36 +63,66 @@ const COGNITIVE_MAPPING: Record<string, { text: string; icon: React.ComponentTyp
   'citing':     { text: "Prüfe Quellen...", icon: Search },
 };
 
+// Minimum display time per step (ms)
+const MIN_STEP_DISPLAY_TIME = 800;
+
 export const RotatingThinkingIndicator: React.FC<Props> = ({ steps }) => {
+  const [displayedStep, setDisplayedStep] = useState<ThinkingStep | null>(null);
+  const lastChangeRef = useRef<number>(0);
+
   // Sortiere nach kognitiver Reihenfolge
   const sortedSteps = [...steps]
     .filter(s => COGNITIVE_ORDER[s.step] !== undefined)
     .sort((a, b) => (COGNITIVE_ORDER[a.step] ?? 99) - (COGNITIVE_ORDER[b.step] ?? 99));
 
-  // Zeige den aktuell aktiven Step (nicht-complete) oder den letzten
+  // Aktueller Step (nicht-complete) oder letzter
   const currentStep = sortedSteps.find(s => !s.complete) || sortedSteps[sortedSteps.length - 1];
 
-  if (!currentStep) return null;
+  // Debounced Step-Wechsel (mindestens 800ms pro Step sichtbar)
+  useEffect(() => {
+    if (!currentStep) return;
+    if (displayedStep?.step === currentStep.step) return;
 
-  const mapping = COGNITIVE_MAPPING[currentStep.step] || { text: currentStep.message, icon: BrainCircuit };
+    const elapsed = Date.now() - lastChangeRef.current;
+    const delay = Math.max(0, MIN_STEP_DISPLAY_TIME - elapsed);
+
+    const timeout = setTimeout(() => {
+      setDisplayedStep(currentStep);
+      lastChangeRef.current = Date.now();
+    }, delay);
+
+    return () => clearTimeout(timeout);
+  }, [currentStep, displayedStep]);
+
+  // Initial step sofort anzeigen
+  useEffect(() => {
+    if (!displayedStep && currentStep) {
+      setDisplayedStep(currentStep);
+      lastChangeRef.current = Date.now();
+    }
+  }, [currentStep, displayedStep]);
+
+  if (!displayedStep) return null;
+
+  const mapping = COGNITIVE_MAPPING[displayedStep.step] || { text: displayedStep.message, icon: BrainCircuit };
   const Icon = mapping.icon;
 
   return (
     <div className="flex flex-col items-start gap-2 py-1">
       
-      {/* Der "Gedanken-Ticker" */}
-      <div className="flex items-center gap-3 h-6 overflow-hidden relative w-full">
+      {/* Der "Gedanken-Ticker" - Kein overflow-hidden, kein absolute */}
+      <div className="flex items-center gap-3 min-h-[28px] w-full">
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentStep.step}
-            initial={{ y: 15, opacity: 0, filter: 'blur(4px)' }}
+            key={displayedStep.step}
+            initial={{ y: 12, opacity: 0, filter: 'blur(3px)' }}
             animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
-            exit={{ y: -15, opacity: 0, filter: 'blur(4px)' }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="flex items-center gap-2 absolute left-0"
+            exit={{ y: -12, opacity: 0, filter: 'blur(3px)' }}
+            transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+            className="flex items-center gap-2"
           >
-            <Icon className="w-4 h-4 animate-pulse text-primary/70" />
-            <span className="text-sm font-medium tracking-wide text-muted-foreground">
+            <Icon className="w-4 h-4 animate-pulse text-primary/70 flex-shrink-0" />
+            <span className="text-sm font-medium tracking-wide text-muted-foreground whitespace-nowrap">
               {mapping.text}
             </span>
           </motion.div>
@@ -106,11 +136,11 @@ export const RotatingThinkingIndicator: React.FC<Props> = ({ steps }) => {
             key={step.step}
             initial={false}
             animate={{
-              scale: step.step === currentStep.step ? 1.3 : 1,
-              opacity: step.complete ? 0.6 : (step.step === currentStep.step ? 1 : 0.2),
+              scale: step.step === displayedStep.step ? 1.3 : 1,
+              opacity: step.complete ? 0.6 : (step.step === displayedStep.step ? 1 : 0.2),
             }}
             className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${
-              step.complete ? 'bg-primary' : (step.step === currentStep.step ? 'bg-primary/80' : 'bg-muted-foreground/30')
+              step.complete ? 'bg-primary' : (step.step === displayedStep.step ? 'bg-primary/80' : 'bg-muted-foreground/30')
             }`}
           />
         ))}
