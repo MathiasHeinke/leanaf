@@ -10,6 +10,7 @@ interface ExperienceBeamProps {
   currentXP: number;
   maxXP: number;
   level: number;
+  onIndicatorClick?: () => void;
 }
 
 interface Particle {
@@ -21,7 +22,8 @@ interface Particle {
 export const ExperienceBeam: React.FC<ExperienceBeamProps> = ({ 
   currentXP, 
   maxXP, 
-  level 
+  level,
+  onIndicatorClick 
 }) => {
   const [particles, setParticles] = useState<Particle[]>([]);
   const [prevXP, setPrevXP] = useState(currentXP);
@@ -93,17 +95,21 @@ export const ExperienceBeam: React.FC<ExperienceBeamProps> = ({
           />
         </motion.div>
         
-        {/* Glowing Head (at the tip) */}
-        <motion.div
-          className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full pointer-events-none"
+        {/* Glowing Head (at the tip) - Clickable for Stats */}
+        <motion.button
+          onClick={onIndicatorClick}
+          whileTap={{ scale: 0.85 }}
+          whileHover={{ scale: 1.3 }}
+          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full cursor-pointer z-10"
           style={{
             background: 'white',
-            boxShadow: '0 0 8px rgba(255,255,255,1), 0 0 16px hsl(var(--primary) / 0.8)',
-            left: `calc(${percentage}% - 4px)`,
+            boxShadow: '0 0 10px rgba(255,255,255,1), 0 0 20px hsl(var(--primary) / 0.9)',
+            left: `calc(${percentage}% - 6px)`,
           }}
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
+          aria-label="Statistiken anzeigen"
         />
 
         {/* Particle Emitter */}
