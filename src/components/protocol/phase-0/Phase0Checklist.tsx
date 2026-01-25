@@ -93,10 +93,7 @@ export function Phase0Checklist() {
   const { user } = useAuth();
   const { 
     status, 
-    phase0Progress, 
-    canUnlockPhase1, 
     updatePhase0Check,
-    unlockPhase1 
   } = useProtocolStatus();
   
   const { itemProgress, loading: progressLoading } = usePhase0ItemProgress(status?.phase_0_checklist || null);
@@ -210,13 +207,6 @@ export function Phase0Checklist() {
     }
   };
 
-  const handleUnlock = async () => {
-    const success = await unlockPhase1();
-    if (success) {
-      // Could trigger celebration animation here
-    }
-  };
-
   if (!status) return null;
 
   const checklist = status.phase_0_checklist;
@@ -236,24 +226,6 @@ export function Phase0Checklist() {
           </CardDescription>
         </CardHeader>
       </Card>
-
-      {/* Progress */}
-      <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-        <div className="flex-1">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Fortschritt Phase 0</span>
-            <span className="text-sm text-muted-foreground">{phase0Progress}/8</span>
-          </div>
-          <Progress value={(phase0Progress / 8) * 100} />
-        </div>
-        
-        {canUnlockPhase1 && (
-          <Button onClick={handleUnlock} className="shrink-0">
-            <Rocket className="w-4 h-4 mr-2" />
-            Phase 1 starten
-          </Button>
-        )}
-      </div>
 
       {/* Checklist Items */}
       <div className="space-y-3">
