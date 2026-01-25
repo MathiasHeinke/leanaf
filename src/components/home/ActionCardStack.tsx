@@ -18,9 +18,12 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
   const [cards, setCards] = useState<ActionCard[]>(initialCards);
   const [exitDirection, setExitDirection] = useState<'left' | 'right'>('right');
 
-  // Sync cards when hook data changes
+  // Sync cards when hook data changes (only when initialCards reference changes)
   React.useEffect(() => {
-    setCards(initialCards);
+    if (JSON.stringify(initialCards) !== JSON.stringify(cards)) {
+      setCards(initialCards);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCards]);
 
   const handleDismiss = (direction: 'left' | 'right' = 'right') => {

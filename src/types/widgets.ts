@@ -53,7 +53,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'protocol', 
     label: 'ARES Protokoll', 
     description: 'Phase & Fortschritt', 
-    availableSizes: ['small', 'medium'], 
+    availableSizes: ['small', 'medium', 'large', 'wide'], 
     defaultSize: 'medium', 
     icon: Brain 
   },
@@ -61,7 +61,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'training', 
     label: 'Training', 
     description: 'Workouts pro Woche', 
-    availableSizes: ['small', 'medium'], 
+    availableSizes: ['small', 'medium', 'large', 'wide'], 
     defaultSize: 'medium', 
     icon: Dumbbell 
   },
@@ -77,7 +77,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'weight', 
     label: 'Gewicht', 
     description: 'Aktuelles Gewicht', 
-    availableSizes: ['small', 'medium'], 
+    availableSizes: ['small', 'medium', 'large', 'wide'], 
     defaultSize: 'small', 
     icon: Scale 
   },
@@ -85,7 +85,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'hrv', 
     label: 'HRV', 
     description: 'Herzratenvariabilität', 
-    availableSizes: ['small', 'medium'], 
+    availableSizes: ['small', 'medium', 'large', 'wide'], 
     defaultSize: 'small', 
     icon: Activity 
   },
@@ -93,7 +93,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'supplements', 
     label: 'Supplements', 
     description: 'Einnahme heute', 
-    availableSizes: ['small', 'medium'], 
+    availableSizes: ['small', 'medium', 'large', 'wide'], 
     defaultSize: 'small', 
     icon: Pill 
   },
@@ -101,7 +101,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'bio_age', 
     label: 'Bio-Alter', 
     description: 'Biologisches Alter', 
-    availableSizes: ['small', 'medium'], 
+    availableSizes: ['small', 'medium', 'large', 'wide'], 
     defaultSize: 'small', 
     icon: Heart 
   },
@@ -117,4 +117,5 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: '6', type: 'weight', size: 'small', enabled: true, order: 5 },
   { id: '7', type: 'hrv', size: 'small', enabled: false, order: 6 },
   { id: '8', type: 'supplements', size: 'small', enabled: false, order: 7 },
+  { id: '9', type: 'bio_age', size: 'small', enabled: false, order: 8 },
 ];
