@@ -38,7 +38,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     fetch: (url, options = {}) => {
       const isEdgeFunction = url.includes('/functions/v1/');
       const isStorageApi = url.includes('/storage/v1/');
-      const timeout = isEdgeFunction ? 45000 : 10000; // 45s for edge functions, 10s for others
+      // 3min for research/orchestrator (deep research can take 1-3min), 45s for other edge functions
+      const isLongRunningRequest = url.includes('ares-research') || url.includes('coach-orchestrator');
+      const timeout = isLongRunningRequest ? 180000 : (isEdgeFunction ? 45000 : 10000);
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout);
       

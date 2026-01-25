@@ -1,4 +1,4 @@
-// ARES Research - Perplexity-powered Scientific Research
+// ARES Research - Perplexity-powered Scientific Research with SSE Streaming
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -13,13 +13,7 @@ interface ResearchRequest {
   focus?: 'peptides' | 'nutrition' | 'training' | 'supplements' | 'longevity' | 'hormones';
   language?: 'de' | 'en';
   maxResults?: number;
-}
-
-interface ResearchResult {
-  answer: string;
-  citations: string[];
-  model: string;
-  searchMode: string;
+  stream?: boolean; // Enable SSE streaming
 }
 
 serve(async (req) => {
@@ -60,7 +54,7 @@ serve(async (req) => {
     }
 
     const body: ResearchRequest = await req.json();
-    const { query, focus, language = 'de', maxResults = 5 } = body;
+    const { query, focus, language = 'de', maxResults = 5, stream = true } = body;
 
     if (!query || query.trim().length < 3) {
       return new Response(
@@ -69,7 +63,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[ARES-Research] ${traceId} Query: "${query}", Focus: ${focus || 'general'}`);
+    console.log(`[ARES-Research] ${traceId} Query: "${query}", Focus: ${focus || 'general'}, Stream: ${stream}`);
 
     // Build research-optimized prompt
     const focusContext = focus ? getFocusContext(focus) : '';
@@ -80,8 +74,201 @@ serve(async (req) => {
       ? `${query} (translate to English for search, respond in German)`
       : query;
 
-    // Call Perplexity with Deep Research for academic analysis
-    console.log(`[ARES-Research] ${traceId} Using sonar-deep-research for comprehensive analysis`);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SSE STREAMING MODE (preferred)
+    // ═══════════════════════════════════════════════════════════════════════════
+    if (stream) {
+      const encoder = new TextEncoder();
+      
+      const readableStream = new ReadableStream({
+        async start(controller) {
+          const enqueue = (data: Record<string, unknown>) => {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          };
+
+          try {
+            // Status: Searching
+            enqueue({ 
+              type: 'research_status', 
+              step: 'searching', 
+              message: 'Durchsuche akademische Datenbanken...',
+              complete: false
+            });
+
+            // Call Perplexity with streaming enabled
+            console.log(`[ARES-Research] ${traceId} Calling Perplexity with stream=true`);
+            const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'sonar-deep-research',
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: researchQuery }
+                ],
+                search_mode: 'academic',
+                search_domain_filter: getAcademicDomains(focus),
+                temperature: 0.1,
+                stream: true, // Enable Perplexity streaming
+              }),
+            });
+
+            if (!perplexityResponse.ok) {
+              const errorText = await perplexityResponse.text();
+              console.error(`[ARES-Research] ${traceId} Perplexity error:`, errorText);
+              
+              if (perplexityResponse.status === 429) {
+                enqueue({ type: 'error', error: 'Rate limit erreicht. Bitte später erneut versuchen.' });
+                controller.close();
+                return;
+              }
+              
+              throw new Error(`Perplexity API error: ${perplexityResponse.status}`);
+            }
+
+            // Update status: Analyzing
+            enqueue({ 
+              type: 'research_status', 
+              step: 'searching', 
+              message: 'Durchsuche akademische Datenbanken...',
+              complete: true
+            });
+            enqueue({ 
+              type: 'research_status', 
+              step: 'analyzing', 
+              message: 'Analysiere Studienergebnisse...',
+              complete: false
+            });
+
+            // Process Perplexity SSE stream
+            if (!perplexityResponse.body) {
+              throw new Error('No response body from Perplexity');
+            }
+
+            const reader = perplexityResponse.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullContent = '';
+            let citations: string[] = [];
+            let chunkCount = 0;
+
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split('\n');
+              buffer = lines.pop() || '';
+
+              for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                
+                const jsonStr = trimmed.slice(6);
+                if (jsonStr === '[DONE]') continue;
+
+                try {
+                  const chunk = JSON.parse(jsonStr);
+                  const delta = chunk.choices?.[0]?.delta?.content || '';
+                  
+                  if (delta) {
+                    fullContent += delta;
+                    chunkCount++;
+                    
+                    // Send content chunk
+                    enqueue({ type: 'content', delta });
+                    
+                    // Update status after first content (switch from analyzing to citing)
+                    if (chunkCount === 1) {
+                      enqueue({ 
+                        type: 'research_status', 
+                        step: 'analyzing', 
+                        message: 'Analysiere Studienergebnisse...',
+                        complete: true
+                      });
+                      enqueue({ 
+                        type: 'research_status', 
+                        step: 'citing', 
+                        message: 'Extrahiere Quellen & Zitate...',
+                        complete: false
+                      });
+                    }
+                  }
+
+                  // Capture citations if present
+                  if (chunk.citations) {
+                    citations = chunk.citations;
+                  }
+                } catch (parseError) {
+                  // Ignore parse errors for incomplete chunks
+                  console.warn(`[ARES-Research] Parse warning:`, parseError);
+                }
+              }
+            }
+
+            // Final status update
+            enqueue({ 
+              type: 'research_status', 
+              step: 'citing', 
+              message: `${citations.length} Quellen gefunden`,
+              complete: true
+            });
+
+            // Send done event with metadata
+            enqueue({ 
+              type: 'done', 
+              traceId,
+              citations: citations.slice(0, maxResults),
+              model: 'sonar-deep-research',
+              searchMode: 'academic'
+            });
+
+            console.log(`[ARES-Research] ${traceId} Stream complete - ${citations.length} citations`);
+
+            // Log usage (fire and forget)
+            supabase.from('ai_usage_tracking').insert({
+              user_id: user.id,
+              service_type: 'perplexity_research',
+              request_metadata: {
+                query: query.substring(0, 200),
+                focus,
+                citations_count: citations.length,
+                trace_id: traceId,
+                streamed: true
+              }
+            }).then(() => {}).catch(() => {});
+
+            controller.close();
+
+          } catch (error) {
+            console.error(`[ARES-Research] ${traceId} Stream error:`, error);
+            enqueue({ 
+              type: 'error', 
+              error: error instanceof Error ? error.message : 'Research failed',
+              traceId 
+            });
+            controller.close();
+          }
+        }
+      });
+
+      return new Response(readableStream, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        }
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BLOCKING MODE (legacy fallback)
+    // ═══════════════════════════════════════════════════════════════════════════
+    console.log(`[ARES-Research] ${traceId} Using blocking mode`);
     const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -96,7 +283,7 @@ serve(async (req) => {
         ],
         search_mode: 'academic',
         search_domain_filter: getAcademicDomains(focus),
-        temperature: 0.1, // Low for factual accuracy
+        temperature: 0.1,
       }),
     });
 
@@ -120,7 +307,7 @@ serve(async (req) => {
 
     console.log(`[ARES-Research] ${traceId} Success - ${citations.length} citations`);
 
-    // Log research query for analytics
+    // Log usage
     try {
       await supabase.from('ai_usage_tracking').insert({
         user_id: user.id,
@@ -136,15 +323,13 @@ serve(async (req) => {
       console.warn('[ARES-Research] Failed to log usage:', logError);
     }
 
-    const result: ResearchResult = {
-      answer,
-      citations: citations.slice(0, maxResults),
-      model: 'sonar-deep-research',
-      searchMode: 'academic'
-    };
-
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({
+        answer,
+        citations: citations.slice(0, maxResults),
+        model: 'sonar-deep-research',
+        searchMode: 'academic'
+      }),
       { 
         status: 200, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -213,7 +398,6 @@ function getFocusContext(focus: string): string {
 }
 
 function getAcademicDomains(focus?: string): string[] {
-  // Always include these
   const baseDomains = ['pubmed.ncbi.nlm.nih.gov', 'scholar.google.com', 'ncbi.nlm.nih.gov'];
   
   const focusDomains: Record<string, string[]> = {

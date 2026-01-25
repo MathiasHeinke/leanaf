@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface StreamEvent {
-  type: 'thinking' | 'context_ready' | 'content' | 'error' | 'done';
+  type: 'thinking' | 'context_ready' | 'content' | 'error' | 'done' | 'research_status';
   content?: string;
   delta?: string;
   traceId?: string;
@@ -23,6 +23,7 @@ interface StreamEvent {
   step?: string;
   message?: string;
   done?: boolean;
+  complete?: boolean; // For research_status events
   metrics?: {
     firstTokenMs?: number;
     totalTokens?: number;
@@ -31,6 +32,7 @@ interface StreamEvent {
   loadedModules?: string[];
   xpAwarded?: number;
   toolsUsed?: string[];
+  citations?: string[];
 }
 
 interface StreamMetrics {
@@ -400,6 +402,22 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
             const event: StreamEvent = JSON.parse(trimmed.slice(6));
 
             switch (event.type) {
+              case 'research_status':
+                // Handle real research status events from ares-research
+                setStreamState('thinking');
+                if (event.step && event.message) {
+                  setThinkingSteps(prev => {
+                    const existing = prev.find(s => s.step === event.step);
+                    if (existing) {
+                      return prev.map(s => 
+                        s.step === event.step ? { ...s, message: event.message!, complete: event.complete ?? false } : s
+                      );
+                    }
+                    return [...prev, { step: event.step!, message: event.message!, complete: event.complete ?? false }];
+                  });
+                }
+                break;
+
               case 'thinking':
                 // Handle thinking step events
                 setStreamState('thinking');
