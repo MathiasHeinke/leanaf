@@ -24,6 +24,7 @@ import { Phase0Checklist } from '@/hooks/useProtocolStatus';
 import { useNavigate } from 'react-router-dom';
 import { LIFE_IMPACT_DATA } from './lifeImpactData';
 import { LifeImpactBadge } from './LifeImpactBadge';
+import { BloodworkShoppingList } from './BloodworkShoppingList';
 
 interface Phase0ChecklistItemProps {
   item: {
@@ -206,8 +207,8 @@ export function Phase0ChecklistItem({
 
               {/* ARES Quote */}
               {lifeData?.aresQuote && (
-                <div className="flex gap-2 p-3 rounded-lg bg-muted/50 border-l-2 border-amber-500">
-                  <Quote className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex gap-2 p-3 rounded-lg bg-muted/50 border-l-2 border-warning">
+                  <Quote className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                   <p className="text-sm italic text-muted-foreground">
                     "{lifeData.aresQuote}"
                   </p>
@@ -231,7 +232,7 @@ export function Phase0ChecklistItem({
                       <div className="text-xs text-muted-foreground">Durchschnitt</div>
                       <div className={cn(
                         "text-lg font-semibold",
-                        progress.stats.average >= progress.stats.targetValue ? "text-primary" : "text-amber-500"
+                        progress.stats.average >= progress.stats.targetValue ? "text-primary" : "text-warning"
                       )}>
                         {progress.stats.average}
                         <span className="text-sm text-muted-foreground">
@@ -265,8 +266,15 @@ export function Phase0ChecklistItem({
                 </div>
               )}
 
-              {/* Sub-items checklist - Using extended data */}
-              {displaySubItems.length > 0 && (
+              {/* Custom Bloodwork Shopping List */}
+              {lifeData?.hasShoppingList && item.key === 'bloodwork_baseline' && (
+                <BloodworkShoppingList 
+                  presentMarkers={progress?.stats?.markersPresent as string[] || []} 
+                />
+              )}
+
+              {/* Sub-items checklist - Using extended data (skip for shopping list items) */}
+              {displaySubItems.length > 0 && !lifeData?.hasShoppingList && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">
                     {item.autoValidate ? 'Status der Teilziele:' : 'Bestätige diese Punkte:'}
