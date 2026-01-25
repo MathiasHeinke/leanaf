@@ -18,7 +18,7 @@ export const AresTopNav: React.FC<AresTopNavProps> = ({ onOpenChat }) => {
   const aresCoach = COACH_REGISTRY.ares;
 
   return (
-    <div className="fixed top-[3px] left-0 right-0 z-40 pt-4 px-4 pb-2 bg-gradient-to-b from-background/95 via-background/80 to-transparent backdrop-blur-sm">
+    <div className="fixed top-[3px] left-0 right-0 z-40 pt-2 px-4 pb-2 bg-gradient-to-b from-background/95 via-background/80 to-transparent backdrop-blur-sm">
       <div className="flex justify-between items-center max-w-md mx-auto">
         
         {/* Left: Sidebar Trigger */}

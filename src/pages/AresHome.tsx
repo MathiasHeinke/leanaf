@@ -12,6 +12,7 @@ import { useProtocolStatus } from '@/hooks/useProtocolStatus';
 import { usePlusData } from '@/hooks/usePlusData';
 import { useAresGreeting } from '@/hooks/useAresGreeting';
 import { useDailyFocus } from '@/hooks/useDailyFocus';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 import { ExperienceBeam } from '@/components/home/ExperienceBeam';
 import { AresTopNav } from '@/components/home/AresTopNav';
@@ -35,6 +36,7 @@ export default function AresHome() {
   const plusData = usePlusData();
   const { userName, streak } = useAresGreeting();
   const { focusTask } = useDailyFocus();
+  const { profileData } = useUserProfile();
 
   // Auth check
   if (authLoading) {
@@ -84,12 +86,16 @@ export default function AresHome() {
       <AresTopNav onOpenChat={() => setShowChat(true)} />
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-md mx-auto px-5 pt-20 pb-28 space-y-6">
+      <main className="relative z-10 max-w-md mx-auto px-5 pt-14 pb-28 space-y-5">
         
         {/* Header: Greeting + Bio Age */}
         <div className="flex justify-between items-start">
           <AresGreeting userName={userName} streak={streak || undefined} />
-          <BioAgeBadge bioAge={bioAge} realAge={realAge} />
+          <BioAgeBadge 
+            bioAge={bioAge} 
+            realAge={realAge} 
+            chronologicalAge={profileData?.age}
+          />
         </div>
 
         {/* Hero: Dynamic Focus Card */}
@@ -132,7 +138,7 @@ export default function AresHome() {
       {/* Floating Dock */}
       <FloatingDock 
         onChatOpen={() => setShowChat(true)}
-        onCameraOpen={() => navigate('/dashboard')}
+        onMealInput={() => navigate('/plus')}
       />
 
       {/* Chat Overlay */}

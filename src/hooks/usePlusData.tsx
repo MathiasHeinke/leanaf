@@ -96,15 +96,45 @@ export const usePlusData = (): UsePlusDataResult => {
       if ((suppsRes as any).error) throw (suppsRes as any).error;
 
       setGoals(goalsRes.data || null);
-      setLast7(
-        (summariesRes.data || []).map((r) => ({
-          date: r.date as string,
-          total_calories: Number(r.total_calories || 0),
-          total_protein: Number(r.total_protein || 0),
-          total_carbs: Number(r.total_carbs || 0),
-          total_fats: Number(r.total_fats || 0),
-        }))
-      );
+      
+      // Map summaries data
+      const mappedSummaries = (summariesRes.data || []).map((r) => ({
+        date: r.date as string,
+        total_calories: Number(r.total_calories || 0),
+        total_protein: Number(r.total_protein || 0),
+        total_carbs: Number(r.total_carbs || 0),
+        total_fats: Number(r.total_fats || 0),
+      }));
+
+      // Check if today's data exists in summaries
+      const todayExists = mappedSummaries.some(s => s.date === todayStr);
+      
+      // If no today summary, try to aggregate directly from meals table
+      if (!todayExists) {
+        const mealsRes = await supabase
+          .from('meals')
+          .select('calories, protein, carbs, fats')
+          .eq('user_id', userId)
+          .gte('created_at', `${todayStr}T00:00:00`)
+          .lte('created_at', `${todayStr}T23:59:59`);
+        
+        if (mealsRes.data && mealsRes.data.length > 0) {
+          const aggregated = mealsRes.data.reduce((acc, m) => ({
+            total_calories: acc.total_calories + Number(m.calories || 0),
+            total_protein: acc.total_protein + Number(m.protein || 0),
+            total_carbs: acc.total_carbs + Number(m.carbs || 0),
+            total_fats: acc.total_fats + Number(m.fats || 0),
+          }), { total_calories: 0, total_protein: 0, total_carbs: 0, total_fats: 0 });
+          
+          // Add today's aggregated data
+          mappedSummaries.push({
+            date: todayStr,
+            ...aggregated
+          });
+        }
+      }
+      
+      setLast7(mappedSummaries);
 
       setHydrationMlToday(Number(fluidsRes.data || 0));
       const sleepHours = Number((sleepRes.data as any)?.sleep_hours || 0);

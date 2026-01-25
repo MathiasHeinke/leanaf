@@ -21,6 +21,11 @@ export const GlobalHeader = ({
   const { state } = useSidebar();
   const isSidebarCollapsed = state === "collapsed";
 
+  // Don't render GlobalHeader on new AresHome - it has its own nav
+  if (location.pathname === '/') {
+    return null;
+  }
+
   // Get ARES coach data
   const aresCoach = COACH_REGISTRY.ares;
 

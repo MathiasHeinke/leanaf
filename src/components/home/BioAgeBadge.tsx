@@ -1,24 +1,44 @@
 /**
  * BioAgeBadge - Compact Bio-Age display
  * Shows biological age with delta from chronological age
+ * Falls back to chronological age if no bio-age data exists
  */
 
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BioAgeBadgeProps {
   bioAge?: number | null;
   realAge?: number | null;
+  chronologicalAge?: number | null; // Fallback from user profile
   className?: string;
 }
 
 export const BioAgeBadge: React.FC<BioAgeBadgeProps> = ({ 
   bioAge, 
   realAge,
+  chronologicalAge,
   className 
 }) => {
-  // If no data, show placeholder
+  // If no bio-age but we have chronological age, show that as fallback
+  if (!bioAge && chronologicalAge) {
+    return (
+      <div className={cn("flex flex-col items-end", className)}>
+        <div className="flex items-center gap-1.5 bg-card/80 backdrop-blur-sm border border-border/50 rounded-full px-3 py-1.5 shadow-sm">
+          <User className="w-3.5 h-3.5 text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground">
+            {chronologicalAge} Jahre
+          </span>
+        </div>
+        <span className="text-[10px] text-muted-foreground mt-1 mr-1">
+          Dein Alter
+        </span>
+      </div>
+    );
+  }
+
+  // If no data at all, show placeholder
   if (!bioAge || !realAge) {
     return (
       <div className={cn("flex flex-col items-end", className)}>
