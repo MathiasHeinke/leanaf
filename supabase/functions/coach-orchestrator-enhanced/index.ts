@@ -69,6 +69,13 @@ import {
   type TopicState,
 } from '../_shared/topic/index.ts';
 
+// Phase 8: Gamification System
+import {
+  awardInteractionXP,
+  ensureDailyQuests,
+  type XPResult,
+} from '../_shared/gamification/index.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -2733,13 +2740,44 @@ Deno.serve(async (req) => {
     const memoryResult = await memoryExtractionPromise;
     console.log('[MEMORY] Extraction completed with result:', memoryResult.success ? 'SUCCESS' : 'FAILED');
 
+    // Phase 8: Award XP for this interaction (non-blocking but awaited)
+    let xpResult: XPResult | null = null;
+    try {
+      // Ensure user has daily quests
+      await ensureDailyQuests(supaSvc, user.id);
+      
+      // Get user streak for multiplier
+      const { data: streakData } = await supaSvc
+        .from('user_streaks')
+        .select('current_streak')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      const streakDays = streakData?.current_streak || 0;
+      
+      // Award XP based on interaction
+      xpResult = await awardInteractionXP(supaSvc, user.id, {
+        toolsUsed: toolResults.map(t => t.tool),
+        messageText: text,
+        streakDays,
+      });
+      
+      if (xpResult) {
+        console.log('[GAMIFICATION] Awarded', xpResult.totalXP, 'XP to user', user.id);
+      }
+    } catch (gamError) {
+      console.error('[GAMIFICATION] Error awarding XP:', gamError);
+      // Non-blocking - don't fail the request
+    }
+
     await traceDone(traceId, duration_ms);
 
     return new Response(JSON.stringify({ 
       reply: finalOutput, 
       traceId,
       toolsUsed: toolResults.length > 0 ? toolResults.map(t => t.tool) : [],
-      persona: userPersona?.id || 'STANDARD' // Phase 2: Include persona info in response
+      persona: userPersona?.id || 'STANDARD',
+      xpAwarded: xpResult?.totalXP || 0, // Phase 8: Include XP in response
     }), {
       status: 200,
       headers: { ...headers, 'Content-Type': 'application/json', 'X-Trace-Id': traceId }

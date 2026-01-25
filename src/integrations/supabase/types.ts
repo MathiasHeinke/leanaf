@@ -320,6 +320,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ares_interaction_stats: {
+        Row: {
+          created_at: string | null
+          id: string
+          interaction_date: string
+          questions_asked: number | null
+          streak_multiplier: number | null
+          tools_used: Json | null
+          topics_discussed: string[] | null
+          updated_at: string | null
+          user_id: string
+          xp_earned: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          interaction_date?: string
+          questions_asked?: number | null
+          streak_multiplier?: number | null
+          tools_used?: Json | null
+          topics_discussed?: string[] | null
+          updated_at?: string | null
+          user_id: string
+          xp_earned?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          interaction_date?: string
+          questions_asked?: number | null
+          streak_multiplier?: number | null
+          tools_used?: Json | null
+          topics_discussed?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+          xp_earned?: number | null
+        }
+        Relationships: []
+      }
       ares_trace_steps: {
         Row: {
           created_at: string
@@ -583,28 +622,37 @@ export type Database = {
           badge_description: string | null
           badge_name: string
           badge_type: string
+          category: string | null
           earned_at: string
           id: string
           metadata: Json | null
+          rarity: string | null
           user_id: string
+          xp_bonus: number | null
         }
         Insert: {
           badge_description?: string | null
           badge_name: string
           badge_type: string
+          category?: string | null
           earned_at?: string
           id?: string
           metadata?: Json | null
+          rarity?: string | null
           user_id: string
+          xp_bonus?: number | null
         }
         Update: {
           badge_description?: string | null
           badge_name?: string
           badge_type?: string
+          category?: string | null
           earned_at?: string
           id?: string
           metadata?: Json | null
+          rarity?: string | null
           user_id?: string
+          xp_bonus?: number | null
         }
         Relationships: []
       }
@@ -1940,6 +1988,51 @@ export type Database = {
           weekly_fat_loss_g?: number | null
           weeks_to_goal?: number | null
           weight_difference_kg?: number | null
+        }
+        Relationships: []
+      }
+      daily_quests: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          is_completed: boolean | null
+          progress: number | null
+          quest_date: string
+          quest_description: string | null
+          quest_title: string
+          quest_type: string
+          target: number
+          user_id: string
+          xp_reward: number
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          progress?: number | null
+          quest_date?: string
+          quest_description?: string | null
+          quest_title: string
+          quest_type: string
+          target?: number
+          user_id: string
+          xp_reward?: number
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          is_completed?: boolean | null
+          progress?: number | null
+          quest_date?: string
+          quest_description?: string | null
+          quest_title?: string
+          quest_type?: string
+          target?: number
+          user_id?: string
+          xp_reward?: number
         }
         Relationships: []
       }
