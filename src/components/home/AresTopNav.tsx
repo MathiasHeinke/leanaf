@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -40,7 +40,7 @@ export const AresTopNav: React.FC<AresTopNavProps> = ({ onOpenChat }) => {
           <Avatar className="relative w-10 h-10 border-2 border-background shadow-lg">
             <AvatarImage src={aresCoach.imageUrl} alt="ARES" />
             <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
-              <Sparkles className="w-5 h-5" />
+              <Zap className="w-5 h-5" />
             </AvatarFallback>
           </Avatar>
           

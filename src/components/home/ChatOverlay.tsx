@@ -3,9 +3,9 @@
  * Opens ARES chat without page navigation
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Zap } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { COACH_REGISTRY } from '@/lib/coachRegistry';
 import AresChat from '@/components/ares/AresChat';
@@ -25,6 +25,11 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
   const { user } = useAuth();
   const aresCoach = COACH_REGISTRY.ares;
 
+  // Stable close handler
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
   // Prevent body scroll when open
   useEffect(() => {
     if (isOpen) {
@@ -37,33 +42,60 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
     };
   }, [isOpen]);
 
+  // Handle Escape key and browser back button
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Escape key handler
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+
+    // Browser back button handler (pushes a state, then listens for popstate)
+    window.history.pushState({ chatOverlay: true }, '');
+    
+    const handlePopState = (e: PopStateEvent) => {
+      handleClose();
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isOpen, handleClose]);
+
   if (!user) return null;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - z-50 to be above content but clickable */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+            onClick={handleClose}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
           />
 
-          {/* Sheet */}
+          {/* Sheet - z-[51] to be above backdrop */}
           <motion.div 
             initial={{ y: "100%" }}
             animate={{ y: "5%" }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed inset-x-0 bottom-0 top-0 z-50 bg-background rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
+            className="fixed inset-x-0 bottom-0 top-0 z-[51] bg-background rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
           >
-            {/* Drag Handle */}
+            {/* Drag Handle - clickable to close */}
             <div 
               className="absolute top-0 left-0 right-0 h-10 flex items-center justify-center cursor-pointer z-10"
-              onClick={onClose}
+              onClick={handleClose}
             >
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
             </div>
@@ -73,7 +105,9 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
               <div className="flex items-center gap-3">
                 <Avatar className="h-9 w-9 border border-border/50">
                   <AvatarImage src={aresCoach.imageUrl} alt="ARES" />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">A</AvatarFallback>
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                    <Zap className="w-4 h-4" />
+                  </AvatarFallback>
                 </Avatar>
                 <div>
                   <h2 className="text-base font-semibold text-foreground">ARES</h2>
@@ -82,7 +116,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
               </div>
               
               <button 
-                onClick={onClose} 
+                onClick={handleClose} 
                 className="p-2 bg-secondary/80 hover:bg-secondary rounded-full transition-colors"
               >
                 <ChevronDown className="w-5 h-5 text-foreground" />
