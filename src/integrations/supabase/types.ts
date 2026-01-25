@@ -7776,6 +7776,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_widget_preferences: {
+        Row: {
+          created_at: string | null
+          display_order: number
+          enabled: boolean
+          id: string
+          size: string
+          updated_at: string | null
+          user_id: string
+          widget_type: string
+        }
+        Insert: {
+          created_at?: string | null
+          display_order?: number
+          enabled?: boolean
+          id?: string
+          size?: string
+          updated_at?: string | null
+          user_id: string
+          widget_type: string
+        }
+        Update: {
+          created_at?: string | null
+          display_order?: number
+          enabled?: boolean
+          id?: string
+          size?: string
+          updated_at?: string | null
+          user_id?: string
+          widget_type?: string
+        }
+        Relationships: []
+      }
       weekly_summaries: {
         Row: {
           avg_calories_per_day: number | null
