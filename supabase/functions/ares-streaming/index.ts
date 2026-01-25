@@ -24,6 +24,15 @@ import {
   type RoutingContext,
 } from '../_shared/ai/modelRouter.ts';
 
+// ARES 3.0 Semantic Router - LLM-based Intent Detection
+import {
+  analyzeConversationContext,
+  getDetailLevelInstruction,
+  getOptimalModelForAnalysis,
+  type ConversationAnalysis,
+  type DetailLevel,
+} from '../_shared/ai/semanticRouter.ts';
+
 // Phase 2: Coach Personas Integration
 import {
   loadUserPersona,
@@ -616,9 +625,45 @@ Deno.serve(async (req) => {
           await traceUpdate(traceId, { status: 'context_loaded' });
 
           // ═══════════════════════════════════════════════════════════════════
-          // PHASE 2: Build system prompt
+          // PHASE 2: Semantic Analysis - LLM-based Intent Detection
           // ═══════════════════════════════════════════════════════════════════
-          const systemPrompt = buildStreamingSystemPrompt(
+          
+          // Get last bot message for context-aware analysis
+          const lastBotMessage = conversationHistory.length > 0 
+            ? conversationHistory.filter(m => m.role === 'assistant').slice(-1)[0]?.content || null
+            : null;
+          
+          let semanticAnalysis: ConversationAnalysis | null = null;
+          
+          // Only run semantic analysis for shorter messages (cost-efficient)
+          if (text.length < 150) {
+            try {
+              enqueue({ type: 'thinking', step: 'analyze', message: 'Analysiere Intent...', done: false });
+              const analyzeStart = performance.now();
+              
+              semanticAnalysis = await analyzeConversationContext(text, lastBotMessage, { 
+                timeout: 2500,
+                fallbackOnError: true 
+              });
+              
+              const analyzeDuration = Math.round(performance.now() - analyzeStart);
+              console.log('[ARES-STREAM] Semantic Analysis:', {
+                intent: semanticAnalysis.intent,
+                detail: semanticAnalysis.required_detail_level,
+                reasoning: semanticAnalysis.reasoning,
+                duration: analyzeDuration + 'ms'
+              });
+              
+              enqueue({ type: 'thinking', step: 'analyze', message: `Intent: ${semanticAnalysis.intent}`, done: true });
+            } catch (e) {
+              console.warn('[ARES-STREAM] Semantic analysis failed, continuing without:', e);
+            }
+          }
+          
+          // ═══════════════════════════════════════════════════════════════════
+          // PHASE 2b: Build system prompt with dynamic instructions
+          // ═══════════════════════════════════════════════════════════════════
+          let baseSystemPrompt = buildStreamingSystemPrompt(
             persona,
             personaPrompt,
             healthContext as UserHealthContext | null,
@@ -627,24 +672,69 @@ Deno.serve(async (req) => {
             insightsResult as UserInsight[],
             conversationHistory
           );
+          
+          // Inject dynamic response length instructions based on semantic analysis
+          let dynamicInstructions = '';
+          if (semanticAnalysis) {
+            dynamicInstructions = getDetailLevelInstruction(
+              semanticAnalysis.required_detail_level,
+              semanticAnalysis.intent
+            );
+          }
+          
+          const systemPrompt = dynamicInstructions 
+            ? baseSystemPrompt + '\n\n' + dynamicInstructions
+            : baseSystemPrompt;
 
           await traceUpdate(traceId, { 
             status: 'prompt_built',
-            system_prompt: systemPrompt.slice(0, 5000) // Truncate for trace
+            system_prompt: systemPrompt.slice(0, 5000), // Truncate for trace
+            llm_input: semanticAnalysis ? { 
+              semantic_intent: semanticAnalysis.intent,
+              semantic_detail: semanticAnalysis.required_detail_level,
+              semantic_reasoning: semanticAnalysis.reasoning
+            } : undefined
           });
 
           // ═══════════════════════════════════════════════════════════════════
-          // PHASE 3: Call AI with Hybrid Provider Selection
+          // PHASE 3: Call AI with Semantic-Aware Model Selection
           // ═══════════════════════════════════════════════════════════════════
           
-          // Determine routing based on message content
+          // Determine routing based on message content AND semantic analysis
           const routingContext: RoutingContext = {
             hasImages: false,
             messageLength: text.length,
             conversationLength: conversationHistory.length,
           };
           
-          const modelChoice = routeMessage(text, routingContext);
+          let modelChoice = routeMessage(text, routingContext);
+          
+          // Override with semantic analysis if available (more intelligent)
+          let semanticMaxTokens: number | null = null;
+          if (semanticAnalysis) {
+            const optimalModel = getOptimalModelForAnalysis(semanticAnalysis);
+            
+            // Use semantic router's recommendation
+            if (semanticAnalysis.intent === 'confirmation' || 
+                semanticAnalysis.intent === 'chit_chat' ||
+                semanticAnalysis.required_detail_level === 'ultra_short') {
+              modelChoice = {
+                provider: 'lovable',
+                model: optimalModel.model,
+                reason: `Semantic: ${optimalModel.reason}`
+              };
+              semanticMaxTokens = optimalModel.maxTokens;
+            } else if (semanticAnalysis.intent === 'deep_dive' ||
+                       semanticAnalysis.required_detail_level === 'extensive') {
+              modelChoice = {
+                provider: 'lovable',
+                model: optimalModel.model,
+                reason: `Semantic: ${optimalModel.reason}`
+              };
+              semanticMaxTokens = optimalModel.maxTokens;
+            }
+          }
+          
           console.log('[ARES-STREAM] Model routing:', modelChoice.provider, modelChoice.model, '-', modelChoice.reason);
           
           // Get fallback chain
@@ -686,8 +776,8 @@ Deno.serve(async (req) => {
                   model,
                   stream: true,
                   temperature: 0.7,
-                  // High-IQ Setup: Dynamic tokens for Reasoning Models (Gemini 3 Pro)
-                  max_tokens: detectQuestionComplexity(text).maxTokens,
+                  // Semantic Router priority, then High-IQ Setup fallback
+                  max_tokens: semanticMaxTokens || detectQuestionComplexity(text).maxTokens,
                   messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: text }
