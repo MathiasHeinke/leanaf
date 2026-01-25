@@ -115,38 +115,31 @@ function getThinkingStepsForReason(reason: string): ThinkingStep[] {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Simulates natural streaming output for blocking responses
- * Uses character-based streaming with variable speed for natural feel
+ * Fast word-by-word streaming with natural pacing
  */
 async function simulateStreaming(
   fullText: string,
   onChunk: (partial: string) => void
 ): Promise<void> {
   let current = '';
-  const chars = fullText.split('');
+  // Split by whitespace but keep the separators
+  const tokens = fullText.split(/(\s+)/);
   
-  // Base speed: ~80-100 chars per second (feels natural like GPT)
-  const baseDelay = 8;
-  
-  for (let i = 0; i < chars.length; i++) {
-    current += chars[i];
+  for (let i = 0; i < tokens.length; i++) {
+    current += tokens[i];
+    onChunk(current);
     
-    // Batch updates every 3-4 chars for smoother rendering
-    if (i % 3 === 0 || i === chars.length - 1) {
-      onChunk(current);
-    }
+    // Very fast base delay (word appears almost instantly)
+    const token = tokens[i];
+    let delay = 25; // ~40 words per second base
     
-    // Variable timing for natural feel
-    const char = chars[i];
-    let delay = baseDelay;
-    
-    // Slightly longer pause after punctuation
-    if ('.!?'.includes(char)) {
-      delay = baseDelay * 4;
-    } else if (',;:'.includes(char)) {
-      delay = baseDelay * 2;
-    } else if (char === '\n') {
-      delay = baseDelay * 3;
+    // Tiny pause after punctuation for natural rhythm
+    if (token.match(/[.!?]$/)) {
+      delay = 80;
+    } else if (token.match(/[,;:]$/)) {
+      delay = 50;
+    } else if (token === '\n' || token === '\n\n') {
+      delay = 60;
     }
     
     await new Promise(resolve => setTimeout(resolve, delay));
