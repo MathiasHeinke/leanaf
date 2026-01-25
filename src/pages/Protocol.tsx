@@ -65,10 +65,9 @@ export default function ProtocolPage() {
     canUnlockPhase1,
     pauseProtocol,
     resumeProtocol,
-    setProtocolMode
+    setProtocolMode,
+    unlockPhase1
   } = useProtocolStatus();
-  
-  const [activeTab, setActiveTab] = useState<string>('0');
 
   if (authLoading || loading) {
     return (
@@ -202,10 +201,17 @@ export default function ProtocolPage() {
               </div>
               
               {currentPhase === 0 && (
-                <div className="text-right">
-                  <div className="text-2xl font-bold">{phase0Progress}/8</div>
-                  <div className="text-xs text-muted-foreground">Checks erfüllt</div>
-                  <Progress value={(phase0Progress / 8) * 100} className="w-24 mt-1" />
+                <div className="text-right flex items-center gap-4">
+                  <div>
+                    <div className="text-2xl font-bold">{phase0Progress}/8</div>
+                    <div className="text-xs text-muted-foreground">Checks erfüllt</div>
+                    <Progress value={(phase0Progress / 8) * 100} className="w-24 mt-1" />
+                  </div>
+                  {canUnlockPhase1 && (
+                    <Button onClick={() => unlockPhase1()} size="sm">
+                      Phase 1 starten
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -213,82 +219,13 @@ export default function ProtocolPage() {
         </CardContent>
       </Card>
 
-      {/* Phase Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          {PHASE_INFO.map((phase) => {
-            const Icon = phase.icon;
-            const isLocked = currentPhase < phase.id;
-            
-            return (
-              <TabsTrigger 
-                key={phase.id} 
-                value={String(phase.id)}
-                disabled={isLocked}
-                className="flex items-center gap-2"
-              >
-                <Icon className={cn("w-4 h-4", phase.color)} />
-                <span className="hidden sm:inline">{phase.name}</span>
-                <span className="sm:hidden">{phase.id}</span>
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
-
-        <TabsContent value="0" className="mt-6">
-          <Phase0Checklist />
-        </TabsContent>
-
-        <TabsContent value="1" className="mt-6">
-          {currentPhase >= 1 ? (
-            <Phase1Overview />
-          ) : (
-            <LockedPhaseCard phase={1} requirement="Phase 0 abschließen" />
-          )}
-        </TabsContent>
-
-        <TabsContent value="2" className="mt-6">
-          {currentPhase >= 2 ? (
-            <Phase2Overview />
-          ) : (
-            <LockedPhaseCard phase={2} requirement="Phase 1 abschließen (6 Monate)" />
-          )}
-        </TabsContent>
-
-        <TabsContent value="3" className="mt-6">
-          {currentPhase >= 3 ? (
-            <Phase3Overview />
-          ) : (
-            <LockedPhaseCard phase={3} requirement="Phase 2 abschließen" />
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Phase Content - Direct based on currentPhase */}
+      <div className="mt-6">
+        {currentPhase === 0 && <Phase0Checklist />}
+        {currentPhase === 1 && <Phase1Overview />}
+        {currentPhase === 2 && <Phase2Overview />}
+        {currentPhase === 3 && <Phase3Overview />}
+      </div>
     </div>
-  );
-}
-
-function LockedPhaseCard({ phase, requirement }: { phase: number; requirement: string }) {
-  const info = PHASE_INFO[phase];
-  const Icon = info.icon;
-  
-  return (
-    <Card className="border-dashed">
-      <CardHeader className="text-center">
-        <div className="mx-auto p-4 rounded-full bg-muted mb-4">
-          <Icon className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <CardTitle className="text-muted-foreground">
-          Phase {phase}: {info.name}
-        </CardTitle>
-        <CardDescription>
-          {info.description}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="text-center">
-        <Badge variant="outline" className="text-muted-foreground">
-          🔒 Voraussetzung: {requirement}
-        </Badge>
-      </CardContent>
-    </Card>
   );
 }
