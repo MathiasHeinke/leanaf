@@ -66,7 +66,7 @@ export default function AresHome() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize constants
-  const MIN_H = 40;
+  const MIN_H = 72;
   const MAX_LINES = 5;
   const LINE_H = 18;
   const MAX_H = MIN_H + LINE_H * (MAX_LINES - 1);
@@ -333,7 +333,7 @@ export default function AresHome() {
             {/* Textarea */}
             <Textarea
               ref={textareaRef}
-              rows={1}
+              rows={3}
               placeholder="Was hast du gegessen?"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
