@@ -57,13 +57,16 @@ import {
 import {
   extractInsightsFromMessage,
   saveInsights,
+  saveInsightsWithUpdates,
   loadRelevantInsights,
   getExistingInsightStrings,
   detectPatterns,
   loadUnaddressedPatterns,
   getAllUserInsights,
+  buildTimeAwareMemorySection,
   type UserInsight,
   type UserPattern,
+  type ExtractedInsightWithUpdate,
 } from '../_shared/memory/index.ts';
 
 // Phase 5: Knowledge + Bloodwork Integration
@@ -293,23 +296,12 @@ function buildStreamingSystemPrompt(
     parts.push('');
   }
   
-  // User insights from memory
+  // User insights from memory - ENHANCED with time-aware formatting
   if (userInsights.length > 0) {
-    parts.push('== ERKANNTE INSIGHTS ==');
-    const byCategory = userInsights.reduce((acc, i) => {
-      if (!acc[i.category]) acc[i.category] = [];
-      acc[i.category].push(i);
-      return acc;
-    }, {} as Record<string, UserInsight[]>);
-    
-    for (const [cat, insights] of Object.entries(byCategory)) {
-      parts.push(`#${cat.toUpperCase()}:`);
-      insights.slice(0, 3).forEach(i => {
-        const imp = i.importance === 'critical' ? '⚠️' : i.importance === 'high' ? '!' : '';
-        parts.push(`  ${imp} ${i.insight}`);
-      });
+    const memorySection = buildTimeAwareMemorySection(userInsights);
+    if (memorySection) {
+      parts.push(memorySection);
     }
-    parts.push('');
   }
   
   // Knowledge context
@@ -604,9 +596,9 @@ Deno.serve(async (req) => {
               console.warn('[ARES-STREAM] Bloodwork load failed:', e);
               return null;
             }),
-            // Insights
-            loadRelevantInsights(userId, text, 10, supaSvc).then(r => {
-              if (r.length > 0) enqueue({ type: 'thinking', step: 'memory', message: `${r.length} Erinnerungen durchsucht`, done: true });
+            // Insights - ERHÖHT von 10 auf 30 für mehr Kontext
+            loadRelevantInsights(userId, text, 30, supaSvc).then(r => {
+              if (r.length > 0) enqueue({ type: 'thinking', step: 'memory', message: `${r.length} Erinnerungen geladen`, done: true });
               return r;
             }).catch(e => {
               console.warn('[ARES-STREAM] Insights load failed:', e);
@@ -1006,13 +998,20 @@ Deno.serve(async (req) => {
               ]);
               console.log('[ARES-STREAM] Conversation saved');
 
-              // Extract and save insights
+              // Extract and save insights WITH UPDATE DETECTION
               const existingInsights = await getExistingInsightStrings(userId, supaSvc);
               const newInsights = await extractInsightsFromMessage(text, userId, 'chat', existingInsights);
               
               if (newInsights.length > 0) {
-                await saveInsights(userId, newInsights, 'chat', traceId, supaSvc);
-                console.log('[ARES-STREAM] Saved', newInsights.length, 'new insights');
+                // Use enhanced save with update detection
+                const result = await saveInsightsWithUpdates(
+                  userId, 
+                  newInsights as ExtractedInsightWithUpdate[], 
+                  'chat', 
+                  traceId, 
+                  supaSvc
+                );
+                console.log('[ARES-STREAM] Insights saved:', result.saved, 'new,', result.superseded, 'superseded');
                 
                 // Pattern detection
                 const allInsights = await getAllUserInsights(userId, supaSvc);

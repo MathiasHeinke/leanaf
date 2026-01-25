@@ -4,8 +4,14 @@
  * ARES 3.0 PRO: Enhanced with time-aware context (formatTimeAgo)
  */
 
-import { ExtractedInsight, UserInsight, InsightCategory } from './types.ts';
+import { ExtractedInsight, UserInsight, InsightCategory, ImportanceLevel } from './types.ts';
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// Extended insight type with update detection
+export interface ExtractedInsightWithUpdate extends ExtractedInsight {
+  isUpdate?: boolean;
+  updatesKeyword?: string;
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TIME-AWARE MEMORY (ARES 3.0 PRO - "Elefantengedächtnis")
@@ -71,9 +77,24 @@ export function buildTimeAwareMemorySection(insights: UserInsight[]): string {
   sections.push('(Nutze diese Informationen aktiv und beziehe dich auf den Zeitpunkt!)');
   sections.push('');
 
-  // Gruppiere nach Kategorie
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // KRITISCHE INSIGHTS IMMER ZUERST (unabhängig von Kategorie)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const criticalInsights = insights.filter(i => i.importance === 'critical');
+  if (criticalInsights.length > 0) {
+    sections.push('### ⚠️ KRITISCH (IMMER BEACHTEN)');
+    criticalInsights.forEach(insight => {
+      const timeAgo = formatTimeAgo(insight.extractedAt);
+      sections.push(`- ⚠️ ${insight.insight} (${timeAgo})`);
+    });
+    sections.push('');
+  }
+
+  // Nicht-kritische Insights nach Kategorie gruppieren
+  const nonCritical = insights.filter(i => i.importance !== 'critical');
+  
   const byCategory: Record<string, UserInsight[]> = {};
-  for (const insight of insights) {
+  for (const insight of nonCritical) {
     if (!byCategory[insight.category]) {
       byCategory[insight.category] = [];
     }
@@ -81,7 +102,7 @@ export function buildTimeAwareMemorySection(insights: UserInsight[]): string {
   }
 
   // Sortiere Kategorien nach Wichtigkeit
-  const categoryOrder = ['ziele', 'gesundheit', 'training', 'ernährung', 'körper', 'schlaf', 'stress', 'gewohnheiten'];
+  const categoryOrder = ['substanzen', 'gesundheit', 'ziele', 'training', 'ernaehrung', 'koerper', 'schlaf', 'stress', 'gewohnheiten', 'privat'];
   const sortedCategories = Object.keys(byCategory).sort((a, b) => {
     const indexA = categoryOrder.indexOf(a);
     const indexB = categoryOrder.indexOf(b);
@@ -92,9 +113,9 @@ export function buildTimeAwareMemorySection(insights: UserInsight[]): string {
     const categoryInsights = byCategory[category];
     sections.push(`### ${category.toUpperCase()}`);
     
-    categoryInsights.slice(0, 3).forEach(insight => {
-      const importance = insight.importance === 'critical' ? '⚠️ ' : 
-                        insight.importance === 'high' ? '❗ ' : '';
+    // ERHÖHT: 6 statt 3 Insights pro Kategorie
+    categoryInsights.slice(0, 6).forEach(insight => {
+      const importance = insight.importance === 'high' ? '❗ ' : '';
       const timeAgo = formatTimeAgo(insight.extractedAt);
       sections.push(`- ${importance}${insight.insight} (${timeAgo})`);
     });
@@ -105,7 +126,7 @@ export function buildTimeAwareMemorySection(insights: UserInsight[]): string {
 }
 
 /**
- * Save extracted insights to database
+ * Save extracted insights to database (basic version)
  */
 export async function saveInsights(
   userId: string,
@@ -140,6 +161,82 @@ export async function saveInsights(
   } else {
     console.log(`[MemoryStore] Saved ${insights.length} insights for user ${userId}`);
   }
+}
+
+/**
+ * ENHANCED: Save insights with update detection - supersedes old values
+ */
+export async function saveInsightsWithUpdates(
+  userId: string,
+  insights: ExtractedInsightWithUpdate[],
+  source: string,
+  sourceId: string,
+  supabase: SupabaseClient
+): Promise<{ saved: number; superseded: number }> {
+  if (insights.length === 0) return { saved: 0, superseded: 0 };
+
+  let savedCount = 0;
+  let supersededCount = 0;
+
+  for (const insight of insights) {
+    // Check if this is an update to an existing insight
+    if (insight.isUpdate && insight.updatesKeyword) {
+      console.log(`[MemoryStore] Detected UPDATE for keyword: "${insight.updatesKeyword}"`);
+      
+      // Find old insights with this keyword
+      const { data: oldInsights } = await supabase
+        .from('user_insights')
+        .select('id, insight')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .ilike('insight', `%${insight.updatesKeyword}%`)
+        .limit(5);
+
+      if (oldInsights && oldInsights.length > 0) {
+        const oldIds = oldInsights.map(i => i.id);
+        
+        // Supersede old insights
+        const { error: supersedeError } = await supabase
+          .from('user_insights')
+          .update({ 
+            is_active: false
+          })
+          .in('id', oldIds);
+
+        if (!supersedeError) {
+          supersededCount += oldIds.length;
+          console.log(`[MemoryStore] Superseded ${oldIds.length} old insights: ${oldInsights.map(i => i.insight.slice(0, 30)).join(', ')}`);
+        }
+      }
+    }
+
+    // Insert the new insight
+    const { error } = await supabase
+      .from('user_insights')
+      .insert({
+        user_id: userId,
+        category: insight.category,
+        subcategory: insight.subcategory || null,
+        insight: insight.insight,
+        raw_quote: insight.rawQuote || null,
+        source: source,
+        source_id: sourceId,
+        confidence: insight.confidence,
+        importance: insight.importance,
+        is_active: true,
+        extracted_at: new Date().toISOString(),
+        last_relevant_at: new Date().toISOString()
+      });
+
+    if (!error) {
+      savedCount++;
+    } else {
+      console.error('[MemoryStore] Error saving insight:', error);
+    }
+  }
+
+  console.log(`[MemoryStore] Saved ${savedCount} insights, superseded ${supersededCount} old values`);
+  return { saved: savedCount, superseded: supersededCount };
 }
 
 /**

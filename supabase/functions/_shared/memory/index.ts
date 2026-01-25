@@ -38,14 +38,16 @@ export { extractInsightsFromMessage } from './memoryExtractor.ts';
 
 // Store
 export { 
-  saveInsights, 
+  saveInsights,
+  saveInsightsWithUpdates,  // ENHANCED: With update detection
   loadRelevantInsights, 
   getAllUserInsights,
   getExistingInsightStrings,
   // ARES 3.0 PRO: Time-aware memory
   formatTimeAgo,
   formatInsightWithTime,
-  buildTimeAwareMemorySection
+  buildTimeAwareMemorySection,
+  type ExtractedInsightWithUpdate  // Type for update detection
 } from './memoryStore.ts';
 
 // ARES 3.0 PRO: Semantic Memory (pgvector)

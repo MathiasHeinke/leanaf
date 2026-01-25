@@ -34,16 +34,28 @@ REGELN:
    - "Ist 1800kcal zu wenig?" -> User isst ca. 1800kcal
    - Bei solchen Fragen: confidence 0.85 (implizit aber klar)
 
+REGEL 8 - UPDATES ERKENNEN (SEHR WICHTIG!):
+Wenn der User einen AKTUALISIERTEN WERT nennt (neues Gewicht, neue Dosierung, neue Blutwerte, neuer Status):
+- Setze "isUpdate": true
+- Gib "updatesKeyword": "Schluesselwort des alten Werts" an
+- Beispiele:
+  * "Testosteron ist jetzt bei 450" -> {"isUpdate": true, "updatesKeyword": "Testosteron"}
+  * "Ich wiege jetzt 85kg" -> {"isUpdate": true, "updatesKeyword": "wiegt"}
+  * "HbA1c ist auf 5.9 runter" -> {"isUpdate": true, "updatesKeyword": "HbA1c"}
+  * "Habe die Dosis auf 3mg erhoeht" -> {"isUpdate": true, "updatesKeyword": "Dosis"}
+
 Antworte IMMER mit einem JSON-Objekt in diesem Format:
 {
   "insights": [
     {
       "category": "gesundheit",
       "subcategory": "peptide",
-      "insight": "Nimmt Retatrutide",
-      "rawQuote": "ich nehme Retatrutide",
+      "insight": "Nimmt Retatrutide 3mg/Woche",
+      "rawQuote": "ich nehme jetzt 3mg Reta",
       "confidence": 0.95,
-      "importance": "critical"
+      "importance": "critical",
+      "isUpdate": true,
+      "updatesKeyword": "Retatrutide"
     }
   ]
 }
@@ -138,7 +150,7 @@ export async function extractInsightsFromMessage(
     
     console.log('[MemoryExtractor] Parsed', insights.length, 'raw insights from response');
 
-    // Validate and filter insights
+    // Validate and filter insights - include update fields
     const validInsights = insights.filter((insight: any) => 
       isValidInsight(insight)
     ).map((insight: any) => ({
@@ -147,10 +159,17 @@ export async function extractInsightsFromMessage(
       insight: insight.insight,
       rawQuote: insight.rawQuote,
       confidence: Math.min(1, Math.max(0, insight.confidence || 0.8)),
-      importance: validateImportance(insight.importance)
+      importance: validateImportance(insight.importance),
+      // Update detection fields
+      isUpdate: insight.isUpdate === true,
+      updatesKeyword: insight.updatesKeyword || undefined
     }));
     
     console.log('[MemoryExtractor] Validated', validInsights.length, 'insights after filtering');
+    const updates = validInsights.filter(i => i.isUpdate);
+    if (updates.length > 0) {
+      console.log('[MemoryExtractor] Detected', updates.length, 'UPDATE insights:', updates.map(u => u.updatesKeyword));
+    }
     return validInsights;
 
   } catch (error) {
