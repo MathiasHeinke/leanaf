@@ -320,28 +320,27 @@ function createFallbackAnalysis(text: string): ConversationAnalysis {
 
 export function getDetailLevelInstruction(level: DetailLevel, intent: IntentType): string {
   const instructions: Record<DetailLevel, string> = {
-    ultra_short: `== ANTWORT-STEUERUNG: ULTRAKURZ ==
-Der User hat nur kurz bestätigt/geantwortet.
-- MAX 1-2 Sätze (~30-50 Wörter)
-- KEINE Wiederholung des vorherigen Themas
-- Kurze Überleitung zum nächsten Schritt ODER abschließende Frage
-- Kein Vortrag, keine Erklärungen!`,
+    ultra_short: `== ANTWORT-STEUERUNG: KURZ ==
+Der User hat bestätigt/kurz geantwortet.
+- ZIEL: 2-4 Sätze (~50-80 Wörter)
+- Kurz aber vollständig
+- Beende mit einer Frage oder nächstem Schritt`,
 
-    concise: `== ANTWORT-STEUERUNG: KURZ ==
-Halte dich kurz und prägnant.
-- MAX 3-4 Sätze (~80-100 Wörter)
+    concise: `== ANTWORT-STEUERUNG: KOMPAKT ==
+Halte dich prägnant aber informativ.
+- ZIEL: 4-6 Sätze (~100-150 Wörter)
 - Fokus auf das Wesentliche
 - Eine gezielte Frage oder Handlungsempfehlung`,
 
-    moderate: `== ANTWORT-STEUERUNG: NORMAL ==
-Normale Antwortlänge.
-- Ca. 150-200 Wörter
+    moderate: `== ANTWORT-STEUERUNG: STANDARD ==
+Normale, vollständige Antwort.
+- ZIEL: 6-10 Sätze (~200-300 Wörter)
 - Strukturiert und informativ
 - Mit Rückfrage wenn sinnvoll`,
 
     extensive: `== ANTWORT-STEUERUNG: AUSFÜHRLICH ==
 Der User will Details und Tiefe.
-- Ca. 250-350 Wörter
+- ZIEL: 10-15 Sätze (~350-500 Wörter)
 - Fundierte Erklärung mit Kontext
 - Strukturiert mit klaren Punkten
 - Wissenschaftliche Basis wenn relevant`
@@ -351,7 +350,7 @@ Der User will Details und Tiefe.
   
   // Add intent-specific hints
   if (intent === 'confirmation') {
-    instruction += '\n- WICHTIG: User hat bestätigt. Kein Nachtreten zum alten Thema!';
+    instruction += '\n- WICHTIG: User hat bestätigt. Kurze Überleitung zum nächsten Schritt.';
   } else if (intent === 'rejection') {
     instruction += '\n- User hat abgelehnt. Frage nach Alternative oder akzeptiere.';
   } else if (intent === 'emotion') {
@@ -370,13 +369,13 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
   maxTokens: number;
   reason: string;
 } {
-  // Ultra-short responses don't need Pro reasoning
+  // Ultra-short responses - still need adequate tokens for complete response
   if (analysis.required_detail_level === 'ultra_short' || 
       analysis.intent === 'confirmation' ||
       analysis.intent === 'chit_chat') {
     return {
       model: 'google/gemini-2.5-flash',
-      maxTokens: 300,
+      maxTokens: 800,  // Erhöht von 300 für vollständige Antworten
       reason: 'Simple acknowledgment - Flash for speed'
     };
   }
@@ -386,7 +385,7 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
       analysis.intent !== 'deep_dive') {
     return {
       model: 'google/gemini-2.5-flash',
-      maxTokens: 600,
+      maxTokens: 1200,  // Erhöht von 600 für vollständige Antworten
       reason: 'Concise response - Flash sufficient'
     };
   }
@@ -404,7 +403,7 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
   // Default: Pro for general quality
   return {
     model: 'google/gemini-3-pro-preview',
-    maxTokens: 2500,
+    maxTokens: 3000,  // Erhöht von 2500 für vollständige Antworten
     reason: 'Standard response - Pro for quality'
   };
 }

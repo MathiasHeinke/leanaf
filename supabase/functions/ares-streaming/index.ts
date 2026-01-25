@@ -831,12 +831,12 @@ Deno.serve(async (req) => {
                   'Authorization': `Bearer ${apiKey}`,
                   'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
+              body: JSON.stringify({
                   model,
                   stream: true,
                   temperature: 0.7,
-                  // Semantic Router priority, then High-IQ Setup fallback
-                  max_tokens: semanticMaxTokens || detectQuestionComplexity(text).maxTokens,
+                  // Semantic Router priority, then High-IQ Setup fallback - MINIMUM 1500 garantiert
+                  max_tokens: Math.max(semanticMaxTokens || detectQuestionComplexity(text).maxTokens, 1500),
                   messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: text }
