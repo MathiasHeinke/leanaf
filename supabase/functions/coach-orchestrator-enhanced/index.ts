@@ -381,7 +381,7 @@ async function handleSearchScientificEvidence(args: { query: string; focus?: str
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'sonar-reasoning',
+        model: 'sonar-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: args.query }
