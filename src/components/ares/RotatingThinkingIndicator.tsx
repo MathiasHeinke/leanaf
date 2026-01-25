@@ -34,34 +34,36 @@ interface Props {
 // COGNITIVE ORDERING (Wie ein Mensch denkt)
 // ═══════════════════════════════════════════════════════════════════════════════
 const COGNITIVE_ORDER: Record<string, number> = {
-  'start': 0,       // Initialer "Denke nach..."
-  'analyze': 1,     // Verstehen (Intent)
-  'persona': 2,     // Persönlichkeit laden
-  'history': 3,     // Kurzzeitgedächtnis
-  'memory': 4,      // Langzeitgedächtnis
-  'health': 5,      // Gesundheitsdaten
-  'bloodwork': 6,   // Blutwerte
-  'knowledge': 7,   // Fachwissen (RAG)
-  'searching': 8,   // Recherche Start
-  'analyzing': 9,   // Recherche Analyse
-  'citing': 10,     // Quellen prüfen
+  'start': 0,         // Initialer "Denke nach..."
+  'analyze': 1,       // Verstehen (Intent)
+  'persona': 2,       // Persönlichkeit laden
+  'history': 3,       // Kurzzeitgedächtnis
+  'memory': 4,        // Langzeitgedächtnis
+  'health': 5,        // Gesundheitsdaten
+  'bloodwork': 6,     // Blutwerte
+  'knowledge': 7,     // Fachwissen (RAG)
+  'searching': 8,     // Recherche Start
+  'analyzing': 9,     // Recherche Analyse
+  'citing': 10,       // Quellen prüfen
+  'personalizing': 11, // TL;DR mit Persona-Stimme
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HUMANIZING LAYER - Technische IDs → Menschliche Gedanken
 // ═══════════════════════════════════════════════════════════════════════════════
 const COGNITIVE_MAPPING: Record<string, { text: string; icon: React.ComponentType<{ className?: string }> }> = {
-  'start':      { text: "Denke nach...", icon: BrainCircuit },
-  'analyze':    { text: "Verstehe den Kontext...", icon: BrainCircuit },
-  'persona':    { text: "Passe mich an...", icon: Sparkles },
-  'history':    { text: "Reflektiere unser Gespräch...", icon: MessageSquareQuote },
-  'memory':     { text: "Verknüpfe Erinnerungen...", icon: Sparkles },
-  'health':     { text: "Prüfe Gesundheitsdaten...", icon: Activity },
-  'bloodwork':  { text: "Analysiere Blutwerte...", icon: FlaskConical },
-  'knowledge':  { text: "Rufe Expertenwissen ab...", icon: Database },
-  'searching':  { text: "Recherchiere Fakten...", icon: Search },
-  'analyzing':  { text: "Werte Studien aus...", icon: FlaskConical },
-  'citing':     { text: "Prüfe Quellen...", icon: Search },
+  'start':         { text: "Denke nach...", icon: BrainCircuit },
+  'analyze':       { text: "Verstehe den Kontext...", icon: BrainCircuit },
+  'persona':       { text: "Passe mich an...", icon: Sparkles },
+  'history':       { text: "Reflektiere unser Gespräch...", icon: MessageSquareQuote },
+  'memory':        { text: "Verknüpfe Erinnerungen...", icon: Sparkles },
+  'health':        { text: "Prüfe Gesundheitsdaten...", icon: Activity },
+  'bloodwork':     { text: "Analysiere Blutwerte...", icon: FlaskConical },
+  'knowledge':     { text: "Rufe Expertenwissen ab...", icon: Database },
+  'searching':     { text: "Recherchiere Fakten...", icon: Search },
+  'analyzing':     { text: "Werte Studien aus...", icon: FlaskConical },
+  'citing':        { text: "Prüfe Quellen...", icon: Search },
+  'personalizing': { text: "Fasse für dich zusammen...", icon: Sparkles },
 };
 
 // Minimum display time per step (ms)
