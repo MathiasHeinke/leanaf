@@ -20,7 +20,8 @@ import { AresGreeting } from '@/components/home/AresGreeting';
 import { BioAgeBadge } from '@/components/home/BioAgeBadge';
 import { ActionCardStack } from '@/components/home/ActionCardStack';
 import { MetricWidgetGrid } from '@/components/home/MetricWidgetGrid';
-import { FloatingDock } from '@/components/home/FloatingDock';
+import { LiquidDock, type QuickActionType } from '@/components/home/LiquidDock';
+import { quickAddBus } from '@/components/quick/quickAddBus';
 import { ChatOverlay } from '@/components/home/ChatOverlay';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -82,6 +83,27 @@ export default function AresHome() {
     setChatContext(context);
     setTimeout(() => setShowChat(true), 150);
   }, []);
+
+  // Quick action handler for the LiquidDock
+  const handleQuickAction = useCallback((action: QuickActionType) => {
+    switch (action) {
+      case 'water':
+        quickAddBus.emit({ type: 'fluid' });
+        break;
+      case 'workout':
+        quickAddBus.emit({ type: 'workout', payload: { recommendedType: 'walking' } });
+        break;
+      case 'weight':
+        navigate('/profile?tab=measurements');
+        break;
+      case 'supplements':
+        quickAddBus.emit({ type: 'supplements' });
+        break;
+      case 'sleep':
+        quickAddBus.emit({ type: 'sleep' });
+        break;
+    }
+  }, [navigate]);
 
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
@@ -181,7 +203,7 @@ export default function AresHome() {
       <AresTopNav onOpenChat={() => setShowChat(true)} />
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-md mx-auto px-5 pt-14 pb-28 space-y-5">
+      <main className="relative z-10 max-w-md mx-auto px-5 pt-14 pb-36 space-y-5">
         
         {/* Header: Greeting + Bio Age */}
         <div className="flex justify-between items-start">
@@ -205,10 +227,11 @@ export default function AresHome() {
         </div>
       </main>
 
-      {/* Floating Dock */}
-      <FloatingDock 
-        onChatOpen={() => setShowChat(true)}
-        onMealInput={() => setMealOpen(true)}
+      {/* Liquid Crystal Dock */}
+      <LiquidDock 
+        onVisionScan={() => setMealOpen(true)}
+        onAresChat={() => setShowChat(true)}
+        onQuickAction={handleQuickAction}
       />
 
       {/* Meal Input Sheet - Dashboard Style */}
