@@ -88,7 +88,7 @@ export function routeMessage(text: string, context: RoutingContext = {}): ModelC
     case 'research':
       return {
         provider: 'perplexity',
-        model: 'sonar-reasoning',
+        model: 'sonar-pro',
         reason: 'Research query detected - using Perplexity for academic search'
       };
     

@@ -87,7 +87,7 @@ serve(async (req) => {
           console.log(`🔍 Researching: ${topic} (Area: ${trainingArea.category})`);
           
           // Test multiple models in fallback order
-          const models = ['sonar', 'sonar-reasoning'];
+          const models = ['sonar', 'sonar-pro'];
           let perplexityResponse = null;
           let modelUsed = null;
           

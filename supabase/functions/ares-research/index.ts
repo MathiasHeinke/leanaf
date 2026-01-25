@@ -88,7 +88,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'sonar-reasoning',
+        model: 'sonar-pro',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: researchQuery }
