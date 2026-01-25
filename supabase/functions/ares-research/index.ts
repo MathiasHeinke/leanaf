@@ -1,6 +1,8 @@
 // ARES Research - Perplexity-powered Scientific Research with SSE Streaming
+// + Persona TL;DR Wrapper (Gemini-powered personal summary)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadUserPersona, buildPersonaPrompt } from "../_shared/persona/index.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -214,13 +216,123 @@ serve(async (req) => {
               }
             }
 
-            // Final status update
+            // Final status update for research phase
             enqueue({ 
               type: 'research_status', 
               step: 'citing', 
               message: `${citations.length} Quellen gefunden`,
               complete: true
             });
+
+            // ═══════════════════════════════════════════════════════════════
+            // PHASE 2: PERSONA TL;DR WRAPPER
+            // ═══════════════════════════════════════════════════════════════
+            const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+            
+            if (LOVABLE_API_KEY && fullContent.length > 100) {
+              try {
+                // Load persona and user name
+                const persona = await loadUserPersona(supabase, user.id);
+                
+                const { data: profile } = await supabase
+                  .from('user_profiles')
+                  .select('preferred_name')
+                  .eq('user_id', user.id)
+                  .single();
+                
+                const userName = profile?.preferred_name || 'Champion';
+                const personaName = persona?.name || 'ARES';
+                
+                // Status: Personalizing
+                enqueue({ 
+                  type: 'research_status', 
+                  step: 'personalizing', 
+                  message: `${personaName} fasst für dich zusammen...`,
+                  complete: false
+                });
+                
+                // Build persona-specific wrapper prompt
+                const personaPromptPart = persona ? buildPersonaPrompt(persona) : '';
+                const wrapperPrompt = buildPersonaWrapperPrompt(personaName, personaPromptPart, userName, query);
+                
+                console.log(`[ARES-Research] ${traceId} Generating TL;DR with persona: ${personaName}`);
+                
+                // Call Gemini for TL;DR
+                const wrapperResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    model: 'google/gemini-3-flash-preview',
+                    stream: true,
+                    max_tokens: 400,
+                    messages: [
+                      { role: 'system', content: wrapperPrompt },
+                      { role: 'user', content: `Fasse diese Recherche zusammen:\n\n${fullContent.substring(0, 3000)}` }
+                    ]
+                  })
+                });
+                
+                if (wrapperResponse.ok && wrapperResponse.body) {
+                  // Stream TL;DR first
+                  const wrapperReader = wrapperResponse.body.getReader();
+                  const wrapperDecoder = new TextDecoder();
+                  let wrapperBuffer = '';
+                  
+                  while (true) {
+                    const { done, value } = await wrapperReader.read();
+                    if (done) break;
+                    
+                    wrapperBuffer += wrapperDecoder.decode(value, { stream: true });
+                    const wrapperLines = wrapperBuffer.split('\n');
+                    wrapperBuffer = wrapperLines.pop() || '';
+                    
+                    for (const line of wrapperLines) {
+                      const trimmed = line.trim();
+                      if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                      
+                      const jsonStr = trimmed.slice(6);
+                      if (jsonStr === '[DONE]') continue;
+                      
+                      try {
+                        const chunk = JSON.parse(jsonStr);
+                        const delta = chunk.choices?.[0]?.delta?.content || '';
+                        if (delta) {
+                          enqueue({ type: 'content', delta });
+                        }
+                      } catch {
+                        // Ignore parse errors
+                      }
+                    }
+                  }
+                  
+                  // Separator between TL;DR and full research
+                  enqueue({ type: 'content', delta: '\n\n---\n\n## 📊 Vollständige Recherche\n\n' });
+                  
+                  // Now send the full research content
+                  enqueue({ type: 'content', delta: fullContent });
+                  
+                  // Final personalizing status
+                  enqueue({ 
+                    type: 'research_status', 
+                    step: 'personalizing', 
+                    message: 'Zusammenfassung fertig',
+                    complete: true
+                  });
+                  
+                  console.log(`[ARES-Research] ${traceId} TL;DR wrapper complete`);
+                } else {
+                  // Fallback: Send raw content if wrapper fails
+                  console.warn(`[ARES-Research] ${traceId} Wrapper failed, sending raw content`);
+                  // Content already streamed above, just continue
+                }
+              } catch (wrapperError) {
+                console.error(`[ARES-Research] ${traceId} Wrapper error:`, wrapperError);
+                // Content already streamed, just continue
+              }
+            }
 
             // Append formatted citations as Markdown links
             if (citations.length > 0) {
@@ -248,7 +360,8 @@ serve(async (req) => {
                 focus,
                 citations_count: citations.length,
                 trace_id: traceId,
-                streamed: true
+                streamed: true,
+                has_tldr: true
               }
             }).then(() => {}).catch(() => {});
 
@@ -437,6 +550,34 @@ function getFocusContext(focus: string): string {
     hormones: 'Fokus auf Hormonforschung: Testosteron, Cortisol, Insulin, Schilddr${"\u00fc"}se, HGH.',
   };
   return contexts[focus] || '';
+}
+
+// Build persona-specific TL;DR wrapper prompt
+function buildPersonaWrapperPrompt(
+  personaName: string,
+  personaPromptPart: string,
+  userName: string,
+  originalQuery: string
+): string {
+  return `Du bist ${personaName}, ein Elite-Coach.
+
+${personaPromptPart}
+
+AUFGABE:
+Der User "${userName}" hat nach "${originalQuery}" gefragt.
+Du hast eine wissenschaftliche Recherche durchgeführt.
+
+Schreibe jetzt eine KURZE persönliche Einleitung (TL;DR):
+- Max 3-4 Sätze
+- Sprich ${userName} direkt an (z.B. "Hey ${userName},..." oder "${userName}, kurz für dich:...")
+- Fasse das Wichtigste zusammen
+- Nutze DEINE Persona-Stimme (Humor, Energie, Direktheit)
+- Ende mit einem kurzen Takeaway oder "Schau dir die Details unten an"
+
+WICHTIG: 
+- Schreibe NUR die Einleitung, keine Studiendetails!
+- Sei authentisch zu deiner Persönlichkeit
+- Keine Floskeln wie "Gerne zeige ich dir..."`;
 }
 
 function getAcademicDomains(focus?: string): string[] {
