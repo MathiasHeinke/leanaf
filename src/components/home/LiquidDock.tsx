@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scan, Plus, BrainCircuit, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
+import { Aperture, Plus, Sparkles, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type QuickActionType = 'water' | 'workout' | 'weight' | 'supplements' | 'sleep';
@@ -91,21 +91,15 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
           )}
         </AnimatePresence>
 
-        {/* The actual "Island" - The Glass Dock */}
+        {/* Floating buttons - no container */}
         <motion.div
           layout
           transition={springConfig}
-          className={cn(
-            "flex items-center gap-3 px-4 py-3",
-            "bg-card/80 backdrop-blur-2xl",
-            "border border-border/50 dark:border-white/10",
-            "rounded-[28px]",
-            "shadow-2xl shadow-black/20 dark:shadow-black/40"
-          )}
+          className="flex items-center gap-4"
         >
           {/* LEFT: VISION (Food Scan) */}
           <DockButton 
-            icon={Scan} 
+            icon={Aperture} 
             onClick={onVisionScan}
             label="Mahlzeit scannen"
           />
@@ -141,7 +135,7 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
               )}
               aria-label="ARES Chat öffnen"
             >
-              <BrainCircuit className="w-7 h-7" />
+              <Sparkles className="w-7 h-7" />
             </motion.button>
           </div>
 
@@ -178,16 +172,16 @@ const DockButton: React.FC<DockButtonProps> = ({
     transition={springConfig}
     onClick={onClick}
     className={cn(
-      "w-12 h-12 flex items-center justify-center rounded-full",
-      "transition-colors duration-200",
+      "w-12 h-12 flex items-center justify-center",
+      "transition-all duration-200",
       active 
-        ? "bg-primary/20 text-primary" 
-        : "bg-secondary/60 text-foreground hover:bg-secondary/80"
+        ? "text-primary drop-shadow-[0_0_12px_hsl(var(--primary)/0.6)]" 
+        : "text-white/90 hover:text-white drop-shadow-[0_2px_10px_rgba(255,255,255,0.3)]"
     )}
     aria-label={label}
     aria-pressed={active}
   >
-    <Icon className="w-5 h-5" />
+    <Icon className="w-6 h-6" />
   </motion.button>
 );
 
