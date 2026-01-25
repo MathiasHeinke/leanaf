@@ -12,9 +12,10 @@ interface HydrationWidgetProps {
 
 export const HydrationWidget: React.FC<HydrationWidgetProps> = ({ size }) => {
   const navigate = useNavigate();
-  const { hydrationMlToday } = usePlusData();
+  const { hydrationMlToday, goals } = usePlusData();
   
-  const target = 3000;
+  // Use goal from database, fallback to 2500ml
+  const target = goals?.fluid_goal_ml || 2500;
   const percent = Math.min((hydrationMlToday / target) * 100, 100);
   const liters = (hydrationMlToday / 1000).toFixed(1);
   const targetLiters = (target / 1000).toFixed(1);

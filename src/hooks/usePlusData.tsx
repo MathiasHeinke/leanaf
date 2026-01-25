@@ -8,6 +8,7 @@ export interface PlusGoals {
   carbs?: number | null;
   fats?: number | null;
   calorie_deficit?: number | null;
+  fluid_goal_ml?: number | null;
 }
 
 export interface PlusDaySummary {
@@ -73,8 +74,10 @@ export const usePlusData = (): UsePlusDataResult => {
       const [goalsRes, summariesRes, fluidsRes, sleepRes, workoutsRes, suppsRes] = await Promise.all([
         supabase
           .from('daily_goals')
-          .select('calories, protein, carbs, fats, calorie_deficit')
+          .select('calories, protein, carbs, fats, calorie_deficit, fluid_goal_ml')
           .eq('user_id', userId)
+          .order('updated_at', { ascending: false })
+          .limit(1)
           .maybeSingle(),
         supabase
           .from('daily_summaries')
