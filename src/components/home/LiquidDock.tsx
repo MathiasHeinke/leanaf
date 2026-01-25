@@ -7,7 +7,7 @@ import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Aperture, Plus, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SpartanHelm } from '@/components/icons/SpartanHelm';
+import spartanHelm from '@/assets/spartan-helm.webp';
 
 export type QuickActionType = 'water' | 'workout' | 'weight' | 'supplements' | 'sleep';
 
@@ -141,9 +141,11 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
               )}
               aria-label="ARES Chat öffnen"
             >
-              {/* Professional Spartan Helm - Dark Gray */}
-              <SpartanHelm 
-                className="w-8 h-8 text-gray-700 dark:text-gray-600" 
+              {/* Spartan Helm Image */}
+              <img 
+                src={spartanHelm} 
+                alt="ARES"
+                className="w-8 h-8 object-contain"
               />
             </motion.button>
           </div>
