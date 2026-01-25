@@ -5,8 +5,9 @@
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Aperture, Plus, Sparkles, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
+import { Aperture, Plus, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SpartanHelm } from '@/components/icons/SpartanHelm';
 
 export type QuickActionType = 'water' | 'workout' | 'weight' | 'supplements' | 'sleep';
 
@@ -104,20 +105,20 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
             label="Mahlzeit scannen"
           />
 
-          {/* CENTER: ARES (The Brain - The Hero) */}
+          {/* CENTER: ARES (The Hero - Spartan Helm) */}
           <div className="relative">
-            {/* Pulsating glow behind ARES */}
+            {/* Pulsating GOLD glow behind ARES */}
             <motion.div
               animate={{ 
                 scale: [1, 1.2, 1],
-                opacity: [0.3, 0.5, 0.3]
+                opacity: [0.2, 0.4, 0.2]
               }}
               transition={{
                 duration: 2.5,
                 repeat: Infinity,
                 ease: "easeInOut"
               }}
-              className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary to-primary-glow blur-xl"
+              className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-400 to-yellow-300 blur-xl"
             />
             
             <motion.button
@@ -127,15 +128,24 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
               onClick={onAresChat}
               className={cn(
                 "relative w-16 h-16 flex items-center justify-center rounded-full",
-                "bg-gradient-to-tr from-primary to-primary-glow",
-                "text-primary-foreground",
-                "shadow-lg shadow-primary/30",
-                "border border-white/20",
+                // Metallic brushed aluminum/platinum effect
+                "bg-gradient-to-b from-slate-200 via-slate-100 to-slate-300",
+                "dark:bg-gradient-to-b dark:from-slate-400 dark:via-slate-300 dark:to-slate-500",
+                // Inner lighting for 3D metal effect
+                "shadow-[inset_0_2px_4px_rgba(255,255,255,0.6),inset_0_-2px_4px_rgba(0,0,0,0.1)]",
+                // Outer elevation
+                "shadow-xl shadow-black/25",
+                // Premium border
+                "border border-white/60 dark:border-white/40",
                 "z-10"
               )}
               aria-label="ARES Chat öffnen"
             >
-              <Sparkles className="w-7 h-7" />
+              {/* Spartan Helm with Gold shimmer */}
+              <SpartanHelm 
+                className="w-10 h-10 drop-shadow-[0_0_8px_rgba(218,165,32,0.5)]" 
+                animated={true}
+              />
             </motion.button>
           </div>
 
