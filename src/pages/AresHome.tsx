@@ -23,6 +23,7 @@ import { BentoStatsGrid } from '@/components/home/BentoStatsGrid';
 import { FloatingDock } from '@/components/home/FloatingDock';
 import { ChatOverlay } from '@/components/home/ChatOverlay';
 import { Skeleton } from '@/components/ui/skeleton';
+import { openMeal } from '@/components/quick/quickAddBus';
 
 export default function AresHome() {
   const navigate = useNavigate();
@@ -138,7 +139,7 @@ export default function AresHome() {
       {/* Floating Dock */}
       <FloatingDock 
         onChatOpen={() => setShowChat(true)}
-        onMealInput={() => navigate('/plus')}
+        onMealInput={() => openMeal()}
       />
 
       {/* Chat Overlay */}
