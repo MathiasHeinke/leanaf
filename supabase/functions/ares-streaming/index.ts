@@ -178,6 +178,21 @@ function requiresToolExecution(text: string): boolean {
     'laut wissenschaft', 'research', 'clinical trial',
   ];
   
+  // Protocol-specific keywords should NOT trigger tool execution
+  // ARES has protocol context in system prompt and can answer directly
+  const protocolKeywords = [
+    'protokoll', 'phase 0', 'phase 1', 'phase 2', 'phase 3',
+    'fundament', 'rekomposition', 'longevity', 'checklist',
+    'was fehlt mir', 'naechste phase', 'ares protokoll',
+    'wie weit bin ich', 'mein fortschritt im protokoll'
+  ];
+  
+  // If message is about protocol, let ARES handle it with context
+  if (protocolKeywords.some(kw => lowerText.includes(kw))) {
+    console.log('[ARES-STREAM] Protocol question detected - using context, not tools');
+    return false;
+  }
+  
   return toolTriggers.some(trigger => lowerText.includes(trigger));
 }
 

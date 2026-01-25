@@ -7,6 +7,7 @@ export {
   loadUserHealthContext,
   identifyKnowledgeGaps,
   generatePromptSummary,
+  parseProtocolStatus,
   type UserHealthContext,
 } from './userContextLoader.ts';
 
