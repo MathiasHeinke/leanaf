@@ -588,9 +588,14 @@ export default function AresChat({
                         {thinkingSteps.length > 0 ? (
                           <ThinkingIndicator steps={thinkingSteps} />
                         ) : (
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-sm">Denke nach...</span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-primary">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span className="text-sm animate-pulse">Analysiert tiefgründig...</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground/60 ml-6">
+                              Gemini 3 Pro Reasoning Model aktiv
+                            </span>
                           </div>
                         )}
                       </>

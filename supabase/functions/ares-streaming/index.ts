@@ -81,6 +81,36 @@ const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ARES 3.0 HIGH-IQ TOKEN MANAGEMENT FOR REASONING MODELS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Gemini 3 Pro is a Reasoning Model - needs more tokens for internal thinking
+const ARES_MIN_TOKENS = 2000;
+
+function detectQuestionComplexity(text: string): { level: 'simple' | 'moderate' | 'complex'; maxTokens: number } {
+  const lowerText = text.toLowerCase();
+  
+  const complexKeywords = [
+    'erkläre', 'analyse', 'studie', 'forschung', 'wissenschaft',
+    'vergleich', 'unterschied', 'zusammenhang', 'mechanismus',
+    'strategie', 'plan', 'protokoll', 'optimier', 'detailliert',
+    'warum genau', 'wie funktioniert', 'step by step'
+  ];
+  
+  const complexMatches = complexKeywords.filter(k => lowerText.includes(k)).length;
+  const isLongQuestion = text.length > 150;
+  
+  // Gemini 3 Pro Reasoning Model needs MUCH more room than standard models
+  if (complexMatches >= 2 || (complexMatches >= 1 && isLongQuestion)) {
+    return { level: 'complex', maxTokens: 4000 }; // Full power for research/analysis
+  }
+  if (complexMatches >= 1 || isLongQuestion) {
+    return { level: 'moderate', maxTokens: 3000 }; // Detailed explanations
+  }
+  return { level: 'simple', maxTokens: ARES_MIN_TOKENS }; // Minimum 2000 for persona + context
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -656,7 +686,8 @@ Deno.serve(async (req) => {
                   model,
                   stream: true,
                   temperature: 0.7,
-                  max_tokens: 1500,
+                  // High-IQ Setup: Dynamic tokens for Reasoning Models (Gemini 3 Pro)
+                  max_tokens: detectQuestionComplexity(text).maxTokens,
                   messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: text }
@@ -701,8 +732,9 @@ Deno.serve(async (req) => {
           }
           
           // Log which provider was used for analytics
+          // Fix: 'streaming' is not allowed in DB constraint, use 'prompt_built'
           await traceUpdate(traceId, {
-            status: 'streaming',
+            status: 'prompt_built',
             llm_input: { provider: usedProvider, model: usedModel, routing: modelChoice.reason }
           });
 
@@ -738,17 +770,27 @@ Deno.serve(async (req) => {
                 const parsed = JSON.parse(data);
                 const delta = parsed.choices?.[0]?.delta?.content;
                 
-                if (delta) {
-                  if (firstTokenTime === null) {
-                    firstTokenTime = Math.round(performance.now() - started);
-                    console.log('[ARES-STREAM] First token at', firstTokenTime, 'ms');
+                // ROBUST: Reasoning Models send empty strings while thinking - don't abort
+                if (delta !== undefined && delta !== null) {
+                  if (delta.length > 0) {
+                    if (firstTokenTime === null) {
+                      firstTokenTime = Math.round(performance.now() - started);
+                      console.log('[ARES-STREAM] First token at', firstTokenTime, 'ms');
+                    }
+                    
+                    totalTokens++;
+                    fullResponse += delta;
+                    
+                    // Send content chunk
+                    enqueue({ type: 'content', delta });
                   }
-                  
-                  totalTokens++;
-                  fullResponse += delta;
-                  
-                  // Send content chunk
-                  enqueue({ type: 'content', delta });
+                  // Empty string = model is still reasoning, not an abort
+                }
+                
+                // Log reasoning output if present (some models send this)
+                const reasoning = parsed.choices?.[0]?.delta?.reasoning;
+                if (reasoning) {
+                  console.log('[ARES-STREAM] Reasoning chunk:', reasoning.substring(0, 100));
                 }
               } catch (e) {
                 // Ignore JSON parse errors for incomplete chunks
