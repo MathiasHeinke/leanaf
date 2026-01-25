@@ -319,43 +319,43 @@ function createFallbackAnalysis(text: string): ConversationAnalysis {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function getDetailLevelInstruction(level: DetailLevel, intent: IntentType): string {
+  // WICHTIG: Keine harten Limits - nur Orientierung. Antworten MÜSSEN vollständig sein!
   const instructions: Record<DetailLevel, string> = {
-    ultra_short: `== ANTWORT-STEUERUNG: KURZ ==
-Der User hat bestätigt/kurz geantwortet.
-- ZIEL: 2-4 Sätze (~50-80 Wörter)
-- Kurz aber vollständig
-- Beende mit einer Frage oder nächstem Schritt`,
+    ultra_short: `== ANTWORT-ORIENTIERUNG ==
+Kurze, direkte Antwort - aber IMMER vollständig.
+- Beende den Gedanken komplett
+- Keine abgeschnittenen Sätze`,
 
-    concise: `== ANTWORT-STEUERUNG: KOMPAKT ==
-Halte dich prägnant aber informativ.
-- ZIEL: 4-6 Sätze (~100-150 Wörter)
-- Fokus auf das Wesentliche
-- Eine gezielte Frage oder Handlungsempfehlung`,
+    concise: `== ANTWORT-ORIENTIERUNG ==
+Prägnant aber vollständig.
+- Alle wichtigen Punkte ansprechen
+- Sätze immer zu Ende schreiben`,
 
-    moderate: `== ANTWORT-STEUERUNG: STANDARD ==
-Normale, vollständige Antwort.
-- ZIEL: 6-10 Sätze (~200-300 Wörter)
-- Strukturiert und informativ
-- Mit Rückfrage wenn sinnvoll`,
+    moderate: `== ANTWORT-ORIENTIERUNG ==
+Vollständige, strukturierte Antwort.
+- Alle Aspekte abdecken
+- Mit klarem Abschluss`,
 
-    extensive: `== ANTWORT-STEUERUNG: AUSFÜHRLICH ==
-Der User will Details und Tiefe.
-- ZIEL: 10-15 Sätze (~350-500 Wörter)
-- Fundierte Erklärung mit Kontext
-- Strukturiert mit klaren Punkten
-- Wissenschaftliche Basis wenn relevant`
+    extensive: `== ANTWORT-ORIENTIERUNG ==
+Ausführliche Erklärung mit Tiefe.
+- Fundiert und strukturiert
+- Wissenschaftliche Basis wenn relevant
+- Klarer, vollständiger Abschluss`
   };
   
   let instruction = instructions[level];
   
   // Add intent-specific hints
   if (intent === 'confirmation') {
-    instruction += '\n- WICHTIG: User hat bestätigt. Kurze Überleitung zum nächsten Schritt.';
+    instruction += '\n- User hat bestätigt. Kurze Überleitung zum nächsten Schritt.';
   } else if (intent === 'rejection') {
-    instruction += '\n- User hat abgelehnt. Frage nach Alternative oder akzeptiere.';
+    instruction += '\n- User hat abgelehnt. Frage nach Alternative.';
   } else if (intent === 'emotion') {
-    instruction += '\n- Zeige Empathie, bevor du Lösungen anbietest.';
+    instruction += '\n- Zeige Empathie.';
   }
+  
+  // KRITISCH: Niemals abgeschnittene Antworten!
+  instruction += '\n\nKRITISCH: Antworte IMMER vollständig. Beende jeden Gedanken und jeden Satz!';
   
   return instruction;
 }
@@ -369,13 +369,16 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
   maxTokens: number;
   reason: string;
 } {
-  // Ultra-short responses - still need adequate tokens for complete response
+  // ARES MINIMUM: 2000 tokens für jede Antwort um Abschneiden zu verhindern
+  const ARES_MIN_TOKENS = 2000;
+  
+  // Ultra-short responses - aber trotzdem genug Tokens für vollständige Antwort
   if (analysis.required_detail_level === 'ultra_short' || 
       analysis.intent === 'confirmation' ||
       analysis.intent === 'chit_chat') {
     return {
       model: 'google/gemini-2.5-flash',
-      maxTokens: 800,  // Erhöht von 300 für vollständige Antworten
+      maxTokens: ARES_MIN_TOKENS,  // Minimum 2000
       reason: 'Simple acknowledgment - Flash for speed'
     };
   }
@@ -385,7 +388,7 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
       analysis.intent !== 'deep_dive') {
     return {
       model: 'google/gemini-2.5-flash',
-      maxTokens: 1200,  // Erhöht von 600 für vollständige Antworten
+      maxTokens: 2500,
       reason: 'Concise response - Flash sufficient'
     };
   }
@@ -395,7 +398,7 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
       analysis.intent === 'deep_dive') {
     return {
       model: 'google/gemini-3-pro-preview',
-      maxTokens: 4000,
+      maxTokens: 5000,  // Erhöht von 4000 für ausführliche Antworten
       reason: 'Deep analysis required - Pro for quality'
     };
   }
@@ -403,7 +406,7 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
   // Default: Pro for general quality
   return {
     model: 'google/gemini-3-pro-preview',
-    maxTokens: 3000,  // Erhöht von 2500 für vollständige Antworten
+    maxTokens: 4000,  // Erhöht von 3000
     reason: 'Standard response - Pro for quality'
   };
 }
