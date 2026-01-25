@@ -3,11 +3,11 @@
  * Real-time streaming chat interface for ARES coach
  * Design upgraded to match EnhancedUnifiedCoachChat visual style
  * 
- * @version 2.1.0
+ * @version 2.2.0 - Added XP feedback animation
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Loader2, Sparkles, Brain, Activity, Heart, Check } from 'lucide-react';
+import { Loader2, Sparkles, Brain, Activity, Heart, Check, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ import { useShadowState } from '@/hooks/useShadowState';
 import { SmartChip } from '@/components/ui/smart-chip';
 import { COACH_REGISTRY } from '@/lib/coachRegistry';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // ARES Profile Image from registry
 const ARES_IMAGE_URL = COACH_REGISTRY.ares.imageUrl || '/coaches/ares.png';
@@ -44,6 +45,7 @@ interface AresChatProps {
   initialMessages?: Message[];
   onMessageSent?: (message: string) => void;
   onResponseReceived?: (response: string, traceId: string | null) => void;
+  onXPAwarded?: (xp: number, toolsUsed: string[]) => void;
   className?: string;
 }
 
@@ -257,6 +259,7 @@ export default function AresChat({
   initialMessages = [],
   onMessageSent,
   onResponseReceived,
+  onXPAwarded,
   className
 }: AresChatProps) {
   // State
@@ -265,6 +268,7 @@ export default function AresChat({
   const [contextModules, setContextModules] = useState<string[]>([]);
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [lastXPGain, setLastXPGain] = useState<{ amount: number; timestamp: number } | null>(null);
 
   // Refs
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -336,8 +340,8 @@ export default function AresChat({
       // Trigger fire animation on stream start
       fireBackdropRef.current?.ignite({ to: 0.7, durationMs: 3000 });
     },
-    onStreamEnd: (content, traceId) => {
-      console.log('[AresChat] Stream ended, traceId:', traceId);
+    onStreamEnd: (content, traceId, xpAwarded) => {
+      console.log('[AresChat] Stream ended, traceId:', traceId, 'XP:', xpAwarded);
       
       // Add assistant message to history (with duplicate check)
       setMessages(prev => {
@@ -375,6 +379,28 @@ export default function AresChat({
     },
     onContextReady: (modules) => {
       setContextModules(modules);
+    },
+    onXPAwarded: (xp, toolsUsed) => {
+      console.log('[AresChat] XP awarded:', xp, 'Tools:', toolsUsed);
+      
+      // Show XP gain animation
+      setLastXPGain({ amount: xp, timestamp: Date.now() });
+      
+      // Show toast notification
+      const toolText = toolsUsed.length > 0 
+        ? ` (${toolsUsed.map(t => t.replace(/_/g, ' ')).join(', ')})` 
+        : '';
+      toast.success(`+${xp} XP${toolText}`, {
+        icon: <Zap className="w-4 h-4 text-primary" />,
+        duration: 3000,
+        position: 'top-center'
+      });
+      
+      // Call external handler if provided
+      onXPAwarded?.(xp, toolsUsed);
+      
+      // Clear after animation
+      setTimeout(() => setLastXPGain(null), 3000);
     }
   });
 

@@ -1998,37 +1998,88 @@ async function callLLMWithTools(
   
   console.log('[ARES-HYBRID] Route decision:', modelChoice.provider, modelChoice.model, '-', modelChoice.reason);
 
-  // For tool calls, we use OpenAI as it has the most reliable function calling
-  // For pure chat without tools, we can use Lovable AI (Gemini)
-  let providerUsed = 'openai';
-  let modelUsed = 'gpt-4o';
+  // PHASE A: Hybrid Router Activation
+  // Route to the best provider based on message content
+  let providerUsed = modelChoice.provider;
+  let modelUsed = modelChoice.model;
   
-  // First LLM call with tools - OpenAI for reliability
-  let response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
+  let response: Response;
+  
+  // For research queries, use Perplexity directly (will be handled via tool)
+  // For tool execution, use OpenAI (best function calling)
+  // For complex analysis or chat, try Lovable AI first
+  if (modelChoice.provider === 'lovable' && !modelChoice.reason.includes('Tool')) {
+    // Try Lovable AI (Gemini) first for non-tool queries
+    console.log('[ARES-HYBRID] Using Lovable AI primary:', modelChoice.model);
+    try {
+      const lovableResult = await callWithFallback(
+        messages.slice(1), // Remove system message, passed separately
+        modelChoice,
+        { stream: false, systemPrompt, tools: ARES_TOOLS }
+      );
+      
+      if (lovableResult.response.ok) {
+        const data = await lovableResult.response.json();
+        providerUsed = lovableResult.usedProvider;
+        modelUsed = lovableResult.usedModel;
+        
+        // Check if model returned tool calls (unlikely with Gemini, but handle it)
+        const message = data.choices?.[0]?.message;
+        if (message?.tool_calls && message.tool_calls.length > 0) {
+          // Fall through to OpenAI for tool execution
+          console.log('[ARES-HYBRID] Lovable returned tool calls, switching to OpenAI');
+          response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
+          providerUsed = 'openai';
+          modelUsed = 'gpt-4o';
+        } else {
+          return {
+            content: message?.content || 'Keine Antwort erhalten',
+            toolResults: [],
+            providerUsed,
+            modelUsed
+          };
+        }
+      } else {
+        // Fall through to OpenAI
+        console.log('[ARES-HYBRID] Lovable failed, falling back to OpenAI');
+        response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
+        providerUsed = 'openai';
+        modelUsed = 'gpt-4o';
+      }
+    } catch (lovableErr) {
+      console.warn('[ARES-HYBRID] Lovable AI error:', lovableErr);
+      response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
+      providerUsed = 'openai';
+      modelUsed = 'gpt-4o';
+    }
+  } else {
+    // For tool execution, use OpenAI directly
+    response = await callOpenAIWithTools(messages, complexity.maxTokens, temperature);
+    providerUsed = 'openai';
+    modelUsed = 'gpt-4o';
+  }
 
   if (!response.ok) {
-    // Try Lovable AI fallback for non-tool responses
-    console.log('[ARES-HYBRID] OpenAI failed, trying Lovable AI fallback...');
+    // Final fallback attempt
+    console.log('[ARES-HYBRID] Primary failed, trying final fallback...');
     try {
       const fallbackResult = await callWithFallback(
-        messages.slice(1), // Remove system prompt, it's passed separately
-        { provider: 'lovable', model: 'google/gemini-2.5-flash', reason: 'OpenAI fallback' },
+        messages.slice(1),
+        { provider: 'lovable', model: 'google/gemini-2.5-flash', reason: 'Final fallback' },
         { stream: false, systemPrompt }
       );
       
       if (fallbackResult.response.ok) {
         const data = await fallbackResult.response.json();
-        providerUsed = fallbackResult.usedProvider;
-        modelUsed = fallbackResult.usedModel;
         return {
           content: data.choices?.[0]?.message?.content || 'Keine Antwort erhalten',
           toolResults: [],
-          providerUsed,
-          modelUsed
+          providerUsed: fallbackResult.usedProvider,
+          modelUsed: fallbackResult.usedModel
         };
       }
     } catch (fallbackErr) {
-      console.error('[ARES-HYBRID] Fallback also failed:', fallbackErr);
+      console.error('[ARES-HYBRID] All providers failed:', fallbackErr);
     }
     throw new Error('All AI providers failed');
   }
@@ -2514,11 +2565,24 @@ Deno.serve(async (req) => {
     }
 
     // Phase 7: Topic State Machine - Process message for topic detection
+    // PHASE B FIX: Load persistent topic state from DB
     let topicState: TopicState | null = null;
     let topicTransition = null;
     try {
-      // Initialize topic state (in production, this could be loaded from DB)
-      topicState = createInitialTopicState();
+      // Load existing topic state from user_conversation_state table
+      const { data: savedState, error: stateError } = await supaSvc
+        .from('user_conversation_state')
+        .select('topic_state')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (stateError) {
+        console.warn('[TOPIC] Failed to load saved state:', stateError.message);
+      }
+      
+      // Use saved state or create initial
+      topicState = (savedState?.topic_state as TopicState) || createInitialTopicState();
+      console.log('[TOPIC] Loaded state - primary:', topicState.primary?.name || 'none', 'shifts:', topicState.shiftCount);
       
       // Process user message for topic detection
       const topicResult = processTopicMessage(topicState, text, true);
@@ -2540,6 +2604,23 @@ Deno.serve(async (req) => {
       if (pausedForFollowup.length > 0) {
         console.log(`[TOPIC] Paused topics ready for followup: ${pausedForFollowup.map(t => t.name).join(', ')}`);
       }
+      
+      // PHASE B: Save updated topic state to DB (non-blocking upsert)
+      supaSvc
+        .from('user_conversation_state')
+        .upsert({
+          user_id: user.id,
+          topic_state: topicState,
+          last_coach_id: coachId,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' })
+        .then(({ error: saveError }) => {
+          if (saveError) {
+            console.warn('[TOPIC] Failed to save state:', saveError.message);
+          } else {
+            console.log('[TOPIC] State saved successfully');
+          }
+        });
     } catch (topicError) {
       console.warn('[ARES-WARN] Topic state machine failed:', topicError);
     }

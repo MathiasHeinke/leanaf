@@ -29,6 +29,8 @@ interface StreamEvent {
     durationMs?: number;
   };
   loadedModules?: string[];
+  xpAwarded?: number;
+  toolsUsed?: string[];
 }
 
 interface StreamMetrics {
@@ -36,6 +38,8 @@ interface StreamMetrics {
   totalTokens: number;
   durationMs: number | null;
   loadedModules: string[];
+  xpAwarded: number;
+  toolsUsed: string[];
 }
 
 export interface ThinkingStep {
@@ -48,9 +52,10 @@ type StreamState = 'idle' | 'connecting' | 'thinking' | 'context_loading' | 'str
 
 export interface UseAresStreamingOptions {
   onStreamStart?: () => void;
-  onStreamEnd?: (fullContent: string, traceId: string | null) => void;
+  onStreamEnd?: (fullContent: string, traceId: string | null, xpAwarded?: number) => void;
   onError?: (error: string) => void;
   onContextReady?: (modules: string[]) => void;
+  onXPAwarded?: (xp: number, toolsUsed: string[]) => void;
   fallbackToBlocking?: boolean;
 }
 
@@ -156,6 +161,7 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
     onStreamEnd,
     onError,
     onContextReady,
+    onXPAwarded,
     fallbackToBlocking = true
   } = options;
 
@@ -169,7 +175,9 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
     firstTokenMs: null,
     totalTokens: 0,
     durationMs: null,
-    loadedModules: []
+    loadedModules: [],
+    xpAwarded: 0,
+    toolsUsed: []
   });
 
   // Refs
@@ -210,7 +218,9 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
       firstTokenMs: null,
       totalTokens: 0,
       durationMs: null,
-      loadedModules: []
+      loadedModules: [],
+      xpAwarded: 0,
+      toolsUsed: []
     });
   }, [stopStream]);
 
@@ -253,7 +263,9 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
       firstTokenMs: null,
       totalTokens: 0,
       durationMs: null,
-      loadedModules: []
+      loadedModules: [],
+      xpAwarded: 0,
+      toolsUsed: []
     });
     setStreamState('connecting');
     isStreamingRef.current = true;
@@ -289,6 +301,10 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
       // Check for redirect to blocking
       if (response.headers.get('Content-Type')?.includes('application/json')) {
         const jsonData = await response.json();
+        
+        // Extract XP and tools from blocking response
+        const xpAwarded = jsonData.xpAwarded || 0;
+        const toolsUsed = jsonData.toolsUsed || [];
         
         if (jsonData.redirect === 'blocking' && fallbackToBlocking) {
           const reason = jsonData.reason || 'tool_execution';
@@ -327,9 +343,14 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
             setTraceId(jsonData.traceId || null);
             
             const duration = Math.round(performance.now() - startTime);
-            setMetrics(m => ({ ...m, durationMs: duration }));
+            setMetrics(m => ({ ...m, durationMs: duration, xpAwarded, toolsUsed }));
             
-            onStreamEnd?.(blockingResponse, jsonData.traceId || null);
+            // Trigger XP callback if XP was awarded
+            if (xpAwarded > 0) {
+              onXPAwarded?.(xpAwarded, toolsUsed);
+            }
+            
+            onStreamEnd?.(blockingResponse, jsonData.traceId || null, xpAwarded);
           } catch (blockingError) {
             clearInterval(stepInterval);
             throw blockingError;
