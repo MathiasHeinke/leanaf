@@ -549,35 +549,31 @@ export default function AresChat({
                       <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
                     </Avatar>
                     
-                    {/* Thinking Phase: Ticker läuft inline neben Avatar */}
-                    {(streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading') && (
-                      thinkingSteps.length > 0 ? (
-                        <RotatingThinkingIndicator steps={thinkingSteps} inline />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">ARES denkt nach...</span>
-                      )
-                    )}
-                    
-                    {/* Streaming Phase: Einfacher Text */}
-                    {streamState === 'streaming' && (
-                      <span className="text-xs text-muted-foreground">ARES schreibt...</span>
-                    )}
+                    {/* Status: Ticker während Thinking ODER Streaming-ohne-Content, sonst "schreibt..." */}
+                    {(() => {
+                      const isPreContent = streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading';
+                      const isStreamingWithoutContent = streamState === 'streaming' && !streamingContent;
+                      const showThinkingTicker = (isPreContent || isStreamingWithoutContent) && thinkingSteps.length > 0;
+                      const showWritingLabel = streamState === 'streaming' && !!streamingContent;
+                      
+                      if (showThinkingTicker) {
+                        return <RotatingThinkingIndicator steps={thinkingSteps} inline />;
+                      }
+                      if (showWritingLabel) {
+                        return <span className="text-xs text-muted-foreground">ARES schreibt...</span>;
+                      }
+                      // Fallback während Connecting/Pre-Steps
+                      return <span className="text-xs text-muted-foreground">ARES denkt nach...</span>;
+                    })()}
                   </div>
                   
-                  {/* Content Box - NUR für Streaming-Content */}
+                  {/* Content Box - NUR wenn Content da ist */}
                   {streamState === 'streaming' && streamingContent && (
                     <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
                       <div className="prose prose-sm dark:prose-invert max-w-none">
                         <StreamingTextRenderer content={streamingContent} />
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
                       </div>
-                    </div>
-                  )}
-                  
-                  {/* Fallback typing indicator während Streaming ohne Content */}
-                  {streamState === 'streaming' && !streamingContent && (
-                    <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
-                      <TypingIndicator />
                     </div>
                   )}
                 </div>
