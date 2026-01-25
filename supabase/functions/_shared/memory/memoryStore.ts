@@ -1,9 +1,108 @@
 /**
  * Memory Store - Saves and loads insights from database
+ * 
+ * ARES 3.0 PRO: Enhanced with time-aware context (formatTimeAgo)
  */
 
 import { ExtractedInsight, UserInsight, InsightCategory } from './types.ts';
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TIME-AWARE MEMORY (ARES 3.0 PRO - "Elefantengedächtnis")
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Formatiert ein Datum als natürlichen deutschen Zeitausdruck
+ * z.B. "heute", "gestern", "vor 3 Tagen", "letzte Woche", "vor 2 Monaten"
+ */
+export function formatTimeAgo(date: Date | string): string {
+  const now = new Date();
+  const past = typeof date === 'string' ? new Date(date) : date;
+  
+  const diffMs = now.getTime() - past.getTime();
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  if (diffDays === 0) {
+    if (diffHours === 0) {
+      if (diffMinutes < 5) return 'gerade eben';
+      return `vor ${diffMinutes} Minuten`;
+    }
+    if (diffHours === 1) return 'vor einer Stunde';
+    return `vor ${diffHours} Stunden`;
+  }
+  
+  if (diffDays === 1) return 'gestern';
+  if (diffDays === 2) return 'vorgestern';
+  if (diffDays < 7) return `vor ${diffDays} Tagen`;
+  
+  if (diffWeeks === 1) return 'letzte Woche';
+  if (diffWeeks < 4) return `vor ${diffWeeks} Wochen`;
+  
+  if (diffMonths === 1) return 'letzten Monat';
+  if (diffMonths < 12) return `vor ${diffMonths} Monaten`;
+  
+  const diffYears = Math.floor(diffMonths / 12);
+  if (diffYears === 1) return 'letztes Jahr';
+  return `vor ${diffYears} Jahren`;
+}
+
+/**
+ * Erstellt einen formatierten Insight-String mit Zeitkontext
+ * z.B. "Nimmt Kreatin (erwähnt vor 2 Wochen)"
+ */
+export function formatInsightWithTime(insight: UserInsight): string {
+  const timeAgo = formatTimeAgo(insight.extractedAt);
+  return `${insight.insight} (${timeAgo})`;
+}
+
+/**
+ * Erstellt eine Memory-Section für den System-Prompt mit Zeitkontext
+ */
+export function buildTimeAwareMemorySection(insights: UserInsight[]): string {
+  if (!insights || insights.length === 0) return '';
+
+  const sections: string[] = [];
+  sections.push('== DEIN GEDÄCHTNIS ÜBER DEN USER ==');
+  sections.push('(Nutze diese Informationen aktiv und beziehe dich auf den Zeitpunkt!)');
+  sections.push('');
+
+  // Gruppiere nach Kategorie
+  const byCategory: Record<string, UserInsight[]> = {};
+  for (const insight of insights) {
+    if (!byCategory[insight.category]) {
+      byCategory[insight.category] = [];
+    }
+    byCategory[insight.category].push(insight);
+  }
+
+  // Sortiere Kategorien nach Wichtigkeit
+  const categoryOrder = ['ziele', 'gesundheit', 'training', 'ernährung', 'körper', 'schlaf', 'stress', 'gewohnheiten'];
+  const sortedCategories = Object.keys(byCategory).sort((a, b) => {
+    const indexA = categoryOrder.indexOf(a);
+    const indexB = categoryOrder.indexOf(b);
+    return (indexA === -1 ? 99 : indexA) - (indexB === -1 ? 99 : indexB);
+  });
+
+  for (const category of sortedCategories) {
+    const categoryInsights = byCategory[category];
+    sections.push(`### ${category.toUpperCase()}`);
+    
+    categoryInsights.slice(0, 3).forEach(insight => {
+      const importance = insight.importance === 'critical' ? '⚠️ ' : 
+                        insight.importance === 'high' ? '❗ ' : '';
+      const timeAgo = formatTimeAgo(insight.extractedAt);
+      sections.push(`- ${importance}${insight.insight} (${timeAgo})`);
+    });
+    sections.push('');
+  }
+
+  return sections.join('\n');
+}
 
 /**
  * Save extracted insights to database

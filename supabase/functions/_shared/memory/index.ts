@@ -37,7 +37,11 @@ export {
   saveInsights, 
   loadRelevantInsights, 
   getAllUserInsights,
-  getExistingInsightStrings 
+  getExistingInsightStrings,
+  // ARES 3.0 PRO: Time-aware memory
+  formatTimeAgo,
+  formatInsightWithTime,
+  buildTimeAwareMemorySection
 } from './memoryStore.ts';
 
 // Pattern Detection
