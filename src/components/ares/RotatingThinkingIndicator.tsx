@@ -27,6 +27,7 @@ interface ThinkingStep {
 
 interface Props {
   steps: ThinkingStep[];
+  inline?: boolean;  // Kompakte Darstellung neben Avatar
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -66,7 +67,7 @@ const COGNITIVE_MAPPING: Record<string, { text: string; icon: React.ComponentTyp
 // Minimum display time per step (ms)
 const MIN_STEP_DISPLAY_TIME = 800;
 
-export const RotatingThinkingIndicator: React.FC<Props> = ({ steps }) => {
+export const RotatingThinkingIndicator: React.FC<Props> = ({ steps, inline = false }) => {
   const [displayedStep, setDisplayedStep] = useState<ThinkingStep | null>(null);
   const lastChangeRef = useRef<number>(0);
 
@@ -107,10 +108,34 @@ export const RotatingThinkingIndicator: React.FC<Props> = ({ steps }) => {
   const mapping = COGNITIVE_MAPPING[displayedStep.step] || { text: displayedStep.message, icon: BrainCircuit };
   const Icon = mapping.icon;
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // INLINE MODE: Kompakte Darstellung neben Avatar
+  // ══════════════════════════════════════════════════════════════════════════
+  if (inline) {
+    return (
+      <AnimatePresence mode="wait">
+        <motion.span
+          key={displayedStep.step}
+          initial={{ opacity: 0, filter: 'blur(2px)' }}
+          animate={{ opacity: 1, filter: 'blur(0px)' }}
+          exit={{ opacity: 0, filter: 'blur(2px)' }}
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          className="text-xs text-muted-foreground flex items-center gap-1.5"
+        >
+          <Icon className="w-3 h-3 animate-pulse text-primary/70" />
+          ARES {mapping.text.toLowerCase().replace('...', '')}...
+        </motion.span>
+      </AnimatePresence>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FULL MODE: Original-Darstellung mit Progress Dots
+  // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="flex flex-col items-start gap-2 py-1">
       
-      {/* Der "Gedanken-Ticker" - Kein overflow-hidden, kein absolute */}
+      {/* Der "Gedanken-Ticker" */}
       <div className="flex items-center gap-3 min-h-[28px] w-full">
         <AnimatePresence mode="wait">
           <motion.div

@@ -542,50 +542,44 @@ export default function AresChat({
             {isStreaming && (
               <div className="flex justify-start mb-4">
                 <div className="flex flex-col max-w-[80%]">
-                  {/* Avatar + "ARES schreibt..." header */}
+                  {/* Avatar + Thinking-Ticker (inline) */}
                   <div className="flex items-center gap-2 mb-2 ml-1">
                     <Avatar className="h-5 w-5 flex-shrink-0">
                       <AvatarImage src={ARES_IMAGE_URL} alt="ARES" />
                       <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
                     </Avatar>
-                    <span className="text-xs text-muted-foreground">
-                      ARES {
-                        streamState === 'streaming' ? 'schreibt...' : 
-                        thinkingSteps.some(s => s.step === 'search' && !s.complete) ? 'recherchiert...' :
-                        thinkingSteps.some(s => s.step === 'analyze' && !s.complete) ? 'analysiert...' :
-                        thinkingSteps.some(s => s.step === 'create' && !s.complete) ? 'erstellt Plan...' :
-                        thinkingSteps.some(s => s.step === 'cite' && !s.complete) ? 'sammelt Quellen...' :
-                        thinkingSteps.some(s => s.step === 'load' && !s.complete) ? 'lädt Daten...' :
-                        'denkt nach...'
-                      }
-                    </span>
+                    
+                    {/* Thinking Phase: Ticker läuft inline neben Avatar */}
+                    {(streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading') && (
+                      thinkingSteps.length > 0 ? (
+                        <RotatingThinkingIndicator steps={thinkingSteps} inline />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">ARES denkt nach...</span>
+                      )
+                    )}
+                    
+                    {/* Streaming Phase: Einfacher Text */}
+                    {streamState === 'streaming' && (
+                      <span className="text-xs text-muted-foreground">ARES schreibt...</span>
+                    )}
                   </div>
                   
-                  <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
-                    {/* Thinking steps (Gemini-style) */}
-              {(streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading') && (
-                <>
-                  {thinkingSteps.length > 0 ? (
-                    <RotatingThinkingIndicator steps={thinkingSteps} />
-                  ) : (
-                    <TypingIndicator />
-                  )}
-                </>
-              )}
-                    
-                    {/* Streaming content with fade-in effect */}
-                    {streamState === 'streaming' && streamingContent && (
+                  {/* Content Box - NUR für Streaming-Content */}
+                  {streamState === 'streaming' && streamingContent && (
+                    <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
                       <div className="prose prose-sm dark:prose-invert max-w-none">
                         <StreamingTextRenderer content={streamingContent} />
                         <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
                       </div>
-                    )}
-                    
-                    {/* Fallback typing indicator */}
-                    {streamState === 'streaming' && !streamingContent && (
+                    </div>
+                  )}
+                  
+                  {/* Fallback typing indicator während Streaming ohne Content */}
+                  {streamState === 'streaming' && !streamingContent && (
+                    <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
                       <TypingIndicator />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
