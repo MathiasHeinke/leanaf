@@ -12,6 +12,9 @@ export interface WeeklyTrainingStats {
   vo2maxSessions: number;
   vo2maxGoal: number;
   vo2maxProgress: number;
+  saunaSessions: number;
+  saunaGoal: number;
+  saunaProgress: number;
   weekStart: Date;
   weekEnd: Date;
 }
@@ -27,6 +30,9 @@ export function useWeeklyTraining() {
     vo2maxSessions: 0,
     vo2maxGoal: 1,
     vo2maxProgress: 0,
+    saunaSessions: 0,
+    saunaGoal: 4,
+    saunaProgress: 0,
     weekStart: startOfWeek(new Date(), { weekStartsOn: 1 }),
     weekEnd: endOfWeek(new Date(), { weekStartsOn: 1 }),
   });
@@ -61,6 +67,7 @@ export function useWeeklyTraining() {
         .filter(s => s.training_type === 'zone2')
         .reduce((sum, s) => sum + (s.total_duration_minutes || 0), 0);
       const vo2maxSessions = sessions.filter(s => s.training_type === 'vo2max').length;
+      const saunaSessions = sessions.filter(s => s.training_type === 'sauna').length;
 
       setStats({
         rptSessions,
@@ -72,6 +79,9 @@ export function useWeeklyTraining() {
         vo2maxSessions,
         vo2maxGoal: 1,
         vo2maxProgress: Math.min(100, Math.round((vo2maxSessions / 1) * 100)),
+        saunaSessions,
+        saunaGoal: 4,
+        saunaProgress: Math.min(100, Math.round((saunaSessions / 4) * 100)),
         weekStart,
         weekEnd,
       });

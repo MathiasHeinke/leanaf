@@ -12,6 +12,7 @@ export interface Phase0Checklist {
   protein_training: { completed: boolean; protein_avg: number | null; zone2_avg: number | null; validated_at: string | null };
   kfa_trend: { completed: boolean; current_kfa: number | null; trend: string | null; validated_at: string | null };
   bloodwork_baseline: { completed: boolean; markers_present: string[]; validated_at: string | null };
+  tracking_measurement: { completed: boolean; confirmed_at: string | null };
 }
 
 export interface ProtocolStatus {
@@ -41,7 +42,8 @@ const DEFAULT_CHECKLIST: Phase0Checklist = {
   digital_hygiene: { completed: false, confirmed_at: null },
   protein_training: { completed: false, protein_avg: null, zone2_avg: null, validated_at: null },
   kfa_trend: { completed: false, current_kfa: null, trend: null, validated_at: null },
-  bloodwork_baseline: { completed: false, markers_present: [], validated_at: null }
+  bloodwork_baseline: { completed: false, markers_present: [], validated_at: null },
+  tracking_measurement: { completed: false, confirmed_at: null }
 };
 
 export function useProtocolStatus() {
@@ -55,7 +57,8 @@ export function useProtocolStatus() {
     ? Object.values(status.phase_0_checklist).filter(item => item.completed).length 
     : 0;
   
-  const canUnlockPhase1 = phase0Progress >= 7 && status?.phase_0_checklist?.bloodwork_baseline?.completed;
+  // Need 8/9 items + bloodwork to unlock Phase 1
+  const canUnlockPhase1 = phase0Progress >= 8 && status?.phase_0_checklist?.bloodwork_baseline?.completed;
 
   const loadStatus = useCallback(async () => {
     if (!user?.id) return;

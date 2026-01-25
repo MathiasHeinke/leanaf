@@ -284,9 +284,10 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
 
       progress.toxin_free = createManualItem('toxin_free', [
         { label: 'Kein Rauchen', completed: false, explanation: 'Keine Zigaretten, keine Vapes' },
-        { label: 'Alkohol fast null', completed: false, explanation: 'Max. 1-2 Drinks pro Monat' },
+        { label: 'Alkohol 0 (max. 2×/Jahr)', completed: false, explanation: 'Nur Hochzeit/Silvester' },
         { label: 'Kein Plastik/Teflon bei Essen', completed: false, explanation: 'Glas/Edelstahl statt Plastik' },
-      ], 'Entferne aktiv Toxine aus deinem Leben. Rauchen und regelmäßiger Alkohol sind nicht verhandelbar.');
+        { label: 'Regelmäßig Sauna (≥80°C)', completed: false, explanation: '4-7×/Woche – Heat Shock Proteins, -40% Mortalität' },
+      ], 'Entferne aktiv Toxine aus deinem Leben. Sauna ≥80°C aktiviert Heat Shock Proteins und senkt Mortalität um 40% (Kuopio-Studie).');
 
       progress.bio_sanierung = createManualItem('bio_sanierung', [
         { label: 'Zähne saniert', completed: false, explanation: 'Keine offenen Baustellen im Mund' },
@@ -305,6 +306,14 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
         { label: 'Kein Doomscrolling', completed: false, explanation: 'Bewusster Social Media Konsum' },
         { label: 'Screen-Time Limits', completed: false, explanation: 'Feste Zeiten für digitale Geräte' },
       ], 'Digitale Überlastung stört Schlaf, erhöht Cortisol und fragmentiert deine Aufmerksamkeit.');
+
+      progress.tracking_measurement = createManualItem('tracking_measurement', [
+        { label: 'Wearable nutzen', completed: false, explanation: 'Apple Watch, Oura, Whoop – Schlaf, HRV, Aktivität' },
+        { label: 'Gewicht/KFA regelmäßig tracken', completed: false, explanation: 'Mind. 1× pro Woche, besser täglich' },
+        { label: 'Mahlzeiten erfassen', completed: false, explanation: 'Makros kennen – App oder Dashboard' },
+        { label: 'Training dokumentieren', completed: false, explanation: 'Jede Session eintragen' },
+        { label: 'Bluttest alle 3-6 Monate', completed: false, explanation: 'Marker verfolgen, Trends erkennen' },
+      ], 'Wer nicht misst, weiß nichts. Und wer nichts weiß, kann nichts ändern. Tracking ist die Basis für Optimierung.');
 
       setItemProgress(progress);
     } catch (error) {
