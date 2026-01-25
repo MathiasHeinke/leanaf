@@ -32,7 +32,10 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
   };
 
   const handleInteract = (card: ActionCard) => {
-    if (card.actionContext) {
+    // Prefer direct prompt with metrics, fallback to context key
+    if (card.actionPrompt) {
+      onTriggerChat(card.actionPrompt);
+    } else if (card.actionContext) {
       onTriggerChat(card.actionContext);
     }
   };
