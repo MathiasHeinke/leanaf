@@ -80,7 +80,8 @@ serve(async (req) => {
       ? `${query} (translate to English for search, respond in German)`
       : query;
 
-    // Call Perplexity with academic search mode
+    // Call Perplexity with Deep Research for academic analysis
+    console.log(`[ARES-Research] ${traceId} Using sonar-deep-research for comprehensive analysis`);
     const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -88,7 +89,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'sonar-pro',
+        model: 'sonar-deep-research',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: researchQuery }
@@ -138,7 +139,7 @@ serve(async (req) => {
     const result: ResearchResult = {
       answer,
       citations: citations.slice(0, maxResults),
-      model: 'sonar-reasoning',
+      model: 'sonar-deep-research',
       searchMode: 'academic'
     };
 
