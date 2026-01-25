@@ -8,6 +8,7 @@ import { TrainingWidget } from './TrainingWidget';
 import { WeightWidget } from './WeightWidget';
 import { HRVWidget } from './HRVWidget';
 import { SupplementsWidget } from './SupplementsWidget';
+import { BioAgeWidget } from './BioAgeWidget';
 
 interface WidgetRendererProps {
   config: WidgetConfig;
@@ -34,8 +35,7 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ config }) => {
     case 'supplements':
       return <SupplementsWidget size={size} />;
     case 'bio_age':
-      // Placeholder - could add BioAgeWidget later
-      return null;
+      return <BioAgeWidget size={size} />;
     default:
       return null;
   }

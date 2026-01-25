@@ -16,21 +16,21 @@ export const MetricWidgetGrid: React.FC = () => {
   const { enabledWidgets, isLoading } = useWidgetConfig();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
 
-  // Grid class mapping based on widget size
+  // Grid class mapping based on widget size - with min-heights
   const getGridClass = (size: WidgetSize): string => {
     switch (size) {
       case 'small':
-        return 'col-span-1';
+        return 'col-span-1 min-h-[100px]';
       case 'medium':
-        return 'col-span-1';
+        return 'col-span-1 min-h-[140px]';
       case 'large':
-        return 'col-span-2';
+        return 'col-span-2 min-h-[180px]';
       case 'wide':
-        return 'col-span-2';
+        return 'col-span-2 min-h-[100px]';
       case 'flat':
-        return 'col-span-2';
+        return 'col-span-2 min-h-[60px]';
       default:
-        return 'col-span-1';
+        return 'col-span-1 min-h-[140px]';
     }
   };
 
@@ -53,7 +53,7 @@ export const MetricWidgetGrid: React.FC = () => {
         <AnimatePresence mode="popLayout">
           {enabledWidgets.map((widget, index) => (
             <motion.div
-              key={widget.id}
+              key={`${widget.type}-${widget.size}-${widget.enabled}`}
               layout
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
