@@ -26,6 +26,7 @@ import { useProtocols } from '@/hooks/useProtocols';
 import { useTodaysIntake } from '@/hooks/useTodaysIntake';
 import { useWeeklyTraining } from '@/hooks/useWeeklyTraining';
 import { cn } from '@/lib/utils';
+import { NutritionWidget } from './NutritionWidget';
 
 // Timing display config
 const TIMING_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
@@ -345,31 +346,8 @@ export function Phase1Overview() {
         </CardContent>
       </Card>
 
-      {/* Nutrition - Static recommendations */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Apple className="w-5 h-5 text-primary" />
-            <CardTitle className="text-lg">Ernährung</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Protein</span>
-              <span className="font-medium">≥2g/kg</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Kalorien</span>
-              <span className="font-medium">TDEE - 500kcal</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Essens-Fenster</span>
-              <span className="font-medium">16:00 - 21:00 (5h)</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Nutrition - Dynamic Widget */}
+      <NutritionWidget />
     </div>
   );
 }
