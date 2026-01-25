@@ -7,7 +7,7 @@ import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Aperture, Plus, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import spartanHelm from '@/assets/spartan-helm.webp';
+import spartanHelm from '@/assets/spartan-helm.png';
 
 export type QuickActionType = 'water' | 'workout' | 'weight' | 'supplements' | 'sleep';
 
