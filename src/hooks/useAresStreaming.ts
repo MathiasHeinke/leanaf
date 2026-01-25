@@ -310,21 +310,26 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
         
         if (jsonData.redirect === 'blocking' && fallbackToBlocking) {
           const reason = jsonData.reason || 'tool_execution';
-          console.log('[useAresStreaming] Server requested fallback:', reason);
+          console.log('[useAresStreaming] Server requested blocking fallback:', reason);
+          
+          // Research now streams directly from ares-streaming, so this is only for other tools
+          // (workout plans, nutrition plans, peptide protocols, meta analysis)
           
           // Show specific thinking steps based on the reason
           const steps = getThinkingStepsForReason(reason);
           setThinkingSteps(steps);
           setStreamState('thinking');
           
-          // Simulate step progression for visual feedback
+          // For non-research tools: Use simple step progression (2s per step)
+          let stepIndex = 0;
           const stepInterval = setInterval(() => {
-            setThinkingSteps(prev => {
-              const incomplete = prev.findIndex(s => !s.complete);
-              if (incomplete === -1) return prev;
-              return prev.map((s, i) => i === incomplete ? { ...s, complete: true } : s);
-            });
-          }, 1500);
+            if (stepIndex < steps.length) {
+              setThinkingSteps(prev => 
+                prev.map((s, i) => i <= stepIndex ? { ...s, complete: true } : s)
+              );
+              stepIndex++;
+            }
+          }, 2000);
           
           try {
             const blockingResponse = await fallbackToBlockingRequest(message, coachId);
