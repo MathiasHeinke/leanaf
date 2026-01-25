@@ -1929,6 +1929,9 @@ ${memory.conversation_context?.mood_history?.length > 0
 // PHASE 7: DYNAMISCHE KOMPLEXITAETSERKENNUNG
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ARES 3.0: Minimum token guarantee - ARES always needs room for persona + context
+const ARES_MIN_TOKENS = 800;
+
 function detectQuestionComplexity(text: string): { level: 'simple' | 'moderate' | 'complex'; maxTokens: number } {
   const lowerText = text.toLowerCase();
   
@@ -1960,13 +1963,16 @@ function detectQuestionComplexity(text: string): { level: 'simple' | 'moderate' 
   // Long questions are likely complex
   const isLongQuestion = text.length > 150;
   
+  // ARES 3.0: Increased token limits to prevent truncation
+  // ARES always responds with context-rich answers (persona, health data, etc.)
   if (complexMatches >= 2 || (complexMatches >= 1 && isLongQuestion)) {
-    return { level: 'complex', maxTokens: 1200 }; // ~600 words
+    return { level: 'complex', maxTokens: 2500 }; // ~1250 words - Research/Analysis
   }
   if (complexMatches >= 1 || moderateMatches >= 2 || (moderateMatches >= 1 && isLongQuestion)) {
-    return { level: 'moderate', maxTokens: 800 }; // ~400 words
+    return { level: 'moderate', maxTokens: 1500 }; // ~750 words - Detailed explanations
   }
-  return { level: 'simple', maxTokens: 400 }; // ~200 words
+  // Simple queries still get minimum to fit persona + context
+  return { level: 'simple', maxTokens: ARES_MIN_TOKENS }; // ~400 words minimum
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
