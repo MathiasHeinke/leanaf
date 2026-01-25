@@ -20,6 +20,7 @@ import FireBackdrop, { FireBackdropHandle } from '@/components/FireBackdrop';
 import { useShadowState } from '@/hooks/useShadowState';
 import { SmartChip } from '@/components/ui/smart-chip';
 import { COACH_REGISTRY } from '@/lib/coachRegistry';
+import { supabase } from '@/integrations/supabase/client';
 
 // ARES Profile Image from registry
 const ARES_IMAGE_URL = COACH_REGISTRY.ares.imageUrl || '/coaches/ares.png';
@@ -233,6 +234,7 @@ export default function AresChat({
   const [input, setInput] = useState('');
   const [contextModules, setContextModules] = useState<string[]>([]);
   const [bannerCollapsed, setBannerCollapsed] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   // Refs
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -245,6 +247,45 @@ export default function AresChat({
     clearChips,
     setUserTyping
   } = useShadowState();
+
+  // Load today's conversation history on mount
+  useEffect(() => {
+    if (historyLoaded) return;
+    
+    async function loadHistory() {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      const { data, error } = await supabase
+        .from('coach_conversations')
+        .select('id, message_role, message_content, created_at')
+        .eq('user_id', userId)
+        .eq('coach_personality', coachId)
+        .eq('conversation_date', today)
+        .order('created_at', { ascending: true });
+      
+      if (error) {
+        console.error('[AresChat] Failed to load history:', error);
+        setHistoryLoaded(true);
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        const loadedMessages: Message[] = data.map(row => ({
+          id: row.id,
+          role: row.message_role as 'user' | 'assistant',
+          content: row.message_content,
+          timestamp: new Date(row.created_at)
+        }));
+        
+        setMessages(loadedMessages);
+        console.log('[AresChat] Loaded', loadedMessages.length, 'messages from history');
+      }
+      
+      setHistoryLoaded(true);
+    }
+    
+    loadHistory();
+  }, [userId, coachId, historyLoaded]);
 
   // Streaming hook
   const {
@@ -266,17 +307,25 @@ export default function AresChat({
     onStreamEnd: (content, traceId) => {
       console.log('[AresChat] Stream ended, traceId:', traceId);
       
-      // Add assistant message to history
-      setMessages(prev => [
-        ...prev,
-        {
-          id: `msg-${Date.now()}`,
-          role: 'assistant',
-          content,
-          timestamp: new Date(),
-          traceId
+      // Add assistant message to history (with duplicate check)
+      setMessages(prev => {
+        // Check if last message is already this response (avoid duplicates on reload)
+        const lastMsg = prev[prev.length - 1];
+        if (lastMsg?.role === 'assistant' && lastMsg?.content === content) {
+          return prev;
         }
-      ]);
+        
+        return [
+          ...prev,
+          {
+            id: `msg-${Date.now()}`,
+            role: 'assistant',
+            content,
+            timestamp: new Date(),
+            traceId
+          }
+        ];
+      });
       
       setContextModules([]);
       onResponseReceived?.(content, traceId);
