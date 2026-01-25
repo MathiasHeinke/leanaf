@@ -117,20 +117,31 @@ export function routeMessage(text: string, context: RoutingContext = {}): ModelC
     
     case 'chat':
     default:
-      // Use Flash for simple chat (faster, cheaper)
-      if ((context.messageLength ?? text.length) < 150 && 
-          (context.conversationLength ?? 0) < 5) {
+      const msgLength = context.messageLength ?? text.length;
+      
+      // Very short messages (< 50 chars) = ALWAYS Flash for instant response
+      if (msgLength < 50) {
+        return {
+          provider: 'lovable',
+          model: 'google/gemini-3-flash-preview',
+          reason: 'Very short message - using Gemini 3 Flash for instant response'
+        };
+      }
+      
+      // Short messages (< 150 chars) + reasonable conversation length = Flash
+      if (msgLength < 150 && (context.conversationLength ?? 0) < 10) {
         return {
           provider: 'lovable',
           model: 'google/gemini-3-flash-preview',
           reason: 'Simple chat - using Gemini 3 Flash for speed'
         };
       }
-      // Pro for longer conversations
+      
+      // Pro for longer/complex conversations
       return {
         provider: 'lovable',
         model: 'google/gemini-3-pro-preview',
-        reason: 'Standard chat - using Gemini 3 Pro for quality'
+        reason: 'Extended conversation - using Gemini 3 Pro for quality'
       };
   }
 }
