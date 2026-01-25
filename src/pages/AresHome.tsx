@@ -3,7 +3,7 @@
  * The new main entry point with XP beam, focus card, and chat overlay
  */
 
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePointsSystem } from '@/hooks/usePointsSystem';
@@ -23,12 +23,14 @@ import { BentoStatsGrid } from '@/components/home/BentoStatsGrid';
 import { FloatingDock } from '@/components/home/FloatingDock';
 import { ChatOverlay } from '@/components/home/ChatOverlay';
 import { Skeleton } from '@/components/ui/skeleton';
-import { openMeal } from '@/components/quick/quickAddBus';
+
+const QuickMealSheet = lazy(() => import('@/components/quick/QuickMealSheet').then(m => ({ default: m.QuickMealSheet })));
 
 export default function AresHome() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [showChat, setShowChat] = useState(false);
+  const [mealOpen, setMealOpen] = useState(false);
 
   // Data hooks
   const { userPoints } = usePointsSystem();
@@ -139,8 +141,13 @@ export default function AresHome() {
       {/* Floating Dock */}
       <FloatingDock 
         onChatOpen={() => setShowChat(true)}
-        onMealInput={() => openMeal()}
+        onMealInput={() => setMealOpen(true)}
       />
+
+      {/* Meal Sheet */}
+      <Suspense fallback={null}>
+        <QuickMealSheet open={mealOpen} onOpenChange={setMealOpen} />
+      </Suspense>
 
       {/* Chat Overlay */}
       <ChatOverlay 
