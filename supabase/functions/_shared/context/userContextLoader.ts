@@ -87,6 +87,28 @@ export interface UserHealthContext {
     hasPeptideProtocol: boolean;
   };
 
+  // ARES Protokoll Status
+  protocolStatus: {
+    currentPhase: number; // 0-3
+    protocolMode: 'analog' | 'advanced' | null;
+    phaseStartedAt: string | null;
+    isPaused: boolean;
+    pauseReason: string | null;
+    phase0Checklist: {
+      toxinFree: { completed: boolean; confirmedAt: string | null };
+      sleepScore: { completed: boolean; confirmedAt: string | null };
+      bioSanierung: { completed: boolean; confirmedAt: string | null };
+      psychoHygiene: { completed: boolean; confirmedAt: string | null };
+      digitalHygiene: { completed: boolean; confirmedAt: string | null };
+      proteinTraining: { completed: boolean; confirmedAt: string | null };
+      kfaTrend: { completed: boolean; confirmedAt: string | null };
+      bloodworkBaseline: { completed: boolean; confirmedAt: string | null };
+      trackingMeasurement: { completed: boolean; confirmedAt: string | null };
+    };
+    completedCount: number;
+    missingItems: string[];
+  } | null;
+
   // Wissenslücken - Was fehlt uns?
   knowledgeGaps: {
     field: string;
@@ -187,6 +209,13 @@ export async function loadUserHealthContext(
     supabase.from('supplement_plans').select('id').eq('user_id', userId).eq('status', 'active').limit(1),
     supabase.from('peptide_protocols').select('id').eq('user_id', userId).limit(1),
   ]);
+
+  // 12. ARES Protocol Status laden
+  const { data: protocolStatusData } = await supabase
+    .from('user_protocol_status')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
 
   // Aggregationen berechnen
   const mealCount = meals?.length || 0;
@@ -320,13 +349,16 @@ export async function loadUserHealthContext(
     hasPeptideProtocol: (peptidePlans.data?.length || 0) > 0,
   };
 
+  // Protocol Status parsen
+  const protocolStatus = parseProtocolStatus(protocolStatusData);
+
   // Wissenslücken identifizieren
   const knowledgeGaps = identifyKnowledgeGaps(basics, recentActivity, medical);
 
-  // Zusammenfassung für Prompt generieren
-  const summaryForPrompt = generatePromptSummary(basics, recentActivity, dailyTargets, journalInsights, medical, activePlans, knowledgeGaps);
+  // Zusammenfassung für Prompt generieren (inkl. Protocol)
+  const summaryForPrompt = generatePromptSummary(basics, recentActivity, dailyTargets, journalInsights, medical, activePlans, knowledgeGaps, protocolStatus);
 
-  console.log(`[USER-CONTEXT] Loaded: Weight=${currentWeight}kg, Meals=${mealCount}, Workouts=${workoutCount}, Sleep=${sleepCount}, Journal=${journalEntries?.length || 0}, DailyGoals=${dailyGoals ? 'yes' : 'no'}, Gaps=${knowledgeGaps.length}`);
+  console.log(`[USER-CONTEXT] Loaded: Weight=${currentWeight}kg, Meals=${mealCount}, Workouts=${workoutCount}, Sleep=${sleepCount}, Journal=${journalEntries?.length || 0}, DailyGoals=${dailyGoals ? 'yes' : 'no'}, Gaps=${knowledgeGaps.length}, Protocol=${protocolStatus ? 'Phase ' + protocolStatus.currentPhase : 'none'}`);
 
   return {
     basics,
@@ -335,6 +367,7 @@ export async function loadUserHealthContext(
     journalInsights,
     medical,
     activePlans,
+    protocolStatus,
     knowledgeGaps,
     summaryForPrompt,
   };
@@ -451,6 +484,56 @@ function identifyKnowledgeGaps(
 }
 
 /**
+ * Parse Protocol Status from DB into structured format
+ */
+function parseProtocolStatus(data: any): UserHealthContext['protocolStatus'] {
+  if (!data) return null;
+  
+  const checklist = data.phase_0_checklist || {};
+  
+  const phase0Items = [
+    { key: 'toxinFree', dbKey: 'toxin_free', label: 'Toxinfrei (Rauchen, Alkohol)' },
+    { key: 'sleepScore', dbKey: 'sleep_score', label: 'Schlaf >= 7h' },
+    { key: 'bioSanierung', dbKey: 'bio_sanierung', label: 'Bio-Sanierung' },
+    { key: 'psychoHygiene', dbKey: 'psycho_hygiene', label: 'Psycho-Hygiene' },
+    { key: 'digitalHygiene', dbKey: 'digital_hygiene', label: 'Digital Hygiene' },
+    { key: 'proteinTraining', dbKey: 'protein_training', label: 'Protein 1.2g/kg + Training' },
+    { key: 'kfaTrend', dbKey: 'kfa_trend', label: 'KFA-Trend fallend' },
+    { key: 'bloodworkBaseline', dbKey: 'bloodwork_baseline', label: 'Blutbild Baseline' },
+    { key: 'trackingMeasurement', dbKey: 'tracking_measurement', label: 'Tracking aktiv' },
+  ];
+  
+  const phase0Checklist: any = {};
+  const missingItems: string[] = [];
+  let completedCount = 0;
+  
+  for (const item of phase0Items) {
+    const itemData = checklist[item.dbKey];
+    const completed = itemData?.completed === true;
+    phase0Checklist[item.key] = {
+      completed,
+      confirmedAt: itemData?.confirmed_at || null,
+    };
+    if (completed) {
+      completedCount++;
+    } else {
+      missingItems.push(item.label);
+    }
+  }
+  
+  return {
+    currentPhase: data.current_phase || 0,
+    protocolMode: data.protocol_mode || null,
+    phaseStartedAt: data.phase_started_at || null,
+    isPaused: data.is_paused || false,
+    pauseReason: data.pause_reason || null,
+    phase0Checklist,
+    completedCount,
+    missingItems,
+  };
+}
+
+/**
  * Generiert eine strukturierte Zusammenfassung für den System Prompt
  */
 function generatePromptSummary(
@@ -460,7 +543,8 @@ function generatePromptSummary(
   journalInsights: UserHealthContext['journalInsights'],
   medical: UserHealthContext['medical'],
   activePlans: UserHealthContext['activePlans'],
-  knowledgeGaps: UserHealthContext['knowledgeGaps']
+  knowledgeGaps: UserHealthContext['knowledgeGaps'],
+  protocolStatus: UserHealthContext['protocolStatus']
 ): string {
   const lines: string[] = [];
 
@@ -618,6 +702,44 @@ function generatePromptSummary(
     lines.push('Aktive Plaene: ' + plans.join(', '));
   }
 
+  // == ARES PROTOKOLL STATUS ==
+  if (protocolStatus) {
+    lines.push('');
+    lines.push('== ARES PROTOKOLL STATUS ==');
+    
+    const phaseNames = ['Fundament', 'Rekomposition', 'Fine-tuning', 'Longevity'];
+    const phaseName = phaseNames[protocolStatus.currentPhase] || 'Unbekannt';
+    
+    lines.push('Aktuelle Phase: ' + protocolStatus.currentPhase + ' - ' + phaseName);
+    if (protocolStatus.protocolMode) {
+      lines.push('Modus: ' + protocolStatus.protocolMode);
+    }
+    if (protocolStatus.phaseStartedAt) {
+      const startDate = new Date(protocolStatus.phaseStartedAt);
+      lines.push('Phase gestartet: ' + startDate.toLocaleDateString('de-DE'));
+    }
+    if (protocolStatus.isPaused) {
+      lines.push('WARNUNG: Protokoll PAUSIERT - Grund: ' + (protocolStatus.pauseReason || 'Unbekannt'));
+    }
+    
+    // Phase 0 Progress
+    if (protocolStatus.currentPhase === 0) {
+      lines.push('');
+      lines.push('Phase 0 Fortschritt: ' + protocolStatus.completedCount + '/9');
+      
+      if (protocolStatus.missingItems.length > 0) {
+        lines.push('NOCH OFFEN: ' + protocolStatus.missingItems.join(', '));
+        lines.push('');
+        lines.push('COACHING-HINWEIS: Fokussiere auf diese fehlenden Fundament-Items!');
+        if (protocolStatus.completedCount >= 7) {
+          lines.push('FAST GESCHAFFT: Nur noch ' + protocolStatus.missingItems.length + ' Items bis Phase 1!');
+        }
+      } else {
+        lines.push('ALLE ITEMS ERLEDIGT - BEREIT FUER PHASE 1!');
+      }
+    }
+  }
+
   // == WISSENSLÜCKEN ==
   const criticalGaps = knowledgeGaps.filter(g => g.importance === 'critical');
   const highGaps = knowledgeGaps.filter(g => g.importance === 'high');
@@ -646,4 +768,4 @@ function generatePromptSummary(
   return lines.join('\n');
 }
 
-export { identifyKnowledgeGaps, generatePromptSummary };
+export { identifyKnowledgeGaps, generatePromptSummary, parseProtocolStatus };
