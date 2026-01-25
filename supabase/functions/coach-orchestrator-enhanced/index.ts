@@ -59,6 +59,16 @@ import {
   type AIProvider,
 } from '../_shared/ai/modelRouter.ts';
 
+// Phase 7: Topic State Machine
+import {
+  createInitialTopicState,
+  processMessage as processTopicMessage,
+  getPausedTopicsForFollowup,
+  generateReturnPrompt,
+  buildTopicContextPrompt,
+  type TopicState,
+} from '../_shared/topic/index.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -1314,7 +1324,7 @@ function formatConversationHistory(conversations: any[]): string {
   return formatted;
 }
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext, userInsights, userPatterns, knowledgeContext, bloodworkContext }: {
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext, userInsights, userPatterns, knowledgeContext, bloodworkContext, topicState }: {
   persona: any;
   context: any;
   ragSources: any;
@@ -1328,6 +1338,7 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   userPatterns?: UserPattern[]; // Phase 4: Memory patterns
   knowledgeContext?: KnowledgeContext | null; // Phase 5: Scientific knowledge
   bloodworkContext?: BloodworkContext | null; // Phase 5: Bloodwork analysis
+  topicState?: TopicState | null; // Phase 7: Topic state machine
 }) {
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
   const ritualContext = getRitualContext();
@@ -1884,6 +1895,14 @@ ${memory.conversation_context?.mood_history?.length > 0
   systemPromptParts.push('- get_meta_analysis: Ganzheitliche Analyse');
   systemPromptParts.push('- create_workout_plan / create_nutrition_plan / create_supplement_plan / create_peptide_protocol');
   systemPromptParts.push('');
+  
+  // Phase 7: Topic Context (pausierte Themen, aktuelles Fokusthema)
+  if (topicState) {
+    const topicContext = buildTopicContextPrompt(topicState);
+    if (topicContext) {
+      systemPromptParts.push(topicContext);
+    }
+  }
   
   // Tageszeit
   systemPromptParts.push('**TAGESZEIT: ' + timeOfDay + '**');
@@ -2487,6 +2506,37 @@ Deno.serve(async (req) => {
       console.warn('[ARES-WARN] Phase 5 context loading failed:', phase5Error);
     }
 
+    // Phase 7: Topic State Machine - Process message for topic detection
+    let topicState: TopicState | null = null;
+    let topicTransition = null;
+    try {
+      // Initialize topic state (in production, this could be loaded from DB)
+      topicState = createInitialTopicState();
+      
+      // Process user message for topic detection
+      const topicResult = processTopicMessage(topicState, text, true);
+      topicState = topicResult.newState;
+      topicTransition = topicResult.transition;
+      
+      if (topicResult.shiftDetected) {
+        console.log(`[TOPIC] Shift detected: ${topicResult.shiftDetected.type} (${topicResult.shiftDetected.confidence})`);
+      }
+      if (topicTransition) {
+        console.log(`[TOPIC] Topic transition: ${topicTransition.from?.name || 'none'} -> ${topicTransition.to.name}`);
+      }
+      if (topicState.primary) {
+        console.log(`[TOPIC] Current: ${topicState.primary.name} (depth: ${topicState.primary.depth})`);
+      }
+      
+      // Check for paused topics that could be followed up
+      const pausedForFollowup = getPausedTopicsForFollowup(topicState);
+      if (pausedForFollowup.length > 0) {
+        console.log(`[TOPIC] Paused topics ready for followup: ${pausedForFollowup.map(t => t.name).join(', ')}`);
+      }
+    } catch (topicError) {
+      console.warn('[ARES-WARN] Topic state machine failed:', topicError);
+    }
+
     // Store full context in trace for debugging (include user persona info)
     await traceUpdate(traceId, { 
       status: 'context_loaded', 
@@ -2500,6 +2550,7 @@ Deno.serve(async (req) => {
     // Build prompt with memory, conversation history, and Phase 2 persona prompt
     // Phase 3: Pass healthContext for intelligent prompts
     // Phase 4: Pass userInsights and userPatterns for memory context
+    // Phase 7: Pass topicState for conversation flow management
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
       persona: userPersona || persona, 
       context, 
@@ -2514,6 +2565,7 @@ Deno.serve(async (req) => {
       userPatterns: userPatterns.length > 0 ? userPatterns : undefined, // Phase 4: Memory patterns
       knowledgeContext: knowledgeContext || undefined, // Phase 5: Scientific knowledge
       bloodworkContext: bloodworkContext || undefined, // Phase 5: Bloodwork analysis
+      topicState: topicState || undefined, // Phase 7: Topic state machine
     });
 
     // Store system prompt AND user input for full LLM tracing
