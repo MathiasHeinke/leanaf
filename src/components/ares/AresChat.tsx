@@ -583,23 +583,15 @@ export default function AresChat({
                   
                   <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
                     {/* Thinking steps (Gemini-style) */}
-                    {(streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading') && (
-                      <>
-                        {thinkingSteps.length > 0 ? (
-                          <ThinkingIndicator steps={thinkingSteps} />
-                        ) : (
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2 text-primary">
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                              <span className="text-sm animate-pulse">Analysiert tiefgründig...</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground/60 ml-6">
-                              Gemini 3 Pro Reasoning Model aktiv
-                            </span>
-                          </div>
-                        )}
-                      </>
-                    )}
+              {(streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading') && (
+                <>
+                  {thinkingSteps.length > 0 ? (
+                    <ThinkingIndicator steps={thinkingSteps} />
+                  ) : (
+                    <TypingIndicator />
+                  )}
+                </>
+              )}
                     
                     {/* Streaming content with fade-in effect */}
                     {streamState === 'streaming' && streamingContent && (
