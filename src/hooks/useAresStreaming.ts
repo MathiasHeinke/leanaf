@@ -111,6 +111,38 @@ function getThinkingStepsForReason(reason: string): ThinkingStep[] {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// SIMULATED STREAMING (for blocking responses)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Simulates streaming output for blocking responses
+ * Splits text into chunks and outputs with delay (typewriter effect)
+ */
+async function simulateStreaming(
+  fullText: string,
+  onChunk: (partial: string) => void,
+  options?: { chunkSize?: number; delayMs?: number }
+): Promise<void> {
+  const { delayMs = 12 } = options || {};
+  
+  let current = '';
+  const words = fullText.split(/(\s+)/); // Split by whitespace, keep separators
+  
+  for (let i = 0; i < words.length; i++) {
+    current += words[i];
+    onChunk(current);
+    
+    // Short pause between chunks
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    
+    // Slightly longer pause after sentences
+    if (words[i].match(/[.!?]\s*$/)) {
+      await new Promise(resolve => setTimeout(resolve, delayMs * 2));
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -279,7 +311,14 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
             clearInterval(stepInterval);
             setThinkingSteps(prev => prev.map(s => ({ ...s, complete: true })));
             
-            setStreamingContent(blockingResponse);
+            // IMPORTANT: Switch to 'streaming' state BEFORE showing content
+            setStreamState('streaming');
+            
+            // Simulate streaming with typewriter effect
+            await simulateStreaming(blockingResponse, (partial) => {
+              setStreamingContent(partial);
+            });
+            
             setStreamState('complete');
             setTraceId(jsonData.traceId || null);
             

@@ -238,6 +238,7 @@ export default function AresChat({
 
   // Refs
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const fireBackdropRef = useRef<FireBackdropHandle>(null);
 
   // Shadow state for choice chips
@@ -346,11 +347,9 @@ export default function AresChat({
     }
   });
 
-  // Auto-scroll on new content
+  // Auto-scroll to bottom when messages or streaming content changes
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
 
   // Handle send with media support
@@ -568,6 +567,9 @@ export default function AresChat({
                 <span>📝 {metrics.totalTokens} tokens</span>
               </div>
             )}
+            
+            {/* Invisible scroll anchor */}
+            <div ref={messagesEndRef} />
           </div>
         </div>
       </ChatLayout>
