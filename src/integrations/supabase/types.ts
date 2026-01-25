@@ -6930,6 +6930,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_conversation_state: {
+        Row: {
+          last_coach_id: string | null
+          session_started_at: string | null
+          topic_state: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          last_coach_id?: string | null
+          session_started_at?: string | null
+          topic_state?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          last_coach_id?: string | null
+          session_started_at?: string | null
+          topic_state?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_credits: {
         Row: {
           created_at: string | null
