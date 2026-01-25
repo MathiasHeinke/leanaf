@@ -82,6 +82,12 @@ import {
   type BloodworkContext,
 } from '../_shared/bloodwork/index.ts';
 
+// Phase 9: ARES Protocol Deep Knowledge
+import {
+  ARES_PROTOCOL_KNOWLEDGE,
+  getPhaseCoachingRules,
+} from '../_shared/prompts/ares_protocol_knowledge.ts';
+
 // Environment - Multiple AI Providers
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -298,6 +304,9 @@ function buildStreamingSystemPrompt(
   parts.push('Du bist ARES - Elite AI Fitness & Health Coach.');
   parts.push('');
   
+  // ARES Protocol Deep Knowledge - Full Understanding
+  parts.push(ARES_PROTOCOL_KNOWLEDGE);
+  parts.push('');
   // Persona
   if (personaPrompt) {
     parts.push(personaPrompt);
@@ -309,6 +318,18 @@ function buildStreamingSystemPrompt(
     parts.push('== USER-KONTEXT ==');
     parts.push(healthContext.summaryForPrompt);
     parts.push('');
+  }
+  
+  // Phase-specific coaching rules based on user's protocol status
+  if (healthContext?.protocolStatus) {
+    const phaseRules = getPhaseCoachingRules(
+      healthContext.protocolStatus.currentPhase,
+      healthContext.protocolStatus.missingItems || []
+    );
+    if (phaseRules) {
+      parts.push(phaseRules);
+      parts.push('');
+    }
   }
   
   // User insights from memory - ENHANCED with time-aware formatting
