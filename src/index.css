@@ -592,3 +592,22 @@
     transform: translateY(0);
   }
 }
+
+/* Shimmer Animation for Action Cards */
+@keyframes shimmer {
+  0% { transform: translateX(-150%) skewX(-12deg); }
+  50% { transform: translateX(150%) skewX(-12deg); }
+  100% { transform: translateX(150%) skewX(-12deg); }
+}
+.animate-shimmer {
+  animation: shimmer 3s infinite;
+}
+
+/* Liquid Fill Animation for Hydration Widget */
+@keyframes liquidWave {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-3px) rotate(2deg); }
+}
+.animate-liquid {
+  animation: liquidWave 3s ease-in-out infinite;
+}

@@ -1,6 +1,7 @@
 /**
- * ChatOverlay - Slide-up chat sheet
+ * ChatOverlay - Slide-up chat sheet with context support
  * Opens ARES chat without page navigation
+ * Supports initialContext for AI-triggered conversations
  */
 
 import React, { useEffect, useCallback } from 'react';
@@ -16,6 +17,16 @@ interface ChatOverlayProps {
   onClose: () => void;
   initialContext?: string | null;
 }
+
+// Context prompts for AI - triggered by action cards
+const CONTEXT_PROMPTS: Record<string, string> = {
+  'analyze_recovery_pattern': 'Analysiere meine aktuellen Recovery-Daten und gib mir eine prägnante Handlungsempfehlung basierend auf meinen Schlaf-, Stress- und Trainingsdaten.',
+  'sleep_optimization_advice': 'Mein Schlaf war schlecht. Gib mir konkrete, wissenschaftlich fundierte Tipps zur Schlafoptimierung basierend auf meinen Daten.',
+  'start_evening_journal': 'Führe mich durch 3 kurze Reflexionsfragen für mein Abend-Journal. Halte es kurz und fokussiert.',
+  'log_supplements': 'Erinnere mich an meine Supplement-Routine. Welche Supplements sollte ich basierend auf meinem Profil nehmen?',
+  'complete_profile': 'Hilf mir, mein Profil zu vervollständigen. Welche wichtigen Daten fehlen mir noch für optimale Empfehlungen?',
+  'hydration_reminder': 'Gib mir einen Motivationsschub zum Trinken. Erkläre kurz, warum Hydration für meine Ziele wichtig ist.'
+};
 
 export const ChatOverlay: React.FC<ChatOverlayProps> = ({ 
   isOpen, 
@@ -71,6 +82,9 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
 
   if (!user) return null;
 
+  // Get the initial message based on context
+  const contextPrompt = initialContext ? CONTEXT_PROMPTS[initialContext] : undefined;
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -111,7 +125,9 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                 </Avatar>
                 <div>
                   <h2 className="text-base font-semibold text-foreground">ARES</h2>
-                  <p className="text-[11px] text-muted-foreground">Dein Coach • Online</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {initialContext ? 'Hat eine Erkenntnis...' : 'Dein Coach • Online'}
+                  </p>
                 </div>
               </div>
               
