@@ -68,6 +68,49 @@ export interface UseAresStreamingReturn {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// THINKING STEPS MAPPING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Get thinking steps based on the tool execution reason
+ * This provides visual feedback during blocking redirects
+ */
+function getThinkingStepsForReason(reason: string): ThinkingStep[] {
+  switch (reason) {
+    case 'research_scientific_evidence':
+      return [
+        { step: 'search', message: 'Durchsuche PubMed & wissenschaftliche Datenbanken...', complete: false },
+        { step: 'analyze', message: 'Analysiere Studienergebnisse...', complete: false },
+        { step: 'cite', message: 'Extrahiere Zitate & Quellen...', complete: false },
+      ];
+    case 'create_workout_plan':
+      return [
+        { step: 'analyze', message: 'Analysiere dein Trainingsprofil...', complete: false },
+        { step: 'create', message: 'Erstelle personalisierten Trainingsplan...', complete: false },
+      ];
+    case 'create_nutrition_plan':
+      return [
+        { step: 'analyze', message: 'Berechne Makros & Kalorien...', complete: false },
+        { step: 'create', message: 'Erstelle Ernährungsplan...', complete: false },
+      ];
+    case 'create_peptide_protocol':
+      return [
+        { step: 'analyze', message: 'Prüfe Peptid-Protokoll...', complete: false },
+        { step: 'create', message: 'Erstelle Titrations-Schema...', complete: false },
+      ];
+    case 'meta_analysis':
+      return [
+        { step: 'load', message: 'Lade Ernährungs- & Trainingsdaten...', complete: false },
+        { step: 'analyze', message: 'Führe Meta-Analyse durch...', complete: false },
+      ];
+    default:
+      return [
+        { step: 'process', message: 'Verarbeite Anfrage...', complete: false },
+      ];
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // HOOK
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -212,18 +255,43 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
         const jsonData = await response.json();
         
         if (jsonData.redirect === 'blocking' && fallbackToBlocking) {
-          console.log('[useAresStreaming] Server requested fallback:', jsonData.reason);
-          setStreamState('streaming');
+          const reason = jsonData.reason || 'tool_execution';
+          console.log('[useAresStreaming] Server requested fallback:', reason);
           
-          const blockingResponse = await fallbackToBlockingRequest(message, coachId);
-          setStreamingContent(blockingResponse);
-          setStreamState('complete');
-          setTraceId(jsonData.traceId || null);
+          // Show specific thinking steps based on the reason
+          const steps = getThinkingStepsForReason(reason);
+          setThinkingSteps(steps);
+          setStreamState('thinking');
           
-          const duration = Math.round(performance.now() - startTime);
-          setMetrics(m => ({ ...m, durationMs: duration }));
+          // Simulate step progression for visual feedback
+          const stepInterval = setInterval(() => {
+            setThinkingSteps(prev => {
+              const incomplete = prev.findIndex(s => !s.complete);
+              if (incomplete === -1) return prev;
+              return prev.map((s, i) => i === incomplete ? { ...s, complete: true } : s);
+            });
+          }, 1500);
           
-          onStreamEnd?.(blockingResponse, jsonData.traceId || null);
+          try {
+            const blockingResponse = await fallbackToBlockingRequest(message, coachId);
+            
+            // Mark all steps complete
+            clearInterval(stepInterval);
+            setThinkingSteps(prev => prev.map(s => ({ ...s, complete: true })));
+            
+            setStreamingContent(blockingResponse);
+            setStreamState('complete');
+            setTraceId(jsonData.traceId || null);
+            
+            const duration = Math.round(performance.now() - startTime);
+            setMetrics(m => ({ ...m, durationMs: duration }));
+            
+            onStreamEnd?.(blockingResponse, jsonData.traceId || null);
+          } catch (blockingError) {
+            clearInterval(stepInterval);
+            throw blockingError;
+          }
+          
           isStreamingRef.current = false;
           return;
         }

@@ -140,6 +140,40 @@ function requiresToolExecution(text: string): boolean {
 }
 
 /**
+ * Get specific reason for tool execution redirect
+ * This helps frontend show appropriate thinking steps
+ */
+function getToolExecutionReason(text: string): string {
+  const lowerText = text.toLowerCase();
+  
+  // Research keywords - highest priority
+  const researchTriggers = ['studie', 'studien', 'evidenz', 'wissenschaft', 'pubmed', 
+    'meta-analyse', 'forschung', 'wissenschaftlich', 'klinische', 'rct', 
+    'peer-reviewed', 'research', 'clinical trial', 'beweise', 'nachgewiesen'];
+  if (researchTriggers.some(t => lowerText.includes(t))) {
+    return 'research_scientific_evidence';
+  }
+  
+  // Plan creation
+  if (lowerText.includes('trainingsplan') || lowerText.includes('workout plan')) {
+    return 'create_workout_plan';
+  }
+  if (lowerText.includes('ernährungsplan') || lowerText.includes('nutrition plan')) {
+    return 'create_nutrition_plan';
+  }
+  if (lowerText.includes('peptid protokoll') || lowerText.includes('peptide protocol') || lowerText.includes('titration')) {
+    return 'create_peptide_protocol';
+  }
+  
+  // Meta analysis
+  if (lowerText.includes('analyse') || lowerText.includes('fortschritt') || lowerText.includes('überblick')) {
+    return 'meta_analysis';
+  }
+  
+  return 'tool_execution';
+}
+
+/**
  * Detect mood from user message
  */
 function detectMoodFromText(text: string): 'positive' | 'neutral' | 'frustrated' | 'overwhelmed' {
@@ -383,10 +417,11 @@ Deno.serve(async (req) => {
 
     // Check if message requires tools - redirect to blocking endpoint
     if (requiresToolExecution(text)) {
-      console.log('[ARES-STREAM] Message requires tools, redirecting to blocking');
+      const toolReason = getToolExecutionReason(text);
+      console.log('[ARES-STREAM] Message requires tools, redirecting to blocking. Reason:', toolReason);
       return new Response(JSON.stringify({ 
         redirect: 'blocking', 
-        reason: 'tool_required',
+        reason: toolReason,
         traceId 
       }), {
         status: 200,
