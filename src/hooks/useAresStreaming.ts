@@ -115,30 +115,41 @@ function getThinkingStepsForReason(reason: string): ThinkingStep[] {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Simulates streaming output for blocking responses
- * Splits text into chunks and outputs with delay (typewriter effect)
+ * Simulates natural streaming output for blocking responses
+ * Uses character-based streaming with variable speed for natural feel
  */
 async function simulateStreaming(
   fullText: string,
-  onChunk: (partial: string) => void,
-  options?: { chunkSize?: number; delayMs?: number }
+  onChunk: (partial: string) => void
 ): Promise<void> {
-  const { delayMs = 12 } = options || {};
-  
   let current = '';
-  const words = fullText.split(/(\s+)/); // Split by whitespace, keep separators
+  const chars = fullText.split('');
   
-  for (let i = 0; i < words.length; i++) {
-    current += words[i];
-    onChunk(current);
+  // Base speed: ~80-100 chars per second (feels natural like GPT)
+  const baseDelay = 8;
+  
+  for (let i = 0; i < chars.length; i++) {
+    current += chars[i];
     
-    // Short pause between chunks
-    await new Promise(resolve => setTimeout(resolve, delayMs));
-    
-    // Slightly longer pause after sentences
-    if (words[i].match(/[.!?]\s*$/)) {
-      await new Promise(resolve => setTimeout(resolve, delayMs * 2));
+    // Batch updates every 3-4 chars for smoother rendering
+    if (i % 3 === 0 || i === chars.length - 1) {
+      onChunk(current);
     }
+    
+    // Variable timing for natural feel
+    const char = chars[i];
+    let delay = baseDelay;
+    
+    // Slightly longer pause after punctuation
+    if ('.!?'.includes(char)) {
+      delay = baseDelay * 4;
+    } else if (',;:'.includes(char)) {
+      delay = baseDelay * 2;
+    } else if (char === '\n') {
+      delay = baseDelay * 3;
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, delay));
   }
 }
 

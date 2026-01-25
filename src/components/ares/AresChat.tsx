@@ -240,6 +240,7 @@ export default function AresChat({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fireBackdropRef = useRef<FireBackdropHandle>(null);
+  const userScrolledUpRef = useRef(false);
 
   // Shadow state for choice chips
   const {
@@ -347,10 +348,40 @@ export default function AresChat({
     }
   });
 
-  // Auto-scroll to bottom when messages or streaming content changes
+  // Auto-scroll to bottom (only if user hasn't scrolled up)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!userScrolledUpRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, streamingContent]);
+
+  // Detect user scroll intent
+  useEffect(() => {
+    const scrollArea = scrollAreaRef.current;
+    if (!scrollArea) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollArea;
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+      
+      // User scrolled up if more than 100px from bottom
+      userScrolledUpRef.current = distanceFromBottom > 100;
+    };
+
+    scrollArea.addEventListener('scroll', handleScroll);
+    return () => scrollArea.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Reset scroll lock when streaming ends or new message sent
+  useEffect(() => {
+    if (!isStreaming) {
+      // Small delay to allow final scroll, then reset
+      const timer = setTimeout(() => {
+        userScrolledUpRef.current = false;
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isStreaming]);
 
   // Handle send with media support
   const handleSendWithMedia = useCallback(async (message: string, mediaUrls?: string[]) => {
