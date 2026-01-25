@@ -76,6 +76,12 @@ import {
   type XPResult,
 } from '../_shared/gamification/index.ts';
 
+// Phase 9: ARES Protocol Deep Knowledge
+import {
+  ARES_PROTOCOL_KNOWLEDGE,
+  getPhaseCoachingRules,
+} from '../_shared/prompts/ares_protocol_knowledge.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -1551,6 +1557,24 @@ ${memory.conversation_context?.mood_history?.length > 0
   systemPromptParts.push('- **Longevity & Biohacking**: Schlafoptimierung, HRV, Fasten, Autophagie');
   systemPromptParts.push('- **Blutbilder**: Interpretation von Werten, Referenzbereiche, Handlungsempfehlungen');
   systemPromptParts.push('');
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // PHASE 2.5: ARES PROTOKOLL DEEP KNOWLEDGE
+  // ═══════════════════════════════════════════════════════════════════════════════
+  systemPromptParts.push(ARES_PROTOCOL_KNOWLEDGE);
+  systemPromptParts.push('');
+  
+  // Add phase-specific coaching rules based on user's current protocol phase
+  if (healthContext?.protocolStatus) {
+    const phaseRules = getPhaseCoachingRules(
+      healthContext.protocolStatus.currentPhase,
+      healthContext.protocolStatus.missingItems || []
+    );
+    if (phaseRules) {
+      systemPromptParts.push(phaseRules);
+      systemPromptParts.push('');
+    }
+  }
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // PHASE 3: ANTWORT-PHILOSOPHIE
