@@ -32,17 +32,28 @@ export interface ItemProgress {
   actionHref?: string;
 }
 
+// ARES Protocol required markers - expanded for TRT/Reta readiness
 const REQUIRED_MARKERS = [
-  { key: 'total_testosterone', label: 'Testosteron' },
-  { key: 'estradiol', label: 'Estradiol (E2)' },
-  { key: 'hba1c', label: 'HbA1c' },
-  { key: 'hscrp', label: 'hsCRP' },
-  { key: 'ast', label: 'AST (GOT)' },
-  { key: 'alt', label: 'ALT (GPT)' },
-  { key: 'ggt', label: 'GGT' },
-  { key: 'creatinine', label: 'Kreatinin' },
-  { key: 'hematocrit', label: 'Hämatokrit' },
+  // Basis-Paket (Gesamtprofil XL)
+  { key: 'hematocrit', label: 'Hämatokrit', category: 'basis' },
+  { key: 'alt', label: 'ALT (GPT)', category: 'basis' },
+  { key: 'ast', label: 'AST (GOT)', category: 'basis' },
+  { key: 'ggt', label: 'GGT', category: 'basis' },
+  { key: 'creatinine', label: 'Kreatinin', category: 'basis' },
+  { key: 'hba1c', label: 'HbA1c', category: 'basis' },
+  { key: 'crp', label: 'hsCRP', category: 'basis' },
+  { key: 'hdl', label: 'HDL', category: 'basis' },
+  { key: 'ldl', label: 'LDL', category: 'basis' },
+  // TRT Türöffner (Pick & Mix)
+  { key: 'total_testosterone', label: 'Testosteron', category: 'trt' },
+  { key: 'lh', label: 'LH', category: 'trt' },
+  { key: 'fsh', label: 'FSH', category: 'trt' },
+  { key: 'estradiol', label: 'Estradiol', category: 'trt' },
+  { key: 'psa', label: 'PSA', category: 'trt' },
+  { key: 'lipase', label: 'Lipase', category: 'trt' },
 ];
+
+const MIN_MARKERS_FOR_COMPLETION = 10; // Minimum markers needed for Phase 0 completion
 
 export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
   const { user } = useAuth();
@@ -146,7 +157,7 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
         actionHref: '/sleep',
       };
 
-      // === BLOODWORK BASELINE ===
+      // === BLOODWORK BASELINE (ARES Shopping List) ===
       const bloodwork = bloodworkResult.data;
       const presentMarkers = bloodwork 
         ? REQUIRED_MARKERS.filter(m => {
@@ -155,23 +166,56 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
           })
         : [];
       
-      const bloodworkProgress = Math.min(100, Math.round((presentMarkers.length / 6) * 100));
+      // Calculate progress based on minimum required markers
+      const bloodworkProgress = Math.min(100, Math.round((presentMarkers.length / MIN_MARKERS_FOR_COMPLETION) * 100));
+      
+      // Group markers by category for display
+      const basisMarkers = REQUIRED_MARKERS.filter(m => m.category === 'basis');
+      const trtMarkers = REQUIRED_MARKERS.filter(m => m.category === 'trt');
+      const presentBasis = presentMarkers.filter(m => m.category === 'basis');
+      const presentTrt = presentMarkers.filter(m => m.category === 'trt');
 
       progress.bloodwork_baseline = {
         key: 'bloodwork_baseline',
         progress: bloodworkProgress,
-        current: `${presentMarkers.length}/6 Marker`,
-        target: '≥6 Marker',
-        status: presentMarkers.length >= 6 ? 'completed' : presentMarkers.length > 0 ? 'in_progress' : 'not_started',
+        current: `${presentMarkers.length}/${REQUIRED_MARKERS.length} Marker`,
+        target: `≥${MIN_MARKERS_FOR_COMPLETION} Marker`,
+        status: presentMarkers.length >= MIN_MARKERS_FOR_COMPLETION ? 'completed' : presentMarkers.length > 0 ? 'in_progress' : 'not_started',
         stats: {
-          markersPresent: presentMarkers.map(m => m.label),
-          markersRequired: 6,
+          markersPresent: presentMarkers.map(m => m.key),
+          markersRequired: MIN_MARKERS_FOR_COMPLETION,
         },
-        subItems: REQUIRED_MARKERS.slice(0, 6).map(m => ({
-          label: m.label,
-          completed: presentMarkers.some(p => p.key === m.key),
-        })),
-        explanation: 'Lade deine Blutwerte hoch. Mindestens 6 der wichtigsten Marker müssen vorhanden sein: Testosteron, E2, HbA1c, hsCRP, Leberwerte, Kreatinin.',
+        subItems: [
+          // Basis package summary
+          { 
+            label: `Basis-Paket: ${presentBasis.length}/${basisMarkers.length}`, 
+            completed: presentBasis.length >= 6,
+            explanation: 'Gesamtprofil XL + Großes Blutbild'
+          },
+          // TRT package summary  
+          { 
+            label: `TRT-Türöffner: ${presentTrt.length}/${trtMarkers.length}`, 
+            completed: presentTrt.length >= 4,
+            explanation: 'Testo, LH, FSH, E2, PSA, Lipase'
+          },
+          // Critical markers
+          { 
+            label: 'Hämatokrit', 
+            completed: presentMarkers.some(m => m.key === 'hematocrit'),
+            explanation: '⚠️ TRT-Sicherheit Nr. 1'
+          },
+          { 
+            label: 'PSA', 
+            completed: presentMarkers.some(m => m.key === 'psa'),
+            explanation: '⚠️ Prostata-Pflicht vor TRT'
+          },
+          { 
+            label: 'Lipase', 
+            completed: presentMarkers.some(m => m.key === 'lipase'),
+            explanation: 'Reta-Sicherheit (Pankreas)'
+          },
+        ],
+        explanation: 'Die ARES Einkaufsliste: Bestelle Gesamtprofil XL + Großes Blutbild + TRT-Türöffner (Testo, LH, FSH, E2, PSA, Lipase). Mindestens 10 Marker für Phase 1.',
         actionLabel: 'Blutwerte hochladen',
         actionHref: '/bloodwork',
       };

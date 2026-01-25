@@ -6701,11 +6701,13 @@ export type Database = {
           lab_name: string | null
           ldl: number | null
           lh: number | null
+          lipase: number | null
           lpa: number | null
           magnesium: number | null
           notes: string | null
           platelets: number | null
           prolactin: number | null
+          psa: number | null
           rbc: number | null
           rt3: number | null
           shbg: number | null
@@ -6755,11 +6757,13 @@ export type Database = {
           lab_name?: string | null
           ldl?: number | null
           lh?: number | null
+          lipase?: number | null
           lpa?: number | null
           magnesium?: number | null
           notes?: string | null
           platelets?: number | null
           prolactin?: number | null
+          psa?: number | null
           rbc?: number | null
           rt3?: number | null
           shbg?: number | null
@@ -6809,11 +6813,13 @@ export type Database = {
           lab_name?: string | null
           ldl?: number | null
           lh?: number | null
+          lipase?: number | null
           lpa?: number | null
           magnesium?: number | null
           notes?: string | null
           platelets?: number | null
           prolactin?: number | null
+          psa?: number | null
           rbc?: number | null
           rt3?: number | null
           shbg?: number | null
@@ -8358,11 +8364,13 @@ export type Database = {
           lab_name: string | null
           ldl: number | null
           lh: number | null
+          lipase: number | null
           lpa: number | null
           magnesium: number | null
           notes: string | null
           platelets: number | null
           prolactin: number | null
+          psa: number | null
           rbc: number | null
           rt3: number | null
           shbg: number | null

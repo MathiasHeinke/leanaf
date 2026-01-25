@@ -52,7 +52,7 @@ export const MARKER_CATEGORIES: Record<string, MarkerCategoryConfig> = {
   organs: {
     label: 'Organwerte',
     icon: 'Stethoscope',
-    markers: ['alt', 'ast', 'ggt', 'creatinine', 'egfr', 'albumin', 'crp', 'homocysteine', 'uric_acid', 'psa']
+    markers: ['alt', 'ast', 'ggt', 'creatinine', 'egfr', 'albumin', 'crp', 'homocysteine', 'uric_acid', 'psa', 'lipase']
   }
 };
 
@@ -110,7 +110,8 @@ export const MARKER_DISPLAY_NAMES: Record<string, string> = {
   crp: 'CRP (hs)',
   homocysteine: 'Homocystein',
   uric_acid: 'Harnsäure',
-  psa: 'PSA'
+  psa: 'PSA (Prostata)',
+  lipase: 'Lipase (Pankreas)'
 };
 
 export interface ReferenceRange {

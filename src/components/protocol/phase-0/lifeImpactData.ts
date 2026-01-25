@@ -19,6 +19,7 @@ export interface ExtendedChecklistData {
     explanation: string;
   }[];
   aresQuote?: string;
+  hasShoppingList?: boolean; // Flag for custom bloodwork rendering
 }
 
 export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
@@ -206,22 +207,33 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
       label: 'Baseline',
       color: 'success',
     },
-    whyTitle: 'Ohne Baseline keine Optimierung',
+    whyTitle: 'Die ARES Einkaufsliste: Kugelsicher & Kosteneffizient',
     whyContent: [
-      'Du musst wissen wo du stehst bevor du losläufst.',
-      'Blutwerte zeigen versteckte Probleme: Entzündungen, Insulinresistenz, Hormon-Imbalancen.',
-      'Regelmäßige Kontrollen zeigen ob Interventionen wirken.',
-      'Sicherheit bei Supplementen und Peptiden – Leber und Niere müssen überwacht werden.',
+      'Ohne Baseline keine Optimierung – du musst wissen wo du stehst bevor du losläufst.',
+      'Die richtige Marker-Kombination spart Geld und liefert maximale Information für den Arzt.',
+      'Mit diesen Werten hast du die perfekte Munition für das Online-Rezept (TRT/Reta).',
+      'PSA ist Pflicht – kein Arzt verschreibt Testosteron ohne Prostata-Nachweis.',
+      'Hämatokrit ist bei TRT der wichtigste Sicherheitsmarker: Blut darf nicht zu "Honig" werden.',
+      'Lipase überwacht die Bauchspeicheldrüse – kritisch bei GLP-1 Agonisten wie Retatrutid.',
     ],
     subItems: [
-      { label: 'Testosteron (frei + gesamt)', explanation: 'Hormonstatus Basis' },
-      { label: 'Estradiol (E2)', explanation: 'Testo:E2 Ratio wichtig' },
-      { label: 'HbA1c', explanation: 'Langzeit-Blutzucker (Glykation)' },
-      { label: 'hsCRP', explanation: 'Entzündungsmarker' },
-      { label: 'Leberwerte (AST, ALT, GGT)', explanation: 'Entgiftungskapazität' },
-      { label: 'Hämatokrit', explanation: 'Wichtig bei TRT' },
+      // Basis-Paket
+      { label: 'Großes Blutbild (inkl. Hämatokrit)', explanation: 'Bei TRT = Sicherheitsmarker Nr. 1' },
+      { label: 'Leberwerte (ALT, AST, GGT)', explanation: 'Entgiftungskapazität prüfen' },
+      { label: 'Nierenwerte (Kreatinin, eGFR)', explanation: 'Filtrationsleistung' },
+      { label: 'Stoffwechsel (HbA1c)', explanation: 'Langzeit-Blutzucker (Glykation)' },
+      { label: 'Entzündung (hsCRP)', explanation: 'Chronische Entzündung erkennen' },
+      { label: 'Cholesterin-Profil (HDL, LDL, Trig)', explanation: 'Kardiovaskuläres Risiko' },
+      // TRT Türöffner
+      { label: 'Testosteron (Gesamt)', explanation: 'Diagnose-Grundlage für TRT' },
+      { label: 'LH + FSH', explanation: 'Primär vs. sekundärer Mangel' },
+      { label: 'Estradiol (E2)', explanation: 'Baseline für Aromatase-Management' },
+      { label: 'PSA', explanation: '⚠️ Prostata-Sicherheit – PFLICHT vor TRT!' },
+      { label: 'Lipase', explanation: 'Pankreas-Check für Retatrutid' },
     ],
-    aresQuote: 'Blinde Optimierung ist Glücksspiel. Daten sind dein Kompass.',
+    aresQuote: 'Blinde Optimierung ist Glücksspiel. Diese Einkaufsliste ist dein Kompass – der Arzt sieht: "Patient ist informiert, Prostata okay, Mangel belegt."',
+    // Flag for custom rendering
+    hasShoppingList: true,
   },
 
   tracking_measurement: {
