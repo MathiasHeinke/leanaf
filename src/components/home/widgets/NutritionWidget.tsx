@@ -17,12 +17,13 @@ const MacroProgressBar: React.FC<MacroProgressBarProps> = ({ label, current, goa
   const percent = Math.min((current / goal) * 100, 100);
   const isOver = current > goal;
   
-  const colorClasses: Record<string, string> = {
-    emerald: 'bg-emerald-500',
-    blue: 'bg-blue-500',
-    amber: 'bg-amber-500',
-    orange: 'bg-orange-500',
-    purple: 'bg-purple-500',
+  // Gradient-Farben für smoothen Fade-Look
+  const gradientClasses: Record<string, string> = {
+    emerald: 'bg-gradient-to-r from-emerald-600 to-teal-400',
+    blue: 'bg-gradient-to-r from-blue-600 to-cyan-400',
+    amber: 'bg-gradient-to-r from-amber-600 to-yellow-400',
+    orange: 'bg-gradient-to-r from-orange-600 to-amber-400',
+    purple: 'bg-gradient-to-r from-purple-600 to-violet-400',
   };
   
   return (
@@ -35,7 +36,7 @@ const MacroProgressBar: React.FC<MacroProgressBarProps> = ({ label, current, goa
           transition={{ duration: 0.5, delay: 0.2 }}
           className={cn(
             "h-full rounded-full",
-            isOver ? "bg-destructive" : (colorClasses[color] || 'bg-primary')
+            isOver ? "bg-destructive" : (gradientClasses[color] || 'bg-primary')
           )}
         />
       </div>
