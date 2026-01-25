@@ -439,7 +439,15 @@ export default function AresChat({
                       <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
                     </Avatar>
                     <span className="text-xs text-muted-foreground">
-                      ARES {streamState === 'streaming' ? 'schreibt...' : 'denkt nach...'}
+                      ARES {
+                        streamState === 'streaming' ? 'schreibt...' : 
+                        thinkingSteps.some(s => s.step === 'search' && !s.complete) ? 'recherchiert...' :
+                        thinkingSteps.some(s => s.step === 'analyze' && !s.complete) ? 'analysiert...' :
+                        thinkingSteps.some(s => s.step === 'create' && !s.complete) ? 'erstellt Plan...' :
+                        thinkingSteps.some(s => s.step === 'cite' && !s.complete) ? 'sammelt Quellen...' :
+                        thinkingSteps.some(s => s.step === 'load' && !s.complete) ? 'lädt Daten...' :
+                        'denkt nach...'
+                      }
                     </span>
                   </div>
                   
