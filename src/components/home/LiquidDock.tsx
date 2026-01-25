@@ -181,7 +181,7 @@ const DockButton: React.FC<DockButtonProps> = ({
     transition={springConfig}
     onClick={onClick}
     className={cn(
-      "w-12 h-12 flex items-center justify-center",
+      "w-14 h-14 flex items-center justify-center",
       "transition-all duration-200",
       active 
         ? "text-primary drop-shadow-[0_0_12px_hsl(var(--primary)/0.6)]" 
@@ -190,7 +190,7 @@ const DockButton: React.FC<DockButtonProps> = ({
     aria-label={label}
     aria-pressed={active}
   >
-    <Icon className="w-6 h-6" />
+    <Icon className="w-7 h-7" />
   </motion.button>
 );
 
