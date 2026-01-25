@@ -9,7 +9,8 @@ import { TranslationProvider } from "@/hooks/useTranslation";
 import { EnhancedSecurityManager } from "@/components/EnhancedSecurityManager";
 // SidebarProvider moved to Layout.tsx to prevent duplicate renders
 import { Layout } from "@/components/Layout";
-import Index from "./pages/Index";
+import AresHome from "./pages/AresHome";
+import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
 import Profile from "./pages/Profile";
@@ -57,7 +58,8 @@ const App = () => (
                   <Sonner />
                   <Layout>
                     <Routes>
-                      <Route path="/" element={<Index />} />
+                      <Route path="/" element={<AresHome />} />
+                      <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/account" element={<Account />} />
                       <Route path="/profile" element={<Profile />} />
