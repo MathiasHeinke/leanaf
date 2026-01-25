@@ -188,7 +188,7 @@ export async function analyzeConversationContext(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-preview',
+        model: 'google/gemini-2.5-flash',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
         max_tokens: 150
@@ -375,7 +375,7 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
       analysis.intent === 'confirmation' ||
       analysis.intent === 'chit_chat') {
     return {
-      model: 'google/gemini-2.5-flash-preview',
+      model: 'google/gemini-2.5-flash',
       maxTokens: 300,
       reason: 'Simple acknowledgment - Flash for speed'
     };
@@ -385,7 +385,7 @@ export function getOptimalModelForAnalysis(analysis: ConversationAnalysis): {
   if (analysis.required_detail_level === 'concise' && 
       analysis.intent !== 'deep_dive') {
     return {
-      model: 'google/gemini-2.5-flash-preview',
+      model: 'google/gemini-2.5-flash',
       maxTokens: 600,
       reason: 'Concise response - Flash sufficient'
     };
