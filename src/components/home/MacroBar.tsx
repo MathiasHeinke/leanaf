@@ -21,7 +21,7 @@ export const MacroBar: React.FC<MacroBarProps> = ({
   color,
   warning 
 }) => {
-  const percentage = Math.min((current / target) * 100, 100);
+  const percentage = target > 0 ? Math.min((current / target) * 100, 100) : 0;
   const isOver = current > target;
 
   return (
