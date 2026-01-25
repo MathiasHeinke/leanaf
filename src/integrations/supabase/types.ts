@@ -8850,14 +8850,16 @@ export type Database = {
         }
         Returns: Json
       }
-      update_user_streak: {
-        Args: {
-          p_activity_date?: string
-          p_streak_type: string
-          p_user_id: string
-        }
-        Returns: number
-      }
+      update_user_streak:
+        | { Args: { p_user_id: string }; Returns: Json }
+        | {
+            Args: {
+              p_activity_date?: string
+              p_streak_type: string
+              p_user_id: string
+            }
+            Returns: number
+          }
       upsert_weight_entry: {
         Args: {
           p_body_fat_percentage?: number
