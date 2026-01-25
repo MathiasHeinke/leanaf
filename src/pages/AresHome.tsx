@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePointsSystem } from '@/hooks/usePointsSystem';
@@ -28,9 +29,11 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Camera, Mic, ArrowRight, Square, X } from 'lucide-react';
+import { Camera, Mic, ArrowRight, Square, X, Zap, Crown, Trophy, ChevronRight } from 'lucide-react';
 import { SmartChip } from '@/components/ui/smart-chip';
 import { SimpleProgressBar } from '@/components/SimpleProgressBar';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 export default function AresHome() {
   const navigate = useNavigate();
@@ -38,6 +41,7 @@ export default function AresHome() {
   const [showChat, setShowChat] = useState(false);
   const [chatContext, setChatContext] = useState<string | null>(null);
   const [mealOpen, setMealOpen] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   // Meal input hook (same as Dashboard)
   const {
@@ -184,6 +188,25 @@ export default function AresHome() {
   const bioAge = latestMeasurement?.calculated_bio_age || null;
   const realAge = latestMeasurement?.chronological_age || null;
 
+  // Calculate progress percentage for stats popover
+  const getMinPointsForLevel = (lvl: number): number => {
+    const thresholds = [0, 100, 300, 600, 1100, 1800, 3100, 4600];
+    if (lvl <= 7) return thresholds[lvl - 1] || 0;
+    return 4600 + ((lvl - 8) * 500);
+  };
+  const getMaxPointsForLevel = (lvl: number): number => {
+    const thresholds = [100, 300, 600, 1100, 1800, 3100, 4600];
+    if (lvl < 7) return thresholds[lvl] || 100;
+    if (lvl === 7) return 4600;
+    return 4600 + ((lvl - 7) * 500);
+  };
+  const minPoints = getMinPointsForLevel(level);
+  const maxPoints = getMaxPointsForLevel(level);
+  const totalRange = maxPoints - minPoints;
+  const currentProgress = currentXP - minPoints;
+  const progressPercent = totalRange > 0 ? Math.min((currentProgress / totalRange) * 100, 100) : 0;
+  const isHighLevel = ['Gold', 'Platinum', 'Diamond', 'Master', 'Grandmaster'].includes(userPoints?.level_name || '');
+
 
   return (
     <div className="min-h-screen bg-background text-foreground relative">
@@ -196,8 +219,112 @@ export default function AresHome() {
 
       {/* XP Beam - Fixed at very top */}
       <div className="fixed top-0 left-0 right-0 z-[60]">
-        <ExperienceBeam currentXP={currentXP} maxXP={maxXP} level={level} />
+        <ExperienceBeam 
+          currentXP={currentXP} 
+          maxXP={maxXP} 
+          level={level} 
+          onIndicatorClick={() => setShowStats(true)}
+        />
       </div>
+
+      {/* Stats Popover Overlay */}
+      <AnimatePresence>
+        {showStats && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowStats(false)}
+              className="fixed inset-0 z-[70] bg-black/20 backdrop-blur-[2px]"
+            />
+            
+            {/* Stats Card */}
+            <motion.div
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="fixed top-8 left-1/2 -translate-x-1/2 z-[70] w-72 p-4 bg-card border border-border rounded-2xl shadow-2xl"
+            >
+              {/* Header with Level */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className={cn(
+                  "w-12 h-12 rounded-xl flex items-center justify-center",
+                  "bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20"
+                )}>
+                  {isHighLevel ? (
+                    <Crown className="w-6 h-6 text-primary" />
+                  ) : (
+                    <Zap className="w-6 h-6 text-primary" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-foreground">
+                    Level {level} {userPoints?.level_name || 'Rookie'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {currentXP.toLocaleString('de-DE')} Punkte
+                  </p>
+                </div>
+              </div>
+
+              {/* XP Progress Bar */}
+              <div className="mb-4">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+                  <span>Fortschritt</span>
+                  <span>{Math.round(progressPercent)}%</span>
+                </div>
+                <Progress value={progressPercent} className="h-2" />
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Noch {pointsToNext.toLocaleString('de-DE')} Punkte bis Level {level + 1}
+                </p>
+              </div>
+
+              {/* Divider */}
+              <div className="h-px bg-border mb-3" />
+
+              {/* Action Buttons */}
+              <div className="space-y-2">
+                {/* Achievements Link */}
+                <button
+                  onClick={() => {
+                    setShowStats(false);
+                    navigate('/achievements');
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-accent/50 hover:bg-accent transition-colors group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                    <Trophy className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <span className="flex-1 text-left text-sm font-medium text-foreground">
+                    Erfolge & Abzeichen
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </button>
+
+                {/* Chat with ARES */}
+                <button
+                  onClick={() => {
+                    setShowStats(false);
+                    setShowChat(true);
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors group"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-primary/20 flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-primary" />
+                  </div>
+                  <span className="flex-1 text-left text-sm font-medium text-foreground">
+                    Mit ARES chatten
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Top Navigation */}
       <AresTopNav onOpenChat={() => setShowChat(true)} />
