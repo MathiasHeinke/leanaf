@@ -446,6 +446,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const text = body.message || body.text || '';
     const coachId = body.coachId || 'ares';
+    const researchPlus = body.researchPlus === true;
     
     if (!text) {
       return new Response(JSON.stringify({ ok: false, error: 'No message provided', traceId }), {
@@ -454,10 +455,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if message requires tools
-    if (requiresToolExecution(text)) {
-      const toolReason = getToolExecutionReason(text);
-      console.log('[ARES-STREAM] Message requires tools. Reason:', toolReason);
+    // Check if message requires tools OR researchPlus mode is active
+    if (requiresToolExecution(text) || researchPlus) {
+      const toolReason = researchPlus ? 'research_scientific_evidence' : getToolExecutionReason(text);
+      console.log('[ARES-STREAM] Message requires tools. Reason:', toolReason, 'ResearchPlus:', researchPlus);
       
       // RESEARCH: Call ares-research directly and pipe SSE stream through
       if (toolReason === 'research_scientific_evidence') {
@@ -477,6 +478,7 @@ Deno.serve(async (req) => {
               language: 'de',
               maxResults: 5,
               userId: userId,
+              deepResearch: researchPlus, // Pass research level flag
             }),
           });
           

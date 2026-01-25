@@ -663,7 +663,7 @@ if (enableAdvancedFeatures) {
   }, [messages]);
 
   // ============= SEND MESSAGE =============
-  const handleSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
+  const handleSendMessage = useCallback(async (message: string, mediaUrls?: string[], _researchPlus?: boolean) => {
     if (!message.trim() || !user?.id || isOrchestratorLoading) return;
     const messageText = message.trim();
 
@@ -723,7 +723,7 @@ if (enableAdvancedFeatures) {
       }
 
   // Default: route via Orchestrator (with debug)
-  await handleEnhancedSendMessage(messageText, mediaUrls, selectedTool);
+  await handleEnhancedSendMessage(messageText, mediaUrls);
       return;
 
     } catch (error) {
@@ -1064,7 +1064,7 @@ const handleChipClick = useCallback(async (label: string) => {
 
 
 // ============= ENHANCED SEND MESSAGE HANDLER =============
-const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], selectedTool?: string | null) => {
+const handleEnhancedSendMessage = useCallback(async (message: string, mediaUrls?: string[], _researchPlus?: boolean) => {
   if (!message.trim() || isOrchestratorLoading || !user?.id) return;
   clearChips(); setUserTyping(false); setIsOrchestratorLoading(true);
   const msg = message.trim();
