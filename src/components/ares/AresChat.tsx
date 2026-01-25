@@ -163,6 +163,16 @@ function MessageBubble({ message, isStreaming }: { message: Message; isStreaming
                       {children}
                     </blockquote>
                   ),
+                  a: ({ href, children }) => (
+                    <a 
+                      href={href} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-primary hover:text-primary/80 underline underline-offset-2"
+                    >
+                      {children}
+                    </a>
+                  ),
                 }}
               >
                 {message.content}
@@ -458,6 +468,16 @@ export default function AresChat({
                             strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                             ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
                             ol: ({ children }) => <ol className="list-decimal ml-4 mb-2">{children}</ol>,
+                            a: ({ href, children }) => (
+                              <a 
+                                href={href} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-primary hover:text-primary/80 underline underline-offset-2"
+                              >
+                                {children}
+                              </a>
+                            ),
                           }}
                         >
                           {streamingContent}
