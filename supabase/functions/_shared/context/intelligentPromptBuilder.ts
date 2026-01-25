@@ -1,11 +1,21 @@
 /**
  * Intelligent Prompt Builder
  * Baut intelligente, datenbasierte Prompts für den ARES Coach
+ * 
+ * ARES 3.0 PRO: Integriert Mood-Detection für emotionale Intelligenz
  */
 
 import type { UserHealthContext } from './userContextLoader.ts';
 import type { CoachPersona, ResolvedPersona } from '../persona/types.ts';
 import type { UserInsight, UserPattern } from '../memory/types.ts';
+import { 
+  detectMood, 
+  getResponseGuidelines, 
+  buildMoodPromptSection,
+  applyMoodToDials,
+  type MoodResult,
+  type ResponseGuidelines 
+} from '../mood/index.ts';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MOOD SCALE HELPERS - Konvertiert -5/+5 zu natürlicher 1-10 Skala
@@ -30,6 +40,7 @@ export function moodDescription(mood: number): string {
   if (mood >= -2) return 'gedrueckt';
   return 'schwierig';
 }
+
 export interface ConversationMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -47,6 +58,10 @@ export interface IntelligentPromptConfig {
   userInsights?: UserInsight[];
   userPatterns?: UserPattern[];
 }
+
+// Re-export für externe Nutzung
+export { detectMood, getResponseGuidelines, buildMoodPromptSection, applyMoodToDials };
+export type { MoodResult, ResponseGuidelines };
 
 /**
  * Baut einen intelligenten System Prompt basierend auf User-Kontext
@@ -199,7 +214,19 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // ABSCHNITT 6: Dynamische Anweisungen basierend auf Situation
+  // ABSCHNITT 6: MOOD DETECTION (ARES 3.0 PRO)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const moodResult = detectMood(currentMessage);
+  const moodGuidelines = getResponseGuidelines(moodResult);
+  const moodSection = buildMoodPromptSection(moodResult, moodGuidelines);
+  
+  if (moodSection) {
+    sections.push('');
+    sections.push(moodSection);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ABSCHNITT 7: Dynamische Anweisungen basierend auf Situation
   // ═══════════════════════════════════════════════════════════════════════════════
   const situationalInstructions = generateSituationalInstructions(userContext, currentMessage);
   if (situationalInstructions) {
@@ -209,7 +236,7 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
-  // ABSCHNITT 7: Aktuelles Datum
+  // ABSCHNITT 8: Aktuelles Datum
   // ═══════════════════════════════════════════════════════════════════════════════
   sections.push('');
   sections.push(`Heute ist ${getCurrentGermanDate()}.`);
