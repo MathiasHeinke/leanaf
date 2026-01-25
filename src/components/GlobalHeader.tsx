@@ -29,45 +29,6 @@ export const GlobalHeader = ({
   // Get ARES coach data
   const aresCoach = COACH_REGISTRY.ares;
 
-  // Route to title mapping with breadcrumb support
-  const getPageTitle = (pathname: string) => {
-    // Handle coach-specific routes with breadcrumb
-    if (pathname.startsWith('/coach/')) {
-      const coachId = pathname.split('/')[2];
-      if (coachId) {
-        // Capitalize first letter for display
-        const coachName = coachId.charAt(0).toUpperCase() + coachId.slice(1);
-        return `Coaching / ${coachName}`;
-      }
-    }
-    
-    switch (pathname) {
-      case '/': return 'Dashboard';
-      case '/profile': return 'Profil';
-      case '/coach': return 'Coaching';
-      case '/training': return 'Workout';
-      case '/plus': return 'Momentum-Board';
-      case '/analyse': return 'Analyse';
-      case '/achievements': return 'Erfolge';
-      case '/science': return 'Wissenschaft';
-      case '/credits': return 'Credits & Packs';
-      case '/account': return 'Account';
-      case '/admin': return 'Admin';
-      case '/history': return 'Historie';
-      case '/transformation': return 'Transformation';
-      default: return 'GetleanAI';
-    }
-  };
-
-  // Handle refresh functionality
-  const handleRefresh = () => {
-    if (onRefresh) {
-      onRefresh();
-    } else {
-      window.location.reload();
-    }
-  };
-
   // Check if we're in coach chat to show dashboard button
   const isInCoachChat = location.pathname.startsWith('/coach/');
   
@@ -95,12 +56,8 @@ export const GlobalHeader = ({
           {/* Left: Sidebar Toggle */}
           <SidebarTrigger className="p-2 hover:bg-accent/60 rounded-lg transition-colors" />
           
-          {/* Center: Page Title */}
-          <div className="flex-1 text-center">
-            <h1 className="text-lg font-semibold text-foreground/90">
-              {getPageTitle(location.pathname)}
-            </h1>
-          </div>
+          {/* Center: Spacer */}
+          <div className="flex-1" />
           
           {/* Right: ARES Avatar or Dashboard Button */}
           <Button
