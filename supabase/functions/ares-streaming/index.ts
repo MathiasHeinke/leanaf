@@ -126,6 +126,14 @@ function requiresToolExecution(text: string): boolean {
     'wie stehe ich', 'mein fortschritt',
     // Peptide protocol triggers
     'peptid protokoll', 'peptide protocol', 'titration',
+    // Research triggers -> Perplexity API
+    'studie', 'studien', 'evidenz', 'wissenschaft',
+    'laut forschung', 'pubmed', 'peer-reviewed',
+    'meta-analyse', 'forschung zeigt', 'belegt',
+    'wissenschaftlich', 'klinische', 'rct',
+    'was sagt die wissenschaft', 'gibt es studien',
+    'forschungsergebnisse', 'beweise', 'nachgewiesen',
+    'laut wissenschaft', 'research', 'clinical trial',
   ];
   
   return toolTriggers.some(trigger => lowerText.includes(trigger));
