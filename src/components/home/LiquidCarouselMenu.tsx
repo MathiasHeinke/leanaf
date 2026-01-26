@@ -145,7 +145,7 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
       items.push({
         ...orderedItems[actualIndex],
         offset,
-        uniqueKey: `${virtualIndex + offset}`,
+        uniqueKey: `${orderedItems[actualIndex].id}-${offset}`,
       });
     }
     return items;
@@ -263,18 +263,17 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
               onDragEnd={handleDragEnd}
               className="relative h-20 w-full touch-pan-y cursor-grab active:cursor-grabbing"
             >
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="sync">
                 {visibleItems.map((item) => (
                   <motion.div
                     key={item.uniqueKey}
-                    layout
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{
                       x: `calc(50vw - 32px + ${item.offset * ITEM_TOTAL}px)`,
                       scale: item.offset === 0 ? 1.15 : 0.75,
                       opacity: Math.abs(item.offset) <= 2 ? (item.offset === 0 ? 1 : 0.5) : 0.2,
                     }}
-                    exit={{ opacity: 0, scale: 0.5 }}
+                    exit={{ opacity: 0 }}
                     transition={springConfig}
                     className="absolute top-0 left-0"
                   >
