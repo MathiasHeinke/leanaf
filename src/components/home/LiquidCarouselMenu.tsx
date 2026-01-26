@@ -70,6 +70,7 @@ const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
 const ITEM_WIDTH = 64; // w-16
 const GAP = 16; // gap-4
 const ITEM_TOTAL = ITEM_WIDTH + GAP; // 80px per item
+const HALF_ITEM_WIDTH = 32; // w-16 / 2 = 32px
 
 // ============= Carousel Item Component =============
 
@@ -164,9 +165,9 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
       return;
     }
     
-    // Calculate active index based on center position
-    const centerPoint = scrollLeft + (clientWidth / 2);
-    const rawIndex = Math.round(centerPoint / ITEM_TOTAL);
+    // Calculate active index based on scroll position
+    // With padding calc(50vw - 32px), scrollLeft directly maps to centered item
+    const rawIndex = Math.round(scrollLeft / ITEM_TOTAL);
     const normalizedIndex = ((rawIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
     
     if (normalizedIndex !== activeIndex) {
@@ -180,12 +181,13 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
       const container = scrollRef.current;
       // Wait for layout to complete
       requestAnimationFrame(() => {
-        const initialScroll = container.scrollWidth / 3;
-        container.scrollTo({ left: initialScroll, behavior: 'instant' });
+        // Set 2 starts at index ITEMS_COUNT (7), so scroll to that position
+        const set2StartPosition = ITEMS_COUNT * ITEM_TOTAL;
+        container.scrollTo({ left: set2StartPosition, behavior: 'instant' });
         setActiveIndex(0);
       });
     }
-  }, [isOpen]);
+  }, [isOpen, ITEMS_COUNT]);
   
   // Handle item click
   const handleItemClick = useCallback((item: LoopedItem) => {
