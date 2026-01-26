@@ -138,6 +138,24 @@ export default function AresHome() {
     }
   }, [logWater]);
 
+  // Subscribe to quickAddBus for journal/sleep/weight events from SmartFocusCard
+  useEffect(() => {
+    const unsub = quickAddBus.subscribe((action) => {
+      if (action.type === 'journal') {
+        setQuickLogConfig({ open: true, tab: 'journal' });
+      } else if (action.type === 'sleep') {
+        setQuickLogConfig({ open: true, tab: 'sleep' });
+      } else if (action.type === 'weight' || action.type === 'body') {
+        setQuickLogConfig({ open: true, tab: 'weight' });
+      } else if (action.type === 'training') {
+        setQuickLogConfig({ open: true, tab: 'training' });
+      } else if (action.type === 'tape') {
+        setQuickLogConfig({ open: true, tab: 'tape' });
+      }
+    });
+    return unsub;
+  }, []);
+
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
 
