@@ -1,26 +1,30 @@
 /**
- * TrainingLogger - Round & Grouped Design
- * Apple Health-style with round buttons and logical grouping
+ * TrainingLogger - Cross-Morphing + Multi-Select Design
+ * Premium Apple Health-style with bidirectional morphing between sections
  * 
- * Groups:
- * - WORKOUTS: Kraft, Zone 2, VO2 Max
- * - AKTIVITÄT & ERHOLUNG: Sauna, Bewegung, Ruhetag
- * 
- * Rest Day Logic: Grays out workout buttons when "Ruhetag" is selected
+ * Features:
+ * - Cross-Morphing: Selecting a workout shrinks activity section & vice versa
+ * - Multi-Select Dropdowns: Kraft (splits), Zone 2 (cardio types)
+ * - Single-Select: VO2 Max protocols
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dumbbell, Activity, HeartPulse, Flame, Check, Minus, Plus, Footprints, Moon, LucideIcon } from 'lucide-react';
+import { Dumbbell, Activity, HeartPulse, Flame, Check, Minus, Plus, Footprints, Moon, LucideIcon, ChevronDown } from 'lucide-react';
 import { useAresEvents } from '@/hooks/useAresEvents';
 import { NumericInput } from '@/components/ui/numeric-input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import type { TrainingType, SplitType, CardioType, Vo2Protocol } from '@/types/training';
-import { CARDIO_TYPE_OPTIONS, VO2_PROTOCOL_OPTIONS, SAUNA_TEMP_OPTIONS } from '@/types/training';
+import { CARDIO_TYPE_OPTIONS, VO2_PROTOCOL_OPTIONS, SAUNA_TEMP_OPTIONS, SPLIT_TYPE_LABELS } from '@/types/training';
 
 interface TrainingLoggerProps {
   onClose: () => void;
 }
+
+// Spring config for smooth animations
+const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
 
 // Grouped training types
 const workoutTypes = [
@@ -37,7 +41,10 @@ const activityTypes = [
 
 const allTypes = [...workoutTypes, ...activityTypes];
 
-const SPLIT_OPTIONS: { id: SplitType; label: string }[] = [
+// Only the main split types (excluding 'cardio' which is a separate category)
+type MainSplitType = Exclude<SplitType, 'cardio'>;
+
+const SPLIT_OPTIONS: { id: MainSplitType; label: string }[] = [
   { id: 'push', label: 'Push' },
   { id: 'pull', label: 'Pull' },
   { id: 'legs', label: 'Legs' },
@@ -46,7 +53,7 @@ const SPLIT_OPTIONS: { id: SplitType; label: string }[] = [
   { id: 'full', label: 'Full' },
 ];
 
-// Reusable Round Button Component
+// Reusable Round Button with Morphing
 interface RoundTypeButtonProps {
   type: {
     id: TrainingType;
@@ -57,41 +64,62 @@ interface RoundTypeButtonProps {
   };
   isSelected: boolean;
   isDisabled: boolean;
+  isCompact: boolean;
   onSelect: (id: TrainingType) => void;
 }
 
 const RoundTypeButton: React.FC<RoundTypeButtonProps> = ({ 
   type, 
   isSelected, 
-  isDisabled, 
+  isDisabled,
+  isCompact,
   onSelect 
 }) => (
   <motion.button
+    layout
     whileTap={!isDisabled ? { scale: 0.95 } : undefined}
     onClick={() => !isDisabled && onSelect(type.id)}
     disabled={isDisabled}
-    className="flex flex-col items-center gap-2"
+    className="flex flex-col items-center gap-1"
+    transition={springConfig}
   >
-    {/* Round Icon Button */}
-    <div className={cn(
-      "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200",
-      isSelected && `${type.color} ring-2 ring-offset-2 ring-primary`,
-      !isSelected && !isDisabled && "bg-muted hover:bg-muted/80",
-      isDisabled && "opacity-40 grayscale cursor-not-allowed bg-muted"
-    )}>
+    {/* Round Icon Button - smaller when compact */}
+    <motion.div 
+      layout
+      className={cn(
+        "rounded-full flex items-center justify-center transition-all duration-200",
+        isCompact ? "w-10 h-10" : "w-16 h-16",
+        isSelected && `${type.color} ring-2 ring-offset-2 ring-primary`,
+        !isSelected && !isDisabled && !isCompact && "bg-muted hover:bg-muted/80",
+        !isSelected && !isDisabled && isCompact && "bg-muted/60",
+        isDisabled && "opacity-40 grayscale cursor-not-allowed bg-muted"
+      )}
+      transition={springConfig}
+    >
       <type.icon className={cn(
-        "w-7 h-7 transition-colors",
+        "transition-all duration-200",
+        isCompact ? "w-4 h-4" : "w-7 h-7",
         isSelected ? "text-white" : "text-foreground"
       )} />
-    </div>
+    </motion.div>
     
-    {/* Label */}
-    <span className={cn(
-      "text-xs font-medium transition-colors",
-      isDisabled ? "text-muted-foreground/50" : "text-foreground"
-    )}>
-      {type.label}
-    </span>
+    {/* Label - hidden when compact */}
+    <AnimatePresence mode="wait">
+      {!isCompact && (
+        <motion.span
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.15 }}
+          className={cn(
+            "text-xs font-medium",
+            isDisabled ? "text-muted-foreground/50" : "text-foreground"
+          )}
+        >
+          {type.label}
+        </motion.span>
+      )}
+    </AnimatePresence>
   </motion.button>
 );
 
@@ -101,10 +129,12 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   const [duration, setDuration] = useState(45);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Extended fields
-  const [splitType, setSplitType] = useState<SplitType | null>(null);
-  const [cardioType, setCardioType] = useState<CardioType | null>(null);
+  // Multi-select states for workouts
+  const [selectedSplits, setSelectedSplits] = useState<MainSplitType[]>([]);
+  const [selectedCardioTypes, setSelectedCardioTypes] = useState<CardioType[]>([]);
   const [vo2Protocol, setVo2Protocol] = useState<Vo2Protocol | null>(null);
+  
+  // Sauna fields
   const [saunaTemp, setSaunaTemp] = useState<80 | 90 | 100>(80);
   const [saunaRounds, setSaunaRounds] = useState(3);
   const [totalVolume, setTotalVolume] = useState<string>('');
@@ -115,8 +145,33 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
 
   const selectedTypeConfig = allTypes.find(t => t.id === selectedType);
   
-  // Rest day disables workouts
+  // Cross-Morphing Logic
+  const isWorkoutSelected = selectedType && ['rpt', 'zone2', 'vo2max'].includes(selectedType);
+  const isActivitySelected = selectedType && ['sauna', 'movement', 'rest'].includes(selectedType);
+  
+  // Compact states based on opposite section selection
+  const isWorkoutSectionCompact = isActivitySelected;
+  const isActivitySectionCompact = isWorkoutSelected;
+  
+  // Rest day disables workouts (from original logic)
   const isRestDaySelected = selectedType === 'rest';
+
+  // Toggle functions for multi-select
+  const toggleSplit = (split: MainSplitType) => {
+    setSelectedSplits(prev => 
+      prev.includes(split)
+        ? prev.filter(s => s !== split)
+        : [...prev, split]
+    );
+  };
+
+  const toggleCardioType = (type: CardioType) => {
+    setSelectedCardioTypes(prev =>
+      prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
 
   const handleSave = async () => {
     if (!selectedType) return;
@@ -126,9 +181,16 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
     // Build session_data based on type
     const sessionData: Record<string, unknown> = {};
     
-    if (selectedType === 'zone2' && cardioType) {
-      sessionData.cardio_type = cardioType;
+    // Kraft: Multiple splits
+    if (selectedType === 'rpt' && selectedSplits.length > 0) {
+      sessionData.splits = selectedSplits;
     }
+    
+    // Zone 2: Multiple cardio types
+    if (selectedType === 'zone2' && selectedCardioTypes.length > 0) {
+      sessionData.cardio_types = selectedCardioTypes;
+    }
+    
     if (selectedType === 'vo2max' && vo2Protocol) {
       sessionData.protocol = vo2Protocol;
     }
@@ -143,7 +205,7 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
     
     const success = await trackEvent('workout', { 
       training_type: selectedType,
-      split_type: selectedType === 'rpt' ? (splitType as any) : undefined,
+      split_type: selectedSplits[0] || undefined, // Primary split for compatibility
       duration_minutes: selectedTypeConfig?.needsTime ? duration : undefined,
       total_volume_kg: totalVolume ? parseFloat(totalVolume.replace(',', '.')) : undefined,
       session_data: Object.keys(sessionData).length > 0 ? sessionData : undefined,
@@ -161,13 +223,27 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   return (
     <div className="flex flex-col min-h-[300px]">
       {/* SCROLLABLE CONTENT */}
-      <div className="flex-1 space-y-6 overflow-y-auto">
+      <div className="flex-1 space-y-4 overflow-y-auto">
         
-        {/* WORKOUTS SECTION */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-            Workouts
-          </h3>
+        {/* WORKOUTS SECTION - Compact when activity selected */}
+        <motion.div 
+          layout
+          className="space-y-3"
+          animate={{ 
+            opacity: isWorkoutSectionCompact ? 0.6 : 1 
+          }}
+          transition={springConfig}
+        >
+          {!isWorkoutSectionCompact && (
+            <motion.h3 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1"
+            >
+              Workouts
+            </motion.h3>
+          )}
           <div className="flex justify-around">
             {workoutTypes.map((type) => (
               <RoundTypeButton
@@ -175,17 +251,32 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                 type={type}
                 isSelected={selectedType === type.id}
                 isDisabled={isRestDaySelected}
+                isCompact={isWorkoutSectionCompact || false}
                 onSelect={setSelectedType}
               />
             ))}
           </div>
-        </div>
+        </motion.div>
 
-        {/* ACTIVITY & RECOVERY SECTION */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-            Aktivität & Erholung
-          </h3>
+        {/* ACTIVITY & RECOVERY SECTION - Compact when workout selected */}
+        <motion.div 
+          layout
+          className="space-y-3"
+          animate={{ 
+            opacity: isActivitySectionCompact ? 0.6 : 1 
+          }}
+          transition={springConfig}
+        >
+          {!isActivitySectionCompact && (
+            <motion.h3 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1"
+            >
+              Aktivität & Erholung
+            </motion.h3>
+          )}
           <div className="flex justify-around">
             {activityTypes.map((type) => (
               <RoundTypeButton
@@ -193,17 +284,19 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                 type={type}
                 isSelected={selectedType === type.id}
                 isDisabled={false}
+                isCompact={isActivitySectionCompact || false}
                 onSelect={setSelectedType}
               />
             ))}
           </div>
-        </div>
+        </motion.div>
 
         {/* TYPE-SPECIFIC DETAILS */}
         <AnimatePresence mode="wait">
           {selectedType && (
             <motion.div
               key={selectedType}
+              layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -211,27 +304,37 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
               className="overflow-hidden"
             >
               <div className="pt-2 space-y-4">
-                {/* RPT: Split Selection + Volume */}
+                {/* RPT: Multi-Select Split Dropdown + Volume */}
                 {selectedType === 'rpt' && (
                   <>
-                    <div className="text-sm font-medium text-muted-foreground">Split</div>
-                    <div className="flex flex-wrap gap-2">
-                      {SPLIT_OPTIONS.map((s) => (
-                        <motion.button
-                          key={s.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setSplitType(s.id)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                            splitType === s.id
-                              ? "bg-indigo-500 text-white"
-                              : "bg-muted hover:bg-muted/80"
-                          )}
-                        >
-                          {s.label}
-                        </motion.button>
-                      ))}
-                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">Trainierte Splits</div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
+                          <span className="text-sm">
+                            {selectedSplits.length > 0 
+                              ? selectedSplits.map(s => SPLIT_TYPE_LABELS[s]).join(', ')
+                              : 'Splits auswählen...'}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 bg-popover" align="start">
+                        {SPLIT_OPTIONS.map((split) => (
+                          <label
+                            key={split.id}
+                            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted cursor-pointer"
+                          >
+                            <Checkbox 
+                              checked={selectedSplits.includes(split.id)}
+                              onCheckedChange={() => toggleSplit(split.id)}
+                            />
+                            <span className="text-sm">{split.label}</span>
+                          </label>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
+                    
                     {/* Volume Input */}
                     <div className="flex items-center gap-3">
                       <label className="text-sm text-muted-foreground">Volumen</label>
@@ -247,32 +350,43 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                   </>
                 )}
 
-                {/* Zone2: Cardio Type */}
+                {/* Zone2: Multi-Select Cardio Type Dropdown */}
                 {selectedType === 'zone2' && (
                   <>
-                    <div className="text-sm font-medium text-muted-foreground">Art</div>
-                    <div className="flex flex-wrap gap-2">
-                      {CARDIO_TYPE_OPTIONS.map((c) => (
-                        <motion.button
-                          key={c.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setCardioType(c.id)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1",
-                            cardioType === c.id
-                              ? "bg-emerald-500 text-white"
-                              : "bg-muted hover:bg-muted/80"
-                          )}
-                        >
-                          <span>{c.emoji}</span>
-                          {c.label}
-                        </motion.button>
-                      ))}
-                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">Cardio-Arten</div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
+                          <span className="text-sm">
+                            {selectedCardioTypes.length > 0 
+                              ? selectedCardioTypes.map(c => {
+                                  const option = CARDIO_TYPE_OPTIONS.find(o => o.id === c);
+                                  return option ? `${option.emoji} ${option.label}` : c;
+                                }).join(', ')
+                              : 'Cardio auswählen...'}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 p-2 bg-popover" align="start">
+                        {CARDIO_TYPE_OPTIONS.map((cardio) => (
+                          <label
+                            key={cardio.id}
+                            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted cursor-pointer"
+                          >
+                            <Checkbox 
+                              checked={selectedCardioTypes.includes(cardio.id)}
+                              onCheckedChange={() => toggleCardioType(cardio.id)}
+                            />
+                            <span className="text-sm">{cardio.emoji} {cardio.label}</span>
+                          </label>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
                   </>
                 )}
 
-                {/* VO2max: Protocol */}
+                {/* VO2max: Protocol (Single-Select) */}
                 {selectedType === 'vo2max' && (
                   <>
                     <div className="text-sm font-medium text-muted-foreground">Protokoll</div>
