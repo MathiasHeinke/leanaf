@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, LucideIcon } from 'lucide-react';
+import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sun, Clock, Dumbbell, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface SmartTask {
@@ -97,7 +97,7 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
           >
             {/* CARD CONTAINER */}
             <div className={cn(
-              "relative h-full w-full overflow-hidden rounded-3xl p-5 text-white shadow-2xl flex flex-col justify-between bg-gradient-to-br",
+              "relative h-full w-full overflow-hidden rounded-3xl p-5 pb-6 text-white shadow-2xl flex flex-col justify-between bg-gradient-to-br",
               task.gradient
             )}>
               
@@ -145,7 +145,7 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
               </div>
 
               {/* SMART ACTION AREA */}
-              <div className="relative z-10 mt-auto pt-3">
+              <div className="relative z-10 mt-auto pt-4">
                 <SmartActions 
                   task={task} 
                   onAction={handleComplete}
@@ -222,12 +222,14 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat 
     );
   }
 
-  // SUPPLEMENTS: Check Buttons
+  // SUPPLEMENTS: Timing-specific Buttons
   if (task.type === 'supplements') {
     return (
-      <div className="flex gap-2">
-        <ActionButton onClick={() => onAction('all_taken')} icon={Check} label="Alle genommen" primary />
-        <ActionButton onClick={() => onAction('snooze')} icon={X} label="Später" />
+      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <ActionButton onClick={() => onAction('morning')} icon={Sun} label="Morgens" />
+        <ActionButton onClick={() => onAction('noon')} icon={Clock} label="Mittags" />
+        <ActionButton onClick={() => onAction('evening')} icon={Moon} label="Abends" />
+        <ActionButton onClick={() => onAction('pre_workout')} icon={Dumbbell} label="Pre-WO" />
       </div>
     );
   }

@@ -50,8 +50,10 @@ export const useQuickLogging = () => {
     }
   }, [user?.id]);
 
-  // SUPPLEMENTS: Mark all user supplements as taken for today
-  const logSupplementsTaken = useCallback(async (): Promise<boolean> => {
+  // SUPPLEMENTS: Mark user supplements for specific timing as taken
+  const logSupplementsTaken = useCallback(async (
+    timing: 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout'
+  ): Promise<boolean> => {
     if (!user?.id) {
       toast.error('Nicht angemeldet');
       return false;
@@ -59,23 +61,30 @@ export const useQuickLogging = () => {
 
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const timing = getCurrentTiming();
 
-      // Get all active user supplements
+      // Get only supplements that have this timing in their timing array
       const { data: supplements, error: fetchError } = await supabase
         .from('user_supplements')
-        .select('id')
+        .select('id, supplement_id, supplements(name)')
         .eq('user_id', user.id)
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .contains('timing', [timing]);
 
       if (fetchError) throw fetchError;
 
       if (!supplements || supplements.length === 0) {
-        toast.info('Keine aktiven Supplements gefunden');
+        const timingLabels: Record<string, string> = {
+          morning: 'Morgens',
+          noon: 'Mittags', 
+          evening: 'Abends',
+          pre_workout: 'Pre-Workout',
+          post_workout: 'Post-Workout'
+        };
+        toast.info(`Keine ${timingLabels[timing]}-Supplements konfiguriert`);
         return false;
       }
 
-      // Create log entries for each supplement
+      // Create log entries for each supplement with this timing
       const logs = supplements.map(s => ({
         user_id: user.id,
         user_supplement_id: s.id,
@@ -92,7 +101,15 @@ export const useQuickLogging = () => {
 
       if (insertError) throw insertError;
 
-      console.log(`[useQuickLogging] Logged ${supplements.length} supplements as taken`);
+      // Get supplement names for feedback
+      const names = supplements
+        .map(s => (s.supplements as any)?.name)
+        .filter(Boolean)
+        .slice(0, 3);
+      
+      const namesStr = names.length > 0 ? names.join(', ') : `${supplements.length} Supplements`;
+      console.log(`[useQuickLogging] Logged ${supplements.length} ${timing} supplements as taken: ${namesStr}`);
+      
       return true;
     } catch (err) {
       console.error('[useQuickLogging] logSupplementsTaken failed:', err);
