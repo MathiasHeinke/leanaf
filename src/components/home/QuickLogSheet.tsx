@@ -5,15 +5,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Scale, Dumbbell, Moon, BookOpen } from 'lucide-react';
+import { X, Scale, Dumbbell, Moon, BookOpen, Ruler } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { WeightLogger } from './loggers/WeightLogger';
 import { TrainingLogger } from './loggers/TrainingLogger';
 import { SleepLogger } from './loggers/SleepLogger';
 import { JournalLogger } from './loggers/JournalLogger';
+import { TapeLogger } from './loggers/TapeLogger';
 
-export type QuickLogTab = 'weight' | 'training' | 'sleep' | 'journal';
+export type QuickLogTab = 'weight' | 'training' | 'sleep' | 'journal' | 'tape';
 
 interface QuickLogSheetProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ const tabs = [
   { id: 'training' as const, icon: Dumbbell, label: 'Training' },
   { id: 'sleep' as const, icon: Moon, label: 'Schlaf' },
   { id: 'journal' as const, icon: BookOpen, label: 'Journal' },
+  { id: 'tape' as const, icon: Ruler, label: 'Maße' },
 ];
 
 export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({ 
@@ -101,7 +103,7 @@ export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({
                 {/* Sliding Background */}
                   <motion.div
                     className="absolute top-1 bottom-1 bg-background rounded-xl shadow-sm"
-                    style={{ width: `calc(${100 / 4}% - 4px)` }}
+                    style={{ width: `calc(${100 / 5}% - 4px)` }}
                     animate={{ 
                       x: `calc(${activeTabIndex * 100}% + ${activeTabIndex * 4}px)` 
                     }}
@@ -141,6 +143,7 @@ export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({
                     {activeTab === 'training' && <TrainingLogger onClose={onClose} />}
                     {activeTab === 'sleep' && <SleepLogger onClose={onClose} />}
                     {activeTab === 'journal' && <JournalLogger onClose={onClose} />}
+                    {activeTab === 'tape' && <TapeLogger onClose={onClose} />}
                   </motion.div>
                 </AnimatePresence>
               </div>
