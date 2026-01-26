@@ -1,303 +1,85 @@
 
-# ARES Epiphany Card + Icon Fix Implementation
+# Hydration Micro-Actions: Icon-basiert mit Bounce & Reset
 
-## Uebersicht
+## Übersicht
 
-Zwei Aenderungen:
-1. **Icon Fix**: `Sun` durch `Sunrise` ersetzen fuer "Morgens" (authentischer)
-2. **Epiphany Card**: Komplett neues System mit AI-generierten Insights statt statischer Mathe
+Drei Verbesserungen für Apple-Design-Award-Qualität:
 
----
-
-## Teil 1: Morning Icon Fix (Quick Win)
-
-### Aenderungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/hooks/useActionCards.ts` | Import `Sunrise` statt `Sun`, alle `icon: Sun` zu `icon: Sunrise` |
-| `src/components/home/SmartFocusCard.tsx` | Import `Sunrise`, Fallback-Liste anpassen |
-
-### Code-Snippet (useActionCards.ts Zeile 11)
-
-```typescript
-// VORHER:
-import { BrainCircuit, Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sun, Clock, Dumbbell } from 'lucide-react';
-
-// NACHHER:
-import { BrainCircuit, Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell } from 'lucide-react';
-```
-
-### Code-Snippet (useActionCards.ts Zeile 82)
-
-```typescript
-// VORHER:
-return { id: 'morning', label: 'Morgens', icon: Sun, primary: true };
-
-// NACHHER:
-return { id: 'morning', label: 'Morgens', icon: Sunrise, primary: true };
-```
+1. **Icon-only Buttons**: `[Glas] 1x` statt `+250ml Wasser`
+2. **Bounce & Reset**: Button wird grün ✓, dann normal (Karte bleibt!)
+3. **DismissButton**: Icon oben rechts morpht zu X beim Hover
 
 ---
 
-## Teil 2: ARES Epiphany Card System
+## 1. Neue Sub-Komponenten
 
-### Das Konzept
+### A. DismissButton (Icon → X Morph)
 
 ```text
-+-------------------------------------------+
-|  PHASE 1: MYSTERY (vor Klick)             |
-|                                           |
-|  [Pulsierende Violette Karte]             |
-|  "ARES hat ein Muster erkannt"            |
-|  [Tap to Reveal] Button                   |
-+-------------------------------------------+
-           |
-           v (User klickt)
-+-------------------------------------------+
-|  PHASE 2: LOADING                         |
-|                                           |
-|  [Skeleton Animation]                     |
-|  Edge Function generiert Insight...       |
-+-------------------------------------------+
-           |
-           v (API Response)
-+-------------------------------------------+
-|  PHASE 3: REVELATION                      |
-|                                           |
-|  [Card Flip Animation]                    |
-|  "Dein Protein-Timing ist suboptimal.     |
-|   Abendtraining ohne Post-Workout         |
-|   Protein korreliert mit -15% Schlaf."    |
-|                                           |
-|  [Was bedeutet das?] -> Opens Chat        |
-+-------------------------------------------+
+Normal:         Hover/Active:
+┌─────────┐     ┌─────────┐
+│   💧    │ --> │    X    │
+└─────────┘     └─────────┘
 ```
 
-### Architektur
+- Position: Ersetzt den statischen Icon-Container oben rechts
+- Animation: `AnimatePresence` mit Rotation beim Wechsel
+- Props: `icon` (LucideIcon), `onDismiss`
+
+### B. MicroActionButton (Bounce & Reset)
 
 ```text
-Frontend                          Backend
----------                         -------
-ActionCardStack                   ares-insight-generator (NEW)
-     |                                   |
-     v                                   v
-EpiphanyCard.tsx (NEW)  --->  Gemini 3 Flash (quick insight)
-     |                                   |
-     | onReveal()                        | Analyzes:
-     |                                   |   - Last 7 days daily_logs
-     v                                   |   - Sleep patterns
-handleReveal() ----------------->        |   - Nutrition timing
-     |                                   |   - Training correlation
-     |                                   |
-     v                                   v
-setInsight(response) <------- { insight: "Dein..." }
-     |
-     v
-Card Flip Animation
-     |
-     v
-[Was bedeutet das?] -> Opens Chat with context
+Klick →  [✓]  → 1.5s → [💧 1x]
+         grün           normal
 ```
+
+- State: `'idle' | 'success'`
+- Nach Klick: Sofort grün + Checkmark
+- Nach 1.5s: Automatisch zurück zu normal
+- Karte bleibt offen für weiteres Tracking
+
+### C. HydrationActions (kompakte Buttons)
+
+| Action ID | Icon | Label | Menge |
+|-----------|------|-------|-------|
+| `250ml_water` | `GlassWater` | `1x` | 250ml |
+| `500ml_water` | `Milk` (Flasche) | `0.5L` | 500ml |
+| `coffee` | `Coffee` | `1x` | 150ml |
 
 ---
 
-### Neue Dateien
+## 2. Änderungen in SmartFocusCard.tsx
 
-#### 1. Frontend: `src/components/home/EpiphanyCard.tsx`
-
-Standalone Komponente mit 3 States:
+### Header: DismissButton statt statisches Icon
 
 ```typescript
-interface EpiphanyCardProps {
-  onOpenChat: (prompt: string) => void;
-  onDismiss: () => void;
-}
+// VORHER (Zeile 155-158):
+<div className="w-11 h-11 rounded-2xl bg-white/20 ...">
+  <Icon className="w-5 h-5 text-white" />
+</div>
 
-const EpiphanyCard: React.FC<EpiphanyCardProps> = ({ onOpenChat, onDismiss }) => {
-  const [phase, setPhase] = useState<'mystery' | 'loading' | 'revealed'>('mystery');
-  const [insight, setInsight] = useState<string | null>(null);
-  
-  const handleReveal = async () => {
-    setPhase('loading');
-    
-    // Call edge function
-    const { data } = await supabase.functions.invoke('ares-insight-generator');
-    
-    if (data?.insight) {
-      setInsight(data.insight);
-      setPhase('revealed');
-    }
-  };
-  
+// NACHHER:
+<DismissButton icon={Icon} onDismiss={onDismiss} />
+```
+
+### SmartActions: HydrationActions mit Multi-Tap
+
+```typescript
+// VORHER (Zeile 259-266):
+if (task.type === 'hydration') {
   return (
-    <motion.div className="...">
-      <AnimatePresence mode="wait">
-        {phase === 'mystery' && <MysteryState onReveal={handleReveal} />}
-        {phase === 'loading' && <LoadingState />}
-        {phase === 'revealed' && (
-          <RevealedState 
-            insight={insight} 
-            onAskMore={() => onOpenChat(`Du hast mir gesagt: "${insight}". Erklaere mir das genauer und was ich konkret tun soll.`)}
-            onDismiss={onDismiss}
-          />
-        )}
-      </AnimatePresence>
-    </motion.div>
+    <div className="flex gap-3 ...">
+      <ActionButton onClick={() => onAction('250ml_water')} icon={Droplets} label="+250ml" />
+      ...
+    </div>
   );
-};
-```
-
-**MysteryState Design:**
-- Gradient: `from-indigo-900 via-violet-800 to-purple-900`
-- Animated mesh background (subtle pulsing)
-- Icon: `Sparkles` (pulsierend)
-- Text: "ARES hat ein Muster erkannt"
-- Subtext: "Basierend auf deinen letzten 7 Tagen"
-- Button: "Aufdecken" mit `ChevronRight` icon
-
-**LoadingState Design:**
-- Skeleton shimmer animation
-- Text: "Analysiere Korrelationen..."
-
-**RevealedState Design:**
-- Gradient: Cleaner `from-slate-900 to-slate-800`
-- Icon: `Lightbulb` mit glow effect
-- Insight text in quotes, larger font
-- "Was bedeutet das?" Button -> Opens chat
-- "X" Icon top-right to dismiss
-
----
-
-#### 2. Backend: `supabase/functions/ares-insight-generator/index.ts`
-
-Neue Edge Function die echte Korrelationen analysiert:
-
-```typescript
-// System Prompt fuer den Insight Generator
-const INSIGHT_SYSTEM_PROMPT = `Du bist ARES, ein analytischer Coach.
-
-DEINE AUFGABE:
-Analysiere die User-Daten und finde EIN nicht-offensichtliches Muster oder eine Korrelation.
-
-REGELN:
-1. Formuliere als EINE kurze, praegnante Erkenntnis (max 2 Saetze)
-2. Sei spezifisch - nutze echte Zahlen aus den Daten
-3. Zeige eine KORRELATION, keine reine Statistik
-4. Beispiele guter Insights:
-   - "Dein Protein-Timing ist suboptimal. An Trainingstagen ohne Post-Workout Protein sinkt dein Schlaf-Score um 15%."
-   - "Deine Hydration beeinflusst deine Energie. An Tagen mit >2.5L Wasser trackst du 23% mehr Schritte."
-   - "Du erreichst dein Kalorienziel nur an Tagen, an denen du morgens fruehstueckst."
-
-5. VERMEIDE:
-   - Reine Mathe ("Du bist 500kcal unter Ziel")
-   - Offensichtliches ("Du hast wenig geschlafen")
-   - Generisches ("Trink mehr Wasser")
-
-ANTWORTE NUR mit dem Insight-Satz, keine Erklaerung.`;
-
-serve(async (req) => {
-  // 1. Auth check
-  const user = await getUser(req);
-  
-  // 2. Load last 7 days of data
-  const { data: logs } = await supabase
-    .from('daily_logs')
-    .select('*')
-    .eq('user_id', user.id)
-    .gte('date', sevenDaysAgo)
-    .order('date', { ascending: false });
-  
-  // 3. Format for LLM
-  const dataContext = formatLogsForAnalysis(logs);
-  
-  // 4. Call Gemini Flash (fast + cheap)
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${LOVABLE_API_KEY}` },
-    body: JSON.stringify({
-      model: 'google/gemini-3-flash-preview',
-      messages: [
-        { role: 'system', content: INSIGHT_SYSTEM_PROMPT },
-        { role: 'user', content: dataContext }
-      ]
-    })
-  });
-  
-  // 5. Extract insight
-  const result = await response.json();
-  const insight = result.choices[0].message.content;
-  
-  return json({ insight, generated_at: new Date().toISOString() });
-});
-```
-
-**Data Context Format:**
-
-```typescript
-function formatLogsForAnalysis(logs: DailyLog[]): string {
-  return `
-## USER DATEN (letzte 7 Tage)
-
-| Datum | Kalorien | Protein | Wasser | Schlaf | Schritte | Training |
-|-------|----------|---------|--------|--------|----------|----------|
-${logs.map(log => `| ${log.date} | ${log.total_calories}/${log.calorie_goal} | ${log.total_protein}g | ${log.hydration_ml}ml | ${log.sleep_hours}h | ${log.steps} | ${log.workout_logged ? 'Ja' : 'Nein'} |`).join('\n')}
-
-## AUFGABE
-Finde eine nicht-offensichtliche Korrelation zwischen diesen Metriken.
-`;
 }
-```
-
----
-
-### Integration in ActionCardStack
-
-Aenderungen in `src/hooks/useActionCards.ts`:
-
-```typescript
-// VORHER (Zeile 150-165):
-result.push({
-  id: 'insight',
-  type: 'insight',
-  title: 'ARES Erkenntnis',
-  subtitle: insightData.subtitle,
-  ...
-});
 
 // NACHHER:
-result.push({
-  id: 'insight',
-  type: 'epiphany', // Neuer Typ!
-  title: 'ARES hat etwas entdeckt',
-  subtitle: 'Tippe um die Erkenntnis aufzudecken',
-  gradient: 'from-indigo-900 via-violet-800 to-purple-900',
-  icon: Sparkles, // Statt BrainCircuit
-  priority: 10,
-  xp: 25,
-  canSwipeComplete: false
-});
-```
-
-Aenderungen in `src/components/home/ActionCardStack.tsx`:
-
-```typescript
-// Neuer Case im Switch
-case 'epiphany':
-  // Rendered separately as EpiphanyCard
-  // Handled by SmartFocusCard with special rendering
-  return;
-```
-
-Aenderungen in `src/components/home/SmartFocusCard.tsx`:
-
-```typescript
-// Wenn type === 'epiphany', render EpiphanyCard statt Standard-Card
-if (task.type === 'epiphany') {
+if (task.type === 'hydration') {
   return (
-    <EpiphanyCard 
-      onOpenChat={onOpenChat}
-      onDismiss={onDismiss}
+    <HydrationMicroActions 
+      onAction={onHydrationAction}  // Neuer Handler: loggt ohne Karte zu schließen
     />
   );
 }
@@ -305,32 +87,144 @@ if (task.type === 'epiphany') {
 
 ---
 
-## Dateien-Uebersicht
+## 3. Änderungen in ActionCardStack.tsx
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/hooks/useActionCards.ts` | 1. Sunrise Import, 2. Neuer 'epiphany' Typ |
-| `src/components/home/SmartFocusCard.tsx` | 1. Sunrise Import, 2. EpiphanyCard Integration |
-| `src/components/home/EpiphanyCard.tsx` | **NEU** - 3-Phase Reveal Komponente |
-| `supabase/functions/ares-insight-generator/index.ts` | **NEU** - AI Insight Generator |
-| `supabase/config.toml` | Neue Function registrieren |
+### Neuer Handler: handleHydrationAction
+
+```typescript
+// Hydration-Aktionen ohne Karte zu schließen
+const handleHydrationAction = useCallback(async (card: ActionCard, action: string) => {
+  let success = true;
+  
+  switch (action) {
+    case '250ml_water':
+      success = await logWater(250, 'water');
+      if (success) toast.success('+250ml', { icon: '💧' });
+      break;
+    case '500ml_water':
+      success = await logWater(500, 'water');
+      if (success) toast.success('+500ml', { icon: '💧' });
+      break;
+    case 'coffee':
+      success = await logWater(150, 'coffee');
+      if (success) toast.success('+Kaffee', { icon: '☕' });
+      break;
+  }
+  
+  if (success) {
+    // XP vergeben
+    window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+      detail: { amount: card.xp, reason: action }
+    }));
+  }
+  
+  // WICHTIG: Karte wird NICHT entfernt - User kann mehrmals klicken
+}, [logWater]);
+```
+
+### SmartFocusCard Props erweitern
+
+```typescript
+<SmartFocusCard
+  task={toSmartTask(card)}
+  onComplete={(action) => handleCardComplete(card, action)}
+  onDismiss={() => handleCardDismiss(card)}
+  onOpenChat={onTriggerChat}
+  onSupplementAction={(timing) => handleSupplementAction(card, timing)}
+  onHydrationAction={(action) => handleHydrationAction(card, action)} // NEU
+/>
+```
 
 ---
 
-## Psychologischer Hebel
+## 4. Visuelles Design
 
-Das neue System nutzt mehrere psychologische Prinzipien:
+### MicroActionButton States
 
-1. **Curiosity Gap**: "ARES hat etwas entdeckt" weckt Neugier
-2. **Effort Justification**: User muss klicken -> hoeherer wahrgenommener Wert
-3. **Variable Reward**: Jeder Insight ist anders -> Dopamin
-4. **Personalization**: Echte Korrelationen aus eigenen Daten
-5. **Social Proof via Authority**: "ARES hat analysiert" (AI als Experte)
+```text
+IDLE:
+┌─────────────┐
+│ 💧  1x      │  bg-white/20, text-white
+└─────────────┘
+
+SUCCESS (nach Klick):
+┌─────────────┐
+│     ✓       │  bg-emerald-500, text-white
+└─────────────┘   (animiert mit scale bounce)
+
+RESET (nach 1.5s):
+┌─────────────┐
+│ 💧  1x      │  zurück zu normal
+└─────────────┘
+```
+
+### DismissButton Animation
+
+```text
+MouseEnter:
+  Icon → X (rotate -90° → 0°)
+
+MouseLeave:
+  X → Icon (rotate 90° → 0°)
+```
 
 ---
 
-## Erwartetes Ergebnis
+## 5. Dateien-Änderungen
 
-**Vorher:** "Pattern: 1963 kcal unter Tagesziel" (langweilig, reine Mathe)
+| Datei | Änderung |
+|-------|----------|
+| `SmartFocusCard.tsx` | + DismissButton, + HydrationMicroActions, + MicroActionButton |
+| `ActionCardStack.tsx` | + handleHydrationAction, + onHydrationAction prop |
 
-**Nachher:** "Dein Schlaf verbessert sich um 18% an Tagen, an denen du vor 20 Uhr zu Abend isst." (echte Korrelation, ueberraschend, actionable)
+---
+
+## 6. Erwartetes Verhalten
+
+1. **Hydration-Karte erscheint**: "Mehr trinken" mit 3 kompakten Buttons
+2. **User klickt [💧 1x]**: 
+   - Button wird sofort grün mit ✓
+   - Toast: "+250ml 💧"
+   - XP wird vergeben
+   - Nach 1.5s: Button wird wieder normal
+3. **User kann erneut klicken**: Karte bleibt, beliebig oft tracken
+4. **User will Karte schließen**: 
+   - Hover über Icon oben rechts → morpht zu X
+   - Klick → Karte verschwindet (snoozed)
+5. **Alternativ**: Swipe nach links → Snooze
+
+---
+
+## Technische Details
+
+### Neue Imports (SmartFocusCard.tsx)
+
+```typescript
+import { GlassWater, Milk, X } from 'lucide-react';
+```
+
+### DismissButton Interface
+
+```typescript
+interface DismissButtonProps {
+  icon: LucideIcon;
+  onDismiss: () => void;
+}
+```
+
+### HydrationMicroActions Interface
+
+```typescript
+interface HydrationMicroActionsProps {
+  onAction: (actionId: string) => void;
+}
+```
+
+### MicroActionButton Interface
+
+```typescript
+interface MicroActionButtonProps {
+  action: { id: string; label: string; icon: LucideIcon };
+  onTrigger: (id: string) => void;
+}
+```
