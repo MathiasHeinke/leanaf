@@ -14,9 +14,15 @@ import { WidgetSize } from '@/types/widgets';
 
 interface MetricWidgetGridProps {
   onOpenNutritionSheet?: () => void;
+  onOpenHydrationSheet?: () => void;
+  onOpenBodySheet?: () => void;
 }
 
-export const MetricWidgetGrid: React.FC<MetricWidgetGridProps> = ({ onOpenNutritionSheet }) => {
+export const MetricWidgetGrid: React.FC<MetricWidgetGridProps> = ({ 
+  onOpenNutritionSheet,
+  onOpenHydrationSheet,
+  onOpenBodySheet
+}) => {
   const { enabledWidgets, isLoading } = useWidgetConfig();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const getGridClass = (size: WidgetSize): string => {
@@ -66,7 +72,12 @@ export const MetricWidgetGrid: React.FC<MetricWidgetGridProps> = ({ onOpenNutrit
               }}
               className={cn(getGridClass(widget.size))}
             >
-              <WidgetRenderer config={widget} onOpenNutritionSheet={onOpenNutritionSheet} />
+              <WidgetRenderer 
+                config={widget} 
+                onOpenNutritionSheet={onOpenNutritionSheet}
+                onOpenHydrationSheet={onOpenHydrationSheet}
+                onOpenBodySheet={onOpenBodySheet}
+              />
             </motion.div>
           ))}
         </AnimatePresence>
