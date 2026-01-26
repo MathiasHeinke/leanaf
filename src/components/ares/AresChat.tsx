@@ -49,6 +49,7 @@ interface AresChatProps {
   onResponseReceived?: (response: string, traceId: string | null) => void;
   onXPAwarded?: (xp: number, toolsUsed: string[]) => void;
   className?: string;
+  embedded?: boolean;  // When true, skip ChatLayout (for overlay usage)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -242,7 +243,8 @@ export default function AresChat({
   onMessageSent,
   onResponseReceived,
   onXPAwarded,
-  className
+  className,
+  embedded = false
 }: AresChatProps) {
   // State
   const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -506,103 +508,125 @@ export default function AresChat({
     </div>
   );
 
+  // Message content - shared between embedded and fullscreen modes
+  const messageContent = (
+    <div 
+      ref={scrollAreaRef}
+      className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-2 py-4"
+    >
+      <div className="max-w-3xl mx-auto space-y-1">
+        {/* Empty state */}
+        {messages.length === 0 && !isStreaming && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Sparkles className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Willkommen bei ARES
+            </h3>
+            <p className="text-muted-foreground text-sm max-w-sm">
+              Dein persönlicher AI-Coach für Training, Ernährung und Gesundheit. 
+              Stelle eine Frage oder teile deine Ziele.
+            </p>
+          </div>
+        )}
+
+        {/* Existing messages */}
+        {messages.map(msg => (
+          <MessageBubble key={msg.id} message={msg} />
+        ))}
+
+        {/* Streaming message */}
+        {isStreaming && (
+          <div className="flex justify-start mb-4">
+            <div className="flex flex-col max-w-[80%]">
+              {/* Avatar + Thinking-Ticker (inline) */}
+              <div className="flex items-center gap-2 mb-2 ml-1">
+                <Avatar className="h-5 w-5 flex-shrink-0">
+                  <AvatarImage src={ARES_IMAGE_URL} alt="ARES" />
+                  <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
+                </Avatar>
+                
+                {/* Status: Ticker während Thinking ODER Streaming-ohne-Content, sonst "schreibt..." */}
+                {(() => {
+                  const isPreContent = streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading';
+                  const isStreamingWithoutContent = streamState === 'streaming' && !streamingContent;
+                  const showThinkingTicker = (isPreContent || isStreamingWithoutContent) && thinkingSteps.length > 0;
+                  const showWritingLabel = streamState === 'streaming' && !!streamingContent;
+                  
+                  if (showThinkingTicker) {
+                    return <RotatingThinkingIndicator steps={thinkingSteps} inline />;
+                  }
+                  if (showWritingLabel) {
+                    return <span className="text-xs text-muted-foreground">ARES schreibt...</span>;
+                  }
+                  // Fallback während Connecting/Pre-Steps
+                  return <span className="text-xs text-muted-foreground">ARES denkt nach...</span>;
+                })()}
+              </div>
+              
+              {/* Content Box - NUR wenn Content da ist */}
+              {streamState === 'streaming' && streamingContent && (
+                <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <StreamingTextRenderer content={streamingContent} />
+                    <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Error display */}
+        {error && (
+          <div className="flex justify-center mb-4">
+            <Badge variant="destructive" className="text-sm px-3 py-1">
+              Fehler: {error}
+            </Badge>
+          </div>
+        )}
+
+        {/* Debug metrics - only in development */}
+        {import.meta.env.DEV && isStreaming && metrics.firstTokenMs !== null && (
+          <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/40">
+            <span>⚡ {metrics.firstTokenMs}ms</span>
+            <span>📝 {metrics.totalTokens} tokens</span>
+          </div>
+        )}
+        
+        {/* Invisible scroll anchor */}
+        <div ref={messagesEndRef} />
+      </div>
+    </div>
+  );
+
+  // Embedded mode: Simple flex container without fixed positioning
+  if (embedded) {
+    return (
+      <div className={cn("flex flex-col h-full relative", className)}>
+        {/* Fire Backdrop - contained */}
+        <FireBackdrop ref={fireBackdropRef} chatMode />
+        
+        {/* Messages Area */}
+        {messageContent}
+        
+        {/* Input Area */}
+        <div className="flex-none border-t border-border/30 bg-background/95 backdrop-blur-md px-4 py-3">
+          {chatInputComponent}
+        </div>
+      </div>
+    );
+  }
+
+  // Fullscreen mode: Use ChatLayout with fixed positioning
   return (
     <>
       {/* Fire Backdrop */}
       <FireBackdrop ref={fireBackdropRef} chatMode />
       
       <ChatLayout chatInput={chatInputComponent}>
-
-        {/* Messages Container */}
-        <div 
-          ref={scrollAreaRef}
-          className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-2 py-4"
-        >
-          <div className="max-w-3xl mx-auto space-y-1">
-            {/* Empty state */}
-            {messages.length === 0 && !isStreaming && (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                  <Sparkles className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Willkommen bei ARES
-                </h3>
-                <p className="text-muted-foreground text-sm max-w-sm">
-                  Dein persönlicher AI-Coach für Training, Ernährung und Gesundheit. 
-                  Stelle eine Frage oder teile deine Ziele.
-                </p>
-              </div>
-            )}
-
-            {/* Existing messages */}
-            {messages.map(msg => (
-              <MessageBubble key={msg.id} message={msg} />
-            ))}
-
-            {/* Streaming message */}
-            {isStreaming && (
-              <div className="flex justify-start mb-4">
-                <div className="flex flex-col max-w-[80%]">
-                  {/* Avatar + Thinking-Ticker (inline) */}
-                  <div className="flex items-center gap-2 mb-2 ml-1">
-                    <Avatar className="h-5 w-5 flex-shrink-0">
-                      <AvatarImage src={ARES_IMAGE_URL} alt="ARES" />
-                      <AvatarFallback className="text-[10px] bg-primary/20 text-primary font-semibold">A</AvatarFallback>
-                    </Avatar>
-                    
-                    {/* Status: Ticker während Thinking ODER Streaming-ohne-Content, sonst "schreibt..." */}
-                    {(() => {
-                      const isPreContent = streamState === 'connecting' || streamState === 'thinking' || streamState === 'context_loading';
-                      const isStreamingWithoutContent = streamState === 'streaming' && !streamingContent;
-                      const showThinkingTicker = (isPreContent || isStreamingWithoutContent) && thinkingSteps.length > 0;
-                      const showWritingLabel = streamState === 'streaming' && !!streamingContent;
-                      
-                      if (showThinkingTicker) {
-                        return <RotatingThinkingIndicator steps={thinkingSteps} inline />;
-                      }
-                      if (showWritingLabel) {
-                        return <span className="text-xs text-muted-foreground">ARES schreibt...</span>;
-                      }
-                      // Fallback während Connecting/Pre-Steps
-                      return <span className="text-xs text-muted-foreground">ARES denkt nach...</span>;
-                    })()}
-                  </div>
-                  
-                  {/* Content Box - NUR wenn Content da ist */}
-                  {streamState === 'streaming' && streamingContent && (
-                    <div className="rounded-2xl rounded-bl-md bg-muted/30 backdrop-blur-sm border border-border/30 px-4 py-3">
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
-                        <StreamingTextRenderer content={streamingContent} />
-                        <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5 rounded-sm" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Error display */}
-            {error && (
-              <div className="flex justify-center mb-4">
-                <Badge variant="destructive" className="text-sm px-3 py-1">
-                  Fehler: {error}
-                </Badge>
-              </div>
-            )}
-
-            {/* Debug metrics - only in development */}
-            {import.meta.env.DEV && isStreaming && metrics.firstTokenMs !== null && (
-              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground/40">
-                <span>⚡ {metrics.firstTokenMs}ms</span>
-                <span>📝 {metrics.totalTokens} tokens</span>
-              </div>
-            )}
-            
-            {/* Invisible scroll anchor */}
-            <div ref={messagesEndRef} />
-          </div>
-        </div>
+        {messageContent}
       </ChatLayout>
     </>
   );
