@@ -9,6 +9,7 @@ import { Utensils, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import spartanHelm from '@/assets/spartan-helm.png';
 import { LiquidCarouselMenu } from './LiquidCarouselMenu';
+import { useTodayCompletedActions } from '@/hooks/useTodayCompletedActions';
 
 export type QuickActionType = 'journal' | 'workout' | 'weight' | 'supplements' | 'sleep' | 'hydration' | 'nutrition';
 
@@ -27,10 +28,15 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
   onQuickAction 
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  // Smart Start: Check which actions are completed today
+  const { completedActions, refetch: refetchCompletions } = useTodayCompletedActions();
 
   const handleCarouselAction = useCallback((actionId: string) => {
     onQuickAction(actionId as QuickActionType);
-  }, [onQuickAction]);
+    // Refetch completions after action so next open shows updated state
+    setTimeout(() => refetchCompletions(), 500);
+  }, [onQuickAction, refetchCompletions]);
 
   const toggleMenu = useCallback(() => {
     setIsMenuOpen(prev => !prev);
@@ -50,11 +56,12 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
         }}
       />
 
-      {/* 2. LIQUID CAROUSEL MENU - Premium glassmorphism overlay */}
+      {/* 2. LIQUID CAROUSEL MENU - Premium glassmorphism overlay with Smart Start */}
       <LiquidCarouselMenu 
         isOpen={isMenuOpen}
         onClose={closeMenu}
         onAction={handleCarouselAction}
+        completedActions={completedActions}
       />
 
       {/* 3. THE DOCK CONTAINER - Highest z-index so always visible */}
