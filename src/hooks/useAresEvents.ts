@@ -16,14 +16,30 @@ export interface EventPayload {
   supplementId?: string;
   timing?: 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout';
   customName?: string;
-  // Weight
+  
+  // Weight (extended)
   weight_kg?: number;
-  // Workout
+  body_fat_percentage?: number;
+  muscle_percentage?: number;
+  notes?: string;
+  
+  // Workout (extended)
   training_type?: 'rpt' | 'zone2' | 'vo2max' | 'sauna';
+  split_type?: 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'full';
   duration_minutes?: number;
-  // Sleep
+  total_volume_kg?: number;
+  session_data?: Record<string, unknown>;
+  
+  // Sleep (extended)
   sleep_hours?: number;
   sleep_quality?: number; // 1-5
+  bedtime?: string;
+  wake_time?: string;
+  sleep_interruptions?: number;
+  screen_time_evening?: number;
+  morning_libido?: number;
+  motivation_level?: number;
+  
   // Shared
   date?: string;
 }
@@ -118,12 +134,15 @@ export const useAresEvents = () => {
         console.log(`[AresEvents] ✓ Logged supplement ${payload.supplementId} (${payload.timing})`);
       }
 
-      // === WEIGHT ===
+      // === WEIGHT (extended) ===
       if (category === 'weight' && payload.weight_kg) {
         const { error } = await supabase.from('weight_history').insert({
           user_id: auth.user.id,
           weight: payload.weight_kg,
-          date: payload.date || today
+          date: payload.date || today,
+          body_fat_percentage: payload.body_fat_percentage || null,
+          muscle_percentage: payload.muscle_percentage || null,
+          notes: payload.notes || null
         });
         
         if (error) {
@@ -135,14 +154,19 @@ export const useAresEvents = () => {
         toast.success(`${payload.weight_kg} kg gespeichert`);
       }
 
-      // === WORKOUT ===
+      // === WORKOUT (extended) ===
       if (category === 'workout' && payload.training_type) {
-        const { error } = await supabase.from('training_sessions').insert({
+        const insertData: Record<string, unknown> = {
           user_id: auth.user.id,
           training_type: payload.training_type,
+          split_type: payload.split_type || null,
           total_duration_minutes: payload.duration_minutes || null,
+          total_volume_kg: payload.total_volume_kg || null,
+          session_data: payload.session_data || {},
           session_date: payload.date || today
-        });
+        };
+        
+        const { error } = await supabase.from('training_sessions').insert(insertData as any);
         
         if (error) {
           console.error('[AresEvents] Workout insert failed:', error);
@@ -153,13 +177,19 @@ export const useAresEvents = () => {
         toast.success('Training gespeichert');
       }
 
-      // === SLEEP ===
+      // === SLEEP (extended) ===
       if (category === 'sleep' && payload.sleep_hours) {
         const { error } = await supabase.from('sleep_tracking').upsert({
           user_id: auth.user.id,
           date: payload.date || today,
           sleep_hours: payload.sleep_hours,
-          sleep_quality: payload.sleep_quality || 3
+          sleep_quality: payload.sleep_quality || 3,
+          bedtime: payload.bedtime || null,
+          wake_time: payload.wake_time || null,
+          sleep_interruptions: payload.sleep_interruptions || null,
+          screen_time_evening: payload.screen_time_evening || null,
+          morning_libido: payload.morning_libido || null,
+          motivation_level: payload.motivation_level || null
         }, { onConflict: 'user_id,date' });
         
         if (error) {
