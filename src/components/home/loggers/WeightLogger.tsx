@@ -128,7 +128,7 @@ export const WeightLogger: React.FC<WeightLoggerProps> = ({ onClose }) => {
                 value={muscleMass}
                 onChange={setMuscleMass}
                 min={0}
-                max={70}
+                max={85}
                 className="pr-8"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>

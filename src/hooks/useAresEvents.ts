@@ -136,13 +136,15 @@ export const useAresEvents = () => {
 
       // === WEIGHT (extended) ===
       if (category === 'weight' && payload.weight_kg) {
-        const { error } = await supabase.from('weight_history').insert({
+        const { error } = await supabase.from('weight_history').upsert({
           user_id: auth.user.id,
           weight: payload.weight_kg,
           date: payload.date || today,
           body_fat_percentage: payload.body_fat_percentage || null,
           muscle_percentage: payload.muscle_percentage || null,
           notes: payload.notes || null
+        }, {
+          onConflict: 'user_id,date'
         });
         
         if (error) {
