@@ -1,24 +1,35 @@
 /**
  * useActionCards - Dynamic action card prioritization
  * Decides which cards to show based on user data and context
+ * Now with Smart Actions for frictionless logging
  */
 
 import { useMemo } from 'react';
 import { usePlusData } from './usePlusData';
 import { useUserProfile } from './useUserProfile';
 import { useDailyFocus } from './useDailyFocus';
-import { BrainCircuit, Moon, PenTool, Pill, User, Droplets, LucideIcon } from 'lucide-react';
+import { BrainCircuit, Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon } from 'lucide-react';
+
+export interface QuickAction {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  primary?: boolean;
+}
 
 export interface ActionCard {
   id: string;
-  type: 'insight' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration';
+  type: 'insight' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein';
   title: string;
   subtitle: string;
   gradient: string;
   icon: LucideIcon;
   actionContext?: string;
-  actionPrompt?: string;  // Direct prompt with metrics for ARES
+  actionPrompt?: string;
   priority: number;
+  xp: number;
+  canSwipeComplete: boolean;
+  quickActions?: QuickAction[];
 }
 
 export const useActionCards = () => {
@@ -40,7 +51,9 @@ export const useActionCards = () => {
         gradient: 'from-slate-800 to-slate-900',
         icon: Moon,
         actionContext: 'sleep_optimization_advice',
-        priority: 1
+        priority: 1,
+        xp: 25,
+        canSwipeComplete: false // Opens chat instead
       });
     }
 
@@ -55,7 +68,9 @@ export const useActionCards = () => {
         gradient: 'from-emerald-500 to-teal-600',
         icon: User,
         actionContext: 'complete_profile',
-        priority: 2
+        priority: 2,
+        xp: 50,
+        canSwipeComplete: false // Navigates to profile
       });
     }
 
@@ -69,7 +84,13 @@ export const useActionCards = () => {
         gradient: 'from-cyan-500 to-blue-600',
         icon: Pill,
         actionContext: 'log_supplements',
-        priority: 3
+        priority: 3,
+        xp: 30,
+        canSwipeComplete: true,
+        quickActions: [
+          { id: 'all_taken', label: 'Alle genommen', icon: Check, primary: true },
+          { id: 'snooze', label: 'Später', icon: Moon }
+        ]
       });
     }
 
@@ -84,7 +105,14 @@ export const useActionCards = () => {
         gradient: 'from-blue-500 to-cyan-500',
         icon: Droplets,
         actionContext: 'hydration_reminder',
-        priority: 4
+        priority: 4,
+        xp: 20,
+        canSwipeComplete: true,
+        quickActions: [
+          { id: '250ml_water', label: '+250ml', icon: Droplets },
+          { id: '500ml_water', label: '+500ml', icon: Droplets },
+          { id: 'coffee', label: '+Kaffee', icon: Coffee }
+        ]
       });
     }
 
@@ -98,7 +126,9 @@ export const useActionCards = () => {
         gradient: 'from-orange-500 to-amber-600',
         icon: PenTool,
         actionContext: 'start_evening_journal',
-        priority: 5
+        priority: 5,
+        xp: 40,
+        canSwipeComplete: false // Opens journal flow
       });
     }
 
@@ -114,7 +144,9 @@ export const useActionCards = () => {
       icon: BrainCircuit,
       actionContext: 'analyze_recovery_pattern',
       actionPrompt: insightData.prompt,
-      priority: 10
+      priority: 10,
+      xp: 15,
+      canSwipeComplete: false // Opens chat
     });
 
     // Sort by priority and limit to 5
