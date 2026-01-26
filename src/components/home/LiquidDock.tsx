@@ -57,8 +57,8 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
         onAction={handleCarouselAction}
       />
 
-      {/* 3. THE DOCK CONTAINER */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
+      {/* 3. THE DOCK CONTAINER - Highest z-index so always visible */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center">
         
         {/* Floating buttons - no container */}
         <motion.div
