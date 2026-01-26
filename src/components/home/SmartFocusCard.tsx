@@ -1,6 +1,7 @@
 /**
  * SmartFocusCard - Swipeable action card with context-specific quick actions
  * Frictionless logging: swipe right = complete, swipe left = dismiss
+ * Multi-action support for supplements (individual timing buttons)
  */
 
 import React, { useState } from 'react';
@@ -33,6 +34,7 @@ interface SmartFocusCardProps {
   onComplete: (action?: string) => void;
   onDismiss: () => void;
   onOpenChat?: (prompt: string) => void;
+  onSupplementAction?: (timing: string) => void; // New: for individual supplement logging
   style?: React.CSSProperties;
   className?: string;
 }
@@ -42,6 +44,7 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
   onComplete, 
   onDismiss,
   onOpenChat,
+  onSupplementAction,
   style,
   className
 }) => {
@@ -82,7 +85,7 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
   };
 
   return (
-    <div className={cn("relative w-full h-44", className)} style={style}>
+    <div className={cn("relative w-full h-52", className)} style={style}>
       <AnimatePresence mode="wait">
         {!isCompleted ? (
           <motion.div
@@ -95,9 +98,9 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
             onClick={handleCardClick}
             className="absolute inset-0 z-20 touch-pan-x"
           >
-            {/* CARD CONTAINER */}
+            {/* CARD CONTAINER - Increased padding for button breathing room */}
             <div className={cn(
-              "relative h-full w-full overflow-hidden rounded-3xl p-5 pb-6 text-white shadow-2xl flex flex-col justify-between bg-gradient-to-br",
+              "relative h-full w-full overflow-hidden rounded-3xl p-6 pb-7 text-white shadow-2xl flex flex-col justify-between bg-gradient-to-br",
               task.gradient
             )}>
               
@@ -144,12 +147,13 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
                 </div>
               </div>
 
-              {/* SMART ACTION AREA */}
-              <div className="relative z-10 mt-auto pt-4">
+              {/* SMART ACTION AREA - More padding for touch targets */}
+              <div className="relative z-10 mt-auto pt-5">
                 <SmartActions 
                   task={task} 
                   onAction={handleComplete}
                   onOpenChat={onOpenChat}
+                  onSupplementAction={onSupplementAction}
                 />
               </div>
             </div>
@@ -190,14 +194,15 @@ interface SmartActionsProps {
   task: SmartTask;
   onAction: (action?: string) => void;
   onOpenChat?: (prompt: string) => void;
+  onSupplementAction?: (timing: string) => void;
 }
 
-const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat }) => {
+const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat, onSupplementAction }) => {
   
   // Use custom quick actions if provided
   if (task.quickActions && task.quickActions.length > 0) {
     return (
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
         {task.quickActions.map((action) => (
           <ActionButton 
             key={action.id}
@@ -214,7 +219,7 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat 
   // HYDRATION: Water & Coffee Buttons
   if (task.type === 'hydration') {
     return (
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
         <ActionButton onClick={() => onAction('250ml_water')} icon={Droplets} label="+250ml" />
         <ActionButton onClick={() => onAction('500ml_water')} icon={Droplets} label="+500ml" />
         <ActionButton onClick={() => onAction('coffee')} icon={Coffee} label="+Kaffee" />
@@ -222,15 +227,13 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat 
     );
   }
 
-  // SUPPLEMENTS: Timing-specific Buttons
+  // SUPPLEMENTS: Multi-action with individual timing tracking
   if (task.type === 'supplements') {
     return (
-      <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-        <ActionButton onClick={() => onAction('morning')} icon={Sun} label="Morgens" />
-        <ActionButton onClick={() => onAction('noon')} icon={Clock} label="Mittags" />
-        <ActionButton onClick={() => onAction('evening')} icon={Moon} label="Abends" />
-        <ActionButton onClick={() => onAction('pre_workout')} icon={Dumbbell} label="Pre-WO" />
-      </div>
+      <SupplementMultiActions 
+        onAction={onSupplementAction || onAction}
+        onDismiss={() => onAction('snooze')}
+      />
     );
   }
 
@@ -288,7 +291,82 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat 
   );
 };
 
-// Helper for small action buttons
+// --- SUPPLEMENT MULTI-ACTION COMPONENT ---
+// Allows individual timing buttons that disappear when clicked, card stays open
+
+interface SupplementMultiActionsProps {
+  onAction: (timing: string) => void;
+  onDismiss: () => void;
+}
+
+const SupplementMultiActions: React.FC<SupplementMultiActionsProps> = ({ onAction, onDismiss }) => {
+  const [completed, setCompleted] = useState<string[]>([]);
+
+  const actions = [
+    { id: 'morning', label: 'Morgens', icon: Sun, primary: true },
+    { id: 'pre_workout', label: 'Pre-WO', icon: Dumbbell, primary: false },
+    { id: 'snooze', label: 'Später', icon: Clock, primary: false },
+  ];
+
+  const handleClick = (actionId: string) => {
+    if (actionId === 'snooze') {
+      onDismiss();
+      return;
+    }
+    
+    // Mark as completed locally (button disappears)
+    setCompleted(prev => [...prev, actionId]);
+    // Trigger the logging
+    onAction(actionId);
+  };
+
+  const activeActions = actions.filter(a => !completed.includes(a.id));
+  const allSupplementsDone = completed.length >= 2; // morning + pre_workout
+
+  return (
+    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+      <AnimatePresence mode="popLayout">
+        {activeActions.map((action) => (
+          <motion.button
+            key={action.id}
+            layout
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0, width: 0, marginRight: 0 }}
+            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClick(action.id);
+            }}
+            className={cn(
+              "flex items-center gap-2 px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap transition-transform active:scale-95 border border-white/10",
+              action.primary 
+                ? "bg-white text-indigo-600 shadow-lg" 
+                : "bg-white/20 text-white backdrop-blur-md hover:bg-white/30"
+            )}
+          >
+            <action.icon size={16} strokeWidth={2.5} />
+            {action.label}
+          </motion.button>
+        ))}
+
+        {/* All done indicator */}
+        {allSupplementsDone && (
+          <motion.div 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-2 text-emerald-300 font-bold px-2"
+          >
+            <Check size={18} strokeWidth={3} />
+            <span>Alle Supps ✓</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// --- GENERIC ACTION BUTTON ---
 interface ActionButtonProps {
   onClick: () => void;
   icon: LucideIcon;
@@ -303,13 +381,13 @@ const ActionButton: React.FC<ActionButtonProps> = ({ onClick, icon: Icon, label,
       onClick(); 
     }}
     className={cn(
-      "flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-transform active:scale-95",
+      "flex items-center gap-2 px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap transition-transform active:scale-95 border border-white/10",
       primary 
         ? "bg-white text-indigo-600 shadow-lg" 
-        : "bg-white/20 text-white backdrop-blur-md hover:bg-white/30 border border-white/10"
+        : "bg-white/20 text-white backdrop-blur-md hover:bg-white/30"
     )}
   >
-    <Icon size={14} strokeWidth={2.5} />
+    <Icon size={16} strokeWidth={2.5} />
     {label}
   </button>
 );
