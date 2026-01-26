@@ -125,7 +125,7 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
     const containerWidth = container.clientWidth;
     
     // Center offset - items are padded with px-[40%] so center is at 40% from left
-    const centerPoint = scrollPosition + (containerWidth * 0.4);
+    const centerPoint = scrollPosition + (containerWidth / 2);
     
     // Find which item is closest to center
     const activeIdx = Math.round(centerPoint / ITEM_TOTAL);
@@ -159,9 +159,9 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop - Click to close */}
+          {/* Backdrop - Click to close (lowest layer) */}
           <motion.div 
-            className="fixed inset-0 z-40"
+            className="fixed inset-0 z-20"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -169,25 +169,25 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
             onClick={onClose}
           />
           
-          {/* Gradient Mask - Adaptive Light/Dark */}
+          {/* Gradient Mask - Visual layer only */}
           <motion.div
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
             transition={springConfig}
-            className="fixed bottom-0 left-0 right-0 h-[45vh] z-40 pointer-events-none"
+            className="fixed bottom-0 left-0 right-0 h-[45vh] z-30 pointer-events-none"
             style={{
               background: 'linear-gradient(to top, hsl(var(--background)) 0%, hsl(var(--background) / 0.95) 40%, transparent 100%)'
             }}
           />
           
-          {/* Carousel Container */}
+          {/* Carousel Container - Below dock buttons */}
           <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 30, opacity: 0 }}
             transition={springConfig}
-            className="fixed bottom-28 left-0 right-0 z-50"
+            className="fixed bottom-28 left-0 right-0 z-40"
           >
             {/* Scrollable Carousel */}
             <div
@@ -195,8 +195,8 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
               onScroll={handleScroll}
               className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar py-4"
               style={{ 
-                paddingLeft: '40%', 
-                paddingRight: '40%' 
+                paddingLeft: 'calc(50vw - 32px)', 
+                paddingRight: 'calc(50vw - 32px)' 
               }}
             >
               {orderedItems.map((item, index) => (
