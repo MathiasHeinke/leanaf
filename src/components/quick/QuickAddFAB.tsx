@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { QuickActionsMenu, ActionType } from "./QuickActionsMenu";
 import { toast } from "@/components/ui/sonner";
 import { quickAddBus } from "@/components/quick/quickAddBus";
+import type { QuickLogTab } from "@/components/home/QuickLogSheet";
 
 const QuickMealSheet = lazy(() => import("./QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 const QuickWorkoutModal = lazy(() => import("@/components/QuickWorkoutModal").then(m => ({ default: m.QuickWorkoutModal })));
 const QuickSleepModal = lazy(() => import("@/components/quick/QuickSleepModal"));
 const QuickFluidModal = lazy(() => import("@/components/quick/QuickFluidModal"));
-const ChemistryStackSheet = lazy(() => import("@/components/home/ChemistryStackSheet"));
-const BodyStackSheet = lazy(() => import("@/components/home/BodyStackSheet"));
+const QuickLogSheet = lazy(() => import("@/components/home/QuickLogSheet"));
 
 export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' | 'partial' | 'due'>> }> = ({ statuses }) => {
   const navigate = useNavigate();
@@ -18,11 +18,17 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
   const [workoutOpen, setWorkoutOpen] = useState(false);
   const [sleepOpen, setSleepOpen] = useState(false);
   const [fluidOpen, setFluidOpen] = useState(false);
-  const [chemistryOpen, setChemistryOpen] = useState(false);
-  const [bodyOpen, setBodyOpen] = useState(false);
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
+  const [quickLogInitialTab, setQuickLogInitialTab] = useState<QuickLogTab>('weight');
   const [recommendedWorkoutType, setRecommendedWorkoutType] = useState<string | undefined>('walking');
 
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
+
+  const openQuickLog = useCallback((tab: QuickLogTab) => {
+    setMenuOpen(false);
+    setQuickLogInitialTab(tab);
+    setQuickLogOpen(true);
+  }, []);
 
   const handleSelect = useCallback((type: ActionType) => {
     if (type === "meal") {
@@ -37,23 +43,19 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       return;
     }
     if (type === "sleep") {
-      setMenuOpen(false);
-      setSleepOpen(true);
+      openQuickLog('sleep');
       return;
     }
     if (type === "chemistry") {
-      setMenuOpen(false);
-      setChemistryOpen(true);
+      openQuickLog('supplements');
       return;
     }
     if (type === "body") {
-      setMenuOpen(false);
-      setBodyOpen(true);
+      openQuickLog('weight');
       return;
     }
     if (type === "journal") {
-      setMenuOpen(false);
-      setFluidOpen(true); // TODO: Replace with Journal modal when ready
+      openQuickLog('journal');
       return;
     }
     if (type === "bloodwork") {
@@ -64,23 +66,27 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
 
     if (type === "coach") toast.info("Coach-Zugang kommt bald ✨");
     setMenuOpen(false);
-  }, [navigate]);
+  }, [navigate, openQuickLog]);
 
   useEffect(() => {
     const unsub = quickAddBus.subscribe((action) => {
       setMenuOpen(false);
       if (action.type === 'meal') setMealOpen(true);
-      if (action.type === 'sleep') setSleepOpen(true);
-      if (action.type === 'chemistry') setChemistryOpen(true);
-      if (action.type === 'journal') setFluidOpen(true); // TODO: Replace with Journal modal
-      if (action.type === 'body') setBodyOpen(true);
       if (action.type === 'workout') {
         setRecommendedWorkoutType(action.payload?.recommendedType);
         setWorkoutOpen(true);
       }
+      // All QuickLogSheet tabs
+      if (action.type === 'sleep') openQuickLog('sleep');
+      if (action.type === 'supplements' || action.type === 'chemistry') openQuickLog('supplements');
+      if (action.type === 'journal') openQuickLog('journal');
+      if (action.type === 'body' || action.type === 'weight') openQuickLog('weight');
+      if (action.type === 'training') openQuickLog('training');
+      if (action.type === 'tape') openQuickLog('tape');
+      if (action.type === 'peptide') openQuickLog('peptide');
     });
     return unsub;
-  }, []);
+  }, [openQuickLog]);
 
   return (
     <>
@@ -116,19 +122,13 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
         <QuickWorkoutModal isOpen={workoutOpen} onClose={() => setWorkoutOpen(false)} contextData={{ recommendedType: recommendedWorkoutType ?? 'walking' }} />
       </Suspense>
 
-      {/* Sleep flow */}
+      {/* Unified QuickLogSheet (Weight, Training, Sleep, Journal, Tape, Supplements, Peptide) */}
       <Suspense fallback={null}>
-        <QuickSleepModal isOpen={sleepOpen} onClose={() => setSleepOpen(false)} />
-      </Suspense>
-
-      {/* Chemistry Stack (Supplements + Peptide) */}
-      <Suspense fallback={null}>
-        <ChemistryStackSheet isOpen={chemistryOpen} onClose={() => setChemistryOpen(false)} />
-      </Suspense>
-
-      {/* Body Stack (Weight + Tape) */}
-      <Suspense fallback={null}>
-        <BodyStackSheet isOpen={bodyOpen} onClose={() => setBodyOpen(false)} />
+        <QuickLogSheet 
+          isOpen={quickLogOpen} 
+          onClose={() => setQuickLogOpen(false)} 
+          initialTab={quickLogInitialTab}
+        />
       </Suspense>
 
       {/* Fluid flow */}
