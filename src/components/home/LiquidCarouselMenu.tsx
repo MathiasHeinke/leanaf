@@ -1,11 +1,20 @@
 /**
- * LiquidCarouselMenu - Premium "Glass & Glow" Carousel
- * Transform-based infinite scroll with no visible jumps
- * Smart Start: Opens at first uncompleted action of the day
+ * LiquidCarouselMenu - Virtual Physics Carousel
+ * MotionValue-based infinite scroll with true Apple feel
+ * Features: Momentum, friction, 1:1 trackpad mapping, spring snapping
  */
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { 
+  motion, 
+  AnimatePresence, 
+  useMotionValue, 
+  useTransform,
+  useMotionValueEvent,
+  animate,
+  type MotionValue,
+  type PanInfo 
+} from 'framer-motion';
 import { 
   Moon, Scale, Pill, Dumbbell, Droplet, Utensils, BookOpen, Check,
   type LucideIcon 
@@ -21,11 +30,6 @@ interface QuickActionItem {
   label: string;
   color: string;
   glowColor: string;
-}
-
-interface VisibleItem extends QuickActionItem {
-  offset: number;
-  uniqueKey: string;
 }
 
 interface LiquidCarouselMenuProps {
@@ -73,26 +77,61 @@ const ITEM_TOTAL = ITEM_WIDTH + GAP; // 80px per item
 
 // ============= Spring Config =============
 
-const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
+const springConfig = { type: "spring" as const, stiffness: 400, damping: 40 };
 
-// ============= Carousel Item Component =============
+// ============= Physics Carousel Item =============
 
-interface CarouselItemProps {
-  item: VisibleItem;
-  isActive: boolean;
+interface PhysicsItemProps {
+  item: QuickActionItem;
+  index: number;
+  x: MotionValue<number>;
+  totalItems: number;
+  onTap: () => void;
   isCompleted: boolean;
-  onClick: () => void;
+  isActive: boolean;
 }
 
-const CarouselItem: React.FC<CarouselItemProps> = ({ item, isActive, isCompleted, onClick }) => {
+const PhysicsCarouselItem: React.FC<PhysicsItemProps> = ({
+  item, index, x, totalItems, onTap, isCompleted, isActive
+}) => {
   const Icon = item.icon;
+  
+  // Calculate position relative to x motion value with infinite wrap
+  const itemX = useTransform(x, (xVal) => {
+    const totalWidth = totalItems * ITEM_TOTAL;
+    const centerOffset = typeof window !== 'undefined' ? window.innerWidth / 2 - ITEM_WIDTH / 2 : 200;
+    
+    // Raw position based on index and scroll
+    let pos = index * ITEM_TOTAL + xVal + centerOffset;
+    
+    // Modulo wrap for infinite scroll
+    pos = ((pos % totalWidth) + totalWidth) % totalWidth;
+    
+    // Offset so items wrap around center
+    if (pos > totalWidth / 2) {
+      pos -= totalWidth;
+    }
+    
+    return pos;
+  });
+  
+  // Distance from center for scale/opacity effects
+  const centerX = typeof window !== 'undefined' ? window.innerWidth / 2 - ITEM_WIDTH / 2 : 200;
+  
+  const distanceFromCenter = useTransform(itemX, (posX) => {
+    return Math.abs(posX - centerX);
+  });
+  
+  const scale = useTransform(distanceFromCenter, [0, 120], [1.15, 0.75]);
+  const opacity = useTransform(distanceFromCenter, [0, 80, 200], [1, 0.5, 0.2]);
   
   return (
     <motion.button
-      whileTap={{ scale: isActive ? 1.05 : 0.7 }}
-      onClick={onClick}
+      style={{ x: itemX, scale, opacity }}
+      whileTap={{ scale: 1.05 }}
+      onTap={onTap}
       className={cn(
-        "relative w-16 h-16 rounded-full",
+        "absolute top-0 left-0 w-16 h-16 rounded-full",
         "flex items-center justify-center",
         "transition-shadow duration-300",
         isActive 
@@ -124,8 +163,10 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
   onAction,
   completedActions,
 }) => {
-  const [virtualIndex, setVirtualIndex] = useState(0);
-  const wheelAccumulator = useRef(0);
+  // MotionValue for continuous physics-based scrolling
+  const x = useMotionValue(0);
+  const wheelTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const [currentActiveIndex, setCurrentActiveIndex] = useState(0);
   
   // Smart ordered items based on time of day
   const orderedItems = useMemo(() => getSmartOrderedItems(), []);
@@ -134,108 +175,98 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
   // Smart Start: Find first uncompleted item index
   const getSmartStartIndex = useCallback((completed: Set<ActionId>): number => {
     const firstIncompleteIndex = orderedItems.findIndex(item => !completed.has(item.id));
-    // If all completed, start at 0
     return firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0;
   }, [orderedItems]);
   
-  // Calculate visible items (7 items: -3 to +3 from center)
-  const visibleItems = useMemo((): VisibleItem[] => {
-    const items: VisibleItem[] = [];
-    for (let offset = -3; offset <= 3; offset++) {
-      const actualIndex = ((virtualIndex + offset) % ITEMS_COUNT + ITEMS_COUNT) % ITEMS_COUNT;
-      items.push({
-        ...orderedItems[actualIndex],
-        offset,
-        uniqueKey: `${orderedItems[actualIndex].id}-${offset}`,
-      });
-    }
-    return items;
-  }, [virtualIndex, orderedItems, ITEMS_COUNT]);
+  // Track active index from x position
+  const activeIndex = useTransform(x, (xVal) => {
+    const index = Math.round(-xVal / ITEM_TOTAL);
+    return ((index % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
+  });
   
-  // Get active item (center item)
+  // Update state when active index changes (for label)
+  useMotionValueEvent(activeIndex, "change", (latest) => {
+    setCurrentActiveIndex(latest);
+  });
+  
+  // Get active item for label display
   const activeItem = useMemo(() => {
-    const normalizedIndex = ((virtualIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
-    return orderedItems[normalizedIndex];
-  }, [virtualIndex, orderedItems, ITEMS_COUNT]);
+    return orderedItems[currentActiveIndex];
+  }, [orderedItems, currentActiveIndex]);
   
-  // Check if active item is completed
-  const isActiveCompleted = useMemo(() => {
-    return completedActions?.has(activeItem?.id) ?? false;
-  }, [completedActions, activeItem]);
-  
-  // Handle drag end - determine direction and update index
+  // Physics-based drag end with momentum + snapping
   const handleDragEnd = useCallback((
     _: MouseEvent | TouchEvent | PointerEvent,
     info: PanInfo
   ) => {
+    const currentX = x.get();
     const velocity = info.velocity.x;
-    const offset = info.offset.x;
     
-    // Threshold: At least half item width or high velocity
-    const threshold = ITEM_TOTAL / 2;
+    // Predict where momentum would carry us
+    const projectedX = currentX + velocity * 0.2;
     
-    let change = 0;
-    if (Math.abs(offset) > threshold || Math.abs(velocity) > 500) {
-      // Determine direction (drag right = previous item, drag left = next item)
-      change = offset > 0 ? -1 : 1;
-      
-      // For high velocity: skip multiple items
-      if (Math.abs(velocity) > 1000) {
-        change *= 2;
-      }
+    // Snap to nearest item
+    const snapTarget = Math.round(projectedX / ITEM_TOTAL) * ITEM_TOTAL;
+    
+    // Animate with spring physics (the Apple feel!)
+    animate(x, snapTarget, {
+      type: "spring",
+      stiffness: 400,
+      damping: 40,
+      velocity: velocity * 0.5 // Carry momentum into snap
+    });
+    
+    // Haptic feedback on snap
+    if ('vibrate' in navigator) {
+      navigator.vibrate(10);
     }
-    
-    if (change !== 0) {
-      setVirtualIndex(prev => prev + change);
-      
-      // Haptic feedback
-      if ('vibrate' in navigator) {
-        navigator.vibrate(10);
-      }
-    }
-  }, []);
+  }, [x]);
   
-  // Handle trackpad/mouse wheel scrolling
+  // Direct 1:1 trackpad/wheel mapping
   const handleWheel = useCallback((e: React.WheelEvent) => {
     // Only capture horizontal scrolling (trackpad 2-finger swipe)
     if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
       e.preventDefault();
       
-      // Accumulate deltaX for smooth scrolling
-      wheelAccumulator.current += e.deltaX;
+      // Direct 1:1 mapping - THIS is the Apple feel
+      x.set(x.get() - e.deltaX);
       
-      // Threshold: when accumulated enough, change index
-      const threshold = ITEM_TOTAL / 2;
+      // Clear previous timeout
+      if (wheelTimeout.current) {
+        clearTimeout(wheelTimeout.current);
+      }
       
-      if (Math.abs(wheelAccumulator.current) >= threshold) {
-        const change = wheelAccumulator.current > 0 ? 1 : -1;
-        setVirtualIndex(prev => prev + change);
-        wheelAccumulator.current = 0; // Reset accumulator
+      // Snap after 150ms of no wheel events
+      wheelTimeout.current = setTimeout(() => {
+        const snapTarget = Math.round(x.get() / ITEM_TOTAL) * ITEM_TOTAL;
+        animate(x, snapTarget, springConfig);
         
         // Haptic feedback
         if ('vibrate' in navigator) {
           navigator.vibrate(10);
         }
-      }
+      }, 150);
     }
-  }, []);
+  }, [x]);
   
-  // Handle item click
-  const handleItemClick = useCallback((item: VisibleItem) => {
-    // If not center item, scroll to it first
-    if (item.offset !== 0) {
-      setVirtualIndex(prev => prev + item.offset);
-      return;
-    }
+  // Handle item tap - navigate to item or trigger action
+  const handleItemTap = useCallback((index: number) => {
+    const targetX = -index * ITEM_TOTAL;
+    const currentIndex = Math.round(-x.get() / ITEM_TOTAL);
+    const normalizedCurrent = ((currentIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
     
-    // Haptic feedback
-    if ('vibrate' in navigator) {
-      navigator.vibrate(10);
+    // If already at this item, trigger action
+    if (normalizedCurrent === index) {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(10);
+      }
+      onAction(orderedItems[index].id);
+      onClose();
+    } else {
+      // Scroll to the item
+      animate(x, targetX, springConfig);
     }
-    
-    onAction(item.id);
-    onClose();
-  }, [onAction, onClose]);
+  }, [x, ITEMS_COUNT, orderedItems, onAction, onClose]);
   
   // Smart Start: Reset to first uncompleted item when menu opens
   useEffect(() => {
@@ -243,9 +274,21 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
       const startIndex = completedActions && completedActions.size > 0
         ? getSmartStartIndex(completedActions)
         : 0;
-      setVirtualIndex(startIndex);
+      
+      // Set x so the start item is centered
+      x.set(-startIndex * ITEM_TOTAL);
+      setCurrentActiveIndex(startIndex);
     }
-  }, [isOpen, completedActions, getSmartStartIndex]);
+  }, [isOpen, completedActions, getSmartStartIndex, x]);
+  
+  // Cleanup wheel timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (wheelTimeout.current) {
+        clearTimeout(wheelTimeout.current);
+      }
+    };
+  }, []);
   
   return (
     <AnimatePresence>
@@ -281,7 +324,7 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
             transition={springConfig}
             className="fixed bottom-28 left-0 right-0 z-40"
           >
-            {/* Transform-based Carousel */}
+            {/* Physics-based Carousel */}
             <motion.div
               drag="x"
               dragConstraints={{ left: 0, right: 0 }}
@@ -290,29 +333,18 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
               onWheel={handleWheel}
               className="relative h-20 w-full touch-pan-y cursor-grab active:cursor-grabbing"
             >
-              <AnimatePresence mode="sync">
-                {visibleItems.map((item) => (
-                  <motion.div
-                    key={item.uniqueKey}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{
-                      x: `calc(50vw - 32px + ${item.offset * ITEM_TOTAL}px)`,
-                      scale: item.offset === 0 ? 1.15 : 0.75,
-                      opacity: Math.abs(item.offset) <= 2 ? (item.offset === 0 ? 1 : 0.5) : 0.2,
-                    }}
-                    exit={{ opacity: 0 }}
-                    transition={springConfig}
-                    className="absolute top-0 left-0"
-                  >
-                    <CarouselItem
-                      item={item}
-                      isActive={item.offset === 0}
-                      isCompleted={completedActions?.has(item.id) ?? false}
-                      onClick={() => handleItemClick(item)}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+              {orderedItems.map((item, index) => (
+                <PhysicsCarouselItem
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  x={x}
+                  totalItems={ITEMS_COUNT}
+                  onTap={() => handleItemTap(index)}
+                  isCompleted={completedActions?.has(item.id) ?? false}
+                  isActive={currentActiveIndex === index}
+                />
+              ))}
             </motion.div>
             
             {/* Active Label - Animated */}
