@@ -1,14 +1,17 @@
 /**
- * TrainingLogger - 4-Säulen Grid for RPT, Zone2, VO2max, Sauna
- * Visual selection cards with type-specific details
- * Extended: Split type, Cardio type, VO2 protocol, Sauna details
+ * TrainingLogger - Round & Grouped Design
+ * Apple Health-style with round buttons and logical grouping
  * 
- * UI Polish: Sticky save button
+ * Groups:
+ * - WORKOUTS: Kraft, Zone 2, VO2 Max
+ * - AKTIVITÄT & ERHOLUNG: Sauna, Bewegung, Ruhetag
+ * 
+ * Rest Day Logic: Grays out workout buttons when "Ruhetag" is selected
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dumbbell, Activity, HeartPulse, Flame, Check, Minus, Plus, Footprints, Moon } from 'lucide-react';
+import { Dumbbell, Activity, HeartPulse, Flame, Check, Minus, Plus, Footprints, Moon, LucideIcon } from 'lucide-react';
 import { useAresEvents } from '@/hooks/useAresEvents';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { cn } from '@/lib/utils';
@@ -19,16 +22,20 @@ interface TrainingLoggerProps {
   onClose: () => void;
 }
 
-const springConfig = { type: "spring" as const, stiffness: 400, damping: 30 };
-
-const trainingTypes = [
-  { id: 'rpt' as const, label: 'Kraft (RPT)', icon: Dumbbell, color: 'bg-indigo-500', needsTime: false },
+// Grouped training types
+const workoutTypes = [
+  { id: 'rpt' as const, label: 'Kraft', icon: Dumbbell, color: 'bg-indigo-500', needsTime: false },
   { id: 'zone2' as const, label: 'Zone 2', icon: Activity, color: 'bg-emerald-500', needsTime: true },
   { id: 'vo2max' as const, label: 'VO2 Max', icon: HeartPulse, color: 'bg-rose-500', needsTime: true },
+];
+
+const activityTypes = [
   { id: 'sauna' as const, label: 'Sauna', icon: Flame, color: 'bg-orange-500', needsTime: true },
   { id: 'movement' as const, label: 'Bewegung', icon: Footprints, color: 'bg-teal-500', needsTime: false },
   { id: 'rest' as const, label: 'Ruhetag', icon: Moon, color: 'bg-slate-400', needsTime: false },
 ];
+
+const allTypes = [...workoutTypes, ...activityTypes];
 
 const SPLIT_OPTIONS: { id: SplitType; label: string }[] = [
   { id: 'push', label: 'Push' },
@@ -38,6 +45,55 @@ const SPLIT_OPTIONS: { id: SplitType; label: string }[] = [
   { id: 'lower', label: 'Lower' },
   { id: 'full', label: 'Full' },
 ];
+
+// Reusable Round Button Component
+interface RoundTypeButtonProps {
+  type: {
+    id: TrainingType;
+    label: string;
+    icon: LucideIcon;
+    color: string;
+    needsTime: boolean;
+  };
+  isSelected: boolean;
+  isDisabled: boolean;
+  onSelect: (id: TrainingType) => void;
+}
+
+const RoundTypeButton: React.FC<RoundTypeButtonProps> = ({ 
+  type, 
+  isSelected, 
+  isDisabled, 
+  onSelect 
+}) => (
+  <motion.button
+    whileTap={!isDisabled ? { scale: 0.95 } : undefined}
+    onClick={() => !isDisabled && onSelect(type.id)}
+    disabled={isDisabled}
+    className="flex flex-col items-center gap-2"
+  >
+    {/* Round Icon Button */}
+    <div className={cn(
+      "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200",
+      isSelected && `${type.color} ring-2 ring-offset-2 ring-primary`,
+      !isSelected && !isDisabled && "bg-muted hover:bg-muted/80",
+      isDisabled && "opacity-40 grayscale cursor-not-allowed bg-muted"
+    )}>
+      <type.icon className={cn(
+        "w-7 h-7 transition-colors",
+        isSelected ? "text-white" : "text-foreground"
+      )} />
+    </div>
+    
+    {/* Label */}
+    <span className={cn(
+      "text-xs font-medium transition-colors",
+      isDisabled ? "text-muted-foreground/50" : "text-foreground"
+    )}>
+      {type.label}
+    </span>
+  </motion.button>
+);
 
 export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   const { trackEvent } = useAresEvents();
@@ -57,7 +113,10 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   const [steps, setSteps] = useState<string>('');
   const [distanceKm, setDistanceKm] = useState<string>('');
 
-  const selectedTypeConfig = trainingTypes.find(t => t.id === selectedType);
+  const selectedTypeConfig = allTypes.find(t => t.id === selectedType);
+  
+  // Rest day disables workouts
+  const isRestDaySelected = selectedType === 'rest';
 
   const handleSave = async () => {
     if (!selectedType) return;
@@ -103,57 +162,52 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
     <div className="flex flex-col min-h-[300px]">
       {/* SCROLLABLE CONTENT */}
       <div className="flex-1 space-y-6 overflow-y-auto">
-        {/* GRID SELECTION - 6 tiles (3x2) */}
-        <div className="grid grid-cols-2 gap-3">
-          {trainingTypes.map((t) => {
-            const isSelected = selectedType === t.id;
-            return (
-              <motion.button
-                key={t.id}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setSelectedType(t.id)}
-                className={cn(
-                  "relative p-4 rounded-2xl flex flex-col items-start gap-3 border-2 transition-all h-[90px]",
-                  isSelected
-                    ? 'border-primary bg-primary/5'
-                    : 'border-transparent bg-muted hover:bg-muted/80'
-                )}
-              >
-                <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center text-white",
-                  t.color
-                )}>
-                  <t.icon className="w-5 h-5" />
-                </div>
-                <span className="text-sm font-semibold text-foreground text-left">
-                  {t.label}
-                </span>
-                
-                {/* Selected Indicator */}
-                <AnimatePresence>
-                  {isSelected && (
-                    <motion.div
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0, opacity: 0 }}
-                      className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center"
-                    >
-                      <Check className="w-3.5 h-3.5 text-primary-foreground" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.button>
-            );
-          })}
+        
+        {/* WORKOUTS SECTION */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+            Workouts
+          </h3>
+          <div className="flex justify-around">
+            {workoutTypes.map((type) => (
+              <RoundTypeButton
+                key={type.id}
+                type={type}
+                isSelected={selectedType === type.id}
+                isDisabled={isRestDaySelected}
+                onSelect={setSelectedType}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* ACTIVITY & RECOVERY SECTION */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+            Aktivität & Erholung
+          </h3>
+          <div className="flex justify-around">
+            {activityTypes.map((type) => (
+              <RoundTypeButton
+                key={type.id}
+                type={type}
+                isSelected={selectedType === type.id}
+                isDisabled={false}
+                onSelect={setSelectedType}
+              />
+            ))}
+          </div>
         </div>
 
         {/* TYPE-SPECIFIC DETAILS */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {selectedType && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
+              key={selectedType}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
               <div className="pt-2 space-y-4">
