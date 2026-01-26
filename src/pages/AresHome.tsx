@@ -14,6 +14,8 @@ import { useAresGreeting } from '@/hooks/useAresGreeting';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useGlobalMealInput } from '@/hooks/useGlobalMealInput';
 import { useFrequentMeals, type Daypart } from '@/hooks/useFrequentMeals';
+import { useAresEvents } from '@/hooks/useAresEvents';
+import { toast } from 'sonner';
 
 import { ExperienceBeam } from '@/components/home/ExperienceBeam';
 import { AresTopNav } from '@/components/home/AresTopNav';
@@ -84,6 +86,7 @@ export default function AresHome() {
   const plusData = usePlusData();
   const { userName, streak } = useAresGreeting();
   const { profileData } = useUserProfile();
+  const { logWater } = useAresEvents();
 
   // Chat context trigger from action cards
   const handleActionTrigger = useCallback((contextOrPrompt: string) => {
@@ -104,7 +107,7 @@ export default function AresHome() {
   }, []);
 
   // Quick action handler for the LiquidDock
-  const handleQuickAction = useCallback((action: QuickActionType) => {
+  const handleQuickAction = useCallback(async (action: QuickActionType) => {
     switch (action) {
       case 'journal':
         setQuickLogConfig({ open: true, tab: 'journal' });
@@ -121,8 +124,19 @@ export default function AresHome() {
       case 'sleep':
         setQuickLogConfig({ open: true, tab: 'sleep' });
         break;
+      case 'hydration':
+        // Direct water logging - 500ml with optimistic update
+        const success = await logWater(500);
+        if (success) {
+          toast.success('+500ml Wasser 💧', { duration: 1500 });
+        }
+        break;
+      case 'nutrition':
+        // Open meal input sheet
+        setMealOpen(true);
+        break;
     }
-  }, []);
+  }, [logWater]);
 
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);

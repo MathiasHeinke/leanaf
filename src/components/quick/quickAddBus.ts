@@ -1,4 +1,4 @@
-export type QuickActionType = 'meal' | 'workout' | 'sleep' | 'supplements' | 'journal' | 'chemistry' | 'body';
+export type QuickActionType = 'meal' | 'workout' | 'sleep' | 'supplements' | 'journal' | 'chemistry' | 'body' | 'hydration';
 
 interface QuickAction {
   type: QuickActionType;
@@ -29,3 +29,4 @@ export const openWorkout = (payload?: { recommendedType?: string }) =>
   quickAddBus.emit({ type: 'workout', payload });
 
 export const openJournal = () => quickAddBus.emit({ type: 'journal' });
+export const openHydration = () => quickAddBus.emit({ type: 'hydration' });
