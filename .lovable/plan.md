@@ -1,336 +1,417 @@
 
-# ARES High-Performance Event System: Optimistic UI
 
-## Übersicht
+# Epiphany Card: Premium Design + Prefetch + 3D Flip
 
-Wir bauen ein **Zero-Latency** Event-System mit React Query. Der User sieht sofortiges Feedback (10ms), während die Datenbank im Hintergrund aktualisiert wird.
+## Uebersicht
 
+Drei Optimierungen fuer die Erkenntnis-Karte:
+
+| Verbesserung | Status |
+|--------------|--------|
+| **Text zu gross** | `text-lg` → `text-sm` / `text-base` (je nach Laenge) |
+| **Flip-Animation** | Echter 3D-Kartenflip mit `rotateY(180deg)` |
+| **Prefetch** | Insight wird im Hintergrund geladen, sobald Karte sichtbar wird |
+
+---
+
+## 1. Design-Fixes (RevealedState)
+
+### Problem
+Der Text `"Deine Daten zeigen..."` ist mit `text-lg` zu gross und ueberwaeltigt die kompakte Karte.
+
+### Loesung
 ```text
-USER KLICK
-    │
-    ├──> A. OPTIMISTIC (0ms): UI sofort aktualisiert
-    │         └── Widget springt von 0.5L → 0.75L
-    │
-    └──> B. ASYNC (Background): Supabase Insert
-              └── Bei Fehler: Rollback
+VORHER:                              NACHHER:
+┌───────────────────────┐            ┌───────────────────────┐
+│ 💡 ERKENNTNIS    [X]  │            │ 💡 ERKENNTNIS    [X]  │
+│                       │            │                       │
+│ "Deine Daten zeigen   │            │ "Deine Daten zeigen   │
+│ ein interessantes     │            │ ein interessantes     │
+│ Muster. An Tagen      │  (text-lg) │ Muster..."            │ (text-sm)
+│ mit..."               │            │                       │
+│                       │            │ [Was bedeutet das?]   │
+│ [Was bedeutet das?]   │            │                       │
+└───────────────────────┘            └───────────────────────┘
+```
+
+### Aenderungen EpiphanyCard.tsx (RevealedState)
+
+**Zeile 264-265 (Insight Text):**
+```typescript
+// VORHER:
+className="text-lg font-medium leading-relaxed text-white/90"
+
+// NACHHER:
+className="text-sm sm:text-base font-medium leading-relaxed text-white/90"
+```
+
+**Weitere Design-Verbesserungen:**
+- Groesseres Icon/Badge fuer visuelles Gewicht
+- Subtilere Glow-Effekte
+- Bessere vertikale Verteilung
+
+---
+
+## 2. 3D Flip Animation
+
+### Konzept
+Statt nur `rotateY: 90 → 0` machen wir einen echten Karten-Flip:
+- Vorderseite (Mystery) rotiert nach hinten
+- Rueckseite (Revealed) erscheint durch Rotation nach vorne
+- `perspective` fuer 3D-Tiefe
+
+### Animation Flow
+```text
+Phase 1 (Mystery):        Phase 2 (Flip):          Phase 3 (Revealed):
+┌─────────────┐           ┌─────────────┐           ┌─────────────┐
+│ ✨ Neues    │  ──→      │    ====     │  ──→      │ 💡 Erkennt  │
+│   Muster    │           │   FLIP!     │           │   nis       │
+│             │           │    ====     │           │             │
+│ [Aufdecken] │           │             │           │ [Was ...?]  │
+└─────────────┘           └─────────────┘           └─────────────┘
+  rotateY(0)               rotateY(90)               rotateY(0)
+```
+
+### Code-Aenderungen
+
+**Wrapper mit Perspective:**
+```typescript
+<div className="relative w-full h-52 rounded-3xl overflow-hidden" 
+     style={{ perspective: '1000px' }}>
+```
+
+**Mystery Exit Animation:**
+```typescript
+exit={{ 
+  rotateY: -90,
+  opacity: 0,
+  transition: { duration: 0.3 }
+}}
+```
+
+**Revealed Entry Animation:**
+```typescript
+initial={{ rotateY: 90, opacity: 0 }}
+animate={{ rotateY: 0, opacity: 1 }}
+transition={{ 
+  duration: 0.5, 
+  type: "spring", 
+  damping: 20 
+}}
+style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
 ```
 
 ---
 
-## Architektur
+## 3. Prefetch System (Wichtig fuer UX)
 
-### Single Source of Truth: `useDailyMetrics`
+### Problem
+Aktuell wird die Erkenntnis erst generiert wenn der User klickt → 1-3 Sekunden Ladezeit.
 
-Ein React Query Hook, den **alle** Widgets nutzen. Wenn wir den Cache manipulieren, aktualisieren sich alle Widgets automatisch.
+### Loesung: Hintergrund-Prefetch
+1. Sobald die Epiphany-Karte im Stack erscheint (oder kurz davor), wird die Erkenntnis im Hintergrund geladen
+2. Das Ergebnis wird im React Query Cache / LocalStorage gespeichert
+3. Beim Klick auf "Aufdecken" ist die Erkenntnis bereits da → sofortige Flip-Animation
 
+### Architektur
 ```text
 ┌─────────────────────────────────────────┐
-│           React Query Cache             │
-│     queryKey: ['daily-metrics']         │
+│      useDailyInsight() Hook             │
 │                                         │
-│   { water: { current: 750, target: 3000 } }
-│   { supplements: { takenIds: [...] } }  │
+│  ┌────────────┐   ┌────────────────────┐│
+│  │ localStorage│  │ React Query Cache  ││
+│  │ daily-insight│ │  ['daily-insight'] ││
+│  │ + date key  │  │                    ││
+│  └─────────────┘   └────────────────────┘│
+│           ▲                  ▲          │
+│           │                  │          │
+│  ┌────────┴──────────────────┴────────┐ │
+│  │  fetchDailyInsight()               │ │
+│  │  - Prueft erst localStorage        │ │
+│  │  - Falls leer: API call            │ │
+│  │  - Speichert mit Tagesdatum        │ │
+│  └────────────────────────────────────┘ │
 └─────────────────────────────────────────┘
-         ▲                    ▲
-         │                    │
-  ┌──────┴──────┐      ┌──────┴──────┐
-  │ SmartCard   │      │ HydrationWidget │
-  │ (oben)      │      │ (unten)     │
-  └─────────────┘      └─────────────┘
+          │
+          ▼
+┌─────────────────────────────────────────┐
+│     EpiphanyCard                        │
+│                                         │
+│  - Bekommt `prefetchedInsight` als Prop │
+│  - Falls vorhanden: Skip Loading State  │
+│  - Sofortiger Flip                      │
+└─────────────────────────────────────────┘
 ```
 
-### Event Controller: `useAresEvents`
-
-Ein zentraler Hook für alle Tracking-Actions. Keine direkten Supabase-Calls mehr in Components!
-
----
-
-## Neue Dateien
-
-### 1. `src/hooks/useDailyMetrics.ts` (Single Source of Truth)
+### Neuer Hook: `useDailyInsight.ts`
 
 ```typescript
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-export interface DailyMetrics {
-  water: { current: number; target: number };
-  supplements: { takenIds: string[]; total: number };
-  nutrition: { calories: number; protein: number; carbs: number; fats: number };
-  goals: { calories: number; protein: number; carbs: number; fats: number; fluid_goal_ml: number };
+const STORAGE_KEY = 'ares-daily-insight';
+const QUERY_KEY = ['daily-insight'];
+
+interface DailyInsight {
+  insight: string;
+  date: string;
+  generated_at: string;
 }
 
-export const DAILY_METRICS_KEY = ['daily-metrics'];
+function getTodayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
-export const useDailyMetrics = () => {
+function getCachedInsight(): DailyInsight | null {
+  try {
+    const cached = localStorage.getItem(STORAGE_KEY);
+    if (!cached) return null;
+    const parsed = JSON.parse(cached);
+    // Nur gueltig wenn vom selben Tag
+    if (parsed.date === getTodayKey()) {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedInsight(insight: DailyInsight): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(insight));
+}
+
+export const useDailyInsight = (shouldPrefetch: boolean = false) => {
+  const queryClient = useQueryClient();
+  
   return useQuery({
-    queryKey: DAILY_METRICS_KEY,
-    queryFn: async (): Promise<DailyMetrics> => {
-      // Fetch all daily data in parallel
-      // ... (aggregation logic from usePlusData)
+    queryKey: QUERY_KEY,
+    queryFn: async (): Promise<DailyInsight | null> => {
+      // 1. Check localStorage first
+      const cached = getCachedInsight();
+      if (cached) {
+        console.log('[DailyInsight] Using cached insight from today');
+        return cached;
+      }
+      
+      // 2. Fetch from API
+      console.log('[DailyInsight] Fetching fresh insight...');
+      const { data, error } = await supabase.functions.invoke('ares-insight-generator');
+      
+      if (error || !data?.insight) {
+        console.error('[DailyInsight] Failed:', error);
+        return null;
+      }
+      
+      // 3. Cache for today
+      const result: DailyInsight = {
+        insight: data.insight,
+        date: getTodayKey(),
+        generated_at: data.generated_at || new Date().toISOString()
+      };
+      
+      setCachedInsight(result);
+      return result;
     },
-    staleTime: 1000 * 60 * 5, // 5 min fresh
-    gcTime: 1000 * 60 * 30,   // 30 min cache
+    // Nur fetchen wenn prefetch aktiviert
+    enabled: shouldPrefetch,
+    staleTime: 1000 * 60 * 60 * 24, // 24h
+    gcTime: 1000 * 60 * 60 * 24,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 };
 
-// Hook for optimistic updates
-export const useOptimisticMetrics = () => {
+// Manueller Fetch (fuer Klick wenn Cache leer)
+export const useFetchInsight = () => {
   const queryClient = useQueryClient();
   
-  const addWater = (amount: number) => {
-    queryClient.setQueryData<DailyMetrics>(DAILY_METRICS_KEY, (old) => {
-      if (!old) return old;
-      return {
-        ...old,
-        water: { ...old.water, current: old.water.current + amount }
-      };
-    });
-  };
-  
-  const rollback = () => {
-    queryClient.invalidateQueries({ queryKey: DAILY_METRICS_KEY });
-  };
-  
-  return { addWater, rollback };
-};
-```
-
-### 2. `src/hooks/useAresEvents.ts` (Event Controller)
-
-```typescript
-import { useCallback } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { DAILY_METRICS_KEY, DailyMetrics } from './useDailyMetrics';
-
-type EventCategory = 'water' | 'coffee' | 'supplement' | 'meal';
-
-interface EventPayload {
-  amount?: number;
-  supplementId?: string;
-  timing?: string;
-}
-
-export const useAresEvents = () => {
-  const queryClient = useQueryClient();
-
-  const trackEvent = useCallback(async (
-    category: EventCategory, 
-    payload: EventPayload
-  ): Promise<boolean> => {
+  return async (): Promise<string | null> => {
+    // Check cache first
+    const cached = getCachedInsight();
+    if (cached) return cached.insight;
     
-    // === A. OPTIMISTIC UPDATE (SOFORT) ===
-    queryClient.setQueryData<DailyMetrics>(DAILY_METRICS_KEY, (old) => {
-      if (!old) return old;
-      
-      if (category === 'water' || category === 'coffee') {
-        return {
-          ...old,
-          water: { 
-            ...old.water, 
-            current: old.water.current + (payload.amount || 0) 
-          }
-        };
-      }
-      
-      if (category === 'supplement' && payload.supplementId) {
-        return {
-          ...old,
-          supplements: {
-            ...old.supplements,
-            takenIds: [...old.supplements.takenIds, payload.supplementId]
-          }
-        };
-      }
-      
-      return old;
-    });
-
-    // === B. ASYNC DB WRITE (Background) ===
-    try {
-      const { data: auth } = await supabase.auth.getUser();
-      if (!auth.user) throw new Error('Not authenticated');
-      
-      const today = new Date().toISOString().slice(0, 10);
-      
-      if (category === 'water' || category === 'coffee') {
-        const { error } = await supabase.from('user_fluids').insert({
-          user_id: auth.user.id,
-          amount_ml: payload.amount,
-          date: today,
-          consumed_at: new Date().toISOString(),
-          custom_name: category === 'coffee' ? 'Kaffee' : null
-        });
-        if (error) throw error;
-      }
-      
-      // Silent revalidate nach 2s
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: DAILY_METRICS_KEY });
-      }, 2000);
-      
-      return true;
-    } catch (err) {
-      console.error('[AresEvents] Tracking failed:', err);
-      // === ROLLBACK ===
-      queryClient.invalidateQueries({ queryKey: DAILY_METRICS_KEY });
-      toast.error('Speichern fehlgeschlagen');
-      return false;
-    }
-  }, [queryClient]);
-
-  return { trackEvent };
+    // Fetch if not cached
+    const { data, error } = await supabase.functions.invoke('ares-insight-generator');
+    
+    if (error || !data?.insight) return null;
+    
+    const result: DailyInsight = {
+      insight: data.insight,
+      date: getTodayKey(),
+      generated_at: data.generated_at || new Date().toISOString()
+    };
+    
+    setCachedInsight(result);
+    queryClient.setQueryData(QUERY_KEY, result);
+    
+    return result.insight;
+  };
 };
 ```
 
----
-
-## Änderungen an bestehenden Dateien
-
-### 1. `ActionCardStack.tsx` - Hydration Handler
+### Integration in ActionCardStack
 
 ```typescript
-// VORHER (Zeile 79-105):
-const handleHydrationAction = useCallback(async (card: ActionCard, action: string) => {
-  let success = true;
-  switch (action) {
-    case '250ml_water':
-      success = await logWater(250, 'water');
-      if (success) toast.success('+250ml', { icon: '💧' });
-      break;
-    // ...
-  }
-  // ...
-}, [logWater]);
+// ActionCardStack.tsx
+import { useDailyInsight } from '@/hooks/useDailyInsight';
 
-// NACHHER:
-import { useAresEvents } from '@/hooks/useAresEvents';
+// Prefetch wenn Epiphany-Karte in der Queue ist (Index 1 oder 2)
+const epiphanyCardIndex = cards.findIndex(c => c.type === 'epiphany');
+const shouldPrefetch = epiphanyCardIndex >= 0 && epiphanyCardIndex <= 2;
 
-const { trackEvent } = useAresEvents();
-
-const handleHydrationAction = useCallback(async (card: ActionCard, action: string) => {
-  let amount = 0;
-  let category: 'water' | 'coffee' = 'water';
-  let icon = '💧';
-  let label = '';
-  
-  switch (action) {
-    case '250ml_water':
-      amount = 250; label = '+250ml'; break;
-    case '500ml_water':
-      amount = 500; label = '+500ml'; break;
-    case 'coffee':
-      amount = 150; category = 'coffee'; icon = '☕'; label = '+Kaffee'; break;
-  }
-  
-  // Optimistic Toast (sofort)
-  toast.success(label, { icon });
-  
-  // Optimistic UI + Background Sync
-  const success = await trackEvent(category, { amount });
-  
-  if (success) {
-    window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
-      detail: { amount: card.xp, reason: action }
-    }));
-  }
-}, [trackEvent]);
+const { data: dailyInsight } = useDailyInsight(shouldPrefetch);
 ```
 
-### 2. `HydrationWidget.tsx` - React Query Consumer
+### EpiphanyCard Props erweitern
 
 ```typescript
-// VORHER:
-import { usePlusData } from '@/hooks/usePlusData';
-const { hydrationMlToday, goals } = usePlusData();
-
-// NACHHER:
-import { useDailyMetrics } from '@/hooks/useDailyMetrics';
-const { data } = useDailyMetrics();
-const hydrationMlToday = data?.water.current ?? 0;
-const target = data?.goals.fluid_goal_ml ?? 2500;
+interface EpiphanyCardProps {
+  onOpenChat: (prompt: string) => void;
+  onDismiss: () => void;
+  prefetchedInsight?: string | null; // NEU
+}
 ```
 
 ---
 
-## Flow: User Experience
-
-1. User ist auf Home Screen
-2. Oben: **Smart Card "Mehr Trinken"** mit Buttons
-3. Unten: **Hydration Widget** zeigt 0.5L
-
-**Klick auf [💧 1x]:**
-```text
-T+0ms:   Button wird grün ✅
-T+0ms:   Widget springt von 0.5L → 0.75L (optimistic)
-T+0ms:   Toast "+250ml 💧"
-T+50ms:  Supabase Insert (background)
-T+2000ms: Silent Revalidate (prüft DB)
-```
-
-**Bei Netzwerkfehler:**
-```text
-T+0ms:   UI zeigt 0.75L (optimistic)
-T+500ms: Supabase Insert fails
-T+500ms: Rollback: Widget zeigt wieder 0.5L
-T+500ms: Toast "Speichern fehlgeschlagen"
-```
-
----
-
-## Dateien-Übersicht
+## 4. Dateien-Uebersicht
 
 | Aktion | Datei | Beschreibung |
 |--------|-------|--------------|
-| **CREATE** | `src/hooks/useDailyMetrics.ts` | React Query Hook + Optimistic Utils |
-| **CREATE** | `src/hooks/useAresEvents.ts` | Event Controller für alle Tracking-Actions |
-| **MODIFY** | `src/components/home/ActionCardStack.tsx` | Nutzt `useAresEvents` statt `logWater` |
-| **MODIFY** | `src/components/home/widgets/HydrationWidget.tsx` | Nutzt `useDailyMetrics` statt `usePlusData` |
+| **CREATE** | `src/hooks/useDailyInsight.ts` | Prefetch + LocalStorage Cache |
+| **MODIFY** | `src/components/home/EpiphanyCard.tsx` | Design-Fixes, 3D Flip, Prefetch-Integration |
+| **MODIFY** | `src/components/home/ActionCardStack.tsx` | Prefetch-Trigger, Insight-Prop weitergeben |
 
 ---
 
-## Technische Details
+## 5. Detaillierte Aenderungen EpiphanyCard.tsx
 
-### React Query Config (bereits vorhanden in App.tsx)
-
+### Wrapper mit Perspective (Zeile 60)
 ```typescript
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,  // 5 min
-      gcTime: 1000 * 60 * 30,    // 30 min cache
-      retry: 1,
-    },
-  },
-});
+// VORHER:
+<div className="relative w-full h-52 rounded-3xl overflow-hidden">
+
+// NACHHER:
+<div 
+  className="relative w-full h-52 rounded-3xl overflow-hidden"
+  style={{ perspective: '1200px' }}
+>
 ```
 
-### Query Key Design
-
+### MysteryState Exit (Zeile 84-88)
 ```typescript
-// Zentral für alle Daily Metrics
-export const DAILY_METRICS_KEY = ['daily-metrics'];
+// VORHER:
+exit={{ opacity: 0, scale: 1.05 }}
 
-// Für granulare Invalidation (optional)
-// ['daily-metrics', 'water']
-// ['daily-metrics', 'supplements']
+// NACHHER:
+exit={{ 
+  rotateY: -90, 
+  opacity: 0,
+  scale: 1.02,
+  transition: { duration: 0.3, ease: "easeIn" }
+}}
 ```
 
-### Fehlerbehandlung & Rollback
-
+### RevealedState Entry (Zeile 227-232)
 ```typescript
-// Bei Fehler: Invalidate Query = Refetch echte Daten
-queryClient.invalidateQueries({ queryKey: DAILY_METRICS_KEY });
+// VORHER:
+initial={{ opacity: 0, rotateY: 90 }}
+animate={{ opacity: 1, rotateY: 0 }}
+transition={{ duration: 0.4, type: "spring", damping: 20 }}
+className="absolute inset-0"
+
+// NACHHER:
+initial={{ rotateY: 90, opacity: 0 }}
+animate={{ rotateY: 0, opacity: 1 }}
+transition={{ 
+  duration: 0.6, 
+  type: "spring", 
+  stiffness: 100,
+  damping: 15 
+}}
+style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
+className="absolute inset-0"
+```
+
+### Insight Text (Zeile 264-265)
+```typescript
+// VORHER:
+className="text-lg font-medium leading-relaxed text-white/90"
+
+// NACHHER:
+className="text-sm font-medium leading-relaxed text-white/85 line-clamp-4"
+```
+
+### Header Icon groesser (Zeile 244-247)
+```typescript
+// VORHER:
+<div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
+  <Lightbulb className="w-4 h-4 text-amber-400" />
+</div>
+
+// NACHHER:
+<div className="w-10 h-10 bg-gradient-to-br from-amber-500/30 to-yellow-500/20 
+                rounded-xl flex items-center justify-center border border-amber-500/20">
+  <Lightbulb className="w-5 h-5 text-amber-400" />
+</div>
+```
+
+### Prefetch-Logik im Component
+```typescript
+// handleReveal wird intelligenter:
+const handleReveal = async () => {
+  // Falls bereits prefetched -> sofort zeigen
+  if (prefetchedInsight) {
+    setInsight(prefetchedInsight);
+    setPhase('revealed');
+    // XP Award...
+    return;
+  }
+  
+  // Fallback: Normale Fetch-Logik
+  setPhase('loading');
+  // ... existing fetch code
+};
 ```
 
 ---
 
-## Vorteile
+## 6. User Experience nach Implementation
 
-1. **Zero Latency**: UI reagiert in <10ms
-2. **Automatische Sync**: Alle Widgets, die `useDailyMetrics` nutzen, aktualisieren sich sofort
-3. **Sauberer Code**: Components feuern nur `trackEvent()` - keine DB-Logik mehr
-4. **Robust**: Bei Fehler automatischer Rollback
-5. **Offline-Ready**: React Query kann Offline-Support später einfach hinzufügen
+```text
+SZENARIO A: Prefetch erfolgreich (90% der Faelle)
+───────────────────────────────────────────────────
+1. User sieht Supplement-Karte (Position 1)
+2. Epiphany-Karte ist auf Position 2
+3. HINTERGRUND: useDailyInsight() laedt Insight
+4. User erledigt Supplement-Karte
+5. Epiphany-Karte wird sichtbar (Position 1)
+6. User klickt "Aufdecken"
+7. SOFORT: 3D-Flip → Insight erscheint (0ms Ladezeit)
+
+SZENARIO B: Kein Prefetch (10% - z.B. Epiphany auf Pos 1)
+───────────────────────────────────────────────────
+1. User sieht Epiphany-Karte sofort (Position 1)
+2. User klickt "Aufdecken"
+3. Loading-State erscheint (1-2 Sekunden)
+4. 3D-Flip → Insight erscheint
+```
+
+---
+
+## 7. One-Insight-Per-Day Garantie
+
+Die LocalStorage-Logik stellt sicher:
+- **Morgens 8:00**: Erster Aufruf generiert Insight, speichert mit `date: "2026-01-26"`
+- **Mittags 12:00**: Aufruf liest aus Cache (selbes Datum)
+- **Naechster Tag 8:00**: Cache ungueltig (anderes Datum), neuer Insight wird generiert
+
+```typescript
+// Validierung im Hook:
+if (parsed.date === getTodayKey()) {
+  return parsed; // Gueltig
+}
+return null; // Veraltet, neu fetchen
+```
+
