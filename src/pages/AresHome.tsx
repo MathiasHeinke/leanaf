@@ -356,7 +356,9 @@ export default function AresHome() {
         </div>
 
         {/* Action Card Stack - Tinder-style prioritized cards */}
-        <ActionCardStack onTriggerChat={handleActionTrigger} />
+        <motion.div layout>
+          <ActionCardStack onTriggerChat={handleActionTrigger} />
+        </motion.div>
 
         {/* Live Metrics Section */}
         <div className="space-y-3">
