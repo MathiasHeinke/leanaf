@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface SupplementsWidgetProps {
   size: WidgetSize;
@@ -21,7 +22,7 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) =>
 
   // Fetch ACTIVE supplements and check which were taken today
   const { data: supplementsData } = useQuery({
-    queryKey: ['supplements-today-widget'],
+    queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { taken: 0, total: 0, items: [] as SupplementItem[] };
@@ -66,7 +67,7 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) =>
         items
       };
     },
-    staleTime: 30000
+    staleTime: 10000
   });
 
   const taken = supplementsData?.taken || 0;
