@@ -5,10 +5,9 @@ import { cn } from "@/lib/utils";
 interface ChatLayoutProps {
   children: ReactNode;
   chatInput?: ReactNode;
-  bannerCollapsed?: boolean;
 }
 
-export const ChatLayout = ({ children, chatInput, bannerCollapsed = false }: ChatLayoutProps) => {
+export const ChatLayout = ({ children, chatInput }: ChatLayoutProps) => {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
@@ -22,13 +21,7 @@ export const ChatLayout = ({ children, chatInput, bannerCollapsed = false }: Cha
       )}
     >
       {/* ZONE B: Scrollable Chat Content */}
-      <div 
-        className="flex-1 min-h-0 flex flex-col px-4 transition-all duration-300 ease-out"
-        style={{ 
-          paddingTop: bannerCollapsed ? '8px' : 'var(--coach-banner-height)',
-          pointerEvents: 'auto' 
-        }}
-      >
+      <div className="flex-1 min-h-0 flex flex-col px-4 pt-2">
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
