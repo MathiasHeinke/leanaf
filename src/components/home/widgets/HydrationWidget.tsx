@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Droplets } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
-import { usePlusData } from '@/hooks/usePlusData';
+import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 
 interface HydrationWidgetProps {
   size: WidgetSize;
@@ -12,10 +12,13 @@ interface HydrationWidgetProps {
 
 export const HydrationWidget: React.FC<HydrationWidgetProps> = ({ size }) => {
   const navigate = useNavigate();
-  const { hydrationMlToday, goals } = usePlusData();
   
-  // Use goal from database, fallback to 2500ml
-  const target = goals?.fluid_goal_ml || 2500;
+  // Use the new centralized metrics hook for optimistic updates
+  const { data } = useDailyMetrics();
+  
+  // Extract values with fallbacks
+  const hydrationMlToday = data?.water.current ?? 0;
+  const target = data?.water.target ?? 2500;
   const percent = Math.min((hydrationMlToday / target) * 100, 100);
   const liters = (hydrationMlToday / 1000).toFixed(1);
   const targetLiters = (target / 1000).toFixed(1);

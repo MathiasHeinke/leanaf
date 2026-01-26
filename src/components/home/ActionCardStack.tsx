@@ -1,6 +1,8 @@
 /**
  * ActionCardStack - Smart swipeable card stack with frictionless logging
  * Swipe right = complete, Swipe left = dismiss, Quick actions for instant logging
+ * 
+ * Uses ARES Optimistic UI: instant feedback via cache manipulation + background DB sync
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -10,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { useActionCards, ActionCard, QuickAction } from '@/hooks/useActionCards';
 import { useDismissedCards } from '@/hooks/useDismissedCards';
 import { useQuickLogging } from '@/hooks/useQuickLogging';
-import { useDataRefresh } from '@/hooks/useDataRefresh';
+import { useAresEvents } from '@/hooks/useAresEvents';
 import { SmartFocusCard, SmartTask } from './SmartFocusCard';
 import { toast } from 'sonner';
 import { triggerSpartanConfetti } from '@/utils/confetti';
@@ -22,7 +24,8 @@ interface ActionCardStackProps {
 export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat }) => {
   const { cards: initialCards } = useActionCards();
   const { dismissCard, isCardDismissed } = useDismissedCards();
-  const { logWater, logSupplementsTaken } = useQuickLogging();
+  const { logSupplementsTaken } = useQuickLogging();
+  const { trackEvent } = useAresEvents();
   
   const [cards, setCards] = useState<ActionCard[]>([]);
   const [hasShownConfetti, setHasShownConfetti] = useState(false);
@@ -75,34 +78,47 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
     // NOTE: Card is NOT removed - user can still log other timings
   }, [logSupplementsTaken]);
 
-  // Handle hydration action WITHOUT closing card (multi-tap)
+  // Handle hydration action WITH OPTIMISTIC UI (multi-tap)
   const handleHydrationAction = useCallback(async (card: ActionCard, action: string) => {
-    let success = true;
+    let amount = 0;
+    let category: 'water' | 'coffee' = 'water';
+    let icon = '💧';
+    let label = '';
     
     switch (action) {
       case '250ml_water':
-        success = await logWater(250, 'water');
-        if (success) toast.success('+250ml', { icon: '💧' });
+        amount = 250; 
+        label = '+250ml'; 
         break;
       case '500ml_water':
-        success = await logWater(500, 'water');
-        if (success) toast.success('+500ml', { icon: '💧' });
+        amount = 500; 
+        label = '+500ml'; 
         break;
       case 'coffee':
-        success = await logWater(150, 'coffee');
-        if (success) toast.success('+Kaffee', { icon: '☕' });
+        amount = 150; 
+        category = 'coffee'; 
+        icon = '☕'; 
+        label = '+Kaffee'; 
         break;
+      default:
+        return; // Unknown action
     }
     
+    // Optimistic Toast (instant feedback)
+    toast.success(label, { icon });
+    
+    // Optimistic UI + Background Sync via ARES Events
+    const success = await trackEvent(category, { amount });
+    
     if (success) {
-      // XP vergeben
+      // Award XP via custom event
       window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
         detail: { amount: card.xp, reason: action }
       }));
     }
     
     // WICHTIG: Karte wird NICHT entfernt - User kann mehrmals klicken
-  }, [logWater]);
+  }, [trackEvent]);
 
   // Handle card completion with logging
   const handleCardComplete = useCallback(async (card: ActionCard, action?: string) => {
@@ -111,19 +127,20 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
     // Execute the appropriate logging action
     switch (card.type) {
       case 'hydration':
+        // All hydration actions now use optimistic trackEvent
         if (action === '250ml_water') {
-          success = await logWater(250, 'water');
-          if (success) toast.success('+250ml Wasser', { description: `+${card.xp} XP` });
+          toast.success('+250ml Wasser', { description: `+${card.xp} XP` });
+          success = await trackEvent('water', { amount: 250 });
         } else if (action === '500ml_water') {
-          success = await logWater(500, 'water');
-          if (success) toast.success('+500ml Wasser', { description: `+${card.xp} XP` });
+          toast.success('+500ml Wasser', { description: `+${card.xp} XP` });
+          success = await trackEvent('water', { amount: 500 });
         } else if (action === 'coffee') {
-          success = await logWater(150, 'coffee');
-          if (success) toast.success('+Kaffee', { description: `+${card.xp} XP` });
+          toast.success('+Kaffee', { description: `+${card.xp} XP` });
+          success = await trackEvent('coffee', { amount: 150 });
         } else {
           // Default swipe complete = 250ml
-          success = await logWater(250, 'water');
-          if (success) toast.success('+250ml Wasser', { description: `+${card.xp} XP` });
+          toast.success('+250ml Wasser', { description: `+${card.xp} XP` });
+          success = await trackEvent('water', { amount: 250 });
         }
         break;
         
@@ -171,7 +188,7 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
         detail: { amount: card.xp, reason: card.title }
       }));
     }
-  }, [logWater, dismissCard, onTriggerChat]);
+  }, [trackEvent, dismissCard, onTriggerChat]);
 
   // Handle card dismissal (snooze)
   const handleCardDismiss = useCallback((card: ActionCard) => {
