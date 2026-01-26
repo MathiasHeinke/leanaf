@@ -82,8 +82,20 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
           toast.info('Supplements auf später verschoben');
           return;
         }
-        success = await logSupplementsTaken();
-        if (success) toast.success('Supplements eingenommen!', { description: `+${card.xp} XP` });
+        // Timing-specific supplement logging
+        if (['morning', 'noon', 'evening', 'pre_workout', 'post_workout'].includes(action || '')) {
+          success = await logSupplementsTaken(action as 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout');
+          if (success) {
+            const timingLabels: Record<string, string> = {
+              morning: 'Morgens',
+              noon: 'Mittags',
+              evening: 'Abends',
+              pre_workout: 'Pre-Workout',
+              post_workout: 'Post-Workout'
+            };
+            toast.success(`${timingLabels[action!]} Supplements ✓`, { description: `+${card.xp} XP` });
+          }
+        }
         break;
         
       case 'insight':
