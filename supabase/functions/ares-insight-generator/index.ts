@@ -38,45 +38,56 @@ VERMEIDE:
 
 ANTWORTE NUR mit dem Insight-Satz, keine Einfuehrung oder Erklaerung.`;
 
-interface DailyLog {
+interface DailyData {
   date: string;
-  total_calories: number | null;
-  total_protein: number | null;
-  total_carbs: number | null;
-  total_fats: number | null;
-  hydration_ml: number | null;
+  total_calories: number;
+  total_protein: number;
+  total_carbs: number;
+  total_fats: number;
+  hydration_ml: number;
   sleep_hours: number | null;
-  sleep_quality: string | null;
-  steps: number | null;
+  sleep_quality: number | null;
+  steps: number;
   workout_logged: boolean;
-  calorie_goal: number | null;
-  protein_goal: number | null;
 }
 
-function formatLogsForAnalysis(logs: DailyLog[], goals: any): string {
-  if (!logs || logs.length === 0) {
+function formatDataForAnalysis(dailyData: DailyData[], goals: any): string {
+  if (!dailyData || dailyData.length === 0) {
     return `Keine Daten fuer die letzten 7 Tage verfuegbar. Erstelle einen motivierenden Insight ueber die Wichtigkeit von taeglichem Tracking.`;
   }
 
-  const tableRows = logs.map(log => {
-    const calorieStatus = log.total_calories && log.calorie_goal 
-      ? `${log.total_calories}/${log.calorie_goal}` 
-      : log.total_calories || '-';
-    const proteinStatus = log.total_protein ? `${log.total_protein}g` : '-';
-    const hydration = log.hydration_ml ? `${(log.hydration_ml / 1000).toFixed(1)}L` : '-';
-    const sleep = log.sleep_hours ? `${log.sleep_hours}h` : '-';
-    const steps = log.steps ? log.steps.toLocaleString('de-DE') : '-';
-    const training = log.workout_logged ? 'Ja' : 'Nein';
+  const tableRows = dailyData.map(day => {
+    const calorieStatus = day.total_calories && goals?.calories 
+      ? `${day.total_calories}/${goals.calories}` 
+      : day.total_calories || '-';
+    const proteinStatus = day.total_protein ? `${day.total_protein}g` : '-';
+    const hydration = day.hydration_ml ? `${(day.hydration_ml / 1000).toFixed(1)}L` : '-';
+    const sleep = day.sleep_hours ? `${day.sleep_hours}h` : '-';
+    const steps = day.steps ? day.steps.toLocaleString('de-DE') : '-';
+    const training = day.workout_logged ? 'Ja' : 'Nein';
     
-    return `| ${log.date} | ${calorieStatus} | ${proteinStatus} | ${hydration} | ${sleep} | ${steps} | ${training} |`;
+    return `| ${day.date} | ${calorieStatus} | ${proteinStatus} | ${hydration} | ${sleep} | ${steps} | ${training} |`;
   }).join('\n');
 
-  // Calculate some aggregates for context
-  const avgCalories = logs.filter(l => l.total_calories).reduce((sum, l) => sum + (l.total_calories || 0), 0) / logs.filter(l => l.total_calories).length || 0;
-  const avgProtein = logs.filter(l => l.total_protein).reduce((sum, l) => sum + (l.total_protein || 0), 0) / logs.filter(l => l.total_protein).length || 0;
-  const avgSleep = logs.filter(l => l.sleep_hours).reduce((sum, l) => sum + (l.sleep_hours || 0), 0) / logs.filter(l => l.sleep_hours).length || 0;
-  const avgSteps = logs.filter(l => l.steps).reduce((sum, l) => sum + (l.steps || 0), 0) / logs.filter(l => l.steps).length || 0;
-  const trainingDays = logs.filter(l => l.workout_logged).length;
+  // Calculate aggregates for context
+  const daysWithCalories = dailyData.filter(d => d.total_calories > 0);
+  const daysWithProtein = dailyData.filter(d => d.total_protein > 0);
+  const daysWithSleep = dailyData.filter(d => d.sleep_hours);
+  const daysWithSteps = dailyData.filter(d => d.steps > 0);
+  
+  const avgCalories = daysWithCalories.length > 0 
+    ? daysWithCalories.reduce((sum, d) => sum + d.total_calories, 0) / daysWithCalories.length 
+    : 0;
+  const avgProtein = daysWithProtein.length > 0
+    ? daysWithProtein.reduce((sum, d) => sum + d.total_protein, 0) / daysWithProtein.length
+    : 0;
+  const avgSleep = daysWithSleep.length > 0
+    ? daysWithSleep.reduce((sum, d) => sum + (d.sleep_hours || 0), 0) / daysWithSleep.length
+    : 0;
+  const avgSteps = daysWithSteps.length > 0
+    ? daysWithSteps.reduce((sum, d) => sum + d.steps, 0) / daysWithSteps.length
+    : 0;
+  const trainingDays = dailyData.filter(d => d.workout_logged).length;
 
   return `## USER DATEN (letzte 7 Tage)
 
@@ -89,7 +100,7 @@ ${tableRows}
 - Protein: ${Math.round(avgProtein)}g/Tag
 - Schlaf: ${avgSleep.toFixed(1)}h/Nacht
 - Schritte: ${Math.round(avgSteps).toLocaleString('de-DE')}/Tag
-- Trainingstage: ${trainingDays} von ${logs.length}
+- Trainingstage: ${trainingDays} von ${dailyData.length}
 
 ## ZIELE
 - Kalorien-Ziel: ${goals?.calories || 'nicht gesetzt'} kcal
@@ -130,51 +141,131 @@ serve(async (req) => {
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0];
 
-    // Fetch daily logs
-    const { data: logs, error: logsError } = await adminClient
-      .from('daily_logs')
-      .select('date, total_calories, total_protein, total_carbs, total_fats, sleep_hours, sleep_quality, steps, workout_logged')
-      .eq('user_id', user.id)
-      .gte('date', sevenDaysAgoStr)
-      .order('date', { ascending: false });
+    // Fetch data from actual tables in parallel
+    const [mealsRes, fluidsRes, sleepRes, workoutsRes, goalsRes] = await Promise.all([
+      // Meals - aggregate nutrition per day
+      adminClient
+        .from('meals')
+        .select('date, calories, protein, carbs, fats')
+        .eq('user_id', user.id)
+        .gte('date', sevenDaysAgoStr)
+        .lte('date', todayStr),
+      
+      // Fluids - aggregate hydration per day
+      adminClient
+        .from('user_fluids')
+        .select('date, amount_ml')
+        .eq('user_id', user.id)
+        .gte('date', sevenDaysAgoStr)
+        .lte('date', todayStr),
+      
+      // Sleep logs
+      adminClient
+        .from('sleep_logs')
+        .select('date, hours, quality_score')
+        .eq('user_id', user.id)
+        .gte('date', sevenDaysAgoStr)
+        .lte('date', todayStr),
+      
+      // Workouts
+      adminClient
+        .from('workouts')
+        .select('date, did_workout, steps')
+        .eq('user_id', user.id)
+        .gte('date', sevenDaysAgoStr)
+        .lte('date', todayStr),
+      
+      // Goals
+      adminClient
+        .from('daily_goals')
+        .select('calories, protein, fluid_goal_ml')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    ]);
 
-    if (logsError) {
-      console.error('Error fetching logs:', logsError);
+    // Aggregate data by date
+    const dailyMap = new Map<string, DailyData>();
+
+    // Initialize dates for last 7 days
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      dailyMap.set(dateStr, {
+        date: dateStr,
+        total_calories: 0,
+        total_protein: 0,
+        total_carbs: 0,
+        total_fats: 0,
+        hydration_ml: 0,
+        sleep_hours: null,
+        sleep_quality: null,
+        steps: 0,
+        workout_logged: false
+      });
     }
 
-    // Fetch hydration data separately
-    const { data: hydrationLogs } = await adminClient
-      .from('hydration_log')
-      .select('date, amount_ml')
-      .eq('user_id', user.id)
-      .gte('date', sevenDaysAgoStr);
-
-    // Aggregate hydration by date
-    const hydrationByDate: Record<string, number> = {};
-    if (hydrationLogs) {
-      for (const h of hydrationLogs) {
-        hydrationByDate[h.date] = (hydrationByDate[h.date] || 0) + h.amount_ml;
+    // Aggregate meals by date
+    if (mealsRes.data) {
+      for (const meal of mealsRes.data) {
+        if (!meal.date) continue;
+        const existing = dailyMap.get(meal.date);
+        if (existing) {
+          existing.total_calories += meal.calories || 0;
+          existing.total_protein += meal.protein || 0;
+          existing.total_carbs += meal.carbs || 0;
+          existing.total_fats += meal.fats || 0;
+        }
       }
     }
 
-    // Merge hydration into logs
-    const enrichedLogs = (logs || []).map(log => ({
-      ...log,
-      hydration_ml: hydrationByDate[log.date] || null,
-      calorie_goal: null, // Will be filled from goals
-      protein_goal: null,
-    }));
+    // Aggregate fluids by date
+    if (fluidsRes.data) {
+      for (const fluid of fluidsRes.data) {
+        if (!fluid.date) continue;
+        const existing = dailyMap.get(fluid.date);
+        if (existing) {
+          existing.hydration_ml += fluid.amount_ml || 0;
+        }
+      }
+    }
 
-    // Fetch user goals
-    const { data: goals } = await adminClient
-      .from('daily_goals')
-      .select('calories, protein, fluid_goal_ml')
-      .eq('user_id', user.id)
-      .single();
+    // Add sleep data
+    if (sleepRes.data) {
+      for (const sleep of sleepRes.data) {
+        if (!sleep.date) continue;
+        const existing = dailyMap.get(sleep.date);
+        if (existing) {
+          existing.sleep_hours = sleep.hours;
+          existing.sleep_quality = sleep.quality_score;
+        }
+      }
+    }
+
+    // Add workout data
+    if (workoutsRes.data) {
+      for (const workout of workoutsRes.data) {
+        if (!workout.date) continue;
+        const existing = dailyMap.get(workout.date);
+        if (existing) {
+          existing.workout_logged = existing.workout_logged || workout.did_workout || false;
+          existing.steps = Math.max(existing.steps, workout.steps || 0);
+        }
+      }
+    }
+
+    // Convert to array sorted by date desc
+    const dailyData = Array.from(dailyMap.values())
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    const goals = goalsRes.data;
 
     // Format data for LLM analysis
-    const dataContext = formatLogsForAnalysis(enrichedLogs, goals);
+    const dataContext = formatDataForAnalysis(dailyData, goals);
 
     // Call Gemini Flash for quick insight generation
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -190,7 +281,7 @@ serve(async (req) => {
           { role: 'user', content: dataContext }
         ],
         max_tokens: 200,
-        temperature: 0.7, // Some creativity for varied insights
+        temperature: 0.7,
       }),
     });
 
@@ -215,21 +306,26 @@ serve(async (req) => {
       throw new Error('No insight generated');
     }
 
-    // Log the insight generation for analytics
-    await adminClient.from('ares_events').insert({
-      user_id: user.id,
-      component: 'insight-generator',
-      event: 'insight_generated',
-      meta: { 
-        insight_length: insight.length,
-        data_days: enrichedLogs.length,
-      }
-    }).catch(() => {}); // Non-blocking
+    // Log the insight generation for analytics (fire-and-forget, don't await)
+    try {
+      await adminClient.from('ares_events').insert({
+        user_id: user.id,
+        component: 'insight-generator',
+        event: 'insight_generated',
+        meta: { 
+          insight_length: insight.length,
+          data_days: dailyData.length,
+        }
+      });
+    } catch (logError) {
+      // Non-blocking - just log the error
+      console.warn('Failed to log event:', logError);
+    }
 
     return json({ 
       insight,
       generated_at: new Date().toISOString(),
-      data_days: enrichedLogs.length,
+      data_days: dailyData.length,
     }, { headers: cors.headers() });
 
   } catch (error) {
