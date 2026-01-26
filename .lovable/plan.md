@@ -1,93 +1,159 @@
 
-# 5. Tab: Körpermaße (TapeLogger) Integration
+# TapeLogger Morphing Hero - Design Pattern Update
 
-## Aktuelle Situation
+## Problem
 
-Der `TapeLogger.tsx` existiert bereits vollständig mit:
-- Bauchumfang als primärer KPI (mit ±0.5 cm Steppern)
-- Ganzkörper-Maße Accordion (Hals, Brust, Taille, Hüfte, Arme, Oberschenkel)
-- Info-Tooltips für richtige Messpositionen
-- Speicherung in `body_measurements` Tabelle
+Der `TapeLogger` verwendet **nicht** das etablierte "Morphing Hero" Design-Prinzip, das in allen anderen Loggern (Weight, Sleep, Training) implementiert ist. Wenn der Ganzkörper-Maße Accordion geöffnet wird, bleibt die große `108.0 cm` Anzeige statisch und nimmt zu viel Platz ein.
+
+## Lösung: Morphing Hero Pattern implementieren
+
+Das Pattern aus `WeightLogger` auf `TapeLogger` übertragen:
+
+### 1. Animation Variants hinzufügen
+
+```typescript
+// Animation variants für morphing hero
+const heroContainerVariants = {
+  normal: { marginTop: 24, marginBottom: 24 },
+  compact: { marginTop: 8, marginBottom: 8 }
+};
+
+const numberVariants = {
+  normal: { scale: 1 },
+  compact: { scale: 0.75 }
+};
+
+const stepperVariants = {
+  normal: { scale: 1 },
+  compact: { scale: 0.85 }
+};
+```
+
+### 2. Expanded State tracken
+
+```typescript
+// isExpanded basiert auf fullBodyOpen State
+const isExpanded = fullBodyOpen;
+```
+
+### 3. Hero Container mit Motion Variants
+
+```typescript
+<motion.div
+  variants={heroContainerVariants}
+  animate={isExpanded ? 'compact' : 'normal'}
+  transition={springConfig}
+  className="flex flex-col items-center"
+>
+  {/* Morphing Number Display */}
+  <motion.div
+    variants={numberVariants}
+    animate={isExpanded ? 'compact' : 'normal'}
+    transition={springConfig}
+    className="flex items-baseline gap-2"
+  >
+    <motion.span className="text-6xl font-bold tabular-nums">
+      {belly.toFixed(1)}
+    </motion.span>
+    <span className="text-2xl font-medium">cm</span>
+  </motion.div>
+
+  {/* Morphing Stepper */}
+  <motion.div
+    variants={stepperVariants}
+    animate={isExpanded ? 'compact' : 'normal'}
+    transition={springConfig}
+    className="flex items-center justify-center gap-6 mt-4"
+  >
+    <StepperButton compact={isExpanded} ... />
+  </motion.div>
+</motion.div>
+```
+
+### 4. StepperButton compact Prop
+
+```typescript
+interface StepperButtonProps {
+  icon: React.ComponentType<{ className?: string }>;
+  onClick: () => void;
+  label: string;
+  compact?: boolean;  // NEU
+}
+
+const StepperButton = ({ icon: Icon, onClick, label, compact }) => (
+  <div className={cn(
+    "rounded-2xl bg-muted flex items-center justify-center",
+    compact ? "w-12 h-12" : "w-14 h-14"
+  )}>
+    <Icon className={cn(compact ? "w-5 h-5" : "w-6 h-6")} />
+  </div>
+);
+```
+
+### 5. Sticky Save Button mit Gradient
+
+```typescript
+{/* STICKY SAVE BUTTON */}
+<div className="sticky bottom-0 pt-4 mt-4 bg-gradient-to-t from-background via-background to-transparent">
+  <motion.button ... >
+    Speichern
+  </motion.button>
+</div>
+```
+
+### 6. Scrollable Container Struktur
+
+```typescript
+<div className="flex flex-col min-h-[300px]">
+  {/* SCROLLABLE CONTENT */}
+  <div className="flex-1 space-y-4 overflow-y-auto">
+    {/* Morphing Hero */}
+    {/* Last Entry Reference */}
+    {/* Info Hint */}
+    {/* Accordion */}
+  </div>
+
+  {/* STICKY SAVE BUTTON */}
+  <div className="sticky bottom-0 ...">
+    ...
+  </div>
+</div>
+```
+
+## Visueller Effekt
+
+```text
+ACCORDION GESCHLOSSEN:          ACCORDION OFFEN:
++-------------------------+     +-------------------------+
+|    🎯 Bauchumfang       |     |    🎯 Bauchumfang       |
+|                         |     |                         |
+|      108.0 cm           |     |      108.0 cm           | ← 75% Scale
+|    (text-6xl)           |     |    (kleiner)            |
+|                         |     |                         |
+|   [-0.5]   [+0.5]       |     |   [-]  [+]              | ← 85% Scale
+|   (w-14 h-14)           |     |   (w-12 h-12)           |
+|                         |     +-------------------------+
+|   Letzter: 108.0 cm     |     |   ▲ Ganzkörper-Maße     |
+|                         |     |   Hals:    42 cm        |
+|   ▼ Ganzkörper-Maße     |     |   Brust:   112 cm       |
++-------------------------+     |   Taille:  103 cm       |
+                                |   ...                   |
+                                +-------------------------+
+                                | [████ Speichern ████]   | ← Sticky
+                                +-------------------------+
+```
 
 ## Änderungen
 
-### QuickLogSheet.tsx
-
-**1. Type erweitern (Zeile 16):**
-```typescript
-// VORHER:
-export type QuickLogTab = 'weight' | 'training' | 'sleep' | 'journal';
-
-// NACHHER:
-export type QuickLogTab = 'weight' | 'training' | 'sleep' | 'journal' | 'tape';
-```
-
-**2. Import hinzufügen (Zeile 8):**
-```typescript
-// VORHER:
-import { X, Scale, Dumbbell, Moon, BookOpen } from 'lucide-react';
-
-// NACHHER:
-import { X, Scale, Dumbbell, Moon, BookOpen, Ruler } from 'lucide-react';
-```
-
-**3. TapeLogger Import (Zeile 15):**
-```typescript
-import { TapeLogger } from './loggers/TapeLogger';
-```
-
-**4. Tabs-Array erweitern (Zeilen 26-31):**
-```typescript
-const tabs = [
-  { id: 'weight' as const, icon: Scale, label: 'Gewicht' },
-  { id: 'training' as const, icon: Dumbbell, label: 'Training' },
-  { id: 'sleep' as const, icon: Moon, label: 'Schlaf' },
-  { id: 'journal' as const, icon: BookOpen, label: 'Journal' },
-  { id: 'tape' as const, icon: Ruler, label: 'Maße' },  // NEU
-];
-```
-
-**5. Sliding Background anpassen (Zeile 104):**
-```typescript
-// VORHER (4 Tabs):
-style={{ width: `calc(${100 / 4}% - 4px)` }}
-
-// NACHHER (5 Tabs):
-style={{ width: `calc(${100 / 5}% - 4px)` }}
-```
-
-**6. Content-Bereich erweitern (nach Zeile 143):**
-```typescript
-{activeTab === 'tape' && <TapeLogger onClose={onClose} />}
-```
-
-## Visuelles Ergebnis
-
-```text
-+------------------------------------------+
-| Quick Log                            ✕   |
-+------------------------------------------+
-| [⚖️] [🏋️] [🌙] [📖] [📏]                |
-|  Gew   Tra   Sch   Jou   Maße           |
-+------------------------------------------+
-|                                          |
-|        🎯 Bauchumfang                    |
-|           90.5 cm                        |
-|      [-0.5]    |    [+0.5]               |
-|                                          |
-|   Letzter Eintrag: 90.0 cm              |
-|                                          |
-|   ▼ Ganzkörper-Maße                     |
-|                                          |
-+==========================================+
-|      [████ Speichern ████]               |
-+==========================================+
-```
-
-## Dateien
-
 | Datei | Aktion |
 |-------|--------|
-| `src/components/home/QuickLogSheet.tsx` | Erweitern (5. Tab) |
+| `src/components/home/loggers/TapeLogger.tsx` | Morphing Hero Pattern hinzufügen |
 
-Der TapeLogger ist bereits fertig implementiert und muss nur eingebunden werden - keine neue Komponente nötig!
+## Technische Details
+
+- **Spring Config**: `stiffness: 300, damping: 25` (smoother als das aktuelle `400, 30`)
+- **Scale Faktoren**: 
+  - Number: 0.75 (25% kleiner)
+  - Stepper: 0.85 (15% kleiner)
+- **Margin Reduction**: von `my-6` auf `my-2` wenn expanded
+- **Sticky Button**: Mit `bg-gradient-to-t` für smooth fade
