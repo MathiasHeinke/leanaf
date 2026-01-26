@@ -143,7 +143,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
             </div>
 
             {/* Chat Content */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <AresChat 
                 userId={user.id}
                 coachId="ares"
