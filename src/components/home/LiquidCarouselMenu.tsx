@@ -1,6 +1,6 @@
 /**
  * LiquidCarouselMenu - Premium "Glass & Glow" Carousel
- * iOS Cover Flow inspired with smart time-based ordering
+ * iOS Cover Flow inspired with infinite loop scrolling
  */
 
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
@@ -19,6 +19,10 @@ interface QuickActionItem {
   label: string;
   color: string;
   glowColor: string;
+}
+
+interface LoopedItem extends QuickActionItem {
+  key: string;
 }
 
 interface LiquidCarouselMenuProps {
@@ -61,10 +65,16 @@ const getSmartOrderedItems = (): QuickActionItem[] => {
 
 const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
 
+// ============= Constants =============
+
+const ITEM_WIDTH = 64; // w-16
+const GAP = 16; // gap-4
+const ITEM_TOTAL = ITEM_WIDTH + GAP; // 80px per item
+
 // ============= Carousel Item Component =============
 
 interface CarouselItemProps {
-  item: QuickActionItem;
+  item: LoopedItem;
   isActive: boolean;
   onClick: () => void;
 }
@@ -108,44 +118,77 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const isJumping = useRef(false);
   
   // Smart ordered items based on time of day
   const orderedItems = useMemo(() => getSmartOrderedItems(), []);
+  const ITEMS_COUNT = orderedItems.length;
   
-  // Calculate item width + gap for scroll position tracking
-  const ITEM_WIDTH = 64; // w-16
-  const GAP = 16; // gap-4
-  const ITEM_TOTAL = ITEM_WIDTH + GAP;
+  // Triple List for Infinite Scroll (21 items = 7 × 3)
+  const loopedItems: LoopedItem[] = useMemo(() => [
+    ...orderedItems.map(item => ({ ...item, key: `${item.id}-prev` })),  // Set 1
+    ...orderedItems.map(item => ({ ...item, key: `${item.id}-main` })),  // Set 2 (Start)
+    ...orderedItems.map(item => ({ ...item, key: `${item.id}-next` })),  // Set 3
+  ], [orderedItems]);
   
-  // Handle scroll to track active item
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    const scrollPosition = container.scrollLeft;
-    const containerWidth = container.clientWidth;
+  // Check if item at loopedIndex should be active
+  const isItemActive = useCallback((loopedIndex: number) => {
+    return (loopedIndex % ITEMS_COUNT) === activeIndex;
+  }, [activeIndex, ITEMS_COUNT]);
+  
+  // Handle scroll with teleport logic for infinite loop
+  const handleScroll = useCallback(() => {
+    const container = scrollRef.current;
+    if (!container || isJumping.current) return;
     
-    // Center offset - items are padded with px-[40%] so center is at 40% from left
-    const centerPoint = scrollPosition + (containerWidth / 2);
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    const setWidth = scrollWidth / 3;
     
-    // Find which item is closest to center
-    const activeIdx = Math.round(centerPoint / ITEM_TOTAL);
-    const clampedIdx = Math.max(0, Math.min(activeIdx, orderedItems.length - 1));
+    // Teleport thresholds
+    const leftThreshold = setWidth * 0.4;
+    const rightThreshold = setWidth * 1.6;
     
-    if (clampedIdx !== activeIndex) {
-      setActiveIndex(clampedIdx);
+    // Teleport: Too far left → Jump to center set
+    if (scrollLeft < leftThreshold) {
+      isJumping.current = true;
+      container.scrollLeft = scrollLeft + setWidth;
+      requestAnimationFrame(() => { isJumping.current = false; });
+      return;
     }
-  }, [activeIndex, orderedItems.length, ITEM_TOTAL]);
+    
+    // Teleport: Too far right → Jump to center set
+    if (scrollLeft > rightThreshold) {
+      isJumping.current = true;
+      container.scrollLeft = scrollLeft - setWidth;
+      requestAnimationFrame(() => { isJumping.current = false; });
+      return;
+    }
+    
+    // Calculate active index based on center position
+    const centerPoint = scrollLeft + (clientWidth / 2);
+    const rawIndex = Math.round(centerPoint / ITEM_TOTAL);
+    const normalizedIndex = ((rawIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
+    
+    if (normalizedIndex !== activeIndex) {
+      setActiveIndex(normalizedIndex);
+    }
+  }, [activeIndex, ITEMS_COUNT]);
   
-  // Reset scroll position when opening
+  // Initialize scroll position to center set when opening
   useEffect(() => {
     if (isOpen && scrollRef.current) {
-      setActiveIndex(0);
-      scrollRef.current.scrollTo({ left: 0, behavior: 'instant' });
+      const container = scrollRef.current;
+      // Wait for layout to complete
+      requestAnimationFrame(() => {
+        const initialScroll = container.scrollWidth / 3;
+        container.scrollTo({ left: initialScroll, behavior: 'instant' });
+        setActiveIndex(0);
+      });
     }
   }, [isOpen]);
   
   // Handle item click
-  const handleItemClick = useCallback((item: QuickActionItem) => {
+  const handleItemClick = useCallback((item: LoopedItem) => {
     // Haptic feedback
     if ('vibrate' in navigator) {
       navigator.vibrate(10);
@@ -189,7 +232,7 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
             transition={springConfig}
             className="fixed bottom-28 left-0 right-0 z-40"
           >
-            {/* Scrollable Carousel */}
+            {/* Scrollable Carousel with Triple List */}
             <div
               ref={scrollRef}
               onScroll={handleScroll}
@@ -199,11 +242,11 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
                 paddingRight: 'calc(50vw - 32px)' 
               }}
             >
-              {orderedItems.map((item, index) => (
+              {loopedItems.map((item, loopedIndex) => (
                 <CarouselItem
-                  key={item.id}
+                  key={item.key}
                   item={item}
-                  isActive={index === activeIndex}
+                  isActive={isItemActive(loopedIndex)}
                   onClick={() => handleItemClick(item)}
                 />
               ))}
