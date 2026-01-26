@@ -12,14 +12,15 @@ import { BioAgeWidget } from './BioAgeWidget';
 
 interface WidgetRendererProps {
   config: WidgetConfig;
+  onOpenNutritionSheet?: () => void;
 }
 
-export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ config }) => {
+export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ config, onOpenNutritionSheet }) => {
   const { type, size } = config;
 
   switch (type) {
     case 'nutrition':
-      return <NutritionWidget size={size} />;
+      return <NutritionWidget size={size} onOpenDaySheet={onOpenNutritionSheet} />;
     case 'hydration':
       return <HydrationWidget size={size} />;
     case 'sleep':

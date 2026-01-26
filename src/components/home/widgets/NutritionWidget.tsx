@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
@@ -50,10 +49,10 @@ const MacroProgressBar: React.FC<MacroProgressBarProps> = ({ label, current, goa
 
 interface NutritionWidgetProps {
   size: WidgetSize;
+  onOpenDaySheet?: () => void;
 }
 
-export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size }) => {
-  const navigate = useNavigate();
+export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size, onOpenDaySheet }) => {
   const { data: metrics } = useDailyMetrics();
   
   // UNIFIED: Now uses central useDailyMetrics cache
@@ -74,7 +73,7 @@ export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/plus')}
+        onClick={() => onOpenDaySheet?.()}
         className="col-span-2 bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors"
       >
         <div className="flex justify-between items-center mb-3">
@@ -120,7 +119,7 @@ export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size }) => {
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      onClick={() => navigate('/plus')}
+      onClick={() => onOpenDaySheet?.()}
       className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors min-h-[140px] flex flex-col justify-between"
     >
       <div className="flex justify-between items-start">

@@ -27,6 +27,7 @@ import { LiquidDock, type QuickActionType } from '@/components/home/LiquidDock';
 import { quickAddBus } from '@/components/quick/quickAddBus';
 import { ChatOverlay } from '@/components/home/ChatOverlay';
 import { QuickLogSheet, type QuickLogTab } from '@/components/home/QuickLogSheet';
+import { NutritionDaySheet } from '@/components/home/sheets/NutritionDaySheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
@@ -47,6 +48,7 @@ export default function AresHome() {
   const [mealOpen, setMealOpen] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [quickLogConfig, setQuickLogConfig] = useState<{ open: boolean; tab: QuickLogTab }>({ open: false, tab: 'weight' });
+  const [nutritionSheetOpen, setNutritionSheetOpen] = useState(false);
 
   // Meal input hook (same as Dashboard)
   const {
@@ -399,7 +401,7 @@ export default function AresHome() {
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
             Live Metriken
           </h3>
-          <MetricWidgetGrid />
+          <MetricWidgetGrid onOpenNutritionSheet={() => setNutritionSheetOpen(true)} />
         </div>
       </main>
 
@@ -618,6 +620,16 @@ export default function AresHome() {
         isOpen={quickLogConfig.open}
         onClose={() => setQuickLogConfig(prev => ({ ...prev, open: false }))}
         initialTab={quickLogConfig.tab}
+      />
+
+      {/* Nutrition Day Sheet - Layer 2 */}
+      <NutritionDaySheet 
+        isOpen={nutritionSheetOpen}
+        onClose={() => setNutritionSheetOpen(false)}
+        onAddMeal={() => {
+          setNutritionSheetOpen(false);
+          setMealOpen(true);
+        }}
       />
     </div>
   );
