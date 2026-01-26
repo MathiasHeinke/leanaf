@@ -1,20 +1,22 @@
 /**
  * LiquidCarouselMenu - Premium "Glass & Glow" Carousel
  * Transform-based infinite scroll with no visible jumps
+ * Smart Start: Opens at first uncompleted action of the day
  */
 
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { 
-  Moon, Scale, Pill, Dumbbell, Droplet, Utensils, BookOpen,
+  Moon, Scale, Pill, Dumbbell, Droplet, Utensils, BookOpen, Check,
   type LucideIcon 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { ActionId } from '@/hooks/useTodayCompletedActions';
 
 // ============= Types =============
 
 interface QuickActionItem {
-  id: string;
+  id: ActionId;
   icon: LucideIcon;
   label: string;
   color: string;
@@ -30,6 +32,7 @@ interface LiquidCarouselMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onAction: (actionId: string) => void;
+  completedActions?: Set<ActionId>;
 }
 
 // ============= Action Items Definition =============
@@ -77,10 +80,11 @@ const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
 interface CarouselItemProps {
   item: VisibleItem;
   isActive: boolean;
+  isCompleted: boolean;
   onClick: () => void;
 }
 
-const CarouselItem: React.FC<CarouselItemProps> = ({ item, isActive, onClick }) => {
+const CarouselItem: React.FC<CarouselItemProps> = ({ item, isActive, isCompleted, onClick }) => {
   const Icon = item.icon;
   
   return (
@@ -88,19 +92,26 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, isActive, onClick }) 
       whileTap={{ scale: isActive ? 1.05 : 0.7 }}
       onClick={onClick}
       className={cn(
-        "w-16 h-16 rounded-full",
+        "relative w-16 h-16 rounded-full",
         "flex items-center justify-center",
         "transition-shadow duration-300",
         isActive 
           ? `${item.color} shadow-lg ${item.glowColor} border border-white/20`
-          : "bg-slate-200/40 dark:bg-white/10 border border-white/5"
+          : "bg-muted/40 dark:bg-white/10 border border-border/20"
       )}
       aria-label={item.label}
     >
       <Icon className={cn(
         "transition-colors",
-        isActive ? "w-7 h-7 text-white" : "w-5 h-5 text-slate-500 dark:text-white/60"
+        isActive ? "w-7 h-7 text-white" : "w-5 h-5 text-muted-foreground"
       )} />
+      
+      {/* Completion Badge */}
+      {isCompleted && (
+        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center shadow-sm">
+          <Check className="w-2.5 h-2.5 text-white" />
+        </div>
+      )}
     </motion.button>
   );
 };
@@ -111,13 +122,20 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
   isOpen,
   onClose,
   onAction,
+  completedActions,
 }) => {
   const [virtualIndex, setVirtualIndex] = useState(0);
-  const dragX = useRef(0);
   
   // Smart ordered items based on time of day
   const orderedItems = useMemo(() => getSmartOrderedItems(), []);
   const ITEMS_COUNT = orderedItems.length;
+  
+  // Smart Start: Find first uncompleted item index
+  const getSmartStartIndex = useCallback((completed: Set<ActionId>): number => {
+    const firstIncompleteIndex = orderedItems.findIndex(item => !completed.has(item.id));
+    // If all completed, start at 0
+    return firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0;
+  }, [orderedItems]);
   
   // Calculate visible items (7 items: -3 to +3 from center)
   const visibleItems = useMemo((): VisibleItem[] => {
@@ -138,6 +156,11 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
     const normalizedIndex = ((virtualIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
     return orderedItems[normalizedIndex];
   }, [virtualIndex, orderedItems, ITEMS_COUNT]);
+  
+  // Check if active item is completed
+  const isActiveCompleted = useMemo(() => {
+    return completedActions?.has(activeItem?.id) ?? false;
+  }, [completedActions, activeItem]);
   
   // Handle drag end - determine direction and update index
   const handleDragEnd = useCallback((
@@ -188,12 +211,15 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
     onClose();
   }, [onAction, onClose]);
   
-  // Reset virtual index when menu opens
-  React.useEffect(() => {
+  // Smart Start: Reset to first uncompleted item when menu opens
+  useEffect(() => {
     if (isOpen) {
-      setVirtualIndex(0);
+      const startIndex = completedActions && completedActions.size > 0
+        ? getSmartStartIndex(completedActions)
+        : 0;
+      setVirtualIndex(startIndex);
     }
-  }, [isOpen]);
+  }, [isOpen, completedActions, getSmartStartIndex]);
   
   return (
     <AnimatePresence>
@@ -255,6 +281,7 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
                     <CarouselItem
                       item={item}
                       isActive={item.offset === 0}
+                      isCompleted={completedActions?.has(item.id) ?? false}
                       onClick={() => handleItemClick(item)}
                     />
                   </motion.div>
