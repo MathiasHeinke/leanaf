@@ -289,11 +289,24 @@ serve(async (req) => {
       const errorText = await aiResponse.text();
       console.error('AI Gateway error:', aiResponse.status, errorText);
       
-      if (aiResponse.status === 429) {
-        return json({ error: 'Rate limit exceeded. Bitte versuche es spaeter erneut.' }, { status: 429, headers: cors.headers() });
-      }
-      if (aiResponse.status === 402) {
-        return json({ error: 'AI Credits aufgebraucht.' }, { status: 402, headers: cors.headers() });
+      // Fallback insights when AI is unavailable
+      const fallbackInsights = [
+        "Konsistenz schlägt Perfektion. Schon 3 Tage in Folge Tracking machen einen messbaren Unterschied.",
+        "Dein Körper ist ein Spiegel deiner Gewohnheiten. Kleine tägliche Wins summieren sich zu großen Ergebnissen.",
+        "Die besten Fortschritte entstehen, wenn Ernährung, Training und Schlaf synchronisiert sind.",
+        "Hydration beeinflusst alles - von Energie bis Fokus. 2,5L täglich sind dein Fundament.",
+        "Post-Workout Protein innerhalb von 60 Minuten maximiert deine Gains.",
+      ];
+      const randomInsight = fallbackInsights[Math.floor(Math.random() * fallbackInsights.length)];
+      
+      if (aiResponse.status === 429 || aiResponse.status === 402) {
+        // Return fallback instead of error
+        return json({ 
+          insight: randomInsight,
+          generated_at: new Date().toISOString(),
+          data_days: dailyData.length,
+          fallback: true,
+        }, { headers: cors.headers() });
       }
       
       throw new Error('AI generation failed');
