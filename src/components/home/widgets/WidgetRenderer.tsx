@@ -13,16 +13,23 @@ import { BioAgeWidget } from './BioAgeWidget';
 interface WidgetRendererProps {
   config: WidgetConfig;
   onOpenNutritionSheet?: () => void;
+  onOpenHydrationSheet?: () => void;
+  onOpenBodySheet?: () => void;
 }
 
-export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ config, onOpenNutritionSheet }) => {
+export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ 
+  config, 
+  onOpenNutritionSheet,
+  onOpenHydrationSheet,
+  onOpenBodySheet
+}) => {
   const { type, size } = config;
 
   switch (type) {
     case 'nutrition':
       return <NutritionWidget size={size} onOpenDaySheet={onOpenNutritionSheet} />;
     case 'hydration':
-      return <HydrationWidget size={size} />;
+      return <HydrationWidget size={size} onOpenDaySheet={onOpenHydrationSheet} />;
     case 'sleep':
       return <SleepWidget size={size} />;
     case 'protocol':
@@ -30,7 +37,7 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ config, onOpenNu
     case 'training':
       return <TrainingWidget size={size} />;
     case 'weight':
-      return <WeightWidget size={size} />;
+      return <WeightWidget size={size} onOpenDaySheet={onOpenBodySheet} />;
     case 'hrv':
       return <HRVWidget size={size} />;
     case 'supplements':

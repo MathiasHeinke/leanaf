@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { Scale, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
@@ -10,10 +9,10 @@ import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface WeightWidgetProps {
   size: WidgetSize;
+  onOpenDaySheet?: () => void;
 }
 
-export const WeightWidget: React.FC<WeightWidgetProps> = ({ size }) => {
-  const navigate = useNavigate();
+export const WeightWidget: React.FC<WeightWidgetProps> = ({ size, onOpenDaySheet }) => {
   
   // Fetch recent weight entries from weight_history
   const { data: weightData } = useQuery({
@@ -74,7 +73,7 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/weight')}
+        onClick={() => onOpenDaySheet?.()}
         className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors"
       >
         <div className="flex justify-between items-start mb-3">
@@ -133,7 +132,7 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/weight')}
+        onClick={() => onOpenDaySheet?.()}
         className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors flex flex-col justify-between"
       >
         <div className="flex justify-between items-start">
@@ -167,7 +166,7 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size }) => {
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      onClick={() => navigate('/weight')}
+      onClick={() => onOpenDaySheet?.()}
       className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors flex flex-col justify-between"
     >
       <div className="flex justify-between items-start">

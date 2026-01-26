@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { Droplets } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
@@ -8,10 +7,10 @@ import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 
 interface HydrationWidgetProps {
   size: WidgetSize;
+  onOpenDaySheet?: () => void;
 }
 
-export const HydrationWidget: React.FC<HydrationWidgetProps> = ({ size }) => {
-  const navigate = useNavigate();
+export const HydrationWidget: React.FC<HydrationWidgetProps> = ({ size, onOpenDaySheet }) => {
   
   // Use the new centralized metrics hook for optimistic updates
   const { data } = useDailyMetrics();
@@ -27,11 +26,11 @@ export const HydrationWidget: React.FC<HydrationWidgetProps> = ({ size }) => {
   if (size === 'flat') {
     return (
       <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/hydration')}
-        className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
-      >
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      onClick={() => onOpenDaySheet?.()}
+      className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
+    >
         {/* Background Fill Effect */}
         <motion.div 
           initial={{ width: 0 }}
@@ -58,7 +57,7 @@ export const HydrationWidget: React.FC<HydrationWidgetProps> = ({ size }) => {
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      onClick={() => navigate('/hydration')}
+      onClick={() => onOpenDaySheet?.()}
       className={cn(
         "relative bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden flex flex-col justify-between",
         size === 'small' ? "min-h-[100px]" : "min-h-[140px]"
