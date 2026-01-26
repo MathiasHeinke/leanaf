@@ -2,10 +2,13 @@
  * useActionCards - Dynamic action card prioritization
  * Decides which cards to show based on user data and context
  * Now with Smart Actions for frictionless logging
+ * 
+ * Uses useDailyMetrics for optimistic UI sync with widgets
  */
 
 import { useMemo } from 'react';
 import { usePlusData } from './usePlusData';
+import { useDailyMetrics } from './useDailyMetrics';
 import { useUserProfile } from './useUserProfile';
 import { useDailyFocus } from './useDailyFocus';
 import { Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell, Sparkles } from 'lucide-react';
@@ -34,12 +37,17 @@ export interface ActionCard {
 
 export const useActionCards = () => {
   const plusData = usePlusData();
+  const { data: dailyMetrics } = useDailyMetrics(); // Live optimistic data
   const { profileData } = useUserProfile();
   const { focusTask } = useDailyFocus();
 
   const cards = useMemo(() => {
     const result: ActionCard[] = [];
     const hour = new Date().getHours();
+    
+    // Use dailyMetrics for hydration (optimistic), plusData for others
+    const hydrationMl = dailyMetrics?.water.current ?? plusData.hydrationMlToday ?? 0;
+    const hydrationTarget = dailyMetrics?.water.target ?? 3000;
 
     // 1. Sleep card - if sleep was bad (< 6 hours)
     if (plusData.sleepLoggedToday && plusData.sleepDurationToday && plusData.sleepDurationToday < 6) {
@@ -109,14 +117,14 @@ export const useActionCards = () => {
       });
     }
 
-    // 4. Hydration low - if under 1L by afternoon
-    const hydrationLow = (plusData.hydrationMlToday || 0) < 1000 && hour >= 12;
+    // 4. Hydration low - if under 1L by afternoon (uses optimistic data)
+    const hydrationLow = hydrationMl < 1000 && hour >= 12;
     if (hydrationLow) {
       result.push({
         id: 'hydration',
         type: 'hydration',
         title: 'Mehr trinken',
-        subtitle: `Erst ${((plusData.hydrationMlToday || 0) / 1000).toFixed(1)}L heute. Ziel: 3L`,
+        subtitle: `Erst ${(hydrationMl / 1000).toFixed(1)}L heute. Ziel: ${(hydrationTarget / 1000).toFixed(1)}L`,
         gradient: 'from-blue-500 to-cyan-500',
         icon: Droplets,
         actionContext: 'hydration_reminder',
@@ -162,7 +170,7 @@ export const useActionCards = () => {
 
     // Sort by priority and limit to 5
     return result.sort((a, b) => a.priority - b.priority).slice(0, 5);
-  }, [plusData, profileData]);
+  }, [plusData, dailyMetrics, profileData]);
 
   return { cards };
 };
