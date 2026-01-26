@@ -530,7 +530,7 @@ export default function AresChat({
         {/* Messages Container */}
         <div 
           ref={scrollAreaRef}
-          className="flex-1 overflow-y-auto px-2 py-4"
+          className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-2 py-4"
         >
           <div className="max-w-3xl mx-auto space-y-1">
             {/* Empty state */}

@@ -21,34 +21,31 @@ export const ChatLayout = ({ children, chatInput, bannerCollapsed = false }: Cha
           : "md:pl-[--sidebar-width]"
       )}
     >
-      {/* Scrollbarer Chat - dynamisches Padding basierend auf Banner-Status */}
+      {/* ZONE B: Scrollable Chat Content */}
       <div 
-        className="flex-1 min-h-0 px-4 transition-all duration-300 ease-out"
+        className="flex-1 min-h-0 flex flex-col px-4 transition-all duration-300 ease-out"
         style={{ 
           paddingTop: bannerCollapsed ? '8px' : 'var(--coach-banner-height)',
           pointerEvents: 'auto' 
         }}
       >
-        <div className="h-full overflow-y-auto space-y-2">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
           {children}
         </div>
       </div>
 
-      {/* Eingabemaske + Footer (gemeinsamer Block!) */}
-      <div className="flex-shrink-0">
-        
-        {/* Eingabefeld direkt auf Footer */}
+      {/* ZONE C: Input Area + Footer (Sticky Bottom) */}
+      <div className="flex-none z-10 bg-background/95 backdrop-blur-md border-t border-border/30">
         {chatInput && (
-          <div className="px-3 py-1">
+          <div className="px-4 py-3 pb-2">
             {chatInput}
           </div>
         )}
 
-        {/* Footer: kein zusätzlicher Abstand */}
-        <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground bg-card/80 backdrop-blur-sm m-0 p-0">
+        {/* Footer */}
+        <div className="h-[32px] flex items-center justify-center text-xs text-muted-foreground">
           © 2025 GetleanAI. Made with ❤️ in Germany
         </div>
-
       </div>
     </div>
   );
