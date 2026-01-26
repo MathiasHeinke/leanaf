@@ -19,7 +19,7 @@ interface SupplementItem {
 export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) => {
   const navigate = useNavigate();
 
-  // Fetch today's supplements with names from user_supplements
+  // Fetch ACTIVE supplements and check which were taken today
   const { data: supplementsData } = useQuery({
     queryKey: ['supplements-today-widget'],
     queryFn: async () => {
@@ -28,26 +28,41 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) =>
       
       const today = new Date().toISOString().slice(0, 10);
       
-      // Get intake logs with supplement info
+      // 1. Get ALL active user supplements
+      const { data: activeSupps } = await supabase
+        .from('user_supplements')
+        .select('id, name, custom_name')
+        .eq('user_id', user.id)
+        .eq('is_active', true);
+      
+      if (!activeSupps || activeSupps.length === 0) {
+        return { taken: 0, total: 0, items: [] as SupplementItem[] };
+      }
+      
+      // 2. Get today's intake logs
       const { data: logs } = await supabase
         .from('supplement_intake_log')
-        .select(`
-          taken,
-          user_supplements!inner(custom_name, name)
-        `)
+        .select('user_supplement_id, taken')
         .eq('user_id', user.id)
         .eq('date', today);
       
-      if (!logs || logs.length === 0) return { taken: 0, total: 0, items: [] as SupplementItem[] };
+      // Create a map of taken supplements
+      const takenMap = new Map<string, boolean>();
+      logs?.forEach(log => {
+        if (log.taken) takenMap.set(log.user_supplement_id, true);
+      });
       
-      const items: SupplementItem[] = logs.slice(0, 4).map(log => ({
-        name: (log.user_supplements as any)?.custom_name || (log.user_supplements as any)?.name || 'Supplement',
-        taken: log.taken
+      // Build items list with taken status
+      const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({
+        name: supp.custom_name || supp.name || 'Supplement',
+        taken: takenMap.has(supp.id)
       }));
       
+      const takenCount = items.filter(i => i.taken).length;
+      
       return {
-        taken: logs.filter(s => s.taken).length,
-        total: logs.length,
+        taken: takenCount,
+        total: activeSupps.length,
         items
       };
     },
