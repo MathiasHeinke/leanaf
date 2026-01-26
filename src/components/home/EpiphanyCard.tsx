@@ -1,63 +1,77 @@
 /**
- * EpiphanyCard - AI-powered insight reveal with 3-phase animation
- * Mystery -> Loading -> Revelation
+ * EpiphanyCard - AI-powered insight reveal with 3D flip animation
+ * Mystery -> Loading -> Revelation (with prefetch support)
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ChevronRight, Lightbulb, X, MessageCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFetchInsight } from '@/hooks/useDailyInsight';
 
 interface EpiphanyCardProps {
   onOpenChat: (prompt: string) => void;
   onDismiss: () => void;
+  prefetchedInsight?: string | null;
 }
 
 type Phase = 'mystery' | 'loading' | 'revealed';
 
-export const EpiphanyCard: React.FC<EpiphanyCardProps> = ({ onOpenChat, onDismiss }) => {
+export const EpiphanyCard: React.FC<EpiphanyCardProps> = ({ 
+  onOpenChat, 
+  onDismiss,
+  prefetchedInsight 
+}) => {
   const [phase, setPhase] = useState<Phase>('mystery');
   const [insight, setInsight] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const fetchInsight = useFetchInsight();
 
   const handleReveal = async () => {
+    // If prefetched -> instant reveal
+    if (prefetchedInsight) {
+      setInsight(prefetchedInsight);
+      setPhase('revealed');
+      window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+        detail: { amount: 25, reason: 'Erkenntnis entdeckt' }
+      }));
+      return;
+    }
+    
+    // Fallback: fetch with loading state
     setPhase('loading');
-    setError(null);
     
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('ares-insight-generator');
+      const result = await fetchInsight();
       
-      if (fnError) throw fnError;
-      
-      if (data?.insight) {
-        setInsight(data.insight);
+      if (result) {
+        setInsight(result);
         setPhase('revealed');
-        
-        // Award XP for discovering insight
         window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
           detail: { amount: 25, reason: 'Erkenntnis entdeckt' }
         }));
       } else {
-        throw new Error('Keine Erkenntnis generiert');
+        // Fallback insight for demo/error case
+        setInsight("Deine Daten zeigen ein interessantes Muster. An Tagen mit frühem Tracking erreichst du deine Ziele 40% öfter.");
+        setPhase('revealed');
       }
     } catch (e) {
       console.error('Insight generation failed:', e);
-      // Fallback insight for demo/error case
-      setInsight("Deine Daten zeigen ein interessantes Muster. An Tagen mit fruehzeitigem Tracking erreichst du deine Ziele 40% oefter.");
+      setInsight("Deine Daten zeigen ein interessantes Muster. An Tagen mit frühem Tracking erreichst du deine Ziele 40% öfter.");
       setPhase('revealed');
     }
   };
 
   const handleAskMore = () => {
     if (insight) {
-      onOpenChat(`Du hast mir folgende Erkenntnis gezeigt: "${insight}". Erklaere mir das genauer und was ich konkret aendern sollte.`);
+      onOpenChat(`Du hast mir folgende Erkenntnis gezeigt: "${insight}". Erkläre mir das genauer und was ich konkret ändern sollte.`);
     }
   };
 
   return (
-    <div className="relative w-full h-52 rounded-3xl overflow-hidden">
+    <div 
+      className="relative w-full h-52 rounded-3xl overflow-hidden"
+      style={{ perspective: '1200px' }}
+    >
       <AnimatePresence mode="wait">
         {phase === 'mystery' && (
           <MysteryState key="mystery" onReveal={handleReveal} />
@@ -83,9 +97,15 @@ const MysteryState: React.FC<{ onReveal: () => void }> = ({ onReveal }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
-    exit={{ opacity: 0, scale: 1.05 }}
+    exit={{ 
+      rotateY: -90, 
+      opacity: 0,
+      scale: 1.02,
+      transition: { duration: 0.3, ease: "easeIn" }
+    }}
     transition={{ duration: 0.3 }}
     className="absolute inset-0"
+    style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
   >
     {/* Gradient Background */}
     <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-violet-800 to-purple-900" />
@@ -225,27 +245,36 @@ const RevealedState: React.FC<{
   onDismiss: () => void;
 }> = ({ insight, onAskMore, onDismiss }) => (
   <motion.div
-    initial={{ opacity: 0, rotateY: 90 }}
-    animate={{ opacity: 1, rotateY: 0 }}
+    initial={{ rotateY: 90, opacity: 0 }}
+    animate={{ rotateY: 0, opacity: 1 }}
     exit={{ opacity: 0, scale: 0.9 }}
-    transition={{ duration: 0.4, type: "spring", damping: 20 }}
+    transition={{ 
+      duration: 0.6, 
+      type: "spring", 
+      stiffness: 100,
+      damping: 15 
+    }}
+    style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
     className="absolute inset-0"
   >
-    {/* Gradient Background - Cleaner */}
+    {/* Gradient Background - Premium Dark */}
     <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
     
-    {/* Subtle Glow */}
-    <div className="absolute top-4 right-4 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl" />
+    {/* Subtle Amber Glow */}
+    <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl" />
+    <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-600/5 rounded-full blur-2xl" />
 
     {/* Content */}
-    <div className="relative h-full p-6 flex flex-col text-white">
+    <div className="relative h-full p-5 flex flex-col text-white">
       {/* Header */}
       <div className="flex justify-between items-start">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
-            <Lightbulb className="w-4 h-4 text-amber-400" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 bg-gradient-to-br from-amber-500/30 to-yellow-500/20 
+                          rounded-xl flex items-center justify-center border border-amber-500/20
+                          shadow-lg shadow-amber-500/10">
+            <Lightbulb className="w-5 h-5 text-amber-400" />
           </div>
-          <span className="text-xs font-bold tracking-wider uppercase text-amber-400/80">
+          <span className="text-xs font-bold tracking-wider uppercase text-amber-400/90">
             Erkenntnis
           </span>
         </div>
@@ -253,16 +282,17 @@ const RevealedState: React.FC<{
         {/* Dismiss Button */}
         <button 
           onClick={onDismiss}
-          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center 
+                     hover:bg-white/20 transition-colors"
         >
           <X className="w-4 h-4 text-white/70" />
         </button>
       </div>
 
       {/* Insight Quote */}
-      <div className="mt-4 flex-1 flex items-center">
+      <div className="mt-3 flex-1 flex items-center">
         <motion.p 
-          className="text-lg font-medium leading-relaxed text-white/90"
+          className="text-sm font-medium leading-relaxed text-white/85 line-clamp-4"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -274,7 +304,7 @@ const RevealedState: React.FC<{
       {/* Action Button */}
       <motion.button
         onClick={onAskMore}
-        className="mt-2 w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl 
+        className="mt-3 w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl 
           flex items-center justify-center gap-2 font-semibold text-sm
           hover:from-violet-500 hover:to-indigo-500 transition-all active:scale-[0.98]
           shadow-lg shadow-violet-500/20"
