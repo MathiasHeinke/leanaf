@@ -5,11 +5,11 @@
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Utensils, Plus, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
+import { Utensils, Plus, X, BookOpen, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import spartanHelm from '@/assets/spartan-helm.png';
 
-export type QuickActionType = 'water' | 'workout' | 'weight' | 'supplements' | 'sleep';
+export type QuickActionType = 'journal' | 'workout' | 'weight' | 'supplements' | 'sleep';
 
 interface LiquidDockProps {
   onVisionScan: () => void;
@@ -18,7 +18,7 @@ interface LiquidDockProps {
 }
 
 const quickActions = [
-  { id: 'water' as const, icon: Droplets, color: 'bg-blue-500', label: 'Wasser' },
+  { id: 'journal' as const, icon: BookOpen, color: 'bg-amber-500', label: 'Journal' },
   { id: 'workout' as const, icon: Dumbbell, color: 'bg-orange-500', label: 'Workout' },
   { id: 'weight' as const, icon: Scale, color: 'bg-emerald-500', label: 'Gewicht' },
   { id: 'supplements' as const, icon: Pill, color: 'bg-purple-500', label: 'Supps' },

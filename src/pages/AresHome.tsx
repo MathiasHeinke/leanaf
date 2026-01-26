@@ -106,8 +106,8 @@ export default function AresHome() {
   // Quick action handler for the LiquidDock
   const handleQuickAction = useCallback((action: QuickActionType) => {
     switch (action) {
-      case 'water':
-        quickAddBus.emit({ type: 'fluid' });
+      case 'journal':
+        quickAddBus.emit({ type: 'journal' });
         break;
       case 'workout':
         setQuickLogConfig({ open: true, tab: 'training' });

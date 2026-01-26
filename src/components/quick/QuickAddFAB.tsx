@@ -72,7 +72,7 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       if (action.type === 'meal') setMealOpen(true);
       if (action.type === 'sleep') setSleepOpen(true);
       if (action.type === 'chemistry') setChemistryOpen(true);
-      if (action.type === 'fluid') setFluidOpen(true);
+      if (action.type === 'journal') setFluidOpen(true); // TODO: Replace with Journal modal
       if (action.type === 'body') setBodyOpen(true);
       if (action.type === 'workout') {
         setRecommendedWorkoutType(action.payload?.recommendedType);
