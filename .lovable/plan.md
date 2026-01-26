@@ -1,198 +1,272 @@
 
 
-# TrainingLogger Redesign: Round & Grouped
+# TrainingLogger: Cross-Morphing + Multi-Select Dropdowns
 
 ## Das Konzept
 
-Statt des aktuellen 6-Kachel-Grids mit eckigen Elementen wird ein eleganteres, zweistufiges Layout mit runden Icon-Buttons und klarer visueller Hierarchie implementiert.
-
-## Visueller Vergleich
+### 1. Cross-Morphing zwischen Sektionen
+Wenn eine Sektion (Workouts ODER Aktivität) ausgewählt wird, schrumpft die jeweils andere Sektion automatisch - ähnlich wie das "Morphing Hero" Pattern, aber bidirektional:
 
 ```text
-VORHER (3x2 Grid, eckig):           NACHHER (Runde Buttons, gruppiert):
-+-------------+-------------+       
-| 🏋️ Kraft    | 🌿 Zone 2   |           WORKOUTS
-+-------------+-------------+       (●🏋️)    (●🌿)    (●🏃)
-| 🏃 VO2 Max  | 🔥 Sauna    |        Kraft    Zone 2   VO2 Max
-+-------------+-------------+       
-| 🚶 Bewegung | 😴 Ruhetag  |         AKTIVITÄT & ERHOLUNG
-+-------------+-------------+       (●🔥)    (●🚶)    (○😴)
-                                     Sauna   Bewegung  Ruhetag
+NICHTS GEWÄHLT:                  WORKOUT GEWÄHLT (z.B. Kraft):
++---------------------------+    +---------------------------+
+| WORKOUTS                  |    | WORKOUTS                  |
+| (●🏋️)  (●🌿)  (●🏃)       |    | (●🏋️)  (●🌿)  (●🏃)       | ← Normal groß
+|  Kraft  Zone 2  VO2 Max   |    |  Kraft  Zone 2  VO2 Max   |
+|                           |    |                           |
+| AKTIVITÄT & ERHOLUNG      |    | AKTIVITÄT & ERHOLUNG      |
+| (●🔥)  (●🚶)  (○😴)       |    | (○)    (○)    (○)         | ← 60% Scale, kein Label
+|  Sauna  Bewegung  Ruhetag |    |                           |
++---------------------------+    +---------------------------+
+
+AKTIVITÄT GEWÄHLT (z.B. Sauna):
++---------------------------+
+| WORKOUTS                  |
+| (○)    (○)    (○)         | ← 60% Scale, kein Label
+|                           |
+| AKTIVITÄT & ERHOLUNG      |
+| (●🔥)  (●🚶)  (○😴)       | ← Normal groß
+|  Sauna  Bewegung  Ruhetag |
++---------------------------+
 ```
 
-## Ruhetag-Logik (Grayout-Effekt)
+### 2. Multi-Select Dropdowns für Workout-Details
+Statt einfacher Buttons werden die Workout-Details zu Popover-Dropdowns mit Multi-Select Checkboxen:
 
-Wenn "Ruhetag" ausgewählt wird:
-- Die 3 Workout-Buttons (Kraft, Zone 2, VO2 Max) werden ausgegraut
-- Visuelle Merkmale: `opacity-40`, `grayscale`, `cursor-not-allowed`
-- Klicks auf Workout-Buttons werden blockiert
-- Sauna und Bewegung bleiben aktiv (da Erholung/leichte Aktivität)
+- **Kraft**: Split-Typen (Push, Pull, Legs, Upper, Lower, Full) → Multi-Select
+- **Zone 2**: Cardio-Typen (Gehen, Laufen, Rad, Schwimmen, Rudern) → Multi-Select
+- **VO2 Max**: Protokolle (4x4, Tabata, HIIT) → Single-Select (bleibt)
 
 ## Technische Umsetzung
 
-### 1. Daten-Struktur aufteilen
+### 1. Animation Variants für Cross-Morphing
 
 ```typescript
-const workoutTypes = [
-  { id: 'rpt', label: 'Kraft', icon: Dumbbell, color: 'bg-indigo-500' },
-  { id: 'zone2', label: 'Zone 2', icon: Activity, color: 'bg-emerald-500' },
-  { id: 'vo2max', label: 'VO2 Max', icon: HeartPulse, color: 'bg-rose-500' },
-];
+const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
 
-const activityTypes = [
-  { id: 'sauna', label: 'Sauna', icon: Flame, color: 'bg-orange-500' },
-  { id: 'movement', label: 'Bewegung', icon: Footprints, color: 'bg-teal-500' },
-  { id: 'rest', label: 'Ruhetag', icon: Moon, color: 'bg-slate-400' },
-];
+// Section morphing variants
+const sectionVariants = {
+  normal: { scale: 1, opacity: 1 },
+  compact: { scale: 0.85, opacity: 0.6 }
+};
+
+// Button morphing variants  
+const buttonVariants = {
+  normal: { scale: 1 },
+  compact: { scale: 0.6 }
+};
+
+// Label variants (hide in compact mode)
+const labelVariants = {
+  normal: { opacity: 1, height: 'auto', marginTop: 8 },
+  compact: { opacity: 0, height: 0, marginTop: 0 }
+};
 ```
 
-### 2. Reusable Round Button Komponente
+### 2. Logik für Cross-Morphing State
 
 ```typescript
-const RoundTypeButton = ({ 
+// Bestimme welche Kategorie aktiv ist
+const isWorkoutSelected = selectedType && 
+  ['rpt', 'zone2', 'vo2max'].includes(selectedType);
+const isActivitySelected = selectedType && 
+  ['sauna', 'movement', 'rest'].includes(selectedType);
+
+// Workouts-Sektion: compact wenn Activity ausgewählt
+const workoutSectionState = isActivitySelected ? 'compact' : 'normal';
+
+// Activity-Sektion: compact wenn Workout ausgewählt (außer bei Rest)
+const activitySectionState = isWorkoutSelected ? 'compact' : 'normal';
+```
+
+### 3. Aktualisierter RoundTypeButton mit Morphing
+
+```typescript
+interface RoundTypeButtonProps {
+  // ... existing
+  isCompact: boolean;  // NEU: Cross-Morphing State
+}
+
+const RoundTypeButton: React.FC<RoundTypeButtonProps> = ({ 
   type, 
   isSelected, 
-  isDisabled, 
+  isDisabled,
+  isCompact,  // NEU
   onSelect 
 }) => (
   <motion.button
-    whileTap={!isDisabled ? { scale: 0.95 } : undefined}
-    onClick={() => !isDisabled && onSelect(type.id)}
-    disabled={isDisabled}
-    className="flex flex-col items-center gap-2"
+    variants={buttonVariants}
+    animate={isCompact ? 'compact' : 'normal'}
+    transition={springConfig}
+    // ...
   >
-    {/* Round Icon Button */}
-    <div className={cn(
-      "w-16 h-16 rounded-full flex items-center justify-center transition-all",
-      isSelected && `${type.color} ring-2 ring-offset-2 ring-primary`,
-      !isSelected && !isDisabled && "bg-muted hover:bg-muted/80",
-      isDisabled && "opacity-40 grayscale cursor-not-allowed bg-muted"
+    {/* Round Icon Button - kleiner wenn compact */}
+    <motion.div className={cn(
+      "rounded-full flex items-center justify-center transition-all",
+      isCompact ? "w-10 h-10" : "w-16 h-16",  // ← Dynamische Größe
+      // ... colors
     )}>
       <type.icon className={cn(
-        "w-7 h-7",
-        isSelected ? "text-white" : "text-foreground"
+        isCompact ? "w-4 h-4" : "w-7 h-7"  // ← Dynamische Icon-Größe
       )} />
-    </div>
+    </motion.div>
     
-    {/* Label */}
-    <span className={cn(
-      "text-xs font-medium",
-      isDisabled ? "text-muted-foreground/50" : "text-foreground"
-    )}>
-      {type.label}
-    </span>
+    {/* Label - versteckt wenn compact */}
+    <AnimatePresence>
+      {!isCompact && (
+        <motion.span
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="text-xs font-medium mt-2"
+        >
+          {type.label}
+        </motion.span>
+      )}
+    </AnimatePresence>
   </motion.button>
 );
 ```
 
-### 3. Gruppiertes Layout mit Headers
+### 4. Multi-Select State für Workouts
 
 ```typescript
-{/* WORKOUTS SECTION */}
-<div className="space-y-3">
-  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-    Workouts
-  </h3>
-  <div className="flex justify-around">
-    {workoutTypes.map((type) => (
-      <RoundTypeButton
-        key={type.id}
-        type={type}
-        isSelected={selectedType === type.id}
-        isDisabled={selectedType === 'rest'}  // ← Grayout bei Ruhetag
-        onSelect={setSelectedType}
-      />
-    ))}
-  </div>
-</div>
+// Statt einzelner Werte: Arrays für Multi-Select
+const [selectedSplits, setSelectedSplits] = useState<SplitType[]>([]);
+const [selectedCardioTypes, setSelectedCardioTypes] = useState<CardioType[]>([]);
 
-{/* ACTIVITY & RECOVERY SECTION */}
-<div className="space-y-3 mt-6">
-  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-    Aktivität & Erholung
-  </h3>
-  <div className="flex justify-around">
-    {activityTypes.map((type) => (
-      <RoundTypeButton
-        key={type.id}
-        type={type}
-        isSelected={selectedType === type.id}
-        isDisabled={false}  // Immer aktiv
-        onSelect={setSelectedType}
-      />
-    ))}
-  </div>
-</div>
+// Toggle-Funktion für Multi-Select
+const toggleSplit = (split: SplitType) => {
+  setSelectedSplits(prev => 
+    prev.includes(split)
+      ? prev.filter(s => s !== split)
+      : [...prev, split]
+  );
+};
+
+const toggleCardioType = (type: CardioType) => {
+  setSelectedCardioTypes(prev =>
+    prev.includes(type)
+      ? prev.filter(t => t !== type)
+      : [...prev, type]
+  );
+};
 ```
 
-### 4. Selected State mit Ring-Effekt
+### 5. Multi-Select Dropdown UI (mit Popover)
 
 ```typescript
-// Ausgewählter Button:
-- Volle Hintergrundfarbe (z.B. bg-indigo-500)
-- Ring-Border: ring-2 ring-primary ring-offset-2
-- Weißes Icon: text-white
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown } from "lucide-react";
 
-// Nicht ausgewählt:
-- Grauer Hintergrund: bg-muted
-- Farbiges Icon: text-foreground
-- Hover: bg-muted/80
+{/* KRAFT: Split Multi-Select Dropdown */}
+{selectedType === 'rpt' && (
+  <>
+    <div className="text-sm font-medium text-muted-foreground">Trainierte Splits</div>
+    
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
+          <span className="text-sm">
+            {selectedSplits.length > 0 
+              ? selectedSplits.map(s => SPLIT_TYPE_LABELS[s]).join(', ')
+              : 'Splits auswählen...'}
+          </span>
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      
+      <PopoverContent className="w-56 p-2">
+        {SPLIT_OPTIONS.map((split) => (
+          <label
+            key={split.id}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted cursor-pointer"
+          >
+            <Checkbox 
+              checked={selectedSplits.includes(split.id)}
+              onCheckedChange={() => toggleSplit(split.id)}
+            />
+            <span className="text-sm">{split.label}</span>
+          </label>
+        ))}
+      </PopoverContent>
+    </Popover>
+  </>
+)}
 ```
 
-### 5. Detail-Sektion mit Layout-Transition
+### 6. Visueller Effekt des Cross-Morphing
 
-Die existierende Detail-Logik bleibt erhalten, erhält aber einen `layout` Prop für smoothere Übergänge:
+```text
+PHASE 1: Nichts gewählt          PHASE 2: "Kraft" ausgewählt
+┌─────────────────────────┐      ┌─────────────────────────┐
+│ WORKOUTS                │      │ WORKOUTS                │
+│                         │      │                         │
+│ (🏋️)    (🌿)    (🏃)    │      │ (🏋️●)   (🌿)    (🏃)   │ ← Selected
+│ Kraft  Zone 2  VO2 Max  │      │ Kraft   Zone 2  VO2 Max │
+│ w-16   w-16    w-16     │      │ w-16    w-16    w-16    │
+│                         │      │                         │
+│ AKTIVITÄT & ERHOLUNG    │      │ AKTIVITÄT & ERHOLUNG    │
+│                         │      │                         │
+│ (🔥)    (🚶)    (😴)    │      │ (○)  (○)  (○)           │ ← Compact 60%
+│ Sauna  Bewegung Ruhetag │      │                         │   Labels weg
+│ w-16   w-16     w-16    │      │ w-10 w-10 w-10          │
+└─────────────────────────┘      └─────────────────────────┘
+
+PHASE 3: "Sauna" ausgewählt
+┌─────────────────────────┐
+│ WORKOUTS                │
+│                         │
+│ (○)  (○)  (○)           │ ← Compact 60%
+│ w-10 w-10 w-10          │   Labels weg
+│                         │
+│ AKTIVITÄT & ERHOLUNG    │
+│                         │
+│ (🔥●)   (🚶)    (😴)    │ ← Selected
+│ Sauna  Bewegung Ruhetag │
+│ w-16    w-16    w-16    │
+└─────────────────────────┘
+```
+
+### 7. Session Data mit Multi-Select
 
 ```typescript
-<AnimatePresence mode="wait">
-  {selectedType && (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.2 }}
-    >
-      {/* RPT Details */}
-      {/* Zone2 Details */}
-      {/* etc. */}
-    </motion.div>
-  )}
-</AnimatePresence>
+const handleSave = async () => {
+  const sessionData: Record<string, unknown> = {};
+  
+  // Kraft: Multiple splits
+  if (selectedType === 'rpt' && selectedSplits.length > 0) {
+    sessionData.splits = selectedSplits;  // Array statt einzelner Wert
+  }
+  
+  // Zone 2: Multiple cardio types
+  if (selectedType === 'zone2' && selectedCardioTypes.length > 0) {
+    sessionData.cardio_types = selectedCardioTypes;  // Array
+  }
+  
+  // ... rest of save logic
+  
+  const success = await trackEvent('workout', { 
+    training_type: selectedType,
+    split_type: selectedSplits[0],  // Primärer Split für Kompatibilität
+    // ...
+    session_data: sessionData
+  });
+};
 ```
 
-## Styling Details
-
-| Element | Klassen |
-|---------|---------|
-| Round Button | `w-16 h-16 rounded-full` |
-| Selected Ring | `ring-2 ring-offset-2 ring-primary` |
-| Disabled State | `opacity-40 grayscale cursor-not-allowed` |
-| Section Header | `text-xs font-semibold uppercase tracking-wider text-muted-foreground` |
-| Button Row | `flex justify-around` |
-| Label | `text-xs font-medium mt-2` |
-
-## Interaktions-Logik
-
-1. **Normal**: Alle 6 Buttons klickbar
-2. **Workout gewählt**: Workout-Button highlighted, alle anderen normal
-3. **Ruhetag gewählt**: 
-   - Rest-Button highlighted 
-   - 3 Workout-Buttons ausgegraut (nicht klickbar)
-   - Sauna & Bewegung bleiben aktiv
-4. **Wechsel von Ruhetag**: Grayout wird aufgehoben
-
-## Änderungen
+## Dateien
 
 | Datei | Aktion |
 |-------|--------|
-| `src/components/home/loggers/TrainingLogger.tsx` | Komplettes UI-Refactoring |
+| `src/components/home/loggers/TrainingLogger.tsx` | Cross-Morphing + Multi-Select Dropdowns |
 
-## Vorteile des neuen Designs
+## UX-Vorteile
 
-- **Visuell cleaner**: Runde Buttons statt eckiger Kacheln
-- **Logisch gruppiert**: Workouts vs. Aktivität/Erholung
-- **Intuitive Interaktion**: Ruhetag disabelt automatisch Workouts
-- **Apple Health Style**: Premium-Look mit Ring-Highlights
-- **Bessere Lesbarkeit**: Labels unter den Icons statt daneben
+1. **Mehr Platz für Details**: Die geschrumpfte Sektion gibt Raum frei
+2. **Visueller Fokus**: Klar erkennbar welche Kategorie aktiv ist
+3. **Flexibles Training-Logging**: Mehrere Splits/Cardio-Arten pro Session möglich
+4. **Premium-Feel**: Smooth Framer-Motion Animationen
+5. **Konsistentes Pattern**: Gleiche Morphing-Logik wie Weight/Sleep/Tape Logger
 
