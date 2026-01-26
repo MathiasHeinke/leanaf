@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Dumbbell, Moon, FlaskConical, MessageCircle, Utensils, Droplets, TestTube, Ruler } from "lucide-react";
-export type ActionType = "meal" | "workout" | "sleep" | "chemistry" | "fluid" | "bloodwork" | "coach" | "body";
+import { Dumbbell, Moon, FlaskConical, MessageCircle, Utensils, BookOpen, TestTube, Ruler } from "lucide-react";
+export type ActionType = "meal" | "workout" | "sleep" | "chemistry" | "journal" | "bloodwork" | "coach" | "body";
 
 interface QuickActionsMenuProps {
   open: boolean;
@@ -16,7 +16,7 @@ const actions: { key: ActionType; label: string; Icon: React.ComponentType<any> 
   { key: "sleep", label: "Schlaf", Icon: Moon },
   { key: "chemistry", label: "Chemie", Icon: FlaskConical },
   { key: "body", label: "Körper", Icon: Ruler },
-  { key: "fluid", label: "Getränke", Icon: Droplets },
+  { key: "journal", label: "Journal", Icon: BookOpen },
   { key: "bloodwork", label: "Blutwerte", Icon: TestTube },
   { key: "coach", label: "Coach", Icon: MessageCircle },
 ];
