@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useActionCards, ActionCard, QuickAction } from '@/hooks/useActionCards';
 import { useDismissedCards } from '@/hooks/useDismissedCards';
@@ -13,7 +13,7 @@ import { useQuickLogging } from '@/hooks/useQuickLogging';
 import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { SmartFocusCard, SmartTask } from './SmartFocusCard';
 import { toast } from 'sonner';
-import confetti from 'canvas-confetti';
+import { triggerSpartanConfetti } from '@/utils/confetti';
 
 interface ActionCardStackProps {
   onTriggerChat: (context: string) => void;
@@ -40,16 +40,16 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
     }
   }, [initialCards, isCardDismissed, cards]);
 
-  // Show confetti when all cards are completed
+  // Show Spartan confetti when all cards are completed
   useEffect(() => {
     if (cards.length === 0 && initialCards.length > 0 && !hasShownConfetti) {
       setHasShownConfetti(true);
-      confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.6 },
-        colors: ['#22c55e', '#10b981', '#059669']
-      });
+      triggerSpartanConfetti();
+      
+      // Bonus XP Event für komplettierten Tag
+      window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+        detail: { amount: 100, reason: 'Tagesziel erreicht!' }
+      }));
     }
   }, [cards.length, initialCards.length, hasShownConfetti]);
 
@@ -150,17 +150,57 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
     quickActions: card.quickActions
   });
 
-  // Empty state with success message
+  // Empty state - Kompakte Trophy Bar
   if (cards.length === 0) {
     return (
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full h-44 rounded-3xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 flex items-center justify-center"
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        className="w-full rounded-2xl overflow-hidden relative"
       >
-        <div className="text-center">
-          <Sparkles className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-          <p className="text-muted-foreground text-sm font-medium">Alles erledigt. Stay strong.</p>
+        {/* Glow Effect Behind */}
+        <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 blur-xl" />
+        
+        {/* Main Bar */}
+        <div className="relative flex items-center gap-4 p-4 
+          bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-amber-500/10 
+          border border-amber-500/30 backdrop-blur-sm rounded-2xl">
+          
+          {/* Trophy Icon with Glow */}
+          <div className="relative">
+            <div className="absolute inset-0 bg-amber-400 rounded-full blur-md opacity-40" />
+            <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 
+              flex items-center justify-center shadow-lg shadow-amber-500/30">
+              <Trophy className="w-6 h-6 text-amber-900" />
+            </div>
+          </div>
+          
+          {/* Text */}
+          <div className="flex-1">
+            <h3 className="font-bold text-foreground text-base">
+              Alles erledigt!
+            </h3>
+            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Tagesziel erreicht</span>
+              <span className="text-amber-500 font-semibold">+100 XP</span>
+            </p>
+          </div>
+          
+          {/* Shimmer Effect */}
+          <motion.div 
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent rounded-2xl"
+            animate={{ 
+              x: ['-100%', '100%'],
+            }}
+            transition={{ 
+              duration: 2,
+              repeat: Infinity,
+              repeatDelay: 3,
+              ease: "easeInOut"
+            }}
+          />
         </div>
       </motion.div>
     );
