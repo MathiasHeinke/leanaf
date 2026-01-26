@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { useAresStreaming, ThinkingStep } from '@/hooks/useAresStreaming';
 import ReactMarkdown from 'react-markdown';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
-import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
+// CollapsibleCoachHeader removed - ChatOverlay provides its own header
 import { EnhancedChatInput } from '@/components/EnhancedChatInput';
 import FireBackdrop, { FireBackdropHandle } from '@/components/FireBackdrop';
 import { useShadowState } from '@/hooks/useShadowState';
@@ -248,7 +248,7 @@ export default function AresChat({
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
   const [contextModules, setContextModules] = useState<string[]>([]);
-  const [bannerCollapsed, setBannerCollapsed] = useState(false);
+  // bannerCollapsed state removed - no longer needed in overlay context
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [lastXPGain, setLastXPGain] = useState<{ amount: number; timestamp: number } | null>(null);
   const [hasAutoSent, setHasAutoSent] = useState(false);  // Prevent double auto-send
@@ -511,21 +511,7 @@ export default function AresChat({
       {/* Fire Backdrop */}
       <FireBackdrop ref={fireBackdropRef} chatMode />
       
-      <ChatLayout
-        chatInput={chatInputComponent}
-        bannerCollapsed={bannerCollapsed}
-      >
-        {/* Collapsible Header */}
-        <CollapsibleCoachHeader
-          coach={{
-            name: 'ARES',
-            id: 'ares',
-            imageUrl: ARES_IMAGE_URL,
-            specialization: 'Unified Expert Coach'
-          }}
-          onCollapseChange={setBannerCollapsed}
-          onDailyReset={handleDailyReset}
-        />
+      <ChatLayout chatInput={chatInputComponent}>
 
         {/* Messages Container */}
         <div 

@@ -57,7 +57,7 @@ interface EnhancedChatMessage {
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { toast } from 'sonner';
 import { ChatLayout } from '@/components/layouts/ChatLayout';
-import { CollapsibleCoachHeader } from '@/components/CollapsibleCoachHeader';
+// CollapsibleCoachHeader removed - ChatOverlay provides its own header
 import { EnhancedChatInput } from '@/components/EnhancedChatInput';
 import { TrainingPlanQuickAction } from '@/components/TrainingPlanQuickAction';
 import FireBackdrop, { FireBackdropHandle } from '@/components/FireBackdrop';
@@ -174,7 +174,7 @@ const EnhancedUnifiedCoachChat: React.FC<EnhancedUnifiedCoachChatProps> = ({
   const fireBackdropRef = useRef<FireBackdropHandle>(null);
   const isAres = coach?.id === 'ares';
   const [chatInitialized, setChatInitialized] = useState(false);
-  const [bannerCollapsed, setBannerCollapsed] = useState(false);
+  // bannerCollapsed state removed - ChatOverlay provides its own header
   const [showQuickAction, setShowQuickAction] = useState(false);
   const [pendingPlanData, setPendingPlanData] = useState<any>(null);
   const [isCreatingPlan, setIsCreatingPlan] = useState(false);
@@ -1206,21 +1206,7 @@ chatInput={
             />
           </div>
         }
-        bannerCollapsed={bannerCollapsed}
       >
-        {/* Collapsible Coach Header */}
-        <div className="relative">
-          <CollapsibleCoachHeader
-            coach={{
-              ...coach,
-              id: coach?.id
-            }}
-            onCollapseChange={setBannerCollapsed}
-            onDailyReset={() => {
-              setMessages([]);
-            }}
-          />
-        </div>
 
         {/* Messages - transparent scrollable area over fire */}
         <div 
