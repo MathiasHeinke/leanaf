@@ -24,6 +24,7 @@ import { MetricWidgetGrid } from '@/components/home/MetricWidgetGrid';
 import { LiquidDock, type QuickActionType } from '@/components/home/LiquidDock';
 import { quickAddBus } from '@/components/quick/quickAddBus';
 import { ChatOverlay } from '@/components/home/ChatOverlay';
+import { QuickLogSheet, type QuickLogTab } from '@/components/home/QuickLogSheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
@@ -43,6 +44,7 @@ export default function AresHome() {
   const [chatPrompt, setChatPrompt] = useState<string | null>(null);  // Direct prompt with metrics
   const [mealOpen, setMealOpen] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [quickLogConfig, setQuickLogConfig] = useState<{ open: boolean; tab: QuickLogTab }>({ open: false, tab: 'weight' });
 
   // Meal input hook (same as Dashboard)
   const {
@@ -108,19 +110,19 @@ export default function AresHome() {
         quickAddBus.emit({ type: 'fluid' });
         break;
       case 'workout':
-        quickAddBus.emit({ type: 'workout', payload: { recommendedType: 'walking' } });
+        setQuickLogConfig({ open: true, tab: 'training' });
         break;
       case 'weight':
-        navigate('/profile?tab=measurements');
+        setQuickLogConfig({ open: true, tab: 'weight' });
         break;
       case 'supplements':
         quickAddBus.emit({ type: 'supplements' });
         break;
       case 'sleep':
-        quickAddBus.emit({ type: 'sleep' });
+        setQuickLogConfig({ open: true, tab: 'sleep' });
         break;
     }
-  }, [navigate]);
+  }, []);
 
   // Frequent meals for smart chips
   const { frequent: frequentMeals } = useFrequentMeals(user?.id, 60);
@@ -577,6 +579,13 @@ export default function AresHome() {
         }}
         initialContext={chatContext}
         initialPrompt={chatPrompt}
+      />
+
+      {/* Quick Log Sheet for Weight, Training, Sleep */}
+      <QuickLogSheet
+        isOpen={quickLogConfig.open}
+        onClose={() => setQuickLogConfig(prev => ({ ...prev, open: false }))}
+        initialTab={quickLogConfig.tab}
       />
     </div>
   );

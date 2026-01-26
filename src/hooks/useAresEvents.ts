@@ -9,13 +9,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DAILY_METRICS_KEY, DailyMetrics } from './useDailyMetrics';
 
-export type EventCategory = 'water' | 'coffee' | 'supplement';
+export type EventCategory = 'water' | 'coffee' | 'supplement' | 'weight' | 'workout' | 'sleep';
 
 export interface EventPayload {
   amount?: number;
   supplementId?: string;
   timing?: 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout';
   customName?: string;
+  // Weight
+  weight_kg?: number;
+  // Workout
+  training_type?: 'rpt' | 'zone2' | 'vo2max' | 'sauna';
+  duration_minutes?: number;
+  // Sleep
+  sleep_hours?: number;
+  sleep_quality?: number; // 1-5
+  // Shared
+  date?: string;
 }
 
 export const useAresEvents = () => {
@@ -107,6 +117,59 @@ export const useAresEvents = () => {
         
         console.log(`[AresEvents] ✓ Logged supplement ${payload.supplementId} (${payload.timing})`);
       }
+
+      // === WEIGHT ===
+      if (category === 'weight' && payload.weight_kg) {
+        const { error } = await supabase.from('weight_history').insert({
+          user_id: auth.user.id,
+          weight: payload.weight_kg,
+          date: payload.date || today
+        });
+        
+        if (error) {
+          console.error('[AresEvents] Weight insert failed:', error);
+          throw error;
+        }
+        
+        console.log(`[AresEvents] ✓ Logged weight ${payload.weight_kg}kg`);
+        toast.success(`${payload.weight_kg} kg gespeichert`);
+      }
+
+      // === WORKOUT ===
+      if (category === 'workout' && payload.training_type) {
+        const { error } = await supabase.from('training_sessions').insert({
+          user_id: auth.user.id,
+          training_type: payload.training_type,
+          total_duration_minutes: payload.duration_minutes || null,
+          session_date: payload.date || today
+        });
+        
+        if (error) {
+          console.error('[AresEvents] Workout insert failed:', error);
+          throw error;
+        }
+        
+        console.log(`[AresEvents] ✓ Logged ${payload.training_type} workout`);
+        toast.success('Training gespeichert');
+      }
+
+      // === SLEEP ===
+      if (category === 'sleep' && payload.sleep_hours) {
+        const { error } = await supabase.from('sleep_tracking').upsert({
+          user_id: auth.user.id,
+          date: payload.date || today,
+          sleep_hours: payload.sleep_hours,
+          sleep_quality: payload.sleep_quality || 3
+        }, { onConflict: 'user_id,date' });
+        
+        if (error) {
+          console.error('[AresEvents] Sleep insert failed:', error);
+          throw error;
+        }
+        
+        console.log(`[AresEvents] ✓ Logged ${payload.sleep_hours}h sleep`);
+        toast.success('Schlaf gespeichert');
+      }
       
       // === C. SILENT REVALIDATE (Background sync after 2s) ===
       setTimeout(() => {
@@ -140,9 +203,33 @@ export const useAresEvents = () => {
     return trackEvent('coffee', { amount: amountMl, customName: 'Kaffee' });
   }, [trackEvent]);
 
+  /**
+   * Quick helper for weight logging
+   */
+  const logWeight = useCallback((weightKg: number) => {
+    return trackEvent('weight', { weight_kg: weightKg });
+  }, [trackEvent]);
+
+  /**
+   * Quick helper for workout logging
+   */
+  const logWorkout = useCallback((type: 'rpt' | 'zone2' | 'vo2max' | 'sauna', durationMin?: number) => {
+    return trackEvent('workout', { training_type: type, duration_minutes: durationMin });
+  }, [trackEvent]);
+
+  /**
+   * Quick helper for sleep logging
+   */
+  const logSleep = useCallback((hours: number, quality: number = 3) => {
+    return trackEvent('sleep', { sleep_hours: hours, sleep_quality: quality });
+  }, [trackEvent]);
+
   return { 
     trackEvent,
     logWater,
-    logCoffee
+    logCoffee,
+    logWeight,
+    logWorkout,
+    logSleep
   };
 };
