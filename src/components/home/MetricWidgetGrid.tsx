@@ -12,11 +12,13 @@ import { WidgetRenderer } from './widgets/WidgetRenderer';
 import { WidgetEditorSheet } from './WidgetEditorSheet';
 import { WidgetSize } from '@/types/widgets';
 
-export const MetricWidgetGrid: React.FC = () => {
+interface MetricWidgetGridProps {
+  onOpenNutritionSheet?: () => void;
+}
+
+export const MetricWidgetGrid: React.FC<MetricWidgetGridProps> = ({ onOpenNutritionSheet }) => {
   const { enabledWidgets, isLoading } = useWidgetConfig();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
-
-  // Grid class mapping based on widget size - with min-heights
   const getGridClass = (size: WidgetSize): string => {
     switch (size) {
       case 'small':
@@ -64,7 +66,7 @@ export const MetricWidgetGrid: React.FC = () => {
               }}
               className={cn(getGridClass(widget.size))}
             >
-              <WidgetRenderer config={widget} />
+              <WidgetRenderer config={widget} onOpenNutritionSheet={onOpenNutritionSheet} />
             </motion.div>
           ))}
         </AnimatePresence>
