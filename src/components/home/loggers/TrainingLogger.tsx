@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dumbbell, Activity, HeartPulse, Flame, Check, Minus, Plus } from 'lucide-react';
+import { Dumbbell, Activity, HeartPulse, Flame, Check, Minus, Plus, Footprints, Moon } from 'lucide-react';
 import { useAresEvents } from '@/hooks/useAresEvents';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,8 @@ const trainingTypes = [
   { id: 'zone2' as const, label: 'Zone 2', icon: Activity, color: 'bg-emerald-500', needsTime: true },
   { id: 'vo2max' as const, label: 'VO2 Max', icon: HeartPulse, color: 'bg-rose-500', needsTime: true },
   { id: 'sauna' as const, label: 'Sauna', icon: Flame, color: 'bg-orange-500', needsTime: true },
+  { id: 'movement' as const, label: 'Bewegung', icon: Footprints, color: 'bg-teal-500', needsTime: false },
+  { id: 'rest' as const, label: 'Ruhetag', icon: Moon, color: 'bg-slate-400', needsTime: false },
 ];
 
 const SPLIT_OPTIONS: { id: SplitType; label: string }[] = [
@@ -50,6 +52,10 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   const [saunaTemp, setSaunaTemp] = useState<80 | 90 | 100>(80);
   const [saunaRounds, setSaunaRounds] = useState(3);
   const [totalVolume, setTotalVolume] = useState<string>('');
+  
+  // Movement fields
+  const [steps, setSteps] = useState<string>('');
+  const [distanceKm, setDistanceKm] = useState<string>('');
 
   const selectedTypeConfig = trainingTypes.find(t => t.id === selectedType);
 
@@ -71,13 +77,18 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
       sessionData.temperature = saunaTemp;
       sessionData.rounds = saunaRounds;
     }
+    if (selectedType === 'movement') {
+      if (steps) sessionData.steps = parseInt(steps);
+      if (distanceKm) sessionData.distance_km = parseFloat(distanceKm.replace(',', '.'));
+    }
     
     const success = await trackEvent('workout', { 
       training_type: selectedType,
       split_type: selectedType === 'rpt' ? (splitType as any) : undefined,
       duration_minutes: selectedTypeConfig?.needsTime ? duration : undefined,
       total_volume_kg: totalVolume ? parseFloat(totalVolume.replace(',', '.')) : undefined,
-      session_data: Object.keys(sessionData).length > 0 ? sessionData : undefined
+      session_data: Object.keys(sessionData).length > 0 ? sessionData : undefined,
+      did_workout: selectedType !== 'rest'
     });
     
     if (success) onClose();
@@ -92,7 +103,7 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
     <div className="flex flex-col min-h-[300px]">
       {/* SCROLLABLE CONTENT */}
       <div className="flex-1 space-y-6 overflow-y-auto">
-        {/* GRID SELECTION */}
+        {/* GRID SELECTION - 6 tiles (3x2) */}
         <div className="grid grid-cols-2 gap-3">
           {trainingTypes.map((t) => {
             const isSelected = selectedType === t.id;
@@ -102,7 +113,7 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setSelectedType(t.id)}
                 className={cn(
-                  "relative p-4 rounded-2xl flex flex-col items-start gap-3 border-2 transition-all h-[100px]",
+                  "relative p-4 rounded-2xl flex flex-col items-start gap-3 border-2 transition-all h-[90px]",
                   isSelected
                     ? 'border-primary bg-primary/5'
                     : 'border-transparent bg-muted hover:bg-muted/80'
@@ -271,6 +282,45 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                       ))}
                     </div>
                   </>
+                )}
+
+                {/* Movement: Steps + Distance */}
+                {selectedType === 'movement' && (
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-2">Schritte (optional)</div>
+                      <NumericInput
+                        placeholder="8500"
+                        value={steps}
+                        onChange={setSteps}
+                        allowDecimals={false}
+                        className="w-32"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-2">Distanz (optional)</div>
+                      <div className="flex items-center gap-2">
+                        <NumericInput
+                          placeholder="5,2"
+                          value={distanceKm}
+                          onChange={setDistanceKm}
+                          allowDecimals={true}
+                          className="w-24"
+                        />
+                        <span className="text-sm text-muted-foreground">km</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Rest Day: Simple message */}
+                {selectedType === 'rest' && (
+                  <div className="p-4 bg-muted/50 rounded-xl text-center">
+                    <span className="text-4xl">😴</span>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Aktive Regeneration – auch Ruhe ist Training!
+                    </p>
+                  </div>
                 )}
 
                 {/* DURATION CONTROLS - Only for cardio/sauna */}
