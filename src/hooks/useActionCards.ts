@@ -8,7 +8,7 @@ import { useMemo } from 'react';
 import { usePlusData } from './usePlusData';
 import { useUserProfile } from './useUserProfile';
 import { useDailyFocus } from './useDailyFocus';
-import { BrainCircuit, Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sun, Clock, Dumbbell } from 'lucide-react';
+import { Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell, Sparkles } from 'lucide-react';
 
 export interface QuickAction {
   id: string;
@@ -19,7 +19,7 @@ export interface QuickAction {
 
 export interface ActionCard {
   id: string;
-  type: 'insight' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein';
+  type: 'insight' | 'epiphany' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein';
   title: string;
   subtitle: string;
   gradient: string;
@@ -79,7 +79,7 @@ export const useActionCards = () => {
       // Zeitbasierte Primary Action bestimmen
       const getRelevantTimingAction = (): QuickAction => {
         if (hour >= 6 && hour < 11) {
-          return { id: 'morning', label: 'Morgens', icon: Sun, primary: true };
+          return { id: 'morning', label: 'Morgens', icon: Sunrise, primary: true };
         } else if (hour >= 11 && hour < 14) {
           return { id: 'noon', label: 'Mittags', icon: Clock, primary: true };
         } else {
@@ -147,99 +147,21 @@ export const useActionCards = () => {
       });
     }
 
-    // 6. ARES Insight - Dynamic based on current metrics
-    const insightData = buildInsightData();
-    
+    // 6. ARES Epiphany Card - AI-generated insight with reveal mechanic
     result.push({
-      id: 'insight',
-      type: 'insight',
-      title: 'ARES Erkenntnis',
-      subtitle: insightData.subtitle,
-      gradient: 'from-indigo-600 via-purple-600 to-violet-600',
-      icon: BrainCircuit,
-      actionContext: 'analyze_recovery_pattern',
-      actionPrompt: insightData.prompt,
+      id: 'epiphany',
+      type: 'epiphany',
+      title: 'ARES hat etwas entdeckt',
+      subtitle: 'Tippe um die Erkenntnis aufzudecken',
+      gradient: 'from-indigo-900 via-violet-800 to-purple-900',
+      icon: Sparkles,
       priority: 10,
-      xp: 15,
-      canSwipeComplete: false // Opens chat
+      xp: 25,
+      canSwipeComplete: false // Uses EpiphanyCard component
     });
 
     // Sort by priority and limit to 5
     return result.sort((a, b) => a.priority - b.priority).slice(0, 5);
-    
-    // Helper function to build dynamic insight
-    function buildInsightData(): { subtitle: string; prompt: string } {
-      const issues: string[] = [];
-      const metrics: string[] = [];
-      
-      // Analyze calories
-      if (plusData.remainingKcal !== null) {
-        const consumed = plusData.today?.total_calories || 0;
-        const goal = plusData.goals?.calories || 2000;
-        metrics.push(`Kalorien: ${consumed}/${goal} kcal`);
-        
-        if (plusData.remainingKcal > 800) {
-          issues.push(`${plusData.remainingKcal} kcal unter Tagesziel`);
-        } else if (plusData.remainingKcal < -200) {
-          issues.push(`${Math.abs(plusData.remainingKcal)} kcal über Tagesziel`);
-        }
-      }
-      
-      // Analyze protein
-      if (plusData.proteinDelta && plusData.proteinDelta > 30) {
-        const consumed = plusData.today?.total_protein || 0;
-        const goal = plusData.goals?.protein || 150;
-        metrics.push(`Protein: ${consumed}g/${goal}g`);
-        issues.push(`${plusData.proteinDelta}g Protein fehlen noch`);
-      } else if (plusData.goals?.protein) {
-        metrics.push(`Protein: ${plusData.today?.total_protein || 0}g/${plusData.goals.protein}g`);
-      }
-      
-      // Analyze hydration
-      const hydrationGoal = plusData.goals?.fluid_goal_ml || 3000;
-      const hydrationCurrent = plusData.hydrationMlToday || 0;
-      const hydrationPercent = Math.round((hydrationCurrent / hydrationGoal) * 100);
-      metrics.push(`Hydration: ${(hydrationCurrent / 1000).toFixed(1)}L/${(hydrationGoal / 1000).toFixed(1)}L`);
-      
-      if (hydrationPercent < 50 && new Date().getHours() >= 12) {
-        issues.push(`Nur ${hydrationPercent}% Flüssigkeit`);
-      }
-      
-      // Analyze sleep
-      if (plusData.sleepLoggedToday && plusData.sleepDurationToday) {
-        metrics.push(`Schlaf: ${plusData.sleepDurationToday.toFixed(1)}h`);
-        if (plusData.sleepDurationToday < 7) {
-          issues.push(`Nur ${plusData.sleepDurationToday.toFixed(1)}h Schlaf`);
-        }
-      }
-      
-      // Analyze steps
-      if (plusData.stepsToday !== undefined) {
-        const stepsGoal = plusData.stepsTarget || 7000;
-        metrics.push(`Schritte: ${plusData.stepsToday.toLocaleString('de-DE')}/${stepsGoal.toLocaleString('de-DE')}`);
-        if (plusData.stepsToday < stepsGoal * 0.5 && new Date().getHours() >= 14) {
-          issues.push(`Erst ${Math.round((plusData.stepsToday / stepsGoal) * 100)}% Schritte`);
-        }
-      }
-      
-      // Build dynamic subtitle
-      const subtitle = issues.length > 0 
-        ? `Pattern: ${issues[0]}`
-        : 'Ich analysiere deine aktuellen Daten...';
-      
-      // Build comprehensive prompt with real metrics
-      const prompt = `Analysiere meine heutigen Live-Daten und gib mir eine prägnante, priorisierte Handlungsempfehlung:
-
-📊 MEINE AKTUELLEN METRIKEN:
-${metrics.join('\n')}
-
-${issues.length > 0 ? `⚠️ ERKANNTE AUFFÄLLIGKEITEN:
-${issues.map(i => `• ${i}`).join('\n')}` : '✅ Keine kritischen Auffälligkeiten erkannt.'}
-
-Fokussiere dich auf die wichtigste Optimierung und gib mir eine konkrete Next Action für die nächsten 2-3 Stunden.`;
-      
-      return { subtitle, prompt };
-    }
   }, [plusData, profileData]);
 
   return { cards };

@@ -138,3 +138,6 @@ verify_jwt = false
 [functions.ares-research]
 verify_jwt = true
 
+[functions.ares-insight-generator]
+verify_jwt = true
+

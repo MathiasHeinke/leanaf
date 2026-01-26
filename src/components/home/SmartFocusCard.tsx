@@ -6,12 +6,13 @@
 
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sun, Clock, Dumbbell, LucideIcon } from 'lucide-react';
+import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { EpiphanyCard } from './EpiphanyCard';
 
 export interface SmartTask {
   id: string;
-  type: 'hydration' | 'supplement' | 'supplements' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'profile' | 'journal' | 'sleep_fix';
+  type: 'hydration' | 'supplement' | 'supplements' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix';
   title: string;
   subtitle: string;
   xp: number;
@@ -83,6 +84,16 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
       onOpenChat(task.actionPrompt);
     }
   };
+
+  // Render EpiphanyCard for epiphany type
+  if (task.type === 'epiphany') {
+    return (
+      <EpiphanyCard 
+        onOpenChat={onOpenChat || (() => {})}
+        onDismiss={onDismiss}
+      />
+    );
+  }
 
   return (
     <div className={cn("relative w-full h-52", className)} style={style}>
@@ -323,9 +334,9 @@ const SupplementMultiActions: React.FC<SupplementMultiActionsProps> = ({ quickAc
 
   // Use time-intelligent quickActions from useActionCards, or fallback
   const actions = quickActions || [
-    { id: 'morning', label: 'Morgens', icon: Sun, primary: true },
+    { id: 'morning', label: 'Morgens', icon: Sunrise, primary: true },
     { id: 'pre_workout', label: 'Pre-WO', icon: Dumbbell, primary: false },
-    { id: 'snooze', label: 'Später', icon: Clock, primary: false },
+    { id: 'snooze', label: 'Spaeter', icon: Clock, primary: false },
   ];
 
   const handleClick = (actionId: string) => {
