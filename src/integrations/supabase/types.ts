@@ -5069,6 +5069,7 @@ export type Database = {
           carbs_percentage: number | null
           carbs_target_g: number | null
           coach_personality: string | null
+          confetti_enabled: boolean | null
           created_at: string
           current_bmi: number | null
           current_period_end: string | null
@@ -5122,6 +5123,7 @@ export type Database = {
           carbs_percentage?: number | null
           carbs_target_g?: number | null
           coach_personality?: string | null
+          confetti_enabled?: boolean | null
           created_at?: string
           current_bmi?: number | null
           current_period_end?: string | null
@@ -5175,6 +5177,7 @@ export type Database = {
           carbs_percentage?: number | null
           carbs_target_g?: number | null
           coach_personality?: string | null
+          confetti_enabled?: boolean | null
           created_at?: string
           current_bmi?: number | null
           current_period_end?: string | null
