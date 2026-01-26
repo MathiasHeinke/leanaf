@@ -1,14 +1,16 @@
 /**
  * SleepLogger - Sleep duration slider + quality emoji selector
- * Simple but effective sleep tracking
+ * Extended: Bedtime/wake time, interruptions, screen time, libido, motivation
  */
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { Check, ChevronDown, Minus, Plus } from 'lucide-react';
 import { useAresEvents } from '@/hooks/useAresEvents';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { Slider } from '@/components/ui/slider';
+import { Input } from '@/components/ui/input';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
 interface SleepLoggerProps {
@@ -21,14 +23,42 @@ const qualityLevels = [
   { id: 'high' as const, label: 'Super', emoji: '🤩', value: 5, bg: 'bg-emerald-100 dark:bg-emerald-900/20', border: 'border-emerald-500' },
 ];
 
+const LIBIDO_SCALE = [
+  { value: 1, emoji: '😴' },
+  { value: 2, emoji: '😐' },
+  { value: 3, emoji: '😊' },
+  { value: 4, emoji: '😍' },
+  { value: 5, emoji: '🔥' },
+];
+
+const MOTIVATION_SCALE = [
+  { value: 1, emoji: '😫' },
+  { value: 2, emoji: '😕' },
+  { value: 3, emoji: '😐' },
+  { value: 4, emoji: '💪' },
+  { value: 5, emoji: '🚀' },
+];
+
 export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
   const { trackEvent } = useAresEvents();
   const { data: metrics } = useDailyMetrics();
   
-  // Initialize with last sleep or defaults
+  // Core fields
   const [hours, setHours] = useState(metrics?.sleep?.lastHours || 7.5);
   const [quality, setQuality] = useState<'low' | 'med' | 'high'>('med');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Extended fields - Sleep Details
+  const [bedtime, setBedtime] = useState<string>('');
+  const [wakeTime, setWakeTime] = useState<string>('');
+  const [interruptions, setInterruptions] = useState(0);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  
+  // Extended fields - Morning Check
+  const [screenTime, setScreenTime] = useState(30);
+  const [libido, setLibido] = useState<number | null>(null);
+  const [motivation, setMotivation] = useState<number | null>(null);
+  const [morningCheckOpen, setMorningCheckOpen] = useState(false);
 
   const selectedQuality = qualityLevels.find(q => q.id === quality);
 
@@ -36,7 +66,13 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
     setIsSaving(true);
     const success = await trackEvent('sleep', { 
       sleep_hours: hours, 
-      sleep_quality: selectedQuality?.value || 3 
+      sleep_quality: selectedQuality?.value || 3,
+      bedtime: bedtime || undefined,
+      wake_time: wakeTime || undefined,
+      sleep_interruptions: interruptions > 0 ? interruptions : undefined,
+      screen_time_evening: screenTime > 0 ? screenTime : undefined,
+      morning_libido: libido || undefined,
+      motivation_level: motivation || undefined
     });
     if (success) {
       onClose();
@@ -105,6 +141,130 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
           })}
         </div>
       </div>
+
+      {/* SLEEP DETAILS ACCORDION */}
+      <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 bg-muted rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors">
+          <span>Schlaf-Details</span>
+          <ChevronDown className={cn(
+            "w-4 h-4 transition-transform duration-200",
+            detailsOpen && "rotate-180"
+          )} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3 space-y-4">
+          {/* Time Pickers */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Eingeschlafen</label>
+              <Input
+                type="time"
+                value={bedtime}
+                onChange={(e) => setBedtime(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Aufgewacht</label>
+              <Input
+                type="time"
+                value={wakeTime}
+                onChange={(e) => setWakeTime(e.target.value)}
+              />
+            </div>
+          </div>
+          {/* Interruptions Stepper */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Unterbrechungen</span>
+            <div className="flex items-center gap-3">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setInterruptions(i => Math.max(0, i - 1))}
+                className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/70"
+              >
+                <Minus className="w-4 h-4" />
+              </motion.button>
+              <span className="w-6 text-center font-medium tabular-nums">{interruptions}</span>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setInterruptions(i => Math.min(10, i + 1))}
+                className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center hover:bg-muted/70"
+              >
+                <Plus className="w-4 h-4" />
+              </motion.button>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* MORNING CHECK ACCORDION */}
+      <Collapsible open={morningCheckOpen} onOpenChange={setMorningCheckOpen}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 bg-muted rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors">
+          <span>Morgen-Check</span>
+          <ChevronDown className={cn(
+            "w-4 h-4 transition-transform duration-200",
+            morningCheckOpen && "rotate-180"
+          )} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3 space-y-4">
+          {/* Screen Time Slider */}
+          <div>
+            <div className="flex justify-between mb-2">
+              <span className="text-sm">Bildschirmzeit gestern Abend</span>
+              <span className="text-sm font-medium tabular-nums">{screenTime} min</span>
+            </div>
+            <Slider
+              value={[screenTime]}
+              onValueChange={([val]) => setScreenTime(val)}
+              min={0}
+              max={180}
+              step={15}
+            />
+          </div>
+          
+          {/* Libido Scale */}
+          <div>
+            <div className="text-sm mb-2">Libido am Morgen</div>
+            <div className="flex gap-2 justify-center">
+              {LIBIDO_SCALE.map((l) => (
+                <motion.button
+                  key={l.value}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setLibido(l.value)}
+                  className={cn(
+                    "w-10 h-10 rounded-xl text-xl transition-colors",
+                    libido === l.value
+                      ? "bg-primary/20 ring-2 ring-primary"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  {l.emoji}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Motivation Scale */}
+          <div>
+            <div className="text-sm mb-2">Motivation</div>
+            <div className="flex gap-2 justify-center">
+              {MOTIVATION_SCALE.map((m) => (
+                <motion.button
+                  key={m.value}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setMotivation(m.value)}
+                  className={cn(
+                    "w-10 h-10 rounded-xl text-xl transition-colors",
+                    motivation === m.value
+                      ? "bg-primary/20 ring-2 ring-primary"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  {m.emoji}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* SAVE BUTTON */}
       <motion.button

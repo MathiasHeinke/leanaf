@@ -1,13 +1,17 @@
 /**
  * WeightLogger - Premium weight input with stepper controls
  * Large display, +/- 0.1kg buttons, last entry reference
+ * Extended: Body fat %, Muscle mass %, Notes via Collapsible
  */
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Minus, Plus, Check } from 'lucide-react';
+import { Minus, Plus, Check, ChevronDown } from 'lucide-react';
 import { useAresEvents } from '@/hooks/useAresEvents';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { NumericInput } from '@/components/ui/numeric-input';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface WeightLoggerProps {
@@ -24,10 +28,21 @@ export const WeightLogger: React.FC<WeightLoggerProps> = ({ onClose }) => {
   const lastWeight = metrics?.weight?.latest || 80.0;
   const [weight, setWeight] = useState(lastWeight);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Extended fields
+  const [bodyFat, setBodyFat] = useState<string>('');
+  const [muscleMass, setMuscleMass] = useState<string>('');
+  const [notes, setNotes] = useState('');
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
-    const success = await trackEvent('weight', { weight_kg: weight });
+    const success = await trackEvent('weight', { 
+      weight_kg: weight,
+      body_fat_percentage: bodyFat ? parseFloat(bodyFat.replace(',', '.')) : undefined,
+      muscle_percentage: muscleMass ? parseFloat(muscleMass.replace(',', '.')) : undefined,
+      notes: notes || undefined
+    });
     if (success) {
       onClose();
     }
@@ -78,6 +93,59 @@ export const WeightLogger: React.FC<WeightLoggerProps> = ({ onClose }) => {
           </div>
         </div>
       )}
+
+      {/* BODY COMPOSITION ACCORDION */}
+      <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 bg-muted rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors">
+          <span>Körperkomposition</span>
+          <ChevronDown className={cn(
+            "w-4 h-4 transition-transform duration-200",
+            detailsOpen && "rotate-180"
+          )} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3 space-y-3">
+          {/* KFA Input */}
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-muted-foreground w-24">KFA</label>
+            <div className="relative flex-1">
+              <NumericInput
+                placeholder="18,5"
+                value={bodyFat}
+                onChange={setBodyFat}
+                min={0}
+                max={50}
+                className="pr-8"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+            </div>
+          </div>
+          {/* Muscle Mass Input */}
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-muted-foreground w-24">Muskeln</label>
+            <div className="relative flex-1">
+              <NumericInput
+                placeholder="42,0"
+                value={muscleMass}
+                onChange={setMuscleMass}
+                min={0}
+                max={70}
+                className="pr-8"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+            </div>
+          </div>
+          {/* Notes */}
+          <div className="flex items-center gap-3">
+            <label className="text-sm text-muted-foreground w-24">Notizen</label>
+            <Input
+              placeholder="Optional..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="flex-1"
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* SAVE BUTTON */}
       <motion.button
