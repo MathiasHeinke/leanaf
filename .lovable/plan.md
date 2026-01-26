@@ -1,233 +1,160 @@
 
-# Plan: Unified Widget Cache Synchronization
+
+# Fix: LiquidCarouselMenu Ghosting Bug
 
 ## Problemanalyse
 
-Die Widget-Cache-Strategie ist fragmentiert:
+Das Karussell zeigt "Ghosting" - Items wie der Journal-Button driften aus ihrer Position. Die Ursache ist ein Konflikt zwischen Framer Motion's automatischer Layout-Berechnung und unserer manuellen `x`-Transform-Logik.
 
-| Widget | Query Key | StaleTime | Wird invalidiert? |
-|--------|-----------|-----------|-------------------|
-| HydrationWidget | `['daily-metrics']` | - | JA (via useDailyMetrics) |
-| NutritionWidget | `['daily-metrics']` | - | JA (via useDailyMetrics) |
-| **SupplementsWidget** | `['supplements-today-widget']` | 30s | NEIN |
-| **TrainingWidget** | `['training-sessions-weekly']` | 60s | NEIN |
-| **WeightWidget** | `['weight-recent']` | 60s | NEIN |
+### Die 3 Uebelstaeter
 
-**Root Cause:** 
-- `useAresEvents.ts` invalidiert nur `DAILY_METRICS_KEY` (Zeile 268)
-- `useSupplementData.tsx` hat gar keine Query-Invalidation nach dem Logging
-- Die Widget-eigenen Query-Keys werden nie invalidiert
+| Zeile | Problem | Auswirkung |
+|-------|---------|------------|
+| 148 | `uniqueKey: ${virtualIndex + offset}` | Key aendert sich bei jedem Scroll → neue Mount-Zyklen |
+| 266 | `mode="popLayout"` | Reserviert Platz fuer exiting Items → falsche Positionen |
+| 270 | `layout` Prop | Versucht Positionen zu interpolieren → kaempft mit `x` Transform |
 
 ---
 
-## Loesung: Zentralisierte Cache-Invalidation
+## Loesung: Framer "Magie" deaktivieren
 
-### Phase 1: Query-Key Registry erstellen
+Wir vertrauen zu 100% auf unsere mathematische Positionsberechnung und entfernen alle automatischen Layout-Features.
 
-**Neue Datei:** `src/constants/queryKeys.ts`
+### Aenderung 1: Stabiler Key
 
 ```typescript
-export const QUERY_KEYS = {
-  DAILY_METRICS: ['daily-metrics'] as const,
-  SUPPLEMENTS_TODAY: ['supplements-today-widget'] as const,
-  SUPPLEMENTS_DATA: ['supplement-data'] as const,
-  TRAINING_WEEKLY: ['training-sessions-weekly'] as const,
-  WEIGHT_RECENT: ['weight-recent'] as const,
-  SLEEP_RECENT: ['sleep-recent'] as const,
-} as const;
-
-// Mapping: Kategorie -> alle zu invalidierenden Keys
-export const CATEGORY_QUERY_MAP: Record<string, readonly (readonly string[])[]> = {
-  supplements: [QUERY_KEYS.SUPPLEMENTS_TODAY, QUERY_KEYS.SUPPLEMENTS_DATA, QUERY_KEYS.DAILY_METRICS],
-  peptide: [QUERY_KEYS.SUPPLEMENTS_TODAY, QUERY_KEYS.DAILY_METRICS],
-  water: [QUERY_KEYS.DAILY_METRICS],
-  coffee: [QUERY_KEYS.DAILY_METRICS],
-  weight: [QUERY_KEYS.WEIGHT_RECENT, QUERY_KEYS.DAILY_METRICS],
-  workout: [QUERY_KEYS.TRAINING_WEEKLY, QUERY_KEYS.DAILY_METRICS],
-  sleep: [QUERY_KEYS.SLEEP_RECENT, QUERY_KEYS.DAILY_METRICS],
-  nutrition: [QUERY_KEYS.DAILY_METRICS],
-  journal: [QUERY_KEYS.DAILY_METRICS],
-};
-
-// Helper function fuer Batch-Invalidation
-export const invalidateCategory = (
-  queryClient: any,
-  category: string
-) => {
-  const keys = CATEGORY_QUERY_MAP[category] || [QUERY_KEYS.DAILY_METRICS];
-  keys.forEach(key => {
-    queryClient.invalidateQueries({ queryKey: key });
-  });
-};
-```
-
----
-
-### Phase 2: useAresEvents.ts aktualisieren
-
-**Datei:** `src/hooks/useAresEvents.ts`
-
-**Aenderungen:**
-
-1. Import der neuen Konstanten (Zeile 10):
-```typescript
-import { QUERY_KEYS, invalidateCategory } from '@/constants/queryKeys';
-```
-
-2. Zeilen 266-269 ersetzen - Statt 2s Timeout sofortige Invalidation:
-```typescript
-// === C. IMMEDIATE CACHE INVALIDATION ===
-// Invalidiere alle relevanten Queries fuer diese Kategorie
-invalidateCategory(queryClient, category);
-```
-
-**Vorher:**
-```typescript
-setTimeout(() => {
-  queryClient.invalidateQueries({ queryKey: DAILY_METRICS_KEY });
-}, 2000);
-```
-
-**Nachher:**
-```typescript
-invalidateCategory(queryClient, category);
-```
-
----
-
-### Phase 3: useSupplementData.tsx aktualisieren
-
-**Datei:** `src/hooks/useSupplementData.tsx`
-
-**Aenderungen:**
-
-1. Imports hinzufuegen (nach Zeile 5):
-```typescript
-import { useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/constants/queryKeys';
-```
-
-2. Im Hook queryClient injizieren (nach Zeile 139):
-```typescript
-const queryClient = useQueryClient();
-```
-
-3. In `markSupplementTaken` nach erfolgreichem upsert (Zeile 347):
-```typescript
-if (error) throw error;
-
-// === SOFORTIGE WIDGET-SYNC ===
-queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY });
-queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
-```
-
-4. In `markTimingGroupTaken` nach erfolgreichem upsert (Zeile 420):
-```typescript
-if (error) throw error;
-
-// === SOFORTIGE WIDGET-SYNC ===
-queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY });
-queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
-```
-
----
-
-### Phase 4: Widgets auf Konstanten umstellen
-
-**Warum?** Typo-Sicherheit und Konsistenz.
-
-**SupplementsWidget.tsx** (Zeile 24):
-```typescript
-// VORHER
-queryKey: ['supplements-today-widget'],
+// Zeile 145-149 VORHER
+items.push({
+  ...orderedItems[actualIndex],
+  offset,
+  uniqueKey: `${virtualIndex + offset}`,  // INSTABIL
+});
 
 // NACHHER
-import { QUERY_KEYS } from '@/constants/queryKeys';
-queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY,
+items.push({
+  ...orderedItems[actualIndex],
+  offset,
+  uniqueKey: `${orderedItems[actualIndex].id}-${offset}`,  // STABIL: ID + Position
+});
 ```
 
-**TrainingWidget.tsx** (Zeile 19):
+Der Key basiert jetzt auf der **Item-ID + Offset-Position**, nicht auf dem sich staendig aendernden `virtualIndex`.
+
+---
+
+### Aenderung 2: AnimatePresence mode
+
 ```typescript
-// VORHER
-queryKey: ['training-sessions-weekly'],
+// Zeile 266 VORHER
+<AnimatePresence mode="popLayout">
 
 // NACHHER
-import { QUERY_KEYS } from '@/constants/queryKeys';
-queryKey: QUERY_KEYS.TRAINING_WEEKLY,
+<AnimatePresence mode="sync">
 ```
 
-**WeightWidget.tsx** (Zeile 19):
+`mode="sync"` sorgt dafuer, dass alle Items synchron animieren, ohne Platz fuer exiting Items zu reservieren.
+
+---
+
+### Aenderung 3: Layout Prop entfernen
+
 ```typescript
-// VORHER
-queryKey: ['weight-recent'],
+// Zeile 268-279 VORHER
+<motion.div
+  key={item.uniqueKey}
+  layout  // <-- KONFLIKT MIT x-TRANSFORMS
+  initial={{ opacity: 0, scale: 0.5 }}
+  animate={{...}}
+  exit={{ opacity: 0, scale: 0.5 }}
+  ...
+>
 
 // NACHHER
-import { QUERY_KEYS } from '@/constants/queryKeys';
-queryKey: QUERY_KEYS.WEIGHT_RECENT,
+<motion.div
+  key={item.uniqueKey}
+  // layout ENTFERNT - wir kontrollieren x explizit
+  initial={{ opacity: 0, scale: 0.5 }}
+  animate={{...}}
+  exit={{ opacity: 0 }}  // Vereinfacht: nur Fade
+  ...
+>
 ```
 
 ---
 
-### Phase 5: StaleTime reduzieren (optional aber empfohlen)
+### Aenderung 4: Exit-Animation vereinfachen
 
-| Widget | VORHER | NACHHER |
-|--------|--------|---------|
-| SupplementsWidget | 30000ms | 10000ms |
-| TrainingWidget | 60000ms | 10000ms |
-| WeightWidget | 60000ms | 10000ms |
+```typescript
+// VORHER
+exit={{ opacity: 0, scale: 0.5 }}
 
-Dies ermoeglicht schnellere Hintergrund-Refreshes, falls die Invalidation verpasst wird.
+// NACHHER
+exit={{ opacity: 0 }}
+```
 
----
-
-## Zusammenfassung der Datei-Aenderungen
-
-| Datei | Aktion | Aenderung |
-|-------|--------|-----------|
-| `src/constants/queryKeys.ts` | NEU | Zentrale Query-Key Registry + Helper |
-| `src/hooks/useAresEvents.ts` | AENDERN | Import + sofortige Invalidation statt 2s Timeout |
-| `src/hooks/useSupplementData.tsx` | AENDERN | queryClient + Invalidation nach Logging |
-| `src/components/home/widgets/SupplementsWidget.tsx` | AENDERN | Import QUERY_KEYS, staleTime=10000 |
-| `src/components/home/widgets/TrainingWidget.tsx` | AENDERN | Import QUERY_KEYS, staleTime=10000 |
-| `src/components/home/widgets/WeightWidget.tsx` | AENDERN | Import QUERY_KEYS, staleTime=10000 |
-
----
-
-## Erwartetes Ergebnis
-
-1. **Supplements Widget:** Aktualisiert sofort nach Klick auf Timing-Kreise
-2. **Training Widget:** Aktualisiert sofort nach Workout-Logging
-3. **Weight Widget:** Aktualisiert sofort nach Gewichts-Logging
-4. **Kein 2-Sekunden-Delay mehr:** Alle Widgets reagieren instant
+Nur Opacity-Fade verhindert, dass exiting Items in falsche Positionen "fliegen".
 
 ---
 
 ## Technische Details
 
-### Datenfluss nach Implementierung
+### Datei: `src/components/home/LiquidCarouselMenu.tsx`
 
-```text
-User klickt "Morning Supplements" Button
-         |
-         v
-SupplementTimingCircles.onLog('morning')
-         |
-         v
-markTimingGroupTaken('morning')
-         |
-         +---> Optimistisches Update (lokaler State)
-         |
-         +---> Supabase upsert (async)
-         |
-         +---> queryClient.invalidateQueries(['supplements-today-widget'])
-         |
-         v
-SupplementsWidget re-rendert mit neuen Daten (< 100ms)
+**Zeilen 145-149** (visibleItems Map):
+```typescript
+items.push({
+  ...orderedItems[actualIndex],
+  offset,
+  uniqueKey: `${orderedItems[actualIndex].id}-${offset}`,
+});
 ```
 
-### Warum sofortige Invalidation statt Delay?
+**Zeilen 266-289** (Carousel Render):
+```typescript
+<AnimatePresence mode="sync">
+  {visibleItems.map((item) => (
+    <motion.div
+      key={item.uniqueKey}
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{
+        x: `calc(50vw - 32px + ${item.offset * ITEM_TOTAL}px)`,
+        scale: item.offset === 0 ? 1.15 : 0.75,
+        opacity: Math.abs(item.offset) <= 2 ? (item.offset === 0 ? 1 : 0.5) : 0.2,
+      }}
+      exit={{ opacity: 0 }}
+      transition={springConfig}
+      className="absolute top-0 left-0"
+    >
+      <CarouselItem
+        item={item}
+        isActive={item.offset === 0}
+        isCompleted={completedActions?.has(item.id) ?? false}
+        onClick={() => handleItemClick(item)}
+      />
+    </motion.div>
+  ))}
+</AnimatePresence>
+```
 
-- **2s Delay war defensiv:** Urspruenglich gedacht als "Warte bis DB-Write sicher durch ist"
-- **Problem:** User sieht 2s lang veraltete Daten
-- **Loesung:** Invalidierung SOFORT nach erfolgreicher DB-Response
-- **Fallback:** Wenn DB-Write fehlschlaegt, wird ebenfalls invalidiert (Rollback)
+---
+
+## Warum das funktioniert
+
+| Vorher | Nachher | Effekt |
+|--------|---------|--------|
+| `popLayout` | `sync` | Keine Platzreservierung fuer exiting Items |
+| `layout` Prop | Entfernt | Keine automatische Position-Interpolation |
+| Instabiler Key | ID-basiert | Keine unnötigen Re-Mounts bei Scroll |
+| Complex Exit | Nur Fade | Keine "fliegenden" Items |
+
+---
+
+## Zusammenfassung
+
+| Datei | Aenderung |
+|-------|-----------|
+| `LiquidCarouselMenu.tsx` Zeile 148 | Key-Strategie: `${item.id}-${offset}` |
+| `LiquidCarouselMenu.tsx` Zeile 266 | `mode="popLayout"` → `mode="sync"` |
+| `LiquidCarouselMenu.tsx` Zeile 270 | `layout` Prop entfernen |
+| `LiquidCarouselMenu.tsx` Zeile 277 | Exit vereinfachen: `{ opacity: 0 }` |
+
