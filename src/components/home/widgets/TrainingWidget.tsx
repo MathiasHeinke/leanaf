@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface TrainingWidgetProps {
   size: WidgetSize;
@@ -16,7 +17,7 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
 
   // Fetch training sessions for last 7 days (FIXED: uses training_sessions table)
   const { data: weeklyData } = useQuery({
-    queryKey: ['training-sessions-weekly'],
+    queryKey: QUERY_KEYS.TRAINING_WEEKLY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { count: 0, days: [] as boolean[] };
@@ -44,7 +45,7 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
         days: dates.map(d => sessionDates.has(d))
       };
     },
-    staleTime: 60000
+    staleTime: 10000
   });
 
   const weeklyWorkouts = weeklyData?.count || 0;

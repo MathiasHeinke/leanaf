@@ -4,6 +4,8 @@ import { useDataRefresh } from '@/hooks/useDataRefresh';
 import { runThrottled } from '@/lib/request-queue';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDateString } from '@/utils/dateHelpers';
+import { useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 export interface UserSupplement {
   id: string;
@@ -137,6 +139,7 @@ export const getTimingOption = (timing: string) => {
 
 export const useSupplementData = (currentDate?: Date) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [userSupplements, setUserSupplements] = useState<UserSupplement[]>([]);
   const [todayIntakes, setTodayIntakes] = useState<SupplementIntake[]>([]);
   const [loading, setLoading] = useState(true);
@@ -345,6 +348,10 @@ export const useSupplementData = (currentDate?: Date) => {
         );
 
       if (error) throw error;
+      
+      // === IMMEDIATE WIDGET SYNC ===
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
     } catch (err) {
       console.error('Error marking supplement:', err);
       // Rollback optimistic update on error
@@ -418,6 +425,10 @@ export const useSupplementData = (currentDate?: Date) => {
         });
 
       if (error) throw error;
+      
+      // === IMMEDIATE WIDGET SYNC ===
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
     } catch (err) {
       console.error('Error marking timing group:', err);
       // Rollback optimistic update on error

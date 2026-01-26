@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DAILY_METRICS_KEY, DailyMetrics } from './useDailyMetrics';
+import { invalidateCategory } from '@/constants/queryKeys';
 
 export type EventCategory = 'water' | 'coffee' | 'supplement' | 'weight' | 'workout' | 'sleep' | 'journal';
 
@@ -263,10 +264,9 @@ export const useAresEvents = () => {
         console.log(`[AresEvents] ✓ Logged journal entry (${payload.mood})`);
       }
       
-      // === C. SILENT REVALIDATE (Background sync after 2s) ===
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: DAILY_METRICS_KEY });
-      }, 2000);
+      // === C. IMMEDIATE CACHE INVALIDATION ===
+      // Invalidate all relevant queries for this category (no delay!)
+      invalidateCategory(queryClient, category);
       
       return true;
       

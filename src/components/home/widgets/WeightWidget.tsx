@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface WeightWidgetProps {
   size: WidgetSize;
@@ -16,7 +17,7 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size }) => {
   
   // Fetch recent weight entries from weight_history
   const { data: weightData } = useQuery({
-    queryKey: ['weight-recent'],
+    queryKey: QUERY_KEYS.WEIGHT_RECENT,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
@@ -36,7 +37,7 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size }) => {
         history: data.map(d => d.weight).reverse()
       };
     },
-    staleTime: 60000
+    staleTime: 10000
   });
   
   const currentWeight = weightData?.current || 0;
