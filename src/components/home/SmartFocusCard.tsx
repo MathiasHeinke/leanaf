@@ -199,7 +199,18 @@ interface SmartActionsProps {
 
 const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat, onSupplementAction }) => {
   
-  // Use custom quick actions if provided
+  // SUPPLEMENTS: Multi-action with individual timing tracking - PRIORITY BEFORE quickActions!
+  if (task.type === 'supplements') {
+    return (
+      <SupplementMultiActions 
+        quickActions={task.quickActions}
+        onAction={onSupplementAction || onAction}
+        onDismiss={() => onAction('snooze')}
+      />
+    );
+  }
+
+  // Use custom quick actions if provided (but NOT for supplements - handled above)
   if (task.quickActions && task.quickActions.length > 0) {
     return (
       <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
@@ -224,16 +235,6 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat,
         <ActionButton onClick={() => onAction('500ml_water')} icon={Droplets} label="+500ml" />
         <ActionButton onClick={() => onAction('coffee')} icon={Coffee} label="+Kaffee" />
       </div>
-    );
-  }
-
-  // SUPPLEMENTS: Multi-action with individual timing tracking
-  if (task.type === 'supplements') {
-    return (
-      <SupplementMultiActions 
-        onAction={onSupplementAction || onAction}
-        onDismiss={() => onAction('snooze')}
-      />
     );
   }
 
@@ -295,14 +296,16 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat,
 // Allows individual timing buttons that disappear when clicked, card stays open
 
 interface SupplementMultiActionsProps {
+  quickActions?: QuickAction[];
   onAction: (timing: string) => void;
   onDismiss: () => void;
 }
 
-const SupplementMultiActions: React.FC<SupplementMultiActionsProps> = ({ onAction, onDismiss }) => {
+const SupplementMultiActions: React.FC<SupplementMultiActionsProps> = ({ quickActions, onAction, onDismiss }) => {
   const [completed, setCompleted] = useState<string[]>([]);
 
-  const actions = [
+  // Use time-intelligent quickActions from useActionCards, or fallback
+  const actions = quickActions || [
     { id: 'morning', label: 'Morgens', icon: Sun, primary: true },
     { id: 'pre_workout', label: 'Pre-WO', icon: Dumbbell, primary: false },
     { id: 'snooze', label: 'Später', icon: Clock, primary: false },
