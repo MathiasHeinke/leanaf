@@ -2,11 +2,12 @@
  * SmartFocusCard - Swipeable action card with context-specific quick actions
  * Frictionless logging: swipe right = complete, swipe left = dismiss
  * Multi-action support for supplements (individual timing buttons)
+ * Hydration micro-actions with bounce & reset (card stays open)
  */
 
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon } from 'lucide-react';
+import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EpiphanyCard } from './EpiphanyCard';
 
@@ -35,10 +36,153 @@ interface SmartFocusCardProps {
   onComplete: (action?: string) => void;
   onDismiss: () => void;
   onOpenChat?: (prompt: string) => void;
-  onSupplementAction?: (timing: string) => void; // New: for individual supplement logging
+  onSupplementAction?: (timing: string) => void;
+  onHydrationAction?: (action: string) => void;
   style?: React.CSSProperties;
   className?: string;
 }
+
+// --- DISMISS BUTTON (Icon -> X Morph) ---
+interface DismissButtonProps {
+  icon: LucideIcon;
+  onDismiss: () => void;
+}
+
+const DismissButton: React.FC<DismissButtonProps> = ({ icon: Icon, onDismiss }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <motion.button
+      onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setTimeout(() => setIsHovered(false), 300)}
+      whileTap={{ scale: 0.9 }}
+      className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/10 
+                 flex items-center justify-center transition-colors hover:bg-white/30 flex-shrink-0"
+    >
+      <AnimatePresence mode="wait">
+        {isHovered ? (
+          <motion.div
+            key="close"
+            initial={{ scale: 0.5, opacity: 0, rotate: -90 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            exit={{ scale: 0.5, opacity: 0, rotate: 90 }}
+            transition={{ duration: 0.15 }}
+          >
+            <X size={22} className="text-white" />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="icon"
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.5, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <Icon size={22} className="text-white" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+};
+
+// --- MICRO ACTION BUTTON (Bounce & Reset) ---
+interface MicroActionButtonProps {
+  action: { id: string; label: string; icon: LucideIcon };
+  onTrigger: (id: string) => void;
+}
+
+const MicroActionButton: React.FC<MicroActionButtonProps> = ({ action, onTrigger }) => {
+  const [status, setStatus] = useState<'idle' | 'success'>('idle');
+
+  const handleClick = (e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    
+    if (status === 'success') return; // Prevent double-click during animation
+    
+    // 1. Sofort Success-State zeigen
+    setStatus('success');
+    
+    // 2. Daten senden
+    onTrigger(action.id);
+
+    // 3. Nach 1.5s Reset
+    setTimeout(() => {
+      setStatus('idle');
+    }, 1500);
+  };
+
+  const IconComponent = action.icon;
+
+  return (
+    <motion.button
+      onClick={handleClick}
+      layout
+      whileTap={{ scale: 0.95 }}
+      className={cn(
+        "relative flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border transition-all overflow-hidden min-w-[70px]",
+        status === 'success' 
+          ? "bg-emerald-500 border-emerald-400 text-white" 
+          : "bg-white/20 border-white/10 text-white hover:bg-white/30 backdrop-blur-md"
+      )}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        {status === 'success' ? (
+          <motion.div
+            key="check"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center justify-center w-full"
+          >
+            <Check size={18} strokeWidth={3} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="label"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -20, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-1.5"
+          >
+            <IconComponent size={18} strokeWidth={2} />
+            <span className="text-xs font-bold">{action.label}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+};
+
+// --- HYDRATION MICRO ACTIONS ---
+interface HydrationMicroActionsProps {
+  onAction: (actionId: string) => void;
+}
+
+const HydrationMicroActions: React.FC<HydrationMicroActionsProps> = ({ onAction }) => {
+  const actions = [
+    { id: '250ml_water', label: '1x', icon: GlassWater },
+    { id: '500ml_water', label: '0.5L', icon: Droplets },
+    { id: 'coffee', label: '1x', icon: Coffee },
+  ];
+
+  return (
+    <div className="flex gap-2">
+      {actions.map((action) => (
+        <MicroActionButton 
+          key={action.id}
+          action={action}
+          onTrigger={onAction}
+        />
+      ))}
+    </div>
+  );
+};
 
 export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({ 
   task, 
@@ -46,6 +190,7 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
   onDismiss,
   onOpenChat,
   onSupplementAction,
+  onHydrationAction,
   style,
   className
 }) => {
@@ -152,10 +297,8 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
                   </p>
                 </div>
 
-                {/* THE ICON / STATUS INDICATOR */}
-                <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
+                {/* THE DISMISS BUTTON - Icon morphs to X on hover */}
+                <DismissButton icon={Icon} onDismiss={onDismiss} />
               </div>
 
               {/* SMART ACTION AREA - More padding for touch targets */}
@@ -165,6 +308,7 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
                   onAction={handleComplete}
                   onOpenChat={onOpenChat}
                   onSupplementAction={onSupplementAction}
+                  onHydrationAction={onHydrationAction}
                 />
               </div>
             </div>
@@ -206,9 +350,10 @@ interface SmartActionsProps {
   onAction: (action?: string) => void;
   onOpenChat?: (prompt: string) => void;
   onSupplementAction?: (timing: string) => void;
+  onHydrationAction?: (action: string) => void;
 }
 
-const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat, onSupplementAction }) => {
+const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat, onSupplementAction, onHydrationAction }) => {
   
   // SUPPLEMENTS: Multi-action with individual timing tracking - PRIORITY BEFORE quickActions!
   // CRITICAL: Check BOTH 'supplement' (from useActionCards) AND 'supplements' for compatibility
@@ -238,6 +383,22 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat,
     );
   }
 
+  // HYDRATION: Icon-based micro-actions with bounce & reset
+  if (task.type === 'hydration') {
+    // If dedicated hydration handler exists -> multi-tap without closing card
+    if (onHydrationAction) {
+      return <HydrationMicroActions onAction={onHydrationAction} />;
+    }
+    // Fallback: use MicroActionButtons but trigger card close via onAction
+    return (
+      <div className="flex gap-2">
+        <MicroActionButton action={{ id: '250ml_water', label: '1x', icon: GlassWater }} onTrigger={onAction} />
+        <MicroActionButton action={{ id: '500ml_water', label: '0.5L', icon: Droplets }} onTrigger={onAction} />
+        <MicroActionButton action={{ id: 'coffee', label: '1x', icon: Coffee }} onTrigger={onAction} />
+      </div>
+    );
+  }
+
   // Use custom quick actions if provided (but NOT for supplements - handled above)
   if (task.quickActions && task.quickActions.length > 0) {
     return (
@@ -251,17 +412,6 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat,
             primary={action.primary}
           />
         ))}
-      </div>
-    );
-  }
-
-  // HYDRATION: Water & Coffee Buttons
-  if (task.type === 'hydration') {
-    return (
-      <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-        <ActionButton onClick={() => onAction('250ml_water')} icon={Droplets} label="+250ml" />
-        <ActionButton onClick={() => onAction('500ml_water')} icon={Droplets} label="+500ml" />
-        <ActionButton onClick={() => onAction('coffee')} icon={Coffee} label="+Kaffee" />
       </div>
     );
   }

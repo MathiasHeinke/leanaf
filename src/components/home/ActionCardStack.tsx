@@ -75,6 +75,35 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
     // NOTE: Card is NOT removed - user can still log other timings
   }, [logSupplementsTaken]);
 
+  // Handle hydration action WITHOUT closing card (multi-tap)
+  const handleHydrationAction = useCallback(async (card: ActionCard, action: string) => {
+    let success = true;
+    
+    switch (action) {
+      case '250ml_water':
+        success = await logWater(250, 'water');
+        if (success) toast.success('+250ml', { icon: '💧' });
+        break;
+      case '500ml_water':
+        success = await logWater(500, 'water');
+        if (success) toast.success('+500ml', { icon: '💧' });
+        break;
+      case 'coffee':
+        success = await logWater(150, 'coffee');
+        if (success) toast.success('+Kaffee', { icon: '☕' });
+        break;
+    }
+    
+    if (success) {
+      // XP vergeben
+      window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+        detail: { amount: card.xp, reason: action }
+      }));
+    }
+    
+    // WICHTIG: Karte wird NICHT entfernt - User kann mehrmals klicken
+  }, [logWater]);
+
   // Handle card completion with logging
   const handleCardComplete = useCallback(async (card: ActionCard, action?: string) => {
     let success = true;
@@ -260,12 +289,13 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
                   style={{ zIndex }}
                   className="absolute inset-x-0 top-0"
                 >
-                  <SmartFocusCard
+                <SmartFocusCard
                     task={toSmartTask(card)}
                     onComplete={(action) => handleCardComplete(card, action)}
                     onDismiss={() => handleCardDismiss(card)}
                     onOpenChat={onTriggerChat}
                     onSupplementAction={(timing) => handleSupplementAction(card, timing)}
+                    onHydrationAction={(action) => handleHydrationAction(card, action)}
                   />
                 </motion.div>
               );
