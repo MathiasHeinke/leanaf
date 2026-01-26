@@ -13,7 +13,9 @@ import { useActionCards, ActionCard, QuickAction } from '@/hooks/useActionCards'
 import { useDismissedCards } from '@/hooks/useDismissedCards';
 import { useQuickLogging } from '@/hooks/useQuickLogging';
 import { useAresEvents } from '@/hooks/useAresEvents';
+import { useDailyInsight } from '@/hooks/useDailyInsight';
 import { SmartFocusCard, SmartTask } from './SmartFocusCard';
+import { EpiphanyCard } from './EpiphanyCard';
 import { toast } from 'sonner';
 import { triggerSpartanConfetti } from '@/utils/confetti';
 
@@ -29,6 +31,11 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
   
   const [cards, setCards] = useState<ActionCard[]>([]);
   const [hasShownConfetti, setHasShownConfetti] = useState(false);
+
+  // Prefetch insight when epiphany card is at position 1 or 2
+  const epiphanyCardIndex = cards.findIndex(c => c.type === 'epiphany');
+  const shouldPrefetch = epiphanyCardIndex >= 0 && epiphanyCardIndex <= 2;
+  const { data: dailyInsight } = useDailyInsight(shouldPrefetch);
 
   // Filter out dismissed cards and sync with hook data
   useEffect(() => {
@@ -285,6 +292,27 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
             const zIndex = 10 - index;
             
             if (isTop) {
+              // Epiphany cards use specialized EpiphanyCard component
+              if (card.type === 'epiphany') {
+                return (
+                  <motion.div
+                    key={card.id}
+                    initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0, x: 0 }}
+                    exit={{ x: 300, opacity: 0, rotate: 15, transition: { duration: 0.3 } }}
+                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                    style={{ zIndex }}
+                    className="absolute inset-x-0 top-0"
+                  >
+                    <EpiphanyCard
+                      onOpenChat={onTriggerChat}
+                      onDismiss={() => handleCardDismiss(card)}
+                      prefetchedInsight={dailyInsight?.insight ?? null}
+                    />
+                  </motion.div>
+                );
+              }
+              
               // Top card uses SmartFocusCard with full interactivity
               return (
                 <motion.div
