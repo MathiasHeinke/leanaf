@@ -2,6 +2,8 @@
  * TrainingLogger - 4-Säulen Grid for RPT, Zone2, VO2max, Sauna
  * Visual selection cards with type-specific details
  * Extended: Split type, Cardio type, VO2 protocol, Sauna details
+ * 
+ * UI Polish: Sticky save button
  */
 
 import React, { useState } from 'react';
@@ -87,249 +89,254 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* GRID SELECTION */}
-      <div className="grid grid-cols-2 gap-3">
-        {trainingTypes.map((t) => {
-          const isSelected = selectedType === t.id;
-          return (
-            <motion.button
-              key={t.id}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => setSelectedType(t.id)}
-              className={cn(
-                "relative p-4 rounded-2xl flex flex-col items-start gap-3 border-2 transition-all h-[100px]",
-                isSelected
-                  ? 'border-primary bg-primary/5'
-                  : 'border-transparent bg-muted hover:bg-muted/80'
-              )}
-            >
-              <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center text-white",
-                t.color
-              )}>
-                <t.icon className="w-5 h-5" />
-              </div>
-              <span className="text-sm font-semibold text-foreground text-left">
-                {t.label}
-              </span>
-              
-              {/* Selected Indicator */}
-              <AnimatePresence>
-                {isSelected && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center"
-                  >
-                    <Check className="w-3.5 h-3.5 text-primary-foreground" />
-                  </motion.div>
+    <div className="flex flex-col min-h-[300px]">
+      {/* SCROLLABLE CONTENT */}
+      <div className="flex-1 space-y-6 overflow-y-auto">
+        {/* GRID SELECTION */}
+        <div className="grid grid-cols-2 gap-3">
+          {trainingTypes.map((t) => {
+            const isSelected = selectedType === t.id;
+            return (
+              <motion.button
+                key={t.id}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setSelectedType(t.id)}
+                className={cn(
+                  "relative p-4 rounded-2xl flex flex-col items-start gap-3 border-2 transition-all h-[100px]",
+                  isSelected
+                    ? 'border-primary bg-primary/5'
+                    : 'border-transparent bg-muted hover:bg-muted/80'
                 )}
-              </AnimatePresence>
-            </motion.button>
-          );
-        })}
+              >
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center text-white",
+                  t.color
+                )}>
+                  <t.icon className="w-5 h-5" />
+                </div>
+                <span className="text-sm font-semibold text-foreground text-left">
+                  {t.label}
+                </span>
+                
+                {/* Selected Indicator */}
+                <AnimatePresence>
+                  {isSelected && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      className="absolute top-3 right-3 w-6 h-6 rounded-full bg-primary flex items-center justify-center"
+                    >
+                      <Check className="w-3.5 h-3.5 text-primary-foreground" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* TYPE-SPECIFIC DETAILS */}
+        <AnimatePresence>
+          {selectedType && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-2 space-y-4">
+                {/* RPT: Split Selection + Volume */}
+                {selectedType === 'rpt' && (
+                  <>
+                    <div className="text-sm font-medium text-muted-foreground">Split</div>
+                    <div className="flex flex-wrap gap-2">
+                      {SPLIT_OPTIONS.map((s) => (
+                        <motion.button
+                          key={s.id}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setSplitType(s.id)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                            splitType === s.id
+                              ? "bg-indigo-500 text-white"
+                              : "bg-muted hover:bg-muted/80"
+                          )}
+                        >
+                          {s.label}
+                        </motion.button>
+                      ))}
+                    </div>
+                    {/* Volume Input */}
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm text-muted-foreground">Volumen</label>
+                      <NumericInput
+                        placeholder="8500"
+                        value={totalVolume}
+                        onChange={setTotalVolume}
+                        allowDecimals={false}
+                        className="w-24"
+                      />
+                      <span className="text-sm text-muted-foreground">kg</span>
+                    </div>
+                  </>
+                )}
+
+                {/* Zone2: Cardio Type */}
+                {selectedType === 'zone2' && (
+                  <>
+                    <div className="text-sm font-medium text-muted-foreground">Art</div>
+                    <div className="flex flex-wrap gap-2">
+                      {CARDIO_TYPE_OPTIONS.map((c) => (
+                        <motion.button
+                          key={c.id}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setCardioType(c.id)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1",
+                            cardioType === c.id
+                              ? "bg-emerald-500 text-white"
+                              : "bg-muted hover:bg-muted/80"
+                          )}
+                        >
+                          <span>{c.emoji}</span>
+                          {c.label}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* VO2max: Protocol */}
+                {selectedType === 'vo2max' && (
+                  <>
+                    <div className="text-sm font-medium text-muted-foreground">Protokoll</div>
+                    <div className="flex flex-wrap gap-2">
+                      {VO2_PROTOCOL_OPTIONS.map((v) => (
+                        <motion.button
+                          key={v.id}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setVo2Protocol(v.id)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                            vo2Protocol === v.id
+                              ? "bg-rose-500 text-white"
+                              : "bg-muted hover:bg-muted/80"
+                          )}
+                        >
+                          {v.label}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Sauna: Temp + Rounds */}
+                {selectedType === 'sauna' && (
+                  <>
+                    <div className="text-sm font-medium text-muted-foreground">Temperatur</div>
+                    <div className="flex gap-2">
+                      {SAUNA_TEMP_OPTIONS.map((t) => (
+                        <motion.button
+                          key={t}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setSaunaTemp(t)}
+                          className={cn(
+                            "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                            saunaTemp === t
+                              ? "bg-orange-500 text-white"
+                              : "bg-muted hover:bg-muted/80"
+                          )}
+                        >
+                          {t}°C
+                        </motion.button>
+                      ))}
+                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">Gänge</div>
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4].map((r) => (
+                        <motion.button
+                          key={r}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setSaunaRounds(r)}
+                          className={cn(
+                            "w-10 h-10 rounded-lg text-sm font-medium transition-colors",
+                            saunaRounds === r
+                              ? "bg-orange-500 text-white"
+                              : "bg-muted hover:bg-muted/80"
+                          )}
+                        >
+                          {r}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* DURATION CONTROLS - Only for cardio/sauna */}
+                {selectedTypeConfig?.needsTime && (
+                  <div className="pt-2 space-y-3">
+                    <div className="text-sm font-medium text-muted-foreground">Dauer</div>
+                    <div className="flex items-center justify-center gap-4">
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => adjustDuration(-5)}
+                        className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+                      >
+                        <Minus className="w-5 h-5" />
+                      </motion.button>
+                      
+                      <div className="w-24 text-center">
+                        <motion.span
+                          key={duration}
+                          initial={{ scale: 0.9, opacity: 0.5 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="text-3xl font-bold tabular-nums text-foreground"
+                        >
+                          {duration}
+                        </motion.span>
+                        <span className="text-lg text-muted-foreground ml-1">min</span>
+                      </div>
+                      
+                      <motion.button
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => adjustDuration(5)}
+                        className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </motion.button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* TYPE-SPECIFIC DETAILS */}
-      <AnimatePresence>
-        {selectedType && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="pt-2 space-y-4">
-              {/* RPT: Split Selection + Volume */}
-              {selectedType === 'rpt' && (
-                <>
-                  <div className="text-sm font-medium text-muted-foreground">Split</div>
-                  <div className="flex flex-wrap gap-2">
-                    {SPLIT_OPTIONS.map((s) => (
-                      <motion.button
-                        key={s.id}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setSplitType(s.id)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                          splitType === s.id
-                            ? "bg-indigo-500 text-white"
-                            : "bg-muted hover:bg-muted/80"
-                        )}
-                      >
-                        {s.label}
-                      </motion.button>
-                    ))}
-                  </div>
-                  {/* Volume Input */}
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm text-muted-foreground">Volumen</label>
-                    <NumericInput
-                      placeholder="8500"
-                      value={totalVolume}
-                      onChange={setTotalVolume}
-                      allowDecimals={false}
-                      className="w-24"
-                    />
-                    <span className="text-sm text-muted-foreground">kg</span>
-                  </div>
-                </>
-              )}
-
-              {/* Zone2: Cardio Type */}
-              {selectedType === 'zone2' && (
-                <>
-                  <div className="text-sm font-medium text-muted-foreground">Art</div>
-                  <div className="flex flex-wrap gap-2">
-                    {CARDIO_TYPE_OPTIONS.map((c) => (
-                      <motion.button
-                        key={c.id}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setCardioType(c.id)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1",
-                          cardioType === c.id
-                            ? "bg-emerald-500 text-white"
-                            : "bg-muted hover:bg-muted/80"
-                        )}
-                      >
-                        <span>{c.emoji}</span>
-                        {c.label}
-                      </motion.button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* VO2max: Protocol */}
-              {selectedType === 'vo2max' && (
-                <>
-                  <div className="text-sm font-medium text-muted-foreground">Protokoll</div>
-                  <div className="flex flex-wrap gap-2">
-                    {VO2_PROTOCOL_OPTIONS.map((v) => (
-                      <motion.button
-                        key={v.id}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setVo2Protocol(v.id)}
-                        className={cn(
-                          "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                          vo2Protocol === v.id
-                            ? "bg-rose-500 text-white"
-                            : "bg-muted hover:bg-muted/80"
-                        )}
-                      >
-                        {v.label}
-                      </motion.button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* Sauna: Temp + Rounds */}
-              {selectedType === 'sauna' && (
-                <>
-                  <div className="text-sm font-medium text-muted-foreground">Temperatur</div>
-                  <div className="flex gap-2">
-                    {SAUNA_TEMP_OPTIONS.map((t) => (
-                      <motion.button
-                        key={t}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setSaunaTemp(t)}
-                        className={cn(
-                          "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                          saunaTemp === t
-                            ? "bg-orange-500 text-white"
-                            : "bg-muted hover:bg-muted/80"
-                        )}
-                      >
-                        {t}°C
-                      </motion.button>
-                    ))}
-                  </div>
-                  <div className="text-sm font-medium text-muted-foreground">Gänge</div>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4].map((r) => (
-                      <motion.button
-                        key={r}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setSaunaRounds(r)}
-                        className={cn(
-                          "w-10 h-10 rounded-lg text-sm font-medium transition-colors",
-                          saunaRounds === r
-                            ? "bg-orange-500 text-white"
-                            : "bg-muted hover:bg-muted/80"
-                        )}
-                      >
-                        {r}
-                      </motion.button>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* DURATION CONTROLS - Only for cardio/sauna */}
-              {selectedTypeConfig?.needsTime && (
-                <div className="pt-2 space-y-3">
-                  <div className="text-sm font-medium text-muted-foreground">Dauer</div>
-                  <div className="flex items-center justify-center gap-4">
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => adjustDuration(-5)}
-                      className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
-                    >
-                      <Minus className="w-5 h-5" />
-                    </motion.button>
-                    
-                    <div className="w-24 text-center">
-                      <motion.span
-                        key={duration}
-                        initial={{ scale: 0.9, opacity: 0.5 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className="text-3xl font-bold tabular-nums text-foreground"
-                      >
-                        {duration}
-                      </motion.span>
-                      <span className="text-lg text-muted-foreground ml-1">min</span>
-                    </div>
-                    
-                    <motion.button
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => adjustDuration(5)}
-                      className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </motion.button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* SAVE BUTTON */}
-      <motion.button
-        whileTap={{ scale: 0.97 }}
-        onClick={handleSave}
-        disabled={!selectedType || isSaving}
-        className={cn(
-          "w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-colors",
-          selectedType
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-muted-foreground cursor-not-allowed"
-        )}
-      >
-        {isSaving ? (
-          <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-        ) : (
-          <>
-            <Check className="w-5 h-5" />
-            Training speichern
-          </>
-        )}
-      </motion.button>
+      {/* STICKY SAVE BUTTON */}
+      <div className="sticky bottom-0 pt-4 mt-4 bg-gradient-to-t from-background via-background to-transparent">
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={handleSave}
+          disabled={!selectedType || isSaving}
+          className={cn(
+            "w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-colors",
+            selectedType
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          )}
+        >
+          {isSaving ? (
+            <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <>
+              <Check className="w-5 h-5" />
+              Training speichern
+            </>
+          )}
+        </motion.button>
+      </div>
     </div>
   );
 };
