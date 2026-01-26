@@ -1,0 +1,148 @@
+/**
+ * useAresEvents - Central Event Controller for Optimistic UI Tracking
+ * Handles all tracking actions with instant UI feedback and background DB sync
+ */
+
+import { useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { DAILY_METRICS_KEY, DailyMetrics } from './useDailyMetrics';
+
+export type EventCategory = 'water' | 'coffee' | 'supplement';
+
+export interface EventPayload {
+  amount?: number;
+  supplementId?: string;
+  timing?: 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout';
+  customName?: string;
+}
+
+export const useAresEvents = () => {
+  const queryClient = useQueryClient();
+
+  /**
+   * Track an event with optimistic UI update
+   * Returns true if background sync succeeded, false otherwise
+   */
+  const trackEvent = useCallback(async (
+    category: EventCategory, 
+    payload: EventPayload
+  ): Promise<boolean> => {
+    
+    // === A. OPTIMISTIC UPDATE (INSTANT - 0ms) ===
+    queryClient.setQueryData<DailyMetrics>(DAILY_METRICS_KEY, (old) => {
+      if (!old) return old;
+      
+      // Water & Coffee → add to water.current
+      if (category === 'water' || category === 'coffee') {
+        return {
+          ...old,
+          water: { 
+            ...old.water, 
+            current: old.water.current + (payload.amount || 0) 
+          }
+        };
+      }
+      
+      // Supplement → add to takenIds
+      if (category === 'supplement' && payload.supplementId) {
+        return {
+          ...old,
+          supplements: {
+            ...old.supplements,
+            takenIds: [...old.supplements.takenIds, payload.supplementId],
+            total: old.supplements.total + 1
+          }
+        };
+      }
+      
+      return old;
+    });
+
+    // === B. ASYNC DB WRITE (Background) ===
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) {
+        throw new Error('Not authenticated');
+      }
+      
+      const today = new Date().toISOString().slice(0, 10);
+      const now = new Date().toISOString();
+      
+      // Handle fluid logging (water/coffee)
+      if (category === 'water' || category === 'coffee') {
+        const { error } = await supabase.from('user_fluids').insert({
+          user_id: auth.user.id,
+          amount_ml: payload.amount,
+          date: today,
+          consumed_at: now,
+          custom_name: category === 'coffee' ? 'Kaffee' : (payload.customName || null)
+        });
+        
+        if (error) {
+          console.error('[AresEvents] Fluid insert failed:', error);
+          throw error;
+        }
+        
+        console.log(`[AresEvents] ✓ Logged ${payload.amount}ml ${category}`);
+      }
+      
+      // Handle supplement logging
+      if (category === 'supplement' && payload.supplementId && payload.timing) {
+        const { error } = await supabase.from('supplement_intake_log').upsert({
+          user_id: auth.user.id,
+          user_supplement_id: payload.supplementId,
+          date: today,
+          timing: payload.timing,
+          taken: true
+        }, {
+          onConflict: 'user_supplement_id,date,timing'
+        });
+        
+        if (error) {
+          console.error('[AresEvents] Supplement insert failed:', error);
+          throw error;
+        }
+        
+        console.log(`[AresEvents] ✓ Logged supplement ${payload.supplementId} (${payload.timing})`);
+      }
+      
+      // === C. SILENT REVALIDATE (Background sync after 2s) ===
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: DAILY_METRICS_KEY });
+      }, 2000);
+      
+      return true;
+      
+    } catch (err) {
+      console.error('[AresEvents] Tracking failed, rolling back:', err);
+      
+      // === ROLLBACK: Invalidate cache to fetch real data ===
+      queryClient.invalidateQueries({ queryKey: DAILY_METRICS_KEY });
+      toast.error('Speichern fehlgeschlagen');
+      
+      return false;
+    }
+  }, [queryClient]);
+
+  /**
+   * Quick helper for water logging
+   */
+  const logWater = useCallback((amountMl: number) => {
+    return trackEvent('water', { amount: amountMl });
+  }, [trackEvent]);
+
+  /**
+   * Quick helper for coffee logging
+   */
+  const logCoffee = useCallback((amountMl: number = 150) => {
+    return trackEvent('coffee', { amount: amountMl, customName: 'Kaffee' });
+  }, [trackEvent]);
+
+  return { 
+    trackEvent,
+    logWater,
+    logCoffee
+  };
+};
