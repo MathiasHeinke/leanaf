@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater } from 'lucide-react';
+import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EpiphanyCard } from './EpiphanyCard';
 
@@ -123,7 +123,7 @@ const MicroActionButton: React.FC<MicroActionButtonProps> = ({ action, onTrigger
       layout
       whileTap={{ scale: 0.95 }}
       className={cn(
-        "relative flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border transition-all overflow-hidden min-w-[70px]",
+        "relative flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full border transition-all overflow-hidden min-w-[70px]",
         status === 'success' 
           ? "bg-emerald-500 border-emerald-400 text-white" 
           : "bg-white/20 border-white/10 text-white hover:bg-white/30 backdrop-blur-md"
@@ -167,7 +167,7 @@ interface HydrationMicroActionsProps {
 const HydrationMicroActions: React.FC<HydrationMicroActionsProps> = ({ onAction }) => {
   const actions = [
     { id: '250ml_water', label: '1x', icon: GlassWater },
-    { id: '500ml_water', label: '0.5L', icon: Droplets },
+    { id: '500ml_water', label: '0.5L', icon: Milk },
     { id: 'coffee', label: '1x', icon: Coffee },
   ];
 
