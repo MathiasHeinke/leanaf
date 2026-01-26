@@ -80,16 +80,17 @@ export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({
                 onClose();
               }
             }}
-            className="fixed bottom-0 left-0 right-0 z-[101] bg-background rounded-t-3xl shadow-2xl max-h-[85vh] overflow-hidden"
+            className="fixed inset-x-0 bottom-0 z-[101] bg-background rounded-t-3xl shadow-2xl max-h-[85vh] flex flex-col"
           >
-            {/* DRAG HANDLE */}
-            <div className="flex justify-center pt-3 pb-2">
-              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
-            </div>
+            {/* ZONE A: Static Header - stays on top */}
+            <div className="relative z-10 bg-background rounded-t-3xl">
+              {/* DRAG HANDLE */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+              </div>
 
-            <div className="px-5 pb-8 space-y-5">
               {/* HEADER & TABS */}
-              <div className="space-y-4">
+              <div className="px-5 pb-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-foreground">Quick Log</h2>
                   <motion.button
@@ -104,7 +105,7 @@ export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({
 
                 {/* iOS STYLE SEGMENTED CONTROL */}
                 <div className="relative flex bg-muted rounded-2xl p-1">
-                {/* Sliding Background */}
+                  {/* Sliding Background */}
                   <motion.div
                     className="absolute top-1 bottom-1 bg-background rounded-xl shadow-sm"
                     style={{ width: `calc(${100 / 7}% - 4px)` }}
@@ -132,27 +133,27 @@ export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* DYNAMIC CONTENT AREA */}
-              <div className="min-h-[300px]">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {activeTab === 'weight' && <WeightLogger onClose={onClose} />}
-                    {activeTab === 'training' && <TrainingLogger onClose={onClose} />}
-                    {activeTab === 'sleep' && <SleepLogger onClose={onClose} />}
-                    {activeTab === 'journal' && <JournalLogger onClose={onClose} />}
-                    {activeTab === 'tape' && <TapeLogger onClose={onClose} />}
-                    {activeTab === 'supplements' && <SupplementsLogger onClose={onClose} />}
-                    {activeTab === 'peptide' && <PeptideLogger onClose={onClose} />}
-                  </motion.div>
-                </AnimatePresence>
-              </div>
+            {/* ZONE B: Scrollable Content */}
+            <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-20">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {activeTab === 'weight' && <WeightLogger onClose={onClose} />}
+                  {activeTab === 'training' && <TrainingLogger onClose={onClose} />}
+                  {activeTab === 'sleep' && <SleepLogger onClose={onClose} />}
+                  {activeTab === 'journal' && <JournalLogger onClose={onClose} />}
+                  {activeTab === 'tape' && <TapeLogger onClose={onClose} />}
+                  {activeTab === 'supplements' && <SupplementsLogger onClose={onClose} />}
+                  {activeTab === 'peptide' && <PeptideLogger onClose={onClose} />}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </motion.div>
         </>
