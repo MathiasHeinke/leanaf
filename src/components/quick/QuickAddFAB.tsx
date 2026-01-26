@@ -51,9 +51,9 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       setBodyOpen(true);
       return;
     }
-    if (type === "fluid") {
+    if (type === "journal") {
       setMenuOpen(false);
-      setFluidOpen(true);
+      setFluidOpen(true); // TODO: Replace with Journal modal when ready
       return;
     }
     if (type === "bloodwork") {
