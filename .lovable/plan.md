@@ -1,150 +1,259 @@
 
 
-# Fix: Carousel Zentrierung - Die korrekte Berechnung
+# Sprungfreies Infinite Scroll - Transform-basierte Lösung
 
 ## Das Problem
 
-Der Screenshot zeigt, dass das "Essen"-Icon (grün hervorgehoben) weit nach rechts verschoben ist, statt exakt in der Bildschirmmitte zu stehen.
+Die aktuelle "Teleport"-Methode (`container.scrollLeft = ...`) erzeugt einen sichtbaren Sprung, weil:
+1. Der Browser den Scroll-Container neu rendert
+2. Es eine kurze visuelle Unterbrechung gibt
 
-### Ursachen:
+## Die elegantere Lösung: Transform-basiertes Carousel
 
-1. **Initiale Scroll-Position falsch**: `scrollWidth / 3` berücksichtigt nicht das dynamische Padding (`calc(50vw - 32px)`)
-2. **Center-Berechnung ignoriert Padding**: Die `rawIndex`-Berechnung in `handleScroll` rechnet nicht mit dem Offset, der durch das linke Padding entsteht
-3. **Padding-Wert nicht konsistent**: Das Padding wird inline gesetzt, aber nicht in der Index-Berechnung verwendet
+Statt native Scroll + Teleport nutzen wir **Framer Motion** mit einem virtuellen Index-System. Die Items werden per `transform: translateX()` positioniert - komplett ohne Browser-Scroll.
+
+```text
+KONZEPT:
+
+Statt echtem Scroll:
+┌─────────────────────────────────────┐
+│  [1] [2] [3] [4] [5] [6] [7]  ←scroll→
+└─────────────────────────────────────┘
+
+Transform-basiert (kein Scroll):
+┌─────────────────────────────────────┐
+│        ←drag→  [●]  ←drag→          │
+│  Items werden per translateX bewegt │
+│  Virtueller Index: -∞ bis +∞        │
+└─────────────────────────────────────┘
+```
 
 ---
 
-## Die Lösung
+## Technische Implementierung
 
-### 1. Padding als Konstante definieren
+### 1. State: Virtueller Index statt Scroll-Position
 
 ```typescript
-// Statt inline-Berechnung: eine verwendbare Konstante
-const HALF_ITEM_WIDTH = 32; // w-16 / 2 = 32px
+// Statt scrollRef + isJumping:
+const [virtualIndex, setVirtualIndex] = useState(0);
+const dragStart = useRef(0);
+const dragOffset = useRef(0);
 ```
 
-### 2. Initiale Scroll-Position korrigieren
-
-Das erste Item von Set 2 muss exakt in der Mitte starten:
+### 2. Framer Motion Drag statt Native Scroll
 
 ```typescript
-useEffect(() => {
-  if (isOpen && scrollRef.current) {
-    const container = scrollRef.current;
-    requestAnimationFrame(() => {
-      // Berechne die Position, wo das erste Item von Set 2 zentriert ist
-      // Set 2 startet bei Index 7 (ITEMS_COUNT)
-      // Scroll-Position = (Anzahl Items vor Set 2) * ITEM_TOTAL
-      const set2StartPosition = ITEMS_COUNT * ITEM_TOTAL;
-      container.scrollTo({ left: set2StartPosition, behavior: 'instant' });
-      setActiveIndex(0);
+<motion.div
+  drag="x"
+  dragConstraints={{ left: 0, right: 0 }}
+  dragElastic={0.1}
+  onDragStart={(_, info) => {
+    dragStart.current = info.point.x;
+  }}
+  onDrag={(_, info) => {
+    dragOffset.current = info.point.x - dragStart.current;
+    // Live-Update der Position
+  }}
+  onDragEnd={(_, info) => {
+    // Berechne neue Index basierend auf Velocity + Offset
+    const velocity = info.velocity.x;
+    const offset = info.offset.x;
+    
+    // Schneller Swipe = mehrere Items
+    const itemsToMove = Math.round(-offset / ITEM_TOTAL);
+    setVirtualIndex(prev => prev + itemsToMove);
+  }}
+>
+```
+
+### 3. Dynamische Item-Berechnung
+
+Nur 5-7 Items werden gerendert (die sichtbaren + Buffer):
+
+```typescript
+const visibleItems = useMemo(() => {
+  const result = [];
+  // Rendere nur Items im sichtbaren Bereich (-3 bis +3 vom Center)
+  for (let offset = -3; offset <= 3; offset++) {
+    const index = ((virtualIndex + offset) % ITEMS_COUNT + ITEMS_COUNT) % ITEMS_COUNT;
+    result.push({
+      ...orderedItems[index],
+      offset, // Position relativ zum Center
+      key: `item-${virtualIndex + offset}` // Unique key für Animation
     });
   }
-}, [isOpen, ITEMS_COUNT]);
+  return result;
+}, [virtualIndex, orderedItems, ITEMS_COUNT]);
 ```
 
-### 3. Center-Index-Berechnung mit Padding-Offset
-
-Das Padding verschiebt den visuellen Mittelpunkt. Die Berechnung muss das berücksichtigen:
+### 4. Transform-basierte Positionierung
 
 ```typescript
-const handleScroll = useCallback(() => {
-  const container = scrollRef.current;
-  if (!container || isJumping.current) return;
+{visibleItems.map((item) => (
+  <motion.div
+    key={item.key}
+    animate={{
+      x: item.offset * ITEM_TOTAL, // Position basierend auf Offset
+      scale: item.offset === 0 ? 1.15 : 0.75,
+      opacity: item.offset === 0 ? 1 : 0.5,
+    }}
+    transition={springConfig}
+    className="absolute left-1/2 -translate-x-1/2"
+  >
+    <CarouselItem ... />
+  </motion.div>
+))}
+```
+
+---
+
+## Vorteile dieser Lösung
+
+| Aspekt | Teleport (Alt) | Transform (Neu) |
+|--------|----------------|-----------------|
+| Sprung sichtbar | Ja ❌ | Nein ✅ |
+| DOM-Elemente | 21 (3×7) | 7 (nur sichtbare) |
+| Performance | Mittelmäßig | Hervorragend |
+| Unendlich | Ja | Ja |
+| Smooth | Ruckelig | Butterweich |
+
+---
+
+## Vollständiger Ansatz
+
+### Neuer State
+
+```typescript
+const [virtualIndex, setVirtualIndex] = useState(0);
+const containerRef = useRef<HTMLDivElement>(null);
+```
+
+### Drag Handler
+
+```typescript
+const handleDragEnd = useCallback((
+  _: MouseEvent | TouchEvent | PointerEvent,
+  info: PanInfo
+) => {
+  const velocity = info.velocity.x;
+  const offset = info.offset.x;
   
-  const { scrollLeft, scrollWidth, clientWidth } = container;
-  const setWidth = scrollWidth / 3;
+  // Threshold: Mindestens halbe Item-Breite oder hohe Velocity
+  const threshold = ITEM_TOTAL / 2;
   
-  // Teleport-Logik bleibt gleich...
-  
-  // KORRIGIERTE Center-Berechnung:
-  // Das Padding (50vw - 32px) verschiebt alles nach rechts
-  // Der visuelle Center ist bei scrollLeft + padding (nicht clientWidth/2)
-  const padding = (clientWidth / 2) - HALF_ITEM_WIDTH;
-  const visualCenter = scrollLeft + padding + HALF_ITEM_WIDTH;
-  
-  // Alternativ vereinfacht: scrollLeft zeigt direkt auf das zentrierte Item
-  const rawIndex = Math.round(scrollLeft / ITEM_TOTAL);
-  const normalizedIndex = ((rawIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
-  
-  if (normalizedIndex !== activeIndex) {
-    setActiveIndex(normalizedIndex);
+  let change = 0;
+  if (Math.abs(offset) > threshold || Math.abs(velocity) > 500) {
+    // Richtung bestimmen (negative = nach rechts = nächstes Item)
+    change = offset > 0 ? -1 : 1;
+    
+    // Bei hoher Velocity: mehrere Items überspringen
+    if (Math.abs(velocity) > 1000) {
+      change *= 2;
+    }
   }
-}, [activeIndex, ITEMS_COUNT]);
+  
+  setVirtualIndex(prev => prev + change);
+  
+  // Haptic Feedback
+  if (change !== 0 && 'vibrate' in navigator) {
+    navigator.vibrate(10);
+  }
+}, []);
 ```
 
-### 4. Vereinfachte Lösung (Empfohlen)
-
-Da wir `snap-center` und festes Padding verwenden, zeigt `scrollLeft` direkt auf das zentrierte Item:
+### Sichtbare Items berechnen
 
 ```typescript
-// scrollLeft / ITEM_TOTAL = Index des zentrierten Items
-const rawIndex = Math.round(scrollLeft / ITEM_TOTAL);
+const getVisibleItems = useCallback(() => {
+  const items = [];
+  // Buffer: 3 Items links und rechts vom Center
+  for (let offset = -3; offset <= 3; offset++) {
+    const actualIndex = ((virtualIndex + offset) % ITEMS_COUNT + ITEMS_COUNT) % ITEMS_COUNT;
+    items.push({
+      ...orderedItems[actualIndex],
+      offset,
+      uniqueKey: `${virtualIndex + offset}`, // Für AnimatePresence
+    });
+  }
+  return items;
+}, [virtualIndex, orderedItems, ITEMS_COUNT]);
 ```
 
-Das funktioniert, weil:
-- `paddingLeft: calc(50vw - 32px)` → Das erste Item startet zentriert bei scrollLeft=0
-- `snap-center` → Jedes Item rastet exakt mittig ein
-- `scrollLeft` zeigt auf den linken Rand des sichtbaren Bereichs minus Padding
+### JSX Struktur
 
----
-
-## Vollständige Änderungen
-
-### `LiquidCarouselMenu.tsx`
-
-| Zeile | Was | Vorher | Nachher |
-|-------|-----|--------|---------|
-| 72 | Neue Konstante | - | `const HALF_ITEM_WIDTH = 32;` |
-| 168-169 | Center-Berechnung | `centerPoint = scrollLeft + (clientWidth / 2)` `rawIndex = Math.round(centerPoint / ITEM_TOTAL)` | `rawIndex = Math.round(scrollLeft / ITEM_TOTAL)` |
-| 183 | Initial Scroll | `scrollWidth / 3` | `ITEMS_COUNT * ITEM_TOTAL` |
-
----
-
-## Technische Erklärung
-
-```text
-MIT DEM PADDING:
-
-Viewport:
-┌────────────────────────────────────────────────────┐
-│          paddingLeft          │ Item │ ...        │
-│     (50vw - 32px)             │ [●]  │            │
-│<──────────────────────────────>│<--->│            │
-│                               │ 64px │            │
-└────────────────────────────────────────────────────┘
-
-Wenn scrollLeft = 0:
-  → Das erste Item (Index 0) ist zentriert
-  
-Wenn scrollLeft = 80 (ITEM_TOTAL):
-  → Das zweite Item (Index 1) ist zentriert
-
-Also: rawIndex = scrollLeft / ITEM_TOTAL (gerundet)
+```typescript
+<motion.div
+  ref={containerRef}
+  drag="x"
+  dragConstraints={{ left: 0, right: 0 }}
+  dragElastic={0.2}
+  onDragEnd={handleDragEnd}
+  className="relative h-20 w-full touch-pan-y"
+>
+  <AnimatePresence mode="popLayout">
+    {getVisibleItems().map((item) => (
+      <motion.div
+        key={item.uniqueKey}
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{
+          x: `calc(50% - 32px + ${item.offset * ITEM_TOTAL}px)`,
+          scale: item.offset === 0 ? 1.15 : 0.75,
+          opacity: Math.abs(item.offset) <= 2 ? (item.offset === 0 ? 1 : 0.5) : 0,
+        }}
+        exit={{ opacity: 0, scale: 0.5 }}
+        transition={springConfig}
+        className="absolute top-0"
+        style={{ left: 0 }}
+      >
+        <CarouselItem
+          item={item}
+          isActive={item.offset === 0}
+          onClick={() => handleItemClick(item)}
+        />
+      </motion.div>
+    ))}
+  </AnimatePresence>
+</motion.div>
 ```
 
 ---
 
-## Initiale Position für Set 2
+## Zusammenfassung der Änderungen
+
+### Entfernt
+- `scrollRef` und scroll-basierte Logik
+- `isJumping` Ref
+- `loopedItems` (21 Items)
+- Native scroll + Teleport
+
+### Hinzugefügt
+- `virtualIndex` State (kann -∞ bis +∞ sein)
+- `getVisibleItems()` - berechnet nur 7 sichtbare Items
+- Framer Motion `drag="x"` + `onDragEnd`
+- Transform-basierte Positionierung
+
+---
+
+## UX-Verbesserung
 
 ```text
-Looped Items Array:
-[0] [1] [2] [3] [4] [5] [6]  |  [7] [8] [9] [10] [11] [12] [13]  |  [14] ...
-         SET 1               |           SET 2 (Start)           |   SET 3
+VORHER (Teleport):
+User scrollt → nähert sich Grenze → SPRUNG → weiter scrollen
+                                    ↑
+                              Sichtbar ruckelig
 
-scrollLeft für Index 7 (erstes Item von Set 2):
-= 7 * ITEM_TOTAL
-= 7 * 80
-= 560px
-
-Normalisiert: 7 % 7 = 0 → activeIndex = 0 ✓
+NACHHER (Transform):
+User swiped → virtualIndex ändert → Items animieren smooth
+              ↑
+         Kein DOM-Manipulation, nur CSS transform
 ```
 
 ---
 
 ## Dateien
 
-| Datei | Änderungen |
-|-------|------------|
-| `src/components/home/LiquidCarouselMenu.tsx` | Konstante HALF_ITEM_WIDTH, korrigierte Center-Berechnung, korrigierte initiale Scroll-Position |
+| Datei | Änderung |
+|-------|----------|
+| `src/components/home/LiquidCarouselMenu.tsx` | Kompletter Refactor zu Transform-basiertem Carousel |
 
