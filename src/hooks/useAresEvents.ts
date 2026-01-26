@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DAILY_METRICS_KEY, DailyMetrics } from './useDailyMetrics';
 
-export type EventCategory = 'water' | 'coffee' | 'supplement' | 'weight' | 'workout' | 'sleep';
+export type EventCategory = 'water' | 'coffee' | 'supplement' | 'weight' | 'workout' | 'sleep' | 'journal';
 
 export interface EventPayload {
   amount?: number;
@@ -39,6 +39,12 @@ export interface EventPayload {
   screen_time_evening?: number;
   morning_libido?: number;
   motivation_level?: number;
+  
+  // Journal (NEW)
+  content?: string;
+  mood?: 'dankbarkeit' | 'reflektion' | 'ziele';
+  entry_type?: 'text' | 'voice';
+  prompt_used?: string;
   
   // Shared
   date?: string;
@@ -201,6 +207,25 @@ export const useAresEvents = () => {
         
         console.log(`[AresEvents] ✓ Logged ${payload.sleep_hours}h sleep`);
         toast.success('Schlaf gespeichert');
+      }
+
+      // === JOURNAL (NEW) ===
+      if (category === 'journal' && payload.content) {
+        const { error } = await supabase.from('diary_entries').insert({
+          user_id: auth.user.id,
+          date: payload.date || today,
+          content: payload.content,
+          mood: payload.mood || null,
+          entry_type: payload.entry_type || 'text',
+          prompt_used: payload.prompt_used || null
+        });
+        
+        if (error) {
+          console.error('[AresEvents] Journal insert failed:', error);
+          throw error;
+        }
+        
+        console.log(`[AresEvents] ✓ Logged journal entry (${payload.mood})`);
       }
       
       // === C. SILENT REVALIDATE (Background sync after 2s) ===

@@ -107,7 +107,7 @@ export default function AresHome() {
   const handleQuickAction = useCallback((action: QuickActionType) => {
     switch (action) {
       case 'journal':
-        quickAddBus.emit({ type: 'journal' });
+        setQuickLogConfig({ open: true, tab: 'journal' });
         break;
       case 'workout':
         setQuickLogConfig({ open: true, tab: 'training' });
