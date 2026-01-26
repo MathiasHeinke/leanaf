@@ -148,6 +148,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                 userId={user.id}
                 coachId="ares"
                 autoStartPrompt={autoStartPrompt}
+                embedded={true}
                 className="h-full"
               />
             </div>
