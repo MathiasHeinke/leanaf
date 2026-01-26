@@ -1,7 +1,7 @@
 // ARES Training Types - 3-Säulen-System
 // RPT (Strength), Zone2 (Endurance), VO2max (HIIT)
 
-export type TrainingType = 'rpt' | 'zone2' | 'vo2max' | 'sauna';
+export type TrainingType = 'rpt' | 'zone2' | 'vo2max' | 'sauna' | 'movement' | 'rest';
 
 export type SplitType = 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'full' | 'cardio';
 
@@ -57,6 +57,8 @@ export const TRAINING_TYPE_LABELS: Record<TrainingType, string> = {
   zone2: 'Zone 2 Ausdauer',
   vo2max: 'VO2max / HIIT',
   sauna: 'Sauna (≥80°C)',
+  movement: 'Bewegung',
+  rest: 'Ruhetag',
 };
 
 export const TRAINING_TYPE_ICONS: Record<TrainingType, string> = {
@@ -64,6 +66,8 @@ export const TRAINING_TYPE_ICONS: Record<TrainingType, string> = {
   zone2: '🚶',
   vo2max: '🏃',
   sauna: '🔥',
+  movement: '🚶',
+  rest: '😴',
 };
 
 export const SPLIT_TYPE_LABELS: Record<SplitType, string> = {

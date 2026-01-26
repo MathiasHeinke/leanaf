@@ -24,7 +24,8 @@ export interface EventPayload {
   notes?: string;
   
   // Workout (extended)
-  training_type?: 'rpt' | 'zone2' | 'vo2max' | 'sauna';
+  training_type?: 'rpt' | 'zone2' | 'vo2max' | 'sauna' | 'movement' | 'rest';
+  did_workout?: boolean;
   split_type?: 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'full';
   duration_minutes?: number;
   total_volume_kg?: number;
