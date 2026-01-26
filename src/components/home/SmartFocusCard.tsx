@@ -7,7 +7,8 @@
 
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe } from 'lucide-react';
+import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe, PenTool } from 'lucide-react';
+import { openJournal } from '@/components/quick/quickAddBus';
 import { cn } from '@/lib/utils';
 import { EpiphanyCard } from './EpiphanyCard';
 import { SupplementTimingCircles } from './cards/SupplementTimingCircles';
@@ -442,6 +443,23 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat,
       >
         <Moon size={16} />
         <span>Strategie besprechen</span>
+        <ChevronRight size={14} className="opacity-60" />
+      </button>
+    );
+  }
+
+  // JOURNAL: Open Quick Log Sheet (stay on homescreen)
+  if (task.type === 'journal') {
+    return (
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          openJournal();
+        }}
+        className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+      >
+        <PenTool size={16} />
+        <span>Journal schreiben</span>
         <ChevronRight size={14} className="opacity-60" />
       </button>
     );
