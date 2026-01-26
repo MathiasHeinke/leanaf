@@ -11,7 +11,10 @@ import { usePlusData } from './usePlusData';
 import { useDailyMetrics } from './useDailyMetrics';
 import { useUserProfile } from './useUserProfile';
 import { useDailyFocus } from './useDailyFocus';
-import { Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell, Sparkles } from 'lucide-react';
+import { useSupplementData } from './useSupplementData';
+import { useProtocols } from './useProtocols';
+import { useIntakeLog } from './useIntakeLog';
+import { Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell, Sparkles, Syringe } from 'lucide-react';
 
 export interface QuickAction {
   id: string;
@@ -22,7 +25,7 @@ export interface QuickAction {
 
 export interface ActionCard {
   id: string;
-  type: 'insight' | 'epiphany' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein';
+  type: 'insight' | 'epiphany' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein' | 'peptide';
   title: string;
   subtitle: string;
   gradient: string;
@@ -40,6 +43,9 @@ export const useActionCards = () => {
   const { data: dailyMetrics } = useDailyMetrics(); // Live optimistic data
   const { profileData } = useUserProfile();
   const { focusTask } = useDailyFocus();
+  const { groupedSupplements, totalScheduled, totalTaken } = useSupplementData();
+  const { protocols } = useProtocols();
+  const { isPeptideTakenToday } = useIntakeLog();
 
   const cards = useMemo(() => {
     const result: ActionCard[] = [];
@@ -82,38 +88,71 @@ export const useActionCards = () => {
       });
     }
 
-    // 3. Supplements not logged today - Zeit-intelligent
-    if (!plusData.supplementsLoggedToday && hour >= 6 && hour < 22) {
-      // Zeitbasierte Primary Action bestimmen
-      const getRelevantTimingAction = (): QuickAction => {
-        if (hour >= 6 && hour < 11) {
-          return { id: 'morning', label: 'Morgens', icon: Sunrise, primary: true };
-        } else if (hour >= 11 && hour < 14) {
-          return { id: 'noon', label: 'Mittags', icon: Clock, primary: true };
-        } else {
-          return { id: 'evening', label: 'Abends', icon: Moon, primary: true };
-        }
+    // 3. Supplements - Show card if any supplements are not yet taken today
+    const hasSupplements = totalScheduled > 0;
+    const allSupplementsTaken = totalTaken >= totalScheduled;
+    
+    if (hasSupplements && !allSupplementsTaken && hour >= 6 && hour < 23) {
+      // Get active timings for subtitle
+      const activeTimings = Object.keys(groupedSupplements).filter(
+        t => groupedSupplements[t]?.total > 0
+      );
+      const incompleteTimings = activeTimings.filter(
+        t => groupedSupplements[t]?.taken < groupedSupplements[t]?.total
+      );
+      
+      const timingLabels: Record<string, string> = {
+        morning: 'Morgens',
+        noon: 'Mittags',
+        evening: 'Abends',
+        pre_workout: 'Pre-WO',
+        post_workout: 'Post-WO',
+        before_bed: 'Vor Schlaf'
       };
       
-      const timingAction = getRelevantTimingAction();
-      const timingLabel = hour < 11 ? 'Morgen' : hour < 14 ? 'Mittag' : 'Abend';
+      const pendingText = incompleteTimings.length <= 2
+        ? incompleteTimings.map(t => timingLabels[t] || t).join(', ')
+        : `${incompleteTimings.length} Phasen`;
       
       result.push({
         id: 'supplement',
         type: 'supplement',
         title: 'Supplements einnehmen',
-        subtitle: `Zeit für deine ${timingLabel}-Supplements!`,
+        subtitle: `Noch offen: ${pendingText}`,
         gradient: 'from-cyan-500 to-blue-600',
         icon: Pill,
         actionContext: 'log_supplements',
         priority: 3,
         xp: 30,
-        canSwipeComplete: true,
-        quickActions: [
-          timingAction,
-          { id: 'pre_workout', label: 'Pre-WO', icon: Dumbbell },
-          { id: 'snooze', label: 'Später', icon: Clock }
-        ]
+        canSwipeComplete: false, // Uses timing circles instead
+      });
+    }
+
+    // 3b. Peptide Card - Show if active protocols exist and not all taken today
+    const activeProtocols = protocols.filter(p => p.is_active);
+    const allPeptidesTaken = activeProtocols.every(protocol => {
+      const peptide = protocol.peptides[0];
+      return peptide && isPeptideTakenToday(protocol.id, peptide.name);
+    });
+    
+    if (activeProtocols.length > 0 && !allPeptidesTaken) {
+      const peptideNames = activeProtocols
+        .map(p => p.peptides[0]?.name)
+        .filter(Boolean)
+        .slice(0, 2)
+        .join(', ');
+      
+      result.push({
+        id: 'peptide',
+        type: 'peptide',
+        title: 'Peptide injizieren',
+        subtitle: peptideNames || 'Heute fällige Injektionen',
+        gradient: 'from-purple-500 to-pink-600',
+        icon: Syringe,
+        actionContext: 'log_peptide',
+        priority: 3,
+        xp: 40,
+        canSwipeComplete: false, // Uses peptide circles instead
       });
     }
 
@@ -170,7 +209,7 @@ export const useActionCards = () => {
 
     // Sort by priority and limit to 5
     return result.sort((a, b) => a.priority - b.priority).slice(0, 5);
-  }, [plusData, dailyMetrics, profileData]);
+  }, [plusData, dailyMetrics, profileData, groupedSupplements, totalScheduled, totalTaken, protocols, isPeptideTakenToday]);
 
   return { cards };
 };

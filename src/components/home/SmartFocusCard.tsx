@@ -7,13 +7,15 @@
 
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk } from 'lucide-react';
+import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EpiphanyCard } from './EpiphanyCard';
+import { SupplementTimingCircles } from './cards/SupplementTimingCircles';
+import { PeptideTimingCircles } from './cards/PeptideFocusCard';
 
 export interface SmartTask {
   id: string;
-  type: 'hydration' | 'supplement' | 'supplements' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix';
+  type: 'hydration' | 'supplement' | 'supplements' | 'peptide' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix';
   title: string;
   subtitle: string;
   xp: number;
@@ -355,31 +357,22 @@ interface SmartActionsProps {
 
 const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat, onSupplementAction, onHydrationAction }) => {
   
-  // SUPPLEMENTS: Multi-action with individual timing tracking - PRIORITY BEFORE quickActions!
-  // CRITICAL: Check BOTH 'supplement' (from useActionCards) AND 'supplements' for compatibility
+  // SUPPLEMENTS: Visual timing circles - NEW IMPLEMENTATION
   if (task.type === 'supplement' || task.type === 'supplements') {
-    // Only render if we have the dedicated supplement handler
-    if (onSupplementAction) {
-      return (
-        <SupplementMultiActions 
-          quickActions={task.quickActions}
-          onAction={onSupplementAction}
-          onDismiss={() => onAction('snooze')}
-        />
-      );
-    }
-    // Fallback: simple complete button if no dedicated handler
     return (
-      <button 
-        onClick={(e) => {
-          e.stopPropagation();
-          onAction();
-        }}
-        className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
-      >
-        <Pill size={16} />
-        <span>Supplements erledigt</span>
-      </button>
+      <SupplementTimingCircles 
+        onComplete={() => onAction()} 
+        compact={false}
+      />
+    );
+  }
+
+  // PEPTIDES: Visual protocol circles - NEW
+  if (task.type === 'peptide') {
+    return (
+      <PeptideTimingCircles 
+        onComplete={() => onAction()} 
+      />
     );
   }
 
@@ -470,81 +463,7 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat,
   );
 };
 
-// --- SUPPLEMENT MULTI-ACTION COMPONENT ---
-// Allows individual timing buttons that disappear when clicked, card stays open
-
-interface SupplementMultiActionsProps {
-  quickActions?: QuickAction[];
-  onAction: (timing: string) => void;
-  onDismiss: () => void;
-}
-
-const SupplementMultiActions: React.FC<SupplementMultiActionsProps> = ({ quickActions, onAction, onDismiss }) => {
-  const [completed, setCompleted] = useState<string[]>([]);
-
-  // Use time-intelligent quickActions from useActionCards, or fallback
-  const actions = quickActions || [
-    { id: 'morning', label: 'Morgens', icon: Sunrise, primary: true },
-    { id: 'pre_workout', label: 'Pre-WO', icon: Dumbbell, primary: false },
-    { id: 'snooze', label: 'Spaeter', icon: Clock, primary: false },
-  ];
-
-  const handleClick = (actionId: string) => {
-    if (actionId === 'snooze') {
-      onDismiss();
-      return;
-    }
-    
-    // Mark as completed locally (button disappears)
-    setCompleted(prev => [...prev, actionId]);
-    // Trigger the logging
-    onAction(actionId);
-  };
-
-  const activeActions = actions.filter(a => !completed.includes(a.id));
-  const allSupplementsDone = completed.length >= 2; // morning + pre_workout
-
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-      <AnimatePresence mode="popLayout">
-        {activeActions.map((action) => (
-          <motion.button
-            key={action.id}
-            layout
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0, width: 0, marginRight: 0 }}
-            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClick(action.id);
-            }}
-            className={cn(
-              "flex items-center justify-center w-12 h-12 rounded-full transition-transform active:scale-95 border border-white/10",
-              action.primary 
-                ? "bg-white text-primary shadow-lg" 
-                : "bg-white/20 text-white backdrop-blur-md hover:bg-white/30"
-            )}
-            title={action.label}
-          >
-            <action.icon size={20} strokeWidth={2.5} />
-          </motion.button>
-        ))}
-
-        {/* All done indicator */}
-        {allSupplementsDone && (
-          <motion.div 
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 text-emerald-300 font-bold px-2"
-          >
-            <Check size={20} strokeWidth={3} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
+// OLD SupplementMultiActions REMOVED - replaced by SupplementTimingCircles
 
 // --- GENERIC ACTION BUTTON ---
 interface ActionButtonProps {
