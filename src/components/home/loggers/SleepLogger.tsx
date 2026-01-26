@@ -108,7 +108,7 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
   return (
     <div className="flex flex-col min-h-[300px]">
       {/* SCROLLABLE CONTENT */}
-      <div className="flex-1 space-y-4 overflow-y-auto">
+      <div className="flex-1 space-y-4 overflow-y-auto pb-24">
         {/* MORPHING HERO - HOURS DISPLAY */}
         <motion.div
           variants={heroContainerVariants}
@@ -241,8 +241,8 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-3 space-y-4">
             {/* Screen Time Slider */}
-            <div>
-              <div className="flex justify-between mb-2">
+            <div className="mb-3">
+              <div className="flex justify-between mb-1.5">
                 <span className="text-sm">Bildschirmzeit gestern Abend</span>
                 <span className="text-sm font-medium tabular-nums">{screenTime} min</span>
               </div>
@@ -255,47 +255,50 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
               />
             </div>
             
-            {/* Libido Scale */}
-            <div>
-              <div className="text-sm mb-2">Libido am Morgen</div>
-              <div className="flex gap-2 justify-center">
-                {LIBIDO_SCALE.map((l) => (
-                  <motion.button
-                    key={l.value}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setLibido(l.value)}
-                    className={cn(
-                      "w-10 h-10 rounded-xl text-xl transition-colors",
-                      libido === l.value
-                        ? "bg-primary/20 ring-2 ring-primary"
-                        : "bg-muted hover:bg-muted/80"
-                    )}
-                  >
-                    {l.emoji}
-                  </motion.button>
-                ))}
+            {/* Libido & Motivation Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Libido - Links */}
+              <div>
+                <div className="text-xs text-muted-foreground mb-1.5 text-center">Libido</div>
+                <div className="flex gap-1 justify-center flex-wrap">
+                  {LIBIDO_SCALE.map((l) => (
+                    <motion.button
+                      key={l.value}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setLibido(l.value)}
+                      className={cn(
+                        "w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-colors",
+                        libido === l.value
+                          ? "bg-primary/20 ring-2 ring-primary"
+                          : "bg-muted hover:bg-muted/80"
+                      )}
+                    >
+                      {l.emoji}
+                    </motion.button>
+                  ))}
+                </div>
               </div>
-            </div>
-            
-            {/* Motivation Scale */}
-            <div>
-              <div className="text-sm mb-2">Motivation</div>
-              <div className="flex gap-2 justify-center">
-                {MOTIVATION_SCALE.map((m) => (
-                  <motion.button
-                    key={m.value}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => setMotivation(m.value)}
-                    className={cn(
-                      "w-10 h-10 rounded-xl text-xl transition-colors",
-                      motivation === m.value
-                        ? "bg-primary/20 ring-2 ring-primary"
-                        : "bg-muted hover:bg-muted/80"
-                    )}
-                  >
-                    {m.emoji}
-                  </motion.button>
-                ))}
+
+              {/* Motivation - Rechts */}
+              <div>
+                <div className="text-xs text-muted-foreground mb-1.5 text-center">Motivation</div>
+                <div className="flex gap-1 justify-center flex-wrap">
+                  {MOTIVATION_SCALE.map((m) => (
+                    <motion.button
+                      key={m.value}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => setMotivation(m.value)}
+                      className={cn(
+                        "w-9 h-9 rounded-xl text-lg flex items-center justify-center transition-colors",
+                        motivation === m.value
+                          ? "bg-primary/20 ring-2 ring-primary"
+                          : "bg-muted hover:bg-muted/80"
+                      )}
+                    >
+                      {m.emoji}
+                    </motion.button>
+                  ))}
+                </div>
               </div>
             </div>
           </CollapsibleContent>
