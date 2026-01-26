@@ -1,10 +1,10 @@
 /**
  * LiquidCarouselMenu - Premium "Glass & Glow" Carousel
- * iOS Cover Flow inspired with infinite loop scrolling
+ * Transform-based infinite scroll with no visible jumps
  */
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { 
   Moon, Scale, Pill, Dumbbell, Droplet, Utensils, BookOpen,
   type LucideIcon 
@@ -21,8 +21,9 @@ interface QuickActionItem {
   glowColor: string;
 }
 
-interface LoopedItem extends QuickActionItem {
-  key: string;
+interface VisibleItem extends QuickActionItem {
+  offset: number;
+  uniqueKey: string;
 }
 
 interface LiquidCarouselMenuProps {
@@ -61,21 +62,20 @@ const getSmartOrderedItems = (): QuickActionItem[] => {
     .filter((item): item is QuickActionItem => item !== undefined);
 };
 
-// ============= Spring Config =============
-
-const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
-
 // ============= Constants =============
 
 const ITEM_WIDTH = 64; // w-16
 const GAP = 16; // gap-4
 const ITEM_TOTAL = ITEM_WIDTH + GAP; // 80px per item
-const HALF_ITEM_WIDTH = 32; // w-16 / 2 = 32px
+
+// ============= Spring Config =============
+
+const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
 
 // ============= Carousel Item Component =============
 
 interface CarouselItemProps {
-  item: LoopedItem;
+  item: VisibleItem;
   isActive: boolean;
   onClick: () => void;
 }
@@ -85,15 +85,10 @@ const CarouselItem: React.FC<CarouselItemProps> = ({ item, isActive, onClick }) 
   
   return (
     <motion.button
-      animate={{
-        scale: isActive ? 1.15 : 0.75,
-        opacity: isActive ? 1 : 0.5,
-      }}
       whileTap={{ scale: isActive ? 1.05 : 0.7 }}
-      transition={springConfig}
       onClick={onClick}
       className={cn(
-        "snap-center shrink-0 w-16 h-16 rounded-full",
+        "w-16 h-16 rounded-full",
         "flex items-center justify-center",
         "transition-shadow duration-300",
         isActive 
@@ -117,80 +112,73 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
   onClose,
   onAction,
 }) => {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const isJumping = useRef(false);
+  const [virtualIndex, setVirtualIndex] = useState(0);
+  const dragX = useRef(0);
   
   // Smart ordered items based on time of day
   const orderedItems = useMemo(() => getSmartOrderedItems(), []);
   const ITEMS_COUNT = orderedItems.length;
   
-  // Triple List for Infinite Scroll (21 items = 7 × 3)
-  const loopedItems: LoopedItem[] = useMemo(() => [
-    ...orderedItems.map(item => ({ ...item, key: `${item.id}-prev` })),  // Set 1
-    ...orderedItems.map(item => ({ ...item, key: `${item.id}-main` })),  // Set 2 (Start)
-    ...orderedItems.map(item => ({ ...item, key: `${item.id}-next` })),  // Set 3
-  ], [orderedItems]);
-  
-  // Check if item at loopedIndex should be active
-  const isItemActive = useCallback((loopedIndex: number) => {
-    return (loopedIndex % ITEMS_COUNT) === activeIndex;
-  }, [activeIndex, ITEMS_COUNT]);
-  
-  // Handle scroll with teleport logic for infinite loop
-  const handleScroll = useCallback(() => {
-    const container = scrollRef.current;
-    if (!container || isJumping.current) return;
-    
-    const { scrollLeft, scrollWidth, clientWidth } = container;
-    const setWidth = scrollWidth / 3;
-    
-    // Teleport thresholds
-    const leftThreshold = setWidth * 0.4;
-    const rightThreshold = setWidth * 1.6;
-    
-    // Teleport: Too far left → Jump to center set
-    if (scrollLeft < leftThreshold) {
-      isJumping.current = true;
-      container.scrollLeft = scrollLeft + setWidth;
-      requestAnimationFrame(() => { isJumping.current = false; });
-      return;
-    }
-    
-    // Teleport: Too far right → Jump to center set
-    if (scrollLeft > rightThreshold) {
-      isJumping.current = true;
-      container.scrollLeft = scrollLeft - setWidth;
-      requestAnimationFrame(() => { isJumping.current = false; });
-      return;
-    }
-    
-    // Calculate active index based on scroll position
-    // With padding calc(50vw - 32px), scrollLeft directly maps to centered item
-    const rawIndex = Math.round(scrollLeft / ITEM_TOTAL);
-    const normalizedIndex = ((rawIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
-    
-    if (normalizedIndex !== activeIndex) {
-      setActiveIndex(normalizedIndex);
-    }
-  }, [activeIndex, ITEMS_COUNT]);
-  
-  // Initialize scroll position to center set when opening
-  useEffect(() => {
-    if (isOpen && scrollRef.current) {
-      const container = scrollRef.current;
-      // Wait for layout to complete
-      requestAnimationFrame(() => {
-        // Set 2 starts at index ITEMS_COUNT (7), so scroll to that position
-        const set2StartPosition = ITEMS_COUNT * ITEM_TOTAL;
-        container.scrollTo({ left: set2StartPosition, behavior: 'instant' });
-        setActiveIndex(0);
+  // Calculate visible items (7 items: -3 to +3 from center)
+  const visibleItems = useMemo((): VisibleItem[] => {
+    const items: VisibleItem[] = [];
+    for (let offset = -3; offset <= 3; offset++) {
+      const actualIndex = ((virtualIndex + offset) % ITEMS_COUNT + ITEMS_COUNT) % ITEMS_COUNT;
+      items.push({
+        ...orderedItems[actualIndex],
+        offset,
+        uniqueKey: `${virtualIndex + offset}`,
       });
     }
-  }, [isOpen, ITEMS_COUNT]);
+    return items;
+  }, [virtualIndex, orderedItems, ITEMS_COUNT]);
+  
+  // Get active item (center item)
+  const activeItem = useMemo(() => {
+    const normalizedIndex = ((virtualIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
+    return orderedItems[normalizedIndex];
+  }, [virtualIndex, orderedItems, ITEMS_COUNT]);
+  
+  // Handle drag end - determine direction and update index
+  const handleDragEnd = useCallback((
+    _: MouseEvent | TouchEvent | PointerEvent,
+    info: PanInfo
+  ) => {
+    const velocity = info.velocity.x;
+    const offset = info.offset.x;
+    
+    // Threshold: At least half item width or high velocity
+    const threshold = ITEM_TOTAL / 2;
+    
+    let change = 0;
+    if (Math.abs(offset) > threshold || Math.abs(velocity) > 500) {
+      // Determine direction (drag right = previous item, drag left = next item)
+      change = offset > 0 ? -1 : 1;
+      
+      // For high velocity: skip multiple items
+      if (Math.abs(velocity) > 1000) {
+        change *= 2;
+      }
+    }
+    
+    if (change !== 0) {
+      setVirtualIndex(prev => prev + change);
+      
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        navigator.vibrate(10);
+      }
+    }
+  }, []);
   
   // Handle item click
-  const handleItemClick = useCallback((item: LoopedItem) => {
+  const handleItemClick = useCallback((item: VisibleItem) => {
+    // If not center item, scroll to it first
+    if (item.offset !== 0) {
+      setVirtualIndex(prev => prev + item.offset);
+      return;
+    }
+    
     // Haptic feedback
     if ('vibrate' in navigator) {
       navigator.vibrate(10);
@@ -199,6 +187,13 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
     onAction(item.id);
     onClose();
   }, [onAction, onClose]);
+  
+  // Reset virtual index when menu opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setVirtualIndex(0);
+    }
+  }, [isOpen]);
   
   return (
     <AnimatePresence>
@@ -234,37 +229,50 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
             transition={springConfig}
             className="fixed bottom-28 left-0 right-0 z-40"
           >
-            {/* Scrollable Carousel with Triple List */}
-            <div
-              ref={scrollRef}
-              onScroll={handleScroll}
-              className="flex gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar py-4"
-              style={{ 
-                paddingLeft: 'calc(50vw - 32px)', 
-                paddingRight: 'calc(50vw - 32px)' 
-              }}
+            {/* Transform-based Carousel */}
+            <motion.div
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.1}
+              onDragEnd={handleDragEnd}
+              className="relative h-20 w-full touch-pan-y cursor-grab active:cursor-grabbing"
             >
-              {loopedItems.map((item, loopedIndex) => (
-                <CarouselItem
-                  key={item.key}
-                  item={item}
-                  isActive={isItemActive(loopedIndex)}
-                  onClick={() => handleItemClick(item)}
-                />
-              ))}
-            </div>
+              <AnimatePresence mode="popLayout">
+                {visibleItems.map((item) => (
+                  <motion.div
+                    key={item.uniqueKey}
+                    layout
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{
+                      x: `calc(50vw - 32px + ${item.offset * ITEM_TOTAL}px)`,
+                      scale: item.offset === 0 ? 1.15 : 0.75,
+                      opacity: Math.abs(item.offset) <= 2 ? (item.offset === 0 ? 1 : 0.5) : 0.2,
+                    }}
+                    exit={{ opacity: 0, scale: 0.5 }}
+                    transition={springConfig}
+                    className="absolute top-0 left-0"
+                  >
+                    <CarouselItem
+                      item={item}
+                      isActive={item.offset === 0}
+                      onClick={() => handleItemClick(item)}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
             
             {/* Active Label - Animated */}
             <AnimatePresence mode="wait">
               <motion.div 
-                key={orderedItems[activeIndex]?.label}
+                key={activeItem?.label}
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
                 transition={{ duration: 0.15 }}
                 className="text-center text-sm font-medium text-foreground mt-1"
               >
-                {orderedItems[activeIndex]?.label}
+                {activeItem?.label}
               </motion.div>
             </AnimatePresence>
           </motion.div>
