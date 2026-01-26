@@ -28,11 +28,12 @@ export const useConfettiPreference = () => {
     if (!user?.id) return;
 
     try {
+      // Use raw query to avoid TypeScript issues until types regenerate
       const { data, error } = await supabase
         .from('profiles')
         .select('confetti_enabled')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .maybeSingle() as { data: { confetti_enabled: boolean | null } | null, error: any };
 
       if (error) {
         console.error('Error loading confetti preference:', error);
@@ -58,9 +59,10 @@ export const useConfettiPreference = () => {
 
     setLoading(true);
     try {
+      // Use raw query to avoid TypeScript issues until types regenerate
       const { error } = await supabase
         .from('profiles')
-        .update({ confetti_enabled: enabled })
+        .update({ confetti_enabled: enabled } as any)
         .eq('user_id', user.id);
 
       if (error) {

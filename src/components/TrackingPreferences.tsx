@@ -66,6 +66,7 @@ export const TrackingPreferences = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const { getVisibleTooltip, dismissTooltip } = useProactiveTooltips();
+  const { isConfettiEnabled, setConfettiEnabled, loading: confettiLoading } = useConfettiPreference();
 
   useEffect(() => {
     if (user) {
@@ -385,6 +386,26 @@ export const TrackingPreferences = () => {
               </div>
             );
           })}
+        </div>
+        
+        {/* Confetti/Celebration Toggle */}
+        <div className="mt-6 pt-6 border-t">
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="flex items-center gap-3">
+              <PartyPopper className="h-5 w-5 text-primary" />
+              <div className="space-y-1">
+                <h4 className="font-medium">Feuerwerk & Konfetti</h4>
+                <p className="text-sm text-muted-foreground">
+                  Zeige Feuerwerk-Animation bei Erfolgen
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={isConfettiEnabled}
+              onCheckedChange={(checked) => setConfettiEnabled(checked)}
+              disabled={confettiLoading}
+            />
+          </div>
         </div>
         
         <div className="mt-6 p-4 bg-muted/50 rounded-lg">
