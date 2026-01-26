@@ -1,119 +1,67 @@
 
-# Unified Quick-Log Sheet: Weight, Training, Sleep
+
+# Enhanced Quick-Log Sheet: Mehr Datenpunkte mit Progressive Disclosure
 
 ## Uebersicht
 
-Ein premium Apple-Health-Style Overlay fuer die drei "Big Three" Tracking-Bereiche, die aktuell fehlen. Das Sheet oeffnet sich vom LiquidDock `+` Button und bietet ein iOS Kontrollzentrum-Feeling mit grossen Touch-Targets und haptischem Feedback.
+Erweiterung der drei Logger mit zusaetzlichen Datenpunkten aus den bestehenden DB-Tabellen. Das Design nutzt **Accordion-Panels** fuer optionale Felder, um die "Quick"-UX beizubehalten.
 
 ```text
-┌─────────────────────────────────────────┐
-│          ═══ (Drag Handle) ═══          │
-│                                         │
-│   ┌─────────┬─────────┬─────────┐      │
-│   │ Gewicht │Training │  Schlaf │ ← iOS Segmented Control
-│   │   ●     │         │         │       │
-│   └─────────┴─────────┴─────────┘      │
-│                                         │
-│           ╔═══════════════╗            │
-│           ║    85.2       ║  ← Hero Display
-│           ║      kg       ║            │
-│           ╚═══════════════╝            │
-│                                         │
-│     [ − 0.1 ]  ○──────●  [ + 0.1 ]     │
-│                                         │
-│         ┌───────────────────┐          │
-│         │    ✓ Speichern    │          │
-│         └───────────────────┘          │
-└─────────────────────────────────────────┘
+VORHER:                              NACHHER:
+┌───────────────────────┐            ┌───────────────────────┐
+│       85.2 kg         │            │       85.2 kg         │
+│    [−0.1] [+0.1]      │            │    [−0.1] [+0.1]      │
+│                       │            │                       │
+│    [✓ Speichern]      │            │  ▼ Mehr Details       │ ← Accordion
+└───────────────────────┘            │  ┌─────────────────┐  │
+                                     │  │ KFA: [__]%      │  │
+                                     │  │ Muskeln: [__]%  │  │
+                                     │  └─────────────────┘  │
+                                     │    [✓ Speichern]      │
+                                     └───────────────────────┘
 ```
 
 ---
 
-## Datei-Uebersicht
+## 1. WeightLogger - Erweiterte Koerperkomposition
 
-| Aktion | Datei | Beschreibung |
-|--------|-------|--------------|
-| **CREATE** | `src/components/home/QuickLogSheet.tsx` | Hauptkomponente mit Segmented Control |
-| **CREATE** | `src/components/home/loggers/WeightLogger.tsx` | Gewicht-Eingabe mit Stepper |
-| **CREATE** | `src/components/home/loggers/TrainingLogger.tsx` | 4-Saeulen Grid + Dauer-Slider |
-| **CREATE** | `src/components/home/loggers/SleepLogger.tsx` | Stunden-Slider + Qualitaets-Emojis |
-| **MODIFY** | `src/hooks/useAresEvents.ts` | Neue Event-Kategorien: weight, workout, sleep |
-| **MODIFY** | `src/hooks/useDailyMetrics.ts` | Erweitern um weight + training + sleep Daten |
-| **MODIFY** | `src/pages/AresHome.tsx` | QuickLogSheet Integration + State |
-| **MODIFY** | `src/components/home/LiquidDock.tsx` | Props erweitern fuer Sheet-Steuerung |
+### Neue Felder
 
----
+| Feld | UI-Element | DB-Feld |
+|------|------------|---------|
+| **KFA %** | Numeric Input (0-50%) | `body_fat_percentage` |
+| **Muskelmasse %** | Numeric Input (20-60%) | `muscle_percentage` |
+| **Notizen** | Text Input (optional) | `notes` |
 
-## 1. QuickLogSheet.tsx - Hauptkomponente
-
-### Struktur
-
-```text
-QuickLogSheet
-├── Backdrop (blur + fade)
-├── Sheet Container (slide-up + drag-to-dismiss)
-│   ├── Drag Handle
-│   ├── Header ("Quick Log")
-│   ├── Segmented Control (Weight | Training | Sleep)
-│   └── Content Area (AnimatePresence)
-│       ├── WeightLogger
-│       ├── TrainingLogger
-│       └── SleepLogger
-```
-
-### Props Interface
-
-```typescript
-interface QuickLogSheetProps {
-  isOpen: boolean;
-  onClose: () => void;
-  initialTab?: 'weight' | 'training' | 'sleep';
-}
-```
-
-### Key Features
-
-- **iOS Segmented Control**: Sliding highlight animation mit Framer Motion
-- **Drag-to-Dismiss**: `drag="y"` mit `dragConstraints` und `onDragEnd` Threshold
-- **AnimatePresence**: Smooth Content-Wechsel zwischen Tabs
-- **Height**: `max-h-[70vh]` mit `rounded-t-3xl` fuer Sheet-Feeling
-
-### Segmented Control Animation
-
-```typescript
-// Sliding Background berechnung:
-const tabWidth = 100 / 3; // 33.33%
-const translateX = activeTabIndex * tabWidth;
-
-<motion.div
-  className="absolute h-full bg-white dark:bg-zinc-700 rounded-xl shadow-sm"
-  style={{ width: `${tabWidth}%` }}
-  animate={{ x: `${translateX * 3}%` }}
-  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-/>
-```
-
----
-
-## 2. WeightLogger.tsx - Gewicht-Eingabe
-
-### Design
+### UI-Design
 
 ```text
 ┌─────────────────────────────────────────┐
 │                                         │
 │              ╔═════════════╗            │
-│              ║   85.2      ║  ← Riesen-Display
+│              ║   85.2      ║  ← Core (immer sichtbar)
 │              ║     kg      ║            │
 │              ╚═════════════╝            │
 │                                         │
 │    ┌───────┐              ┌───────┐    │
-│    │ −0.1  │  ○─────────● │ +0.1  │ ← Stepper
+│    │ −0.1  │              │ +0.1  │    │
 │    └───────┘              └───────┘    │
 │                                         │
-│    ┌─────────────────────────────────┐  │
-│    │  Gestern: 84.8 kg               │ ← Last Entry Chip
-│    └─────────────────────────────────┘  │
+│  ┌─────────────────────────────────┐   │
+│  │ ▼ Koerperkomposition            │ ← Accordion Trigger
+│  └─────────────────────────────────┘   │
+│                                         │
+│  ┌─────────────────────────────────┐   │ (Expandiert)
+│  │  KFA        ┌────────────┐      │   │
+│  │             │   18.5  %  │      │   │
+│  │             └────────────┘      │   │
+│  │  Muskeln    ┌────────────┐      │   │
+│  │             │   42.0  %  │      │   │
+│  │             └────────────┘      │   │
+│  │  Notizen    ┌────────────┐      │   │
+│  │             │ Nach Sauna │      │   │
+│  │             └────────────┘      │   │
+│  └─────────────────────────────────┘   │
 │                                         │
 │    ┌─────────────────────────────────┐  │
 │    │      ✓  Speichern               │  │
@@ -121,419 +69,804 @@ const translateX = activeTabIndex * tabWidth;
 └─────────────────────────────────────────┘
 ```
 
-### Datenfluss
-
-1. **Initial Value**: Letzte `weight_history.weight` als Default (via `useDailyMetrics`)
-2. **Stepper Buttons**: `+/- 0.1 kg` mit `scale(0.95)` auf Tap
-3. **Save**: `useAresEvents.trackEvent('weight', { weight_kg, date })`
-
-### DB Schema (weight_history)
+### Code-Aenderungen WeightLogger.tsx
 
 ```typescript
-{
-  user_id: string;
-  weight: number;        // weight_kg
-  date: string;          // YYYY-MM-DD
-  // Optional:
-  body_fat_percentage?: number;
-  notes?: string;
-}
+// Neue State-Variablen
+const [bodyFat, setBodyFat] = useState<number | null>(null);
+const [muscleMass, setMuscleMass] = useState<number | null>(null);
+const [notes, setNotes] = useState('');
+
+// Erweitertes Save-Payload
+const handleSave = async () => {
+  setIsSaving(true);
+  const success = await trackEvent('weight', { 
+    weight_kg: weight,
+    body_fat_percentage: bodyFat,
+    muscle_percentage: muscleMass,
+    notes: notes || undefined
+  });
+  // ...
+};
 ```
 
 ---
 
-## 3. TrainingLogger.tsx - 4-Saeulen Grid
+## 2. TrainingLogger - Workout-Subtypen und Details
 
-### Design
+### Neue Felder je nach Training-Typ
+
+| Training-Typ | Zusaetzliche Felder | DB-Speicherung |
+|--------------|---------------------|----------------|
+| **RPT (Kraft)** | Split-Typ (Push/Pull/Legs/Upper/Lower/Full), Volumen kg | `split_type`, `total_volume_kg` |
+| **Zone 2** | Cardio-Art (Laufen/Radfahren/Schwimmen/Gehen) | `session_data.cardio_type` |
+| **VO2 Max** | Protokoll (4x4, Tabata, HIIT), Intensitaet | `session_data.protocol`, `session_data.intensity` |
+| **Sauna** | Temperatur, Gaenge | `session_data.temperature`, `session_data.rounds` |
+
+### UI-Design (Nach Typ-Auswahl expandiert)
 
 ```text
 ┌─────────────────────────────────────────┐
+│   ┌──────────┐  ┌──────────┐            │
+│   │  💪 RPT  │  │ 🏃 Zone2 │ ← Selected │
+│   │    ✓     │  │          │            │
+│   └──────────┘  └──────────┘            │
+│   ┌──────────┐  ┌──────────┐            │
+│   │ ❤️ VO2max│  │ 🔥 Sauna │            │
+│   └──────────┘  └──────────┘            │
 │                                         │
-│   ┌─────────────┐  ┌─────────────┐     │
-│   │  💪 Kraft   │  │  🏃 Zone 2  │     │
-│   │    (RPT)    │  │             │ ← Selected = Blue Border
-│   └─────────────┘  └─────────────┘     │
+│  ┌─────────────────────────────────┐   │
+│  │ ▼ Training-Details              │ ← Auto-Expand nach Auswahl
+│  └─────────────────────────────────┘   │
 │                                         │
-│   ┌─────────────┐  ┌─────────────┐     │
-│   │  ❤️ VO2max  │  │  🔥 Sauna   │     │
-│   │             │  │             │     │
-│   └─────────────┘  └─────────────┘     │
+│  WENN RPT:                              │
+│  ┌─────────────────────────────────┐   │
+│  │  Split:  [Push] [Pull] [Legs]   │ ← Chip-Auswahl
+│  │          [Upper] [Lower] [Full] │   │
+│  │                                  │   │
+│  │  Volumen: ┌──────┐ kg           │   │
+│  │           │ 8500 │              │   │
+│  │           └──────┘              │   │
+│  └─────────────────────────────────┘   │
 │                                         │
-│   Dauer:  [ − ]   45 min   [ + ]       │ ← Nur fuer Cardio/Sauna
+│  WENN Zone2:                            │
+│  ┌─────────────────────────────────┐   │
+│  │  Art:    [🚶Gehen] [🏃Laufen]   │   │
+│  │          [🚴Rad] [🏊Schwimmen]  │   │
+│  │                                  │   │
+│  │  Dauer:  [ − ]   45 min  [ + ]  │   │
+│  └─────────────────────────────────┘   │
 │                                         │
-│   ┌─────────────────────────────────┐  │
-│   │      ✓  Speichern               │  │
-│   └─────────────────────────────────┘  │
+│  WENN VO2max:                           │
+│  ┌─────────────────────────────────┐   │
+│  │  Protokoll: [4x4] [Tabata]      │   │
+│  │             [HIIT] [Anderes]    │   │
+│  │                                  │   │
+│  │  Dauer:  [ − ]   20 min  [ + ]  │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│  WENN Sauna:                            │
+│  ┌─────────────────────────────────┐   │
+│  │  Temperatur: [80°] [90°] [100°] │   │
+│  │                                  │   │
+│  │  Gaenge:     [1] [2] [3] [4]    │   │
+│  │                                  │   │
+│  │  Dauer:  [ − ]   15 min  [ + ]  │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│    [✓ Training speichern]               │
 └─────────────────────────────────────────┘
 ```
 
-### Training Types Mapping
+### Neue Types und Constants
 
 ```typescript
-const trainingTypes = [
-  { id: 'rpt',    label: 'Kraft (RPT)', icon: Dumbbell, color: 'bg-indigo-500', needsTime: false },
-  { id: 'zone2',  label: 'Zone 2',      icon: Activity, color: 'bg-emerald-500', needsTime: true },
-  { id: 'vo2max', label: 'VO2 Max',     icon: HeartPulse, color: 'bg-rose-500', needsTime: true },
-  { id: 'sauna',  label: 'Sauna',       icon: Flame,   color: 'bg-orange-500', needsTime: true },
+// src/types/training.ts erweitern
+export type CardioType = 'walking' | 'running' | 'cycling' | 'swimming' | 'rowing' | 'other';
+export type Vo2Protocol = '4x4' | 'tabata' | 'hiit' | 'other';
+export type SaunaTemp = 80 | 90 | 100;
+
+export const CARDIO_TYPE_OPTIONS = [
+  { id: 'walking', label: 'Gehen', icon: '🚶' },
+  { id: 'running', label: 'Laufen', icon: '🏃' },
+  { id: 'cycling', label: 'Radfahren', icon: '🚴' },
+  { id: 'swimming', label: 'Schwimmen', icon: '🏊' },
 ];
-```
 
-### DB Schema (training_sessions)
-
-```typescript
-{
-  user_id: string;
-  training_type: 'rpt' | 'zone2' | 'vo2max' | 'sauna';
-  total_duration_minutes: number;
-  session_date: string;  // YYYY-MM-DD
-}
+export const VO2_PROTOCOL_OPTIONS = [
+  { id: '4x4', label: '4x4 Intervalle', description: '4 min high, 3 min low' },
+  { id: 'tabata', label: 'Tabata', description: '20s on, 10s off' },
+  { id: 'hiit', label: 'HIIT', description: 'High Intensity Intervals' },
+];
 ```
 
 ---
 
-## 4. SleepLogger.tsx - Schlaf-Tracking
+## 3. SleepLogger - Umfassende Schlafanalyse
 
-### Design
+### Neue Felder (alle optional via Accordion)
+
+| Feld | UI-Element | DB-Feld |
+|------|------------|---------|
+| **Einschlafzeit** | Time Picker | `bedtime` |
+| **Aufwachzeit** | Time Picker | `wake_time` |
+| **Unterbrechungen** | Stepper (0-10) | `sleep_interruptions` |
+| **Bildschirmzeit abends** | Slider (0-180 min) | `screen_time_evening` |
+| **Libido am Morgen** | Emoji-Scale (1-5) | `morning_libido` |
+| **Motivation** | Emoji-Scale (1-5) | `motivation_level` |
+
+### UI-Design
 
 ```text
 ┌─────────────────────────────────────────┐
-│                                         │
 │              ╔═════════════╗            │
-│              ║    7.5h     ║            │
-│              ║  Schlafdauer║            │
+│              ║    7.5h     ║  ← Core
 │              ╚═════════════╝            │
-│                                         │
-│     ○────────────────●──────────○       │ ← Range Slider 4-12h
-│     4h                           12h    │
+│     ○────────────────●──────────○       │
+│     3h                           12h    │
 │                                         │
 │   ┌─────────┐ ┌─────────┐ ┌─────────┐  │
-│   │   😫    │ │   😐    │ │   🤩    │  │ ← Qualitaets-Auswahl
+│   │   😫    │ │   😐    │ │   🤩    │  │ ← Qualitaet
 │   │Schlecht │ │  Okay   │ │  Super  │  │
 │   └─────────┘ └─────────┘ └─────────┘  │
 │                                         │
-│   ┌─────────────────────────────────┐  │
-│   │      ✓  Speichern               │  │
-│   └─────────────────────────────────┘  │
+│  ┌─────────────────────────────────┐   │
+│  │ ▼ Schlaf-Details                │ ← Accordion
+│  └─────────────────────────────────┘   │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │  Eingeschlafen:  [22:30]        │   │
+│  │  Aufgewacht:     [06:00]        │   │
+│  │                                  │   │
+│  │  Unterbrechungen: [−] 2 [+]     │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │ ▼ Morgen-Check                  │ ← Zweites Accordion
+│  └─────────────────────────────────┘   │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │  Bildschirmzeit gestern Abend:  │   │
+│  │  ○─────●───────────○  45 min    │   │
+│  │                                  │   │
+│  │  Libido am Morgen:              │   │
+│  │  [😴] [😐] [😊] [😍] [🔥]       │ ← 1-5 Scale
+│  │                                  │   │
+│  │  Motivation:                    │   │
+│  │  [😫] [😕] [😐] [💪] [🚀]       │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│    [✓ Schlaf speichern]                 │
 └─────────────────────────────────────────┘
 ```
 
-### Qualitaets-Mapping
+### Emoji-Scales fuer Libido und Motivation
 
 ```typescript
-const qualityLevels = [
-  { id: 'low',  label: 'Schlecht', emoji: '😫', value: 1, bg: 'bg-red-100' },
-  { id: 'med',  label: 'Okay',     emoji: '😐', value: 3, bg: 'bg-amber-100' },
-  { id: 'high', label: 'Super',    emoji: '🤩', value: 5, bg: 'bg-emerald-100' },
+const LIBIDO_SCALE = [
+  { value: 1, emoji: '😴', label: 'Sehr niedrig' },
+  { value: 2, emoji: '😐', label: 'Niedrig' },
+  { value: 3, emoji: '😊', label: 'Normal' },
+  { value: 4, emoji: '😍', label: 'Hoch' },
+  { value: 5, emoji: '🔥', label: 'Sehr hoch' },
 ];
-```
 
-### DB Schema (sleep_tracking)
-
-```typescript
-{
-  user_id: string;
-  date: string;          // YYYY-MM-DD (gestern)
-  sleep_hours: number;   // 7.5
-  sleep_quality: number; // 1, 3, oder 5
-}
+const MOTIVATION_SCALE = [
+  { value: 1, emoji: '😫', label: 'Keine' },
+  { value: 2, emoji: '😕', label: 'Wenig' },
+  { value: 3, emoji: '😐', label: 'Okay' },
+  { value: 4, emoji: '💪', label: 'Gut' },
+  { value: 5, emoji: '🚀', label: 'Top' },
+];
 ```
 
 ---
 
-## 5. useAresEvents Erweiterung
+## 4. Datei-Uebersicht
 
-### Neue Event-Kategorien
+| Aktion | Datei | Beschreibung |
+|--------|-------|--------------|
+| **MODIFY** | `src/components/home/loggers/WeightLogger.tsx` | +KFA, +Muskeln, +Notes mit Accordion |
+| **MODIFY** | `src/components/home/loggers/TrainingLogger.tsx` | +Split-Typ, +Cardio-Art, +VO2-Protokoll, +Sauna-Details |
+| **MODIFY** | `src/components/home/loggers/SleepLogger.tsx` | +Zeiten, +Unterbrechungen, +Screentime, +Libido, +Motivation |
+| **MODIFY** | `src/types/training.ts` | Neue Types (CardioType, Vo2Protocol) |
+| **MODIFY** | `src/hooks/useAresEvents.ts` | Erweiterte Payloads fuer alle Kategorien |
+
+---
+
+## 5. Detaillierte Aenderungen: WeightLogger.tsx
+
+### Neue Imports
 
 ```typescript
-// VORHER:
-export type EventCategory = 'water' | 'coffee' | 'supplement';
-
-// NACHHER:
-export type EventCategory = 'water' | 'coffee' | 'supplement' | 'weight' | 'workout' | 'sleep';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronDown } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 ```
 
-### Neues EventPayload Interface
+### Neue State-Variablen
+
+```typescript
+const [bodyFat, setBodyFat] = useState<string>('');
+const [muscleMass, setMuscleMass] = useState<string>('');
+const [notes, setNotes] = useState('');
+const [detailsOpen, setDetailsOpen] = useState(false);
+```
+
+### Accordion-Sektion (nach Stepper)
+
+```typescript
+<Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+  <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 bg-muted rounded-xl text-sm font-medium">
+    <span>Koerperkomposition</span>
+    <ChevronDown className={cn(
+      "w-4 h-4 transition-transform",
+      detailsOpen && "rotate-180"
+    )} />
+  </CollapsibleTrigger>
+  <CollapsibleContent className="pt-3 space-y-3">
+    {/* KFA Input */}
+    <div className="flex items-center gap-3">
+      <label className="text-sm text-muted-foreground w-24">KFA</label>
+      <div className="relative flex-1">
+        <Input
+          type="number"
+          step="0.1"
+          placeholder="18.5"
+          value={bodyFat}
+          onChange={(e) => setBodyFat(e.target.value)}
+          className="pr-8"
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+      </div>
+    </div>
+    {/* Muskelmasse Input */}
+    <div className="flex items-center gap-3">
+      <label className="text-sm text-muted-foreground w-24">Muskeln</label>
+      <div className="relative flex-1">
+        <Input
+          type="number"
+          step="0.1"
+          placeholder="42.0"
+          value={muscleMass}
+          onChange={(e) => setMuscleMass(e.target.value)}
+          className="pr-8"
+        />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+      </div>
+    </div>
+    {/* Notizen */}
+    <div className="flex items-center gap-3">
+      <label className="text-sm text-muted-foreground w-24">Notizen</label>
+      <Input
+        placeholder="Optional..."
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        className="flex-1"
+      />
+    </div>
+  </CollapsibleContent>
+</Collapsible>
+```
+
+---
+
+## 6. Detaillierte Aenderungen: TrainingLogger.tsx
+
+### Neue State-Variablen
+
+```typescript
+// Nach Typ-Auswahl
+const [splitType, setSplitType] = useState<SplitType | null>(null);
+const [cardioType, setCardioType] = useState<CardioType | null>(null);
+const [vo2Protocol, setVo2Protocol] = useState<Vo2Protocol | null>(null);
+const [saunaTemp, setSaunaTemp] = useState<80 | 90 | 100>(80);
+const [saunaRounds, setSaunaRounds] = useState(3);
+const [totalVolume, setTotalVolume] = useState<string>('');
+```
+
+### Neue Konstanten
+
+```typescript
+const SPLIT_OPTIONS = [
+  { id: 'push', label: 'Push' },
+  { id: 'pull', label: 'Pull' },
+  { id: 'legs', label: 'Legs' },
+  { id: 'upper', label: 'Upper' },
+  { id: 'lower', label: 'Lower' },
+  { id: 'full', label: 'Full' },
+];
+
+const CARDIO_OPTIONS = [
+  { id: 'walking', label: 'Gehen', emoji: '🚶' },
+  { id: 'running', label: 'Laufen', emoji: '🏃' },
+  { id: 'cycling', label: 'Rad', emoji: '🚴' },
+  { id: 'swimming', label: 'Schwimmen', emoji: '🏊' },
+];
+
+const VO2_OPTIONS = [
+  { id: '4x4', label: '4x4' },
+  { id: 'tabata', label: 'Tabata' },
+  { id: 'hiit', label: 'HIIT' },
+];
+```
+
+### Detail-Panel (Auto-Expand nach Typ-Auswahl)
+
+```typescript
+<AnimatePresence>
+  {selectedType && (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="overflow-hidden"
+    >
+      <div className="pt-4 space-y-4">
+        {/* RPT: Split Selection */}
+        {selectedType === 'rpt' && (
+          <>
+            <div className="text-sm font-medium text-muted-foreground">Split</div>
+            <div className="flex flex-wrap gap-2">
+              {SPLIT_OPTIONS.map((s) => (
+                <motion.button
+                  key={s.id}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSplitType(s.id as SplitType)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                    splitType === s.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  {s.label}
+                </motion.button>
+              ))}
+            </div>
+            {/* Volume Input */}
+            <div className="flex items-center gap-3">
+              <label className="text-sm text-muted-foreground">Volumen</label>
+              <Input
+                type="number"
+                placeholder="8500"
+                value={totalVolume}
+                onChange={(e) => setTotalVolume(e.target.value)}
+                className="w-24"
+              />
+              <span className="text-sm text-muted-foreground">kg</span>
+            </div>
+          </>
+        )}
+
+        {/* Zone2: Cardio Type + Duration */}
+        {selectedType === 'zone2' && (
+          <>
+            <div className="text-sm font-medium text-muted-foreground">Art</div>
+            <div className="flex flex-wrap gap-2">
+              {CARDIO_OPTIONS.map((c) => (
+                <motion.button
+                  key={c.id}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setCardioType(c.id as CardioType)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1",
+                    cardioType === c.id
+                      ? "bg-emerald-500 text-white"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  <span>{c.emoji}</span>
+                  {c.label}
+                </motion.button>
+              ))}
+            </div>
+            {/* Duration controls (existing) */}
+          </>
+        )}
+
+        {/* VO2max: Protocol */}
+        {selectedType === 'vo2max' && (
+          <>
+            <div className="text-sm font-medium text-muted-foreground">Protokoll</div>
+            <div className="flex flex-wrap gap-2">
+              {VO2_OPTIONS.map((v) => (
+                <motion.button
+                  key={v.id}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setVo2Protocol(v.id as Vo2Protocol)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                    vo2Protocol === v.id
+                      ? "bg-rose-500 text-white"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  {v.label}
+                </motion.button>
+              ))}
+            </div>
+            {/* Duration controls */}
+          </>
+        )}
+
+        {/* Sauna: Temp + Rounds */}
+        {selectedType === 'sauna' && (
+          <>
+            <div className="text-sm font-medium text-muted-foreground">Temperatur</div>
+            <div className="flex gap-2">
+              {[80, 90, 100].map((t) => (
+                <motion.button
+                  key={t}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSaunaTemp(t as 80 | 90 | 100)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                    saunaTemp === t
+                      ? "bg-orange-500 text-white"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  {t}°C
+                </motion.button>
+              ))}
+            </div>
+            <div className="text-sm font-medium text-muted-foreground">Gaenge</div>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4].map((r) => (
+                <motion.button
+                  key={r}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSaunaRounds(r)}
+                  className={cn(
+                    "w-10 h-10 rounded-lg text-sm font-medium transition-colors",
+                    saunaRounds === r
+                      ? "bg-orange-500 text-white"
+                      : "bg-muted hover:bg-muted/80"
+                  )}
+                >
+                  {r}
+                </motion.button>
+              ))}
+            </div>
+            {/* Duration controls */}
+          </>
+        )}
+      </div>
+    </motion.div>
+  )}
+</AnimatePresence>
+```
+
+### Erweitertes Save-Payload
+
+```typescript
+const handleSave = async () => {
+  if (!selectedType) return;
+  
+  setIsSaving(true);
+  
+  // Build session_data based on type
+  const sessionData: Record<string, unknown> = {};
+  
+  if (selectedType === 'zone2' && cardioType) {
+    sessionData.cardio_type = cardioType;
+  }
+  if (selectedType === 'vo2max' && vo2Protocol) {
+    sessionData.protocol = vo2Protocol;
+  }
+  if (selectedType === 'sauna') {
+    sessionData.temperature = saunaTemp;
+    sessionData.rounds = saunaRounds;
+  }
+  
+  const success = await trackEvent('workout', { 
+    training_type: selectedType,
+    split_type: selectedType === 'rpt' ? splitType : undefined,
+    duration_minutes: selectedTypeConfig?.needsTime ? duration : undefined,
+    total_volume_kg: totalVolume ? Number(totalVolume) : undefined,
+    session_data: Object.keys(sessionData).length > 0 ? sessionData : undefined
+  });
+  
+  if (success) onClose();
+  setIsSaving(false);
+};
+```
+
+---
+
+## 7. Detaillierte Aenderungen: SleepLogger.tsx
+
+### Neue State-Variablen
+
+```typescript
+const [bedtime, setBedtime] = useState<string>('');
+const [wakeTime, setWakeTime] = useState<string>('');
+const [interruptions, setInterruptions] = useState(0);
+const [screenTime, setScreenTime] = useState(30);
+const [libido, setLibido] = useState<number | null>(null);
+const [motivation, setMotivation] = useState<number | null>(null);
+const [detailsOpen, setDetailsOpen] = useState(false);
+const [morningCheckOpen, setMorningCheckOpen] = useState(false);
+```
+
+### Neue Konstanten
+
+```typescript
+const LIBIDO_SCALE = [
+  { value: 1, emoji: '😴' },
+  { value: 2, emoji: '😐' },
+  { value: 3, emoji: '😊' },
+  { value: 4, emoji: '😍' },
+  { value: 5, emoji: '🔥' },
+];
+
+const MOTIVATION_SCALE = [
+  { value: 1, emoji: '😫' },
+  { value: 2, emoji: '😕' },
+  { value: 3, emoji: '😐' },
+  { value: 4, emoji: '💪' },
+  { value: 5, emoji: '🚀' },
+];
+```
+
+### Zwei Accordion-Sektionen
+
+```typescript
+{/* Schlaf-Details Accordion */}
+<Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+  <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 bg-muted rounded-xl text-sm font-medium">
+    <span>Schlaf-Details</span>
+    <ChevronDown className={cn("w-4 h-4 transition-transform", detailsOpen && "rotate-180")} />
+  </CollapsibleTrigger>
+  <CollapsibleContent className="pt-3 space-y-4">
+    {/* Time Pickers */}
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Eingeschlafen</label>
+        <Input
+          type="time"
+          value={bedtime}
+          onChange={(e) => setBedtime(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Aufgewacht</label>
+        <Input
+          type="time"
+          value={wakeTime}
+          onChange={(e) => setWakeTime(e.target.value)}
+        />
+      </div>
+    </div>
+    {/* Interruptions Stepper */}
+    <div className="flex items-center justify-between">
+      <span className="text-sm">Unterbrechungen</span>
+      <div className="flex items-center gap-3">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setInterruptions(i => Math.max(0, i - 1))}
+          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center"
+        >
+          <Minus className="w-4 h-4" />
+        </motion.button>
+        <span className="w-6 text-center font-medium">{interruptions}</span>
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setInterruptions(i => Math.min(10, i + 1))}
+          className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center"
+        >
+          <Plus className="w-4 h-4" />
+        </motion.button>
+      </div>
+    </div>
+  </CollapsibleContent>
+</Collapsible>
+
+{/* Morgen-Check Accordion */}
+<Collapsible open={morningCheckOpen} onOpenChange={setMorningCheckOpen}>
+  <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 bg-muted rounded-xl text-sm font-medium">
+    <span>Morgen-Check</span>
+    <ChevronDown className={cn("w-4 h-4 transition-transform", morningCheckOpen && "rotate-180")} />
+  </CollapsibleTrigger>
+  <CollapsibleContent className="pt-3 space-y-4">
+    {/* Screen Time Slider */}
+    <div>
+      <div className="flex justify-between mb-2">
+        <span className="text-sm">Bildschirmzeit gestern Abend</span>
+        <span className="text-sm font-medium">{screenTime} min</span>
+      </div>
+      <Slider
+        value={[screenTime]}
+        onValueChange={([val]) => setScreenTime(val)}
+        min={0}
+        max={180}
+        step={15}
+      />
+    </div>
+    
+    {/* Libido Scale */}
+    <div>
+      <div className="text-sm mb-2">Libido am Morgen</div>
+      <div className="flex gap-2 justify-center">
+        {LIBIDO_SCALE.map((l) => (
+          <motion.button
+            key={l.value}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setLibido(l.value)}
+            className={cn(
+              "w-10 h-10 rounded-xl text-xl transition-colors",
+              libido === l.value
+                ? "bg-primary/20 ring-2 ring-primary"
+                : "bg-muted hover:bg-muted/80"
+            )}
+          >
+            {l.emoji}
+          </motion.button>
+        ))}
+      </div>
+    </div>
+    
+    {/* Motivation Scale */}
+    <div>
+      <div className="text-sm mb-2">Motivation</div>
+      <div className="flex gap-2 justify-center">
+        {MOTIVATION_SCALE.map((m) => (
+          <motion.button
+            key={m.value}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setMotivation(m.value)}
+            className={cn(
+              "w-10 h-10 rounded-xl text-xl transition-colors",
+              motivation === m.value
+                ? "bg-primary/20 ring-2 ring-primary"
+                : "bg-muted hover:bg-muted/80"
+            )}
+          >
+            {m.emoji}
+          </motion.button>
+        ))}
+      </div>
+    </div>
+  </CollapsibleContent>
+</Collapsible>
+```
+
+### Erweitertes Save-Payload
+
+```typescript
+const handleSave = async () => {
+  setIsSaving(true);
+  const success = await trackEvent('sleep', { 
+    sleep_hours: hours, 
+    sleep_quality: selectedQuality?.value || 3,
+    bedtime: bedtime || undefined,
+    wake_time: wakeTime || undefined,
+    sleep_interruptions: interruptions > 0 ? interruptions : undefined,
+    screen_time_evening: screenTime > 0 ? screenTime : undefined,
+    morning_libido: libido || undefined,
+    motivation_level: motivation || undefined
+  });
+  if (success) onClose();
+  setIsSaving(false);
+};
+```
+
+---
+
+## 8. useAresEvents.ts Erweiterung
+
+### Erweitertes EventPayload Interface
 
 ```typescript
 export interface EventPayload {
   // Existing
   amount?: number;
   supplementId?: string;
-  timing?: 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout';
+  timing?: SupplementTiming;
   customName?: string;
   
-  // NEW: Weight
+  // Weight (erweitert)
   weight_kg?: number;
+  body_fat_percentage?: number;
+  muscle_percentage?: number;
+  notes?: string;
   
-  // NEW: Workout
-  training_type?: 'rpt' | 'zone2' | 'vo2max' | 'sauna';
+  // Workout (erweitert)
+  training_type?: TrainingType;
+  split_type?: SplitType;
   duration_minutes?: number;
+  total_volume_kg?: number;
+  session_data?: Record<string, unknown>;
   
-  // NEW: Sleep
+  // Sleep (erweitert)
   sleep_hours?: number;
-  sleep_quality?: number; // 1-5
+  sleep_quality?: number;
+  bedtime?: string;
+  wake_time?: string;
+  sleep_interruptions?: number;
+  screen_time_evening?: number;
+  morning_libido?: number;
+  motivation_level?: number;
   
   // Shared
   date?: string;
 }
 ```
 
-### trackEvent Erweiterung
+### Erweiterte trackEvent Logik
 
 ```typescript
-// === WEIGHT ===
+// === WEIGHT (erweitert) ===
 if (category === 'weight' && payload.weight_kg) {
   const { error } = await supabase.from('weight_history').insert({
     user_id: auth.user.id,
     weight: payload.weight_kg,
-    date: payload.date || today
+    date: payload.date || today,
+    body_fat_percentage: payload.body_fat_percentage || null,
+    muscle_percentage: payload.muscle_percentage || null,
+    notes: payload.notes || null
   });
   if (error) throw error;
-  console.log(`[AresEvents] ✓ Logged weight ${payload.weight_kg}kg`);
   toast.success(`${payload.weight_kg} kg gespeichert`);
 }
 
-// === WORKOUT ===
+// === WORKOUT (erweitert) ===
 if (category === 'workout' && payload.training_type) {
   const { error } = await supabase.from('training_sessions').insert({
     user_id: auth.user.id,
     training_type: payload.training_type,
+    split_type: payload.split_type || null,
     total_duration_minutes: payload.duration_minutes || null,
+    total_volume_kg: payload.total_volume_kg || null,
+    session_data: payload.session_data || null,
     session_date: payload.date || today
   });
   if (error) throw error;
-  console.log(`[AresEvents] ✓ Logged ${payload.training_type} workout`);
   toast.success('Training gespeichert');
 }
 
-// === SLEEP ===
+// === SLEEP (erweitert) ===
 if (category === 'sleep' && payload.sleep_hours) {
   const { error } = await supabase.from('sleep_tracking').upsert({
     user_id: auth.user.id,
     date: payload.date || today,
     sleep_hours: payload.sleep_hours,
-    sleep_quality: payload.sleep_quality || 3
+    sleep_quality: payload.sleep_quality || 3,
+    bedtime: payload.bedtime || null,
+    wake_time: payload.wake_time || null,
+    sleep_interruptions: payload.sleep_interruptions || null,
+    screen_time_evening: payload.screen_time_evening || null,
+    morning_libido: payload.morning_libido || null,
+    motivation_level: payload.motivation_level || null
   }, { onConflict: 'user_id,date' });
   if (error) throw error;
-  console.log(`[AresEvents] ✓ Logged ${payload.sleep_hours}h sleep`);
   toast.success('Schlaf gespeichert');
 }
 ```
 
-### Neue Helper-Funktionen
+---
 
-```typescript
-const logWeight = useCallback((weightKg: number) => {
-  return trackEvent('weight', { weight_kg: weightKg });
-}, [trackEvent]);
+## 9. Zusammenfassung der neuen Datenpunkte
 
-const logWorkout = useCallback((type: string, durationMin?: number) => {
-  return trackEvent('workout', { training_type: type as any, duration_minutes: durationMin });
-}, [trackEvent]);
+| Kategorie | Core (Quick) | Erweitert (Accordion) |
+|-----------|--------------|----------------------|
+| **Gewicht** | Gewicht kg | KFA %, Muskelmasse %, Notizen |
+| **Training RPT** | Typ | Split (Push/Pull/Legs), Volumen kg |
+| **Training Zone2** | Typ, Dauer | Cardio-Art (Gehen/Laufen/Rad/Schwimmen) |
+| **Training VO2max** | Typ, Dauer | Protokoll (4x4/Tabata/HIIT) |
+| **Training Sauna** | Typ, Dauer | Temperatur, Gaenge |
+| **Schlaf** | Stunden, Qualitaet | Zeiten, Unterbrechungen, Screentime, Libido, Motivation |
 
-const logSleep = useCallback((hours: number, quality: number = 3) => {
-  return trackEvent('sleep', { sleep_hours: hours, sleep_quality: quality });
-}, [trackEvent]);
-```
+**Gesamte Datenpunkte: 6 Core + 15 Erweitert = 21 Datenpunkte**
 
 ---
 
-## 6. useDailyMetrics Erweiterung
+## 10. UX-Vorteile des Progressive Disclosure
 
-### Neues Interface
+1. **Quick bleibt Quick**: Core-Eingaben sind in 3-5 Sekunden moeglich
+2. **Power User Mode**: Erweiterte Felder fuer detaillierte Analyse
+3. **Keine Ueberwaeltigung**: Accordion versteckt Komplexitaet bis benoetigt
+4. **Premium Feeling**: Framer Motion Animationen beim Auf-/Zuklappen
+5. **Vollstaendige Daten**: Alle DB-Felder werden genutzt fuer spaetere Insights
 
-```typescript
-export interface DailyMetrics {
-  // Existing
-  water: { current: number; target: number };
-  supplements: { takenIds: string[]; total: number };
-  nutrition: { calories: number; protein: number; carbs: number; fats: number };
-  goals: { calories: number; protein: number; carbs: number; fats: number; fluid_goal_ml: number };
-  
-  // NEW
-  weight: { latest: number | null; date: string | null };
-  training: { todayType: string | null; todayMinutes: number | null };
-  sleep: { lastHours: number | null; lastQuality: number | null };
-}
-```
-
-### Zusaetzliche Queries
-
-```typescript
-// Im Promise.all hinzufuegen:
-
-// Latest Weight
-supabase
-  .from('weight_history')
-  .select('weight, date')
-  .eq('user_id', userId)
-  .order('date', { ascending: false })
-  .limit(1)
-  .maybeSingle(),
-
-// Today's Training
-supabase
-  .from('training_sessions')
-  .select('training_type, total_duration_minutes')
-  .eq('user_id', userId)
-  .eq('session_date', todayStr)
-  .limit(1)
-  .maybeSingle(),
-
-// Last Sleep Entry
-supabase
-  .from('sleep_tracking')
-  .select('sleep_hours, sleep_quality, date')
-  .eq('user_id', userId)
-  .order('date', { ascending: false })
-  .limit(1)
-  .maybeSingle(),
-```
-
----
-
-## 7. AresHome Integration
-
-### State Management
-
-```typescript
-// Neuer State fuer QuickLogSheet
-const [quickLogConfig, setQuickLogConfig] = useState<{
-  open: boolean;
-  tab: 'weight' | 'training' | 'sleep';
-}>({ open: false, tab: 'weight' });
-
-// Handler fuer LiquidDock
-const handleQuickAction = useCallback((action: QuickActionType) => {
-  switch (action) {
-    case 'weight':
-      setQuickLogConfig({ open: true, tab: 'weight' });
-      break;
-    case 'workout':
-      setQuickLogConfig({ open: true, tab: 'training' });
-      break;
-    case 'sleep':
-      setQuickLogConfig({ open: true, tab: 'sleep' });
-      break;
-    // ... existing cases (water, supplements)
-  }
-}, []);
-```
-
-### Render
-
-```tsx
-{/* QuickLogSheet */}
-<QuickLogSheet
-  isOpen={quickLogConfig.open}
-  onClose={() => setQuickLogConfig(prev => ({ ...prev, open: false }))}
-  initialTab={quickLogConfig.tab}
-/>
-```
-
----
-
-## 8. LiquidDock Anpassung
-
-Das LiquidDock aendert sich minimal - es ruft nur `onQuickAction` auf. Die Sheet-Logik liegt in AresHome.
-
-Der einzige Change: Entfernen des direkten Navigierens zu `/profile?tab=measurements` fuer `weight`:
-
-```typescript
-// VORHER (AresHome.tsx handleQuickAction):
-case 'weight':
-  navigate('/profile?tab=measurements');
-  break;
-
-// NACHHER:
-case 'weight':
-  setQuickLogConfig({ open: true, tab: 'weight' });
-  break;
-```
-
----
-
-## 9. Animationen und UX-Details
-
-### Spring Config (konsistent mit LiquidDock)
-
-```typescript
-const springConfig = { 
-  type: "spring", 
-  stiffness: 400, 
-  damping: 30 
-};
-```
-
-### Stepper Button Animation
-
-```typescript
-<motion.button
-  whileTap={{ scale: 0.9 }}
-  whileHover={{ scale: 1.05 }}
-  transition={springConfig}
-  onClick={() => setWeight(w => Number((w - 0.1).toFixed(1)))}
-  className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center"
->
-  <Minus className="w-6 h-6" />
-</motion.button>
-```
-
-### Save Button Feedback
-
-```typescript
-<motion.button
-  whileTap={{ scale: 0.97 }}
-  className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg"
-  onClick={handleSave}
->
-  <Check className="w-5 h-5 inline mr-2" />
-  Speichern
-</motion.button>
-```
-
----
-
-## 10. Technische Details
-
-### Ordner-Struktur
-
-```text
-src/components/home/
-├── loggers/                 (NEU)
-│   ├── WeightLogger.tsx
-│   ├── TrainingLogger.tsx
-│   └── SleepLogger.tsx
-├── QuickLogSheet.tsx        (NEU)
-├── LiquidDock.tsx           (existiert)
-├── ActionCardStack.tsx      (existiert)
-└── ...
-```
-
-### Dependencies
-
-- `framer-motion` (bereits installiert)
-- `lucide-react` Icons: `Scale`, `Dumbbell`, `Moon`, `Activity`, `HeartPulse`, `Flame`, `Minus`, `Plus`, `Check`, `X`
-- `@radix-ui/react-slider` (bereits via `src/components/ui/slider.tsx`)
-
-### Optimistic UI
-
-Das QuickLogSheet nutzt NICHT optimistische Updates fuer die Hero-Anzeige, da:
-1. Weight/Sleep/Training haben keine "Live-Indikatoren" auf dem Home Screen (noch nicht)
-2. Der Success-Toast genuegt als Feedback
-
-Falls spaeter Widgets diese Daten anzeigen, kann `useDailyMetrics` mit optimistischen Updates erweitert werden.
-
----
-
-## Zusammenfassung der Aenderungen
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/home/QuickLogSheet.tsx` | CREATE - 120 Zeilen |
-| `src/components/home/loggers/WeightLogger.tsx` | CREATE - 80 Zeilen |
-| `src/components/home/loggers/TrainingLogger.tsx` | CREATE - 100 Zeilen |
-| `src/components/home/loggers/SleepLogger.tsx` | CREATE - 90 Zeilen |
-| `src/hooks/useAresEvents.ts` | MODIFY - +60 Zeilen (neue Event-Handler) |
-| `src/hooks/useDailyMetrics.ts` | MODIFY - +30 Zeilen (neue Queries) |
-| `src/pages/AresHome.tsx` | MODIFY - +15 Zeilen (State + Render) |
