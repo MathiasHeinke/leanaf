@@ -1,29 +1,22 @@
 /**
  * LiquidDock - Premium "Liquid Crystal" Navigation
- * Apple-style physics with glass effects and vanish gradient
+ * Apple-style physics with glass effects, vanish gradient, and Liquid Carousel menu
  */
 
 import React, { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Utensils, Plus, X, BookOpen, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Utensils, Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import spartanHelm from '@/assets/spartan-helm.png';
+import { LiquidCarouselMenu } from './LiquidCarouselMenu';
 
-export type QuickActionType = 'journal' | 'workout' | 'weight' | 'supplements' | 'sleep';
+export type QuickActionType = 'journal' | 'workout' | 'weight' | 'supplements' | 'sleep' | 'hydration' | 'nutrition';
 
 interface LiquidDockProps {
   onVisionScan: () => void;
   onAresChat: () => void;
   onQuickAction: (action: QuickActionType) => void;
 }
-
-const quickActions = [
-  { id: 'journal' as const, icon: BookOpen, color: 'bg-amber-500', label: 'Journal' },
-  { id: 'workout' as const, icon: Dumbbell, color: 'bg-orange-500', label: 'Workout' },
-  { id: 'weight' as const, icon: Scale, color: 'bg-emerald-500', label: 'Gewicht' },
-  { id: 'supplements' as const, icon: Pill, color: 'bg-purple-500', label: 'Supps' },
-  { id: 'sleep' as const, icon: Moon, color: 'bg-indigo-500', label: 'Schlaf' },
-];
 
 // Spring physics config for bouncy Apple-style animations
 const springConfig = { type: "spring" as const, stiffness: 350, damping: 25 };
@@ -35,13 +28,16 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleQuickAction = useCallback((action: QuickActionType) => {
-    onQuickAction(action);
-    setIsMenuOpen(false);
+  const handleCarouselAction = useCallback((actionId: string) => {
+    onQuickAction(actionId as QuickActionType);
   }, [onQuickAction]);
 
   const toggleMenu = useCallback(() => {
     setIsMenuOpen(prev => !prev);
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setIsMenuOpen(false);
   }, []);
 
   return (
@@ -54,44 +50,16 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
         }}
       />
 
-      {/* 2. THE DOCK CONTAINER */}
+      {/* 2. LIQUID CAROUSEL MENU - Premium glassmorphism overlay */}
+      <LiquidCarouselMenu 
+        isOpen={isMenuOpen}
+        onClose={closeMenu}
+        onAction={handleCarouselAction}
+      />
+
+      {/* 3. THE DOCK CONTAINER */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center">
         
-        {/* Quick Menu Overlay - Fans out above the dock */}
-        <AnimatePresence>
-          {isMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10, transition: { duration: 0.15 } }}
-              transition={springConfig}
-              className="flex gap-3 mb-4"
-            >
-              {quickActions.map((item, i) => (
-                <motion.button
-                  key={item.id}
-                  onClick={() => handleQuickAction(item.id)}
-                  initial={{ y: 20, opacity: 0, scale: 0.8 }}
-                  animate={{ y: 0, opacity: 1, scale: 1 }}
-                  exit={{ y: 10, opacity: 0, scale: 0.9 }}
-                  transition={{ ...springConfig, delay: i * 0.04 }}
-                  whileTap={{ scale: 0.9 }}
-                  whileHover={{ scale: 1.1 }}
-                  className={cn(
-                    item.color,
-                    "p-3 rounded-full text-white shadow-lg",
-                    "border border-white/20",
-                    "transition-shadow hover:shadow-xl"
-                  )}
-                  aria-label={item.label}
-                >
-                  <item.icon className="w-5 h-5" />
-                </motion.button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Floating buttons - no container */}
         <motion.div
           layout
