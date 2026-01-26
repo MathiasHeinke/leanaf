@@ -5,7 +5,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UtensilsCrossed, Plus, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
+import { Utensils, Plus, X, Droplets, Dumbbell, Scale, Pill, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import spartanHelm from '@/assets/spartan-helm.png';
 
@@ -100,7 +100,7 @@ export const LiquidDock: React.FC<LiquidDockProps> = ({
         >
           {/* LEFT: VISION (Food Scan) */}
           <DockButton 
-            icon={UtensilsCrossed} 
+            icon={Utensils} 
             onClick={onVisionScan}
             label="Mahlzeit scannen"
           />
