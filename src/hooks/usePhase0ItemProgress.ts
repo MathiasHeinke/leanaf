@@ -26,6 +26,7 @@ export interface ItemProgress {
     markersRequired?: number;
     measurements?: number;
     measurementsRequired?: number;
+    consecutiveDown?: number;
   };
   explanation: string;
   actionLabel?: string;
@@ -73,7 +74,7 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
       const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
       // Fetch all data in parallel
-      const [sleepResult, bloodworkResult, weightWithKfaResult, mealsResult, trainingResult, latestWeightResult] = await Promise.all([
+      const [sleepResult, bloodworkResult, weightWithKfaResult, mealsResult, trainingResult, stepsResult, latestWeightResult] = await Promise.all([
         // Sleep data (last 14 days)
         (supabase as any)
           .from('sleep_tracking')
@@ -92,28 +93,36 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
           .limit(1)
           .maybeSingle(),
         
-        // Weight with KFA for trend
+        // Weight with KFA for trend - need more for consecutive check
         (supabase as any)
           .from('weight_history')
           .select('weight, body_fat_percentage, date')
           .eq('user_id', user.id)
           .not('body_fat_percentage', 'is', null)
           .order('date', { ascending: false })
-          .limit(5),
+          .limit(10),  // Increased for 5 consecutive check
         
-        // Meals for protein tracking (last 7 days)
+        // Meals for protein tracking (last 14 days for 5-day window)
         (supabase as any)
           .from('food_journal_entries')
           .select('protein, created_at')
           .eq('user_id', user.id)
-          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+          .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
         
-        // Training for Zone 2 (last 7 days)
+        // Training sessions (last 14 days for 5-day window)
         (supabase as any)
           .from('workout_sessions')
           .select('duration, workout_type, cardio_type, created_at')
           .eq('user_id', user.id)
-          .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+          .gte('created_at', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()),
+        
+        // Daily activities for step count
+        (supabase as any)
+          .from('daily_activities')
+          .select('steps, date')
+          .eq('user_id', user.id)
+          .gte('date', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+          .order('date', { ascending: false }),
 
         // Latest weight for protein calculation
         (supabase as any)
@@ -220,89 +229,130 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
         actionHref: '/bloodwork',
       };
 
-      // === KFA TREND ===
+      // === KFA TREND (5 consecutive measurements with falling trend) ===
       const kfaData = weightWithKfaResult.data || [];
       const kfaMeasurements = kfaData.length;
-      const latestKfa = kfaData[0]?.body_fat_percentage;
-      const oldestKfa = kfaData[kfaMeasurements - 1]?.body_fat_percentage;
-      
-      let kfaTrend: 'up' | 'down' | 'stable' = 'stable';
-      if (kfaMeasurements >= 2 && latestKfa && oldestKfa) {
-        kfaTrend = latestKfa < oldestKfa ? 'down' : latestKfa > oldestKfa ? 'up' : 'stable';
+
+      // Check for consecutive falling measurements
+      let consecutiveDown = 0;
+      if (kfaMeasurements >= 2) {
+        for (let i = 0; i < kfaMeasurements - 1; i++) {
+          const current = kfaData[i]?.body_fat_percentage;
+          const previous = kfaData[i + 1]?.body_fat_percentage;
+          if (current && previous && current < previous) {
+            consecutiveDown++;
+          } else {
+            break; // Trend interrupted
+          }
+        }
       }
-      
+
+      const latestKfa = kfaData[0]?.body_fat_percentage;
+      const kfaTrendComplete = consecutiveDown >= 4; // 5 measurements = 4 comparisons
       const kfaProgress = kfaMeasurements === 0 
         ? 0 
-        : kfaMeasurements >= 2 && kfaTrend === 'down' 
+        : kfaTrendComplete 
           ? 100 
-          : Math.min(80, kfaMeasurements * 40);
+          : Math.min(90, (consecutiveDown / 4) * 80 + (Math.min(kfaMeasurements, 5) / 5) * 10);
 
       progress.kfa_trend = {
         key: 'kfa_trend',
-        progress: kfaProgress,
+        progress: Math.round(kfaProgress),
         current: kfaMeasurements > 0 
           ? `${latestKfa?.toFixed(1)}% KFA` 
           : '⚠️ KFA fehlt',
-        target: 'Fallend',
-        status: kfaProgress >= 100 ? 'completed' : kfaMeasurements > 0 ? 'in_progress' : 'not_started',
+        target: '5× fallend',
+        status: kfaTrendComplete ? 'completed' : kfaMeasurements > 0 ? 'in_progress' : 'not_started',
         stats: {
           measurements: kfaMeasurements,
-          measurementsRequired: 2,
-          trend: kfaTrend,
+          measurementsRequired: 5,
+          consecutiveDown: consecutiveDown,
+          trend: consecutiveDown > 0 ? 'down' : 'stable',
         },
         explanation: kfaMeasurements === 0 
-          ? 'Bitte trage zuerst deinen Körperfettanteil (KFA) ein. Mindestens 2 Messungen werden benötigt um einen Trend zu erkennen.'
-          : 'Dein Körperfettanteil muss einen fallenden Trend zeigen. Mindestens 2 Messungen sind erforderlich.',
+          ? 'Trage deinen Körperfettanteil (KFA) ein. Ziel: 5 aufeinanderfolgende Messungen mit fallendem Trend.'
+          : `${consecutiveDown + 1}/5 Messungen zeigen fallenden Trend. Weiter so!`,
         actionLabel: kfaMeasurements === 0 ? 'KFA eintragen' : 'Messung hinzufügen',
         actionHref: '/body',
       };
 
-      // === PROTEIN & TRAINING ===
+      // === PROTEIN & TRAINING (Consistency focus: 5 days each) ===
       const mealData = mealsResult.data || [];
-      const totalProtein = mealData.reduce((acc: number, m: any) => acc + (m.protein || 0), 0);
-      const mealDays = new Set(mealData.map((m: any) => new Date(m.created_at).toDateString())).size;
-      const avgDailyProtein = mealDays > 0 ? totalProtein / mealDays : 0;
-      
       const trainingData = trainingResult.data || [];
-      const zone2Minutes = trainingData
-        .filter((t: any) => t.workout_type === 'cardio' || t.cardio_type)
-        .reduce((acc: number, t: any) => acc + (t.duration || 0), 0);
+      const stepsData = stepsResult.data || [];
 
-      // Dynamic protein target based on user weight (1.2g/kg)
+      // --- PROTEIN: 5 days with >= 1.2g/kg ---
       const proteinTarget = userWeight ? Math.round(userWeight * 1.2) : null;
-      const zone2Target = 150;
+      const mealsByDay = new Map<string, number>();
 
-      const proteinMet = proteinTarget ? avgDailyProtein >= proteinTarget : false;
-      const zone2Met = zone2Minutes >= zone2Target;
-      const proteinTrainingProgress = !userWeight 
+      mealData.forEach((m: any) => {
+        const day = new Date(m.created_at).toDateString();
+        mealsByDay.set(day, (mealsByDay.get(day) || 0) + (m.protein || 0));
+      });
+
+      // Count days where protein target was met
+      let proteinDaysHit = 0;
+      if (proteinTarget) {
+        mealsByDay.forEach((protein) => {
+          if (protein >= proteinTarget) proteinDaysHit++;
+        });
+      }
+      const proteinComplete = proteinDaysHit >= 5;
+
+      // --- TRAINING: 5x training sessions (any type, no rest days) ---
+      const trainingDays = new Set(
+        trainingData
+          .filter((t: any) => t.workout_type && t.workout_type !== 'rest')
+          .map((t: any) => new Date(t.created_at).toDateString())
+      ).size;
+      const trainingComplete = trainingDays >= 5;
+
+      // --- STEPS: Alternative - 5 days with 6000+ steps ---
+      const stepDaysCount = stepsData.filter((s: any) => (s.steps || 0) >= 6000).length;
+      const stepsComplete = stepDaysCount >= 5;
+
+      // Combined progress (either training OR steps satisfies the requirement)
+      const trainingOrStepsComplete = trainingComplete || stepsComplete;
+      const trainingProgress = Math.max(
+        Math.min(100, (trainingDays / 5) * 100),
+        Math.min(100, (stepDaysCount / 5) * 100)
+      );
+      
+      const proteinProgress = proteinTarget 
+        ? Math.min(100, (proteinDaysHit / 5) * 100) 
+        : 0;
+      const combinedProgress = !userWeight 
         ? 0 
-        : Math.min(100, (proteinMet ? 50 : (avgDailyProtein / proteinTarget!) * 50) + (zone2Met ? 50 : (zone2Minutes / zone2Target) * 50));
+        : Math.round((proteinProgress * 0.5) + (trainingProgress * 0.5));
 
       progress.protein_training = {
         key: 'protein_training',
-        progress: Math.round(proteinTrainingProgress),
+        progress: combinedProgress,
         current: userWeight 
-          ? `${Math.round(avgDailyProtein)}g / ${zone2Minutes}min` 
+          ? `${proteinDaysHit}d Protein / ${Math.max(trainingDays, stepDaysCount)}d aktiv` 
           : '⚠️ Gewicht fehlt',
-        target: userWeight 
-          ? `≥${proteinTarget}g / ≥${zone2Target}min` 
-          : 'Gewicht eintragen',
-        status: proteinTrainingProgress >= 100 ? 'completed' : proteinTrainingProgress > 0 ? 'in_progress' : 'not_started',
+        target: '5d / 5d',
+        status: (proteinComplete && trainingOrStepsComplete) ? 'completed' : combinedProgress > 0 ? 'in_progress' : 'not_started',
         subItems: userWeight ? [
           { 
-            label: `Protein: Ø ${Math.round(avgDailyProtein)}g/Tag`, 
-            completed: proteinMet, 
-            explanation: `Ziel: ≥${proteinTarget}g pro Tag (1.2g × ${userWeight}kg)` 
+            label: `Protein: ${proteinDaysHit}/5 Tage erreicht`, 
+            completed: proteinComplete, 
+            explanation: `Tage mit ≥${proteinTarget}g (1.2g × ${userWeight}kg)` 
           },
           { 
-            label: `Zone 2: ${zone2Minutes} Min/Woche`, 
-            completed: zone2Met, 
-            explanation: `Lockeres Cardio bei dem du dich noch unterhalten kannst - Ziel: ≥${zone2Target} Min` 
+            label: `Training: ${trainingDays}/5 Sessions`, 
+            completed: trainingComplete, 
+            explanation: 'Kraft, Cardio, VO2max – alles zählt!' 
+          },
+          { 
+            label: `Alternativ: ${stepDaysCount}/5 Tage 6000+ Schritte`, 
+            completed: stepsComplete, 
+            explanation: 'Bewegung zählt auch!' 
           },
         ] : undefined,
         explanation: userWeight 
-          ? `Erreiche ≥${proteinTarget}g Protein pro Tag (1.2g × ${userWeight}kg) UND ≥${zone2Target} Min Zone 2 Cardio pro Woche. Zone 2 = lockeres Ausdauertraining (60-70% max. Herzfrequenz) bei dem du dich noch unterhalten kannst - z.B. zügiges Gehen, lockeres Radfahren.`
-          : 'Bitte trage zuerst dein Gewicht ein, um dein persönliches Proteinziel zu berechnen.',
+          ? `Konsistenz aufbauen: 5 Tage mit ≥${proteinTarget}g Protein UND 5× Training (oder 5× 6000+ Schritte).`
+          : 'Zuerst Gewicht eintragen für Proteinziel.',
         actionLabel: userWeight ? 'Mahlzeit eintragen' : 'Gewicht eintragen',
         actionHref: userWeight ? '/coach' : '/body',
       };
