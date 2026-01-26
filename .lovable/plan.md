@@ -1,220 +1,249 @@
 
+# Masterplan: Unified Quick Log Sheet (7 Tabs)
 
-# Smart Start - Carousel springt zum nächsten offenen Item
+## 1. Analyse: Was haben wir JETZT?
 
-## Das Konzept
-
-Beim Öffnen des Carousels wird geprüft, welche Actions heute schon erledigt wurden. Das Carousel startet dann automatisch beim ersten noch offenen Item.
+### Aktuelle Architektur (fragmentiert)
 
 ```text
-BEISPIEL (Morgens um 8:30):
+                    ┌─────────────────────────────────────────────────────┐
+                    │              QuickAddFAB (Floating Button)          │
+                    │          Steuert 6 verschiedene Overlays            │
+                    └───────────────────────┬─────────────────────────────┘
+                                            │
+        ┌───────────────┬───────────────┬───┴───┬───────────────┬─────────────────┐
+        ▼               ▼               ▼       ▼               ▼                 ▼
+   QuickMealSheet  QuickWorkout   QuickSleep  QuickFluid  ChemistryStack   BodyStackSheet
+                      Modal         Modal      Modal        Sheet              Sheet
+                                                              │                   │
+                                                    ┌─────────┴─────┐    ┌────────┴────────┐
+                                                    ▼               ▼    ▼                 ▼
+                                              SupplementsLogger PeptideLogger WeightLogger TapeLogger
+```
 
-Tageszeit-Reihenfolge: [Schlaf, Gewicht, Supps, Training, Wasser, Essen, Journal]
-                         ✓       ✓        ✓       -        -       -      -
-                                          ↑
-                                    Schon erledigt
+### Das Problem
 
-Carousel startet bei: Training (Index 3)
+| Sheet | Tabs | Logger-Komponenten |
+|-------|------|--------------------|
+| QuickLogSheet | 5 Tabs | Weight, Training, Sleep, Journal, Tape |
+| ChemistryStackSheet | 2 Tabs | Supplements, Peptide |
+| BodyStackSheet | 2 Tabs | Weight, Tape (Duplikat!) |
+
+**3 kritische Probleme:**
+
+1. **Fragmentierung**: User muss wissen, welches Sheet welche Funktion hat
+2. **Duplikate**: `WeightLogger` und `TapeLogger` existieren in ZWEI Sheets (QuickLog + BodyStack)
+3. **Inkonsistentes UX**: Chemistry hat anderes Design (Radix Sheet) als QuickLog (Custom Motion Sheet)
+
+---
+
+## 2. Ziel: EINE einheitliche Tracking-Zentrale
+
+### Neue Architektur (vereinheitlicht)
+
+```text
+                    ┌─────────────────────────────────────────────────────┐
+                    │              QuickAddFAB (Floating Button)          │
+                    │        Steuert NUR QuickLogSheet + Meal/Workout     │
+                    └───────────────────────┬─────────────────────────────┘
+                                            │
+                    ┌───────────────────────┴───────────────────────────┐
+                    ▼                                                   ▼
+           QuickLogSheet (7 Tabs)                             QuickMealSheet
+           ┌─────────────────────────────────────┐           (bleibt separat -
+           │ Weight │ Training │ Sleep │ Journal │            Foto-Upload-Flow)
+           │ Tape   │  Supps   │ Peptide         │
+           └─────────────────────────────────────┘
+```
+
+### Warum vereinheitlichen?
+
+| Vorher | Nachher |
+|--------|---------|
+| 3 verschiedene Sheets merken | 1 Sheet, alles drin |
+| 2x Weight/Tape Logger (Wartungsalptraum) | Jeder Logger nur 1x |
+| Unterschiedliche Animationen | Einheitliche Premium-UX |
+| 6 State-Variablen in QuickAddFAB | 2 State-Variablen |
+
+---
+
+## 3. Technische Umsetzung
+
+### Phase 1: QuickLogSheet erweitern
+
+**Datei:** `src/components/home/QuickLogSheet.tsx`
+
+**Aktuelle Tabs (5):**
+```typescript
+const tabs = [
+  { id: 'weight', icon: Scale, label: 'Gewicht' },
+  { id: 'training', icon: Dumbbell, label: 'Training' },
+  { id: 'sleep', icon: Moon, label: 'Schlaf' },
+  { id: 'journal', icon: BookOpen, label: 'Journal' },
+  { id: 'tape', icon: Ruler, label: 'Maße' },
+];
+```
+
+**Neue Tabs (7):**
+```typescript
+const tabs = [
+  { id: 'weight', icon: Scale, label: 'Gewicht' },
+  { id: 'training', icon: Dumbbell, label: 'Training' },
+  { id: 'sleep', icon: Moon, label: 'Schlaf' },
+  { id: 'journal', icon: BookOpen, label: 'Journal' },
+  { id: 'tape', icon: Ruler, label: 'Maße' },
+  { id: 'supplements', icon: Pill, label: 'Supps' },    // NEU
+  { id: 'peptide', icon: Syringe, label: 'Peptide' },   // NEU
+];
+```
+
+**Imports hinzufügen:**
+```typescript
+import { Pill, Syringe } from 'lucide-react';
+import { SupplementsLogger } from './loggers/SupplementsLogger';
+import { PeptideLogger } from './loggers/PeptideLogger';
+```
+
+**Render-Logic erweitern:**
+```typescript
+{activeTab === 'supplements' && <SupplementsLogger onClose={onClose} />}
+{activeTab === 'peptide' && <PeptideLogger onClose={onClose} />}
+```
+
+**Type erweitern:**
+```typescript
+export type QuickLogTab = 'weight' | 'training' | 'sleep' | 'journal' | 'tape' | 'supplements' | 'peptide';
 ```
 
 ---
 
-## Datenquellen für Completion-Status
+### Phase 2: Mobile Tab-Bar optimieren (7 Icons)
 
-Jede Action hat eine eigene Datenquelle in Supabase:
+Bei 7 Tabs wird es auf kleinen Screens eng. Loesung: **Icon-Only auf Mobile**.
 
-| Action | Tabelle | Prüfung |
-|--------|---------|---------|
-| `sleep` | `sleep_logs` | `date = today` |
-| `weight` | `weight_entries` | `date = today` |
-| `supplements` | `supplement_intake_log` | `date = today` (mind. 1 Eintrag) |
-| `workout` | `training_sessions` | `session_date = today` |
-| `hydration` | `user_fluids` | `date = today` (mind. 1 Eintrag) |
-| `nutrition` | `meals` | `created_at = today` (mind. 1 Eintrag) |
-| `journal` | `journal_entries` | `entry_date = today` |
+**Aktuelle Logik:**
+```typescript
+<span className="hidden sm:inline">{tab.label}</span>
+```
+
+Das ist bereits richtig - Labels werden nur auf Desktop (sm+) angezeigt.
+
+**Zusätzliche Optimierung - Sliding Indicator Breite anpassen:**
+```typescript
+// Vorher (5 Tabs)
+style={{ width: `calc(${100 / 5}% - 4px)` }}
+
+// Nachher (7 Tabs)  
+style={{ width: `calc(${100 / 7}% - 4px)` }}
+```
 
 ---
 
-## Technische Implementierung
+### Phase 3: QuickAddFAB vereinfachen
 
-### 1. Neuer Hook: `useTodayCompletedActions`
+**Datei:** `src/components/quick/QuickAddFAB.tsx`
 
-Dieser Hook lädt einmalig beim Mount welche Actions heute schon erledigt wurden:
-
+**Zu entfernende State-Variablen:**
 ```typescript
-// src/hooks/useTodayCompletedActions.ts
-
-export const useTodayCompletedActions = () => {
-  const { user } = useAuth();
-  const [completedActions, setCompletedActions] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    
-    const checkCompletions = async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const completed = new Set<string>();
-      
-      // Parallel queries for performance
-      const [sleep, weight, supps, workout, fluids, meals, journal] = await Promise.all([
-        supabase.from('sleep_logs').select('id').eq('user_id', user.id).eq('date', today).limit(1),
-        supabase.from('weight_entries').select('id').eq('user_id', user.id).eq('date', today).limit(1),
-        supabase.from('supplement_intake_log').select('id').eq('user_id', user.id).eq('date', today).limit(1),
-        supabase.from('training_sessions').select('id').eq('user_id', user.id).eq('session_date', today).limit(1),
-        supabase.from('user_fluids').select('id').eq('user_id', user.id).eq('date', today).limit(1),
-        supabase.from('meals').select('id').eq('user_id', user.id).gte('created_at', today).limit(1),
-        supabase.from('journal_entries').select('id').eq('user_id', user.id).eq('entry_date', today).limit(1),
-      ]);
-      
-      if (sleep.data?.length) completed.add('sleep');
-      if (weight.data?.length) completed.add('weight');
-      if (supps.data?.length) completed.add('supplements');
-      if (workout.data?.length) completed.add('workout');
-      if (fluids.data?.length) completed.add('hydration');
-      if (meals.data?.length) completed.add('nutrition');
-      if (journal.data?.length) completed.add('journal');
-      
-      setCompletedActions(completed);
-      setLoading(false);
-    };
-    
-    checkCompletions();
-  }, [user?.id]);
-  
-  return { completedActions, loading };
-};
+// LÖSCHEN:
+const [chemistryOpen, setChemistryOpen] = useState(false);
+const [bodyOpen, setBodyOpen] = useState(false);
 ```
 
-### 2. Carousel Props erweitern
-
+**Neuer State:**
 ```typescript
-interface LiquidCarouselMenuProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAction: (actionId: string) => void;
-  completedActions?: Set<string>; // NEU: Von parent übergeben
+const [quickLogOpen, setQuickLogOpen] = useState(false);
+const [quickLogInitialTab, setQuickLogInitialTab] = useState<QuickLogTab>('weight');
+```
+
+**handleSelect anpassen:**
+```typescript
+if (type === "chemistry") {
+  setMenuOpen(false);
+  setQuickLogInitialTab('supplements');  // Öffnet direkt Supplements-Tab
+  setQuickLogOpen(true);
+  return;
+}
+if (type === "body") {
+  setMenuOpen(false);
+  setQuickLogInitialTab('weight');       // Öffnet direkt Weight-Tab
+  setQuickLogOpen(true);
+  return;
 }
 ```
 
-### 3. Smart Start Index berechnen
-
-Im Carousel wird beim Öffnen der erste unerledigte Index ermittelt:
-
+**Lazy Imports bereinigen:**
 ```typescript
-// In LiquidCarouselMenu.tsx
+// LÖSCHEN:
+const ChemistryStackSheet = lazy(() => import("@/components/home/ChemistryStackSheet"));
+const BodyStackSheet = lazy(() => import("@/components/home/BodyStackSheet"));
 
-const getSmartStartIndex = useCallback((completed: Set<string>): number => {
-  // Finde erstes Item das NICHT completed ist
-  const firstIncompleteIndex = orderedItems.findIndex(item => !completed.has(item.id));
-  
-  // Wenn alles erledigt → starte bei 0
-  return firstIncompleteIndex >= 0 ? firstIncompleteIndex : 0;
-}, [orderedItems]);
-
-// Reset virtual index when menu opens - mit Smart Start
-useEffect(() => {
-  if (isOpen) {
-    const startIndex = completedActions 
-      ? getSmartStartIndex(completedActions)
-      : 0;
-    setVirtualIndex(startIndex);
-  }
-}, [isOpen, completedActions, getSmartStartIndex]);
-```
-
-### 4. Visuelles Feedback für erledigte Items
-
-Erledigte Items bekommen einen dezenten Checkmark:
-
-```typescript
-const CarouselItem: React.FC<CarouselItemProps> = ({ 
-  item, 
-  isActive, 
-  isCompleted, // NEU
-  onClick 
-}) => {
-  const Icon = item.icon;
-  
-  return (
-    <motion.button ...>
-      <Icon className={...} />
-      
-      {/* Completion Badge */}
-      {isCompleted && (
-        <div className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full flex items-center justify-center">
-          <Check className="w-2.5 h-2.5 text-white" />
-        </div>
-      )}
-    </motion.button>
-  );
-};
+// HINZUFÜGEN:
+const QuickLogSheet = lazy(() => import("@/components/home/QuickLogSheet"));
 ```
 
 ---
 
-## Integration in AresHome
+### Phase 4: quickAddBus erweitern
+
+**Datei:** `src/components/quick/quickAddBus.ts`
 
 ```typescript
-// In AresHome.tsx
+export type QuickActionType = 
+  | 'meal' | 'workout' | 'sleep' | 'supplements' 
+  | 'journal' | 'chemistry' | 'body' | 'hydration'
+  | 'weight' | 'training' | 'tape' | 'peptide';  // Direkte Tab-Öffner
 
-import { useTodayCompletedActions } from '@/hooks/useTodayCompletedActions';
-
-const AresHome = () => {
-  const { completedActions } = useTodayCompletedActions();
-  
-  return (
-    <>
-      {/* ... */}
-      <LiquidCarouselMenu
-        isOpen={carouselOpen}
-        onClose={() => setCarouselOpen(false)}
-        onAction={handleCarouselAction}
-        completedActions={completedActions}
-      />
-    </>
-  );
-};
+export const openWeight = () => quickAddBus.emit({ type: 'weight' });
+export const openTape = () => quickAddBus.emit({ type: 'tape' });
+export const openPeptide = () => quickAddBus.emit({ type: 'peptide' });
 ```
 
 ---
 
-## UX Flow
+### Phase 5: Obsolete Dateien markieren/löschen
+
+Nach erfolgreicher Migration können diese Dateien entfernt werden:
 
 ```text
-1. User öffnet Carousel um 9:30 (Morning Mode)
-   Reihenfolge: [Schlaf, Gewicht, Supps, Training, ...]
-   
-2. Hook prüft: Schlaf ✓, Gewicht ✓, Supps ✗
-   
-3. Carousel startet bei "Supps" (Index 2)
-   ┌────────────────────────────────────┐
-   │   [✓]   [✓]   [●]   [ ]   [ ]    │
-   │  Schlaf Gew.  Supps Train Wasser  │
-   │         ↑checked     ↑START       │
-   └────────────────────────────────────┘
+src/components/home/ChemistryStackSheet.tsx   → LÖSCHEN
+src/components/home/BodyStackSheet.tsx        → LÖSCHEN
+```
 
-4. User logged Supps → Next open = Training
-
-5. Beim erneuten Öffnen → Startet bei Training
+Die Logger-Komponenten bleiben erhalten:
+```text
+src/components/home/loggers/SupplementsLogger.tsx  ✓ (wird jetzt von QuickLogSheet verwendet)
+src/components/home/loggers/PeptideLogger.tsx      ✓ (wird jetzt von QuickLogSheet verwendet)
 ```
 
 ---
 
-## Performance-Optimierung
+## 4. Implementierungs-Reihenfolge
 
-- Alle 7 Queries laufen parallel (`Promise.all`)
-- Nur `limit(1)` - wir brauchen nur "existiert oder nicht"
-- Ergebnis wird gecached bis zum nächsten Mount
-- Kein Realtime-Update nötig (beim nächsten Öffnen wird neu geprüft)
+| Schritt | Beschreibung | Risiko |
+|---------|--------------|--------|
+| 1 | QuickLogSheet: Tabs + Imports + Render erweitern | Niedrig |
+| 2 | QuickLogSheet: Sliding Indicator auf 7 Tabs anpassen | Niedrig |
+| 3 | QuickAddFAB: State vereinfachen + Routing ändern | Mittel |
+| 4 | quickAddBus: Neue Action-Types hinzufügen | Niedrig |
+| 5 | Testen: Alle 7 Tabs funktionieren | - |
+| 6 | Cleanup: ChemistryStackSheet + BodyStackSheet löschen | Niedrig |
 
 ---
 
-## Dateien
+## 5. Ergebnis nach Implementation
 
-| Datei | Änderung |
-|-------|----------|
-| `src/hooks/useTodayCompletedActions.ts` | NEU: Hook für Completion-Status |
-| `src/components/home/LiquidCarouselMenu.tsx` | Props erweitern, Smart Start Index, Completion Badge |
-| `src/pages/AresHome.tsx` | Hook einbinden und an Carousel übergeben |
+### User Experience
+
+- **1 Sheet** für alle Tracking-Kategorien
+- **Swipe** zwischen Tabs möglich (Framer Motion)
+- **Deep-Links** via quickAddBus (z.B. Carousel → öffnet direkt Supplements-Tab)
+- **Konsistentes Design** (einheitliche Animation, Drag-to-Close)
+
+### Code Quality
+
+- **-2 Dateien** (ChemistryStackSheet, BodyStackSheet)
+- **-4 State-Variablen** in QuickAddFAB
+- **0 Duplikate** (WeightLogger/TapeLogger nur noch 1x referenziert)
+- **1 zentrale Komponente** für alle Quick-Logs
 
