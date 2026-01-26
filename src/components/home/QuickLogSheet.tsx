@@ -1,18 +1,19 @@
 /**
  * QuickLogSheet - Unified Apple-Health-Style Quick Log Overlay
- * Premium bottom sheet for Weight, Training, and Sleep tracking
+ * Premium bottom sheet for Weight, Training, Sleep, and Journal tracking
  */
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Scale, Dumbbell, Moon } from 'lucide-react';
+import { X, Scale, Dumbbell, Moon, BookOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 import { WeightLogger } from './loggers/WeightLogger';
 import { TrainingLogger } from './loggers/TrainingLogger';
 import { SleepLogger } from './loggers/SleepLogger';
+import { JournalLogger } from './loggers/JournalLogger';
 
-export type QuickLogTab = 'weight' | 'training' | 'sleep';
+export type QuickLogTab = 'weight' | 'training' | 'sleep' | 'journal';
 
 interface QuickLogSheetProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ const tabs = [
   { id: 'weight' as const, icon: Scale, label: 'Gewicht' },
   { id: 'training' as const, icon: Dumbbell, label: 'Training' },
   { id: 'sleep' as const, icon: Moon, label: 'Schlaf' },
+  { id: 'journal' as const, icon: BookOpen, label: 'Journal' },
 ];
 
 export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({ 
@@ -96,10 +98,10 @@ export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({
 
                 {/* iOS STYLE SEGMENTED CONTROL */}
                 <div className="relative flex bg-muted rounded-2xl p-1">
-                  {/* Sliding Background */}
+                {/* Sliding Background */}
                   <motion.div
                     className="absolute top-1 bottom-1 bg-background rounded-xl shadow-sm"
-                    style={{ width: `calc(${100 / 3}% - 4px)` }}
+                    style={{ width: `calc(${100 / 4}% - 4px)` }}
                     animate={{ 
                       x: `calc(${activeTabIndex * 100}% + ${activeTabIndex * 4}px)` 
                     }}
@@ -138,6 +140,7 @@ export const QuickLogSheet: React.FC<QuickLogSheetProps> = ({
                     {activeTab === 'weight' && <WeightLogger onClose={onClose} />}
                     {activeTab === 'training' && <TrainingLogger onClose={onClose} />}
                     {activeTab === 'sleep' && <SleepLogger onClose={onClose} />}
+                    {activeTab === 'journal' && <JournalLogger onClose={onClose} />}
                   </motion.div>
                 </AnimatePresence>
               </div>
