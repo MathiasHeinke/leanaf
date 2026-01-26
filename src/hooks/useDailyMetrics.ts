@@ -22,6 +22,10 @@ export interface DailyMetrics {
     fats: number; 
     fluid_goal_ml: number;
   };
+  // NEW: Weight, Training, Sleep
+  weight: { latest: number | null; date: string | null };
+  training: { todayType: string | null; todayMinutes: number | null };
+  sleep: { lastHours: number | null; lastQuality: number | null };
 }
 
 export const DAILY_METRICS_KEY = ['daily-metrics'];
@@ -48,14 +52,17 @@ export const useDailyMetrics = () => {
           water: { current: 0, target: DEFAULT_GOALS.fluid_goal_ml },
           supplements: { takenIds: [], total: 0 },
           nutrition: { calories: 0, protein: 0, carbs: 0, fats: 0 },
-          goals: DEFAULT_GOALS
+          goals: DEFAULT_GOALS,
+          weight: { latest: null, date: null },
+          training: { todayType: null, todayMinutes: null },
+          sleep: { lastHours: null, lastQuality: null }
         };
       }
 
       const todayStr = new Date().toISOString().slice(0, 10);
 
       // Fetch all data in parallel
-      const [goalsRes, fluidsRes, suppsRes, mealsRes] = await Promise.all([
+      const [goalsRes, fluidsRes, suppsRes, mealsRes, weightRes, trainingRes, sleepRes] = await Promise.all([
         // Goals
         supabase
           .from('daily_goals')
@@ -82,7 +89,34 @@ export const useDailyMetrics = () => {
           .select('calories, protein, carbs, fats')
           .eq('user_id', userId)
           .gte('created_at', `${todayStr}T00:00:00`)
-          .lte('created_at', `${todayStr}T23:59:59`)
+          .lte('created_at', `${todayStr}T23:59:59`),
+        
+        // Latest Weight
+        supabase
+          .from('weight_history')
+          .select('weight, date')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        
+        // Today's Training
+        supabase
+          .from('training_sessions')
+          .select('training_type, total_duration_minutes')
+          .eq('user_id', userId)
+          .eq('session_date', todayStr)
+          .limit(1)
+          .maybeSingle(),
+        
+        // Last Sleep Entry
+        supabase
+          .from('sleep_tracking')
+          .select('sleep_hours, sleep_quality, date')
+          .eq('user_id', userId)
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle()
       ]);
 
       // Parse goals with fallbacks
@@ -108,11 +142,32 @@ export const useDailyMetrics = () => {
         fats: acc.fats + Number(m.fats || 0)
       }), { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
+      // Weight data
+      const weight = {
+        latest: weightRes.data?.weight ? Number(weightRes.data.weight) : null,
+        date: weightRes.data?.date || null
+      };
+
+      // Training data
+      const training = {
+        todayType: trainingRes.data?.training_type || null,
+        todayMinutes: trainingRes.data?.total_duration_minutes ? Number(trainingRes.data.total_duration_minutes) : null
+      };
+
+      // Sleep data
+      const sleep = {
+        lastHours: sleepRes.data?.sleep_hours ? Number(sleepRes.data.sleep_hours) : null,
+        lastQuality: sleepRes.data?.sleep_quality ? Number(sleepRes.data.sleep_quality) : null
+      };
+
       return {
         water: { current: waterCurrent, target: goals.fluid_goal_ml },
         supplements: { takenIds: supplementsTaken, total: supplementsTaken.length },
         nutrition,
-        goals
+        goals,
+        weight,
+        training,
+        sleep
       };
     },
     staleTime: 1000 * 60 * 5,  // 5 min fresh
