@@ -53,6 +53,28 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
     }
   }, [cards.length, initialCards.length, hasShownConfetti]);
 
+  // Handle individual supplement timing action (card stays open)
+  const handleSupplementAction = useCallback(async (card: ActionCard, timing: string) => {
+    const success = await logSupplementsTaken(timing as 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout');
+    
+    if (success) {
+      const timingLabels: Record<string, string> = {
+        morning: 'Morgens',
+        noon: 'Mittags',
+        evening: 'Abends',
+        pre_workout: 'Pre-Workout',
+        post_workout: 'Post-Workout'
+      };
+      toast.success(`${timingLabels[timing]} Supplements ✓`, { description: `+${card.xp} XP` });
+      
+      // Award XP for this timing
+      window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+        detail: { amount: card.xp, reason: `${timingLabels[timing]} Supps` }
+      }));
+    }
+    // NOTE: Card is NOT removed - user can still log other timings
+  }, [logSupplementsTaken]);
+
   // Handle card completion with logging
   const handleCardComplete = useCallback(async (card: ActionCard, action?: string) => {
     let success = true;
@@ -79,24 +101,17 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
       case 'supplement':
         if (action === 'snooze') {
           dismissCard(card.id, true);
+          setCards(prev => prev.filter(c => c.id !== card.id));
           toast.info('Supplements auf später verschoben');
           return;
         }
-        // Timing-specific supplement logging
-        if (['morning', 'noon', 'evening', 'pre_workout', 'post_workout'].includes(action || '')) {
-          success = await logSupplementsTaken(action as 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout');
-          if (success) {
-            const timingLabels: Record<string, string> = {
-              morning: 'Morgens',
-              noon: 'Mittags',
-              evening: 'Abends',
-              pre_workout: 'Pre-Workout',
-              post_workout: 'Post-Workout'
-            };
-            toast.success(`${timingLabels[action!]} Supplements ✓`, { description: `+${card.xp} XP` });
-          }
+        // Swipe-right on supplement card = dismiss it (user is done for today)
+        if (!action) {
+          setCards(prev => prev.filter(c => c.id !== card.id));
+          toast.success('Supplements erledigt!', { description: `+${card.xp} XP` });
         }
-        break;
+        // Individual timing actions are handled by handleSupplementAction
+        return;
         
       case 'insight':
         // Open chat with dynamic prompt
@@ -127,7 +142,7 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
         detail: { amount: card.xp, reason: card.title }
       }));
     }
-  }, [logWater, logSupplementsTaken, dismissCard, onTriggerChat]);
+  }, [logWater, dismissCard, onTriggerChat]);
 
   // Handle card dismissal (snooze)
   const handleCardDismiss = useCallback((card: ActionCard) => {
@@ -208,8 +223,8 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
 
   return (
     <div className="relative w-full">
-      {/* Stack Container */}
-      <div className="relative h-44">
+      {/* Stack Container - h-52 to match SmartFocusCard */}
+      <div className="relative h-52">
         <AnimatePresence mode="popLayout">
           {cards.map((card, index) => {
             // Only show top 3 cards in DOM
@@ -250,6 +265,7 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
                     onComplete={(action) => handleCardComplete(card, action)}
                     onDismiss={() => handleCardDismiss(card)}
                     onOpenChat={onTriggerChat}
+                    onSupplementAction={(timing) => handleSupplementAction(card, timing)}
                   />
                 </motion.div>
               );
@@ -269,7 +285,7 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
                 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 style={{ zIndex }}
-                className="absolute inset-x-0 top-0 h-44 rounded-3xl shadow-xl overflow-hidden pointer-events-none"
+                className="absolute inset-x-0 top-0 h-52 rounded-3xl shadow-xl overflow-hidden pointer-events-none"
               >
                 {/* Card Background */}
                 <div className={cn("absolute inset-0 bg-gradient-to-br", card.gradient)} />
