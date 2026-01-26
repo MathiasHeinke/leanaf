@@ -8,7 +8,7 @@ import { useMemo } from 'react';
 import { usePlusData } from './usePlusData';
 import { useUserProfile } from './useUserProfile';
 import { useDailyFocus } from './useDailyFocus';
-import { BrainCircuit, Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon } from 'lucide-react';
+import { BrainCircuit, Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sun, Clock, Dumbbell } from 'lucide-react';
 
 export interface QuickAction {
   id: string;
@@ -74,13 +74,27 @@ export const useActionCards = () => {
       });
     }
 
-    // 3. Supplements not logged today
-    if (!plusData.supplementsLoggedToday && hour >= 8 && hour < 22) {
+    // 3. Supplements not logged today - Zeit-intelligent
+    if (!plusData.supplementsLoggedToday && hour >= 6 && hour < 22) {
+      // Zeitbasierte Primary Action bestimmen
+      const getRelevantTimingAction = (): QuickAction => {
+        if (hour >= 6 && hour < 11) {
+          return { id: 'morning', label: 'Morgens', icon: Sun, primary: true };
+        } else if (hour >= 11 && hour < 14) {
+          return { id: 'noon', label: 'Mittags', icon: Clock, primary: true };
+        } else {
+          return { id: 'evening', label: 'Abends', icon: Moon, primary: true };
+        }
+      };
+      
+      const timingAction = getRelevantTimingAction();
+      const timingLabel = hour < 11 ? 'Morgen' : hour < 14 ? 'Mittag' : 'Abend';
+      
       result.push({
         id: 'supplement',
         type: 'supplement',
         title: 'Supplements einnehmen',
-        subtitle: 'Hast du heute schon deine Supplements genommen?',
+        subtitle: `Zeit für deine ${timingLabel}-Supplements!`,
         gradient: 'from-cyan-500 to-blue-600',
         icon: Pill,
         actionContext: 'log_supplements',
@@ -88,8 +102,9 @@ export const useActionCards = () => {
         xp: 30,
         canSwipeComplete: true,
         quickActions: [
-          { id: 'all_taken', label: 'Alle genommen', icon: Check, primary: true },
-          { id: 'snooze', label: 'Später', icon: Moon }
+          timingAction,
+          { id: 'pre_workout', label: 'Pre-WO', icon: Dumbbell },
+          { id: 'snooze', label: 'Später', icon: Clock }
         ]
       });
     }
