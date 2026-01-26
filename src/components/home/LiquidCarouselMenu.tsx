@@ -4,7 +4,7 @@
  * Smart Start: Opens at first uncompleted action of the day
  */
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, PanInfo } from 'framer-motion';
 import { 
   Moon, Scale, Pill, Dumbbell, Droplet, Utensils, BookOpen, Check,
@@ -125,6 +125,7 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
   completedActions,
 }) => {
   const [virtualIndex, setVirtualIndex] = useState(0);
+  const wheelAccumulator = useRef(0);
   
   // Smart ordered items based on time of day
   const orderedItems = useMemo(() => getSmartOrderedItems(), []);
@@ -190,6 +191,31 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
       // Haptic feedback
       if ('vibrate' in navigator) {
         navigator.vibrate(10);
+      }
+    }
+  }, []);
+  
+  // Handle trackpad/mouse wheel scrolling
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    // Only capture horizontal scrolling (trackpad 2-finger swipe)
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      e.preventDefault();
+      
+      // Accumulate deltaX for smooth scrolling
+      wheelAccumulator.current += e.deltaX;
+      
+      // Threshold: when accumulated enough, change index
+      const threshold = ITEM_TOTAL / 2;
+      
+      if (Math.abs(wheelAccumulator.current) >= threshold) {
+        const change = wheelAccumulator.current > 0 ? 1 : -1;
+        setVirtualIndex(prev => prev + change);
+        wheelAccumulator.current = 0; // Reset accumulator
+        
+        // Haptic feedback
+        if ('vibrate' in navigator) {
+          navigator.vibrate(10);
+        }
       }
     }
   }, []);
@@ -261,6 +287,7 @@ export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.1}
               onDragEnd={handleDragEnd}
+              onWheel={handleWheel}
               className="relative h-20 w-full touch-pan-y cursor-grab active:cursor-grabbing"
             >
               <AnimatePresence mode="sync">
