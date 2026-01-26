@@ -4,10 +4,10 @@ import { Switch } from './ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import { Settings, Utensils, Weight, Moon, Droplets, Dumbbell, Pill } from 'lucide-react';
+import { Settings, Utensils, Weight, Moon, Droplets, Dumbbell, Pill, PartyPopper } from 'lucide-react';
 import { useProactiveTooltips } from '@/hooks/useProactiveTooltips';
 import { ProactiveTooltip } from './ProactiveTooltip';
-
+import { useConfettiPreference } from '@/hooks/useConfettiPreference';
 interface TrackingPreference {
   id: string;
   tracking_type: string;

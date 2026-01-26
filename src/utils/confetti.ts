@@ -1,10 +1,17 @@
 import confetti from 'canvas-confetti';
+import { isConfettiEnabled } from '@/hooks/useConfettiPreference';
 
 /**
  * Spartan-style confetti - Gold & Silver theme
  * Fires from both sides for 3 seconds
+ * Respects user preference - won't fire if disabled in profile
  */
 export const triggerSpartanConfetti = () => {
+  // Check user preference before firing
+  if (!isConfettiEnabled()) {
+    return;
+  }
+
   const duration = 3000;
   const end = Date.now() + duration;
 
