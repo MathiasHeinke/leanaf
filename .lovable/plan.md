@@ -1,272 +1,529 @@
 
 
-# TrainingLogger: Cross-Morphing + Multi-Select Dropdowns
+# Liquid Carousel Dock - Premium Quick Actions Redesign
 
-## Das Konzept
+## Die Vision
 
-### 1. Cross-Morphing zwischen Sektionen
-Wenn eine Sektion (Workouts ODER Aktivität) ausgewählt wird, schrumpft die jeweils andere Sektion automatisch - ähnlich wie das "Morphing Hero" Pattern, aber bidirektional:
+Die aktuellen "bunten Smarties"-Buttons werden durch einen eleganten, horizontal scrollbaren **Liquid Carousel** ersetzt. Dieser bietet:
+
+1. **Glassmorphismus statt Regenbogen** - Fokus auf das aktive Element
+2. **Snap-Scroll mit Cover Flow Effect** - iOS-inspirierte Interaktion
+3. **Smart Ordering** - Zeitbasierte Sortierung (Morgens: Schlaf/Waage, Abends: Journal)
+4. **Adaptive Backdrop** - Light/Dark Mode optimiert
+5. **Erweiterbar** - Platz für Supplements und zukünftige Aktionen
+
+---
+
+## Visueller Vergleich
 
 ```text
-NICHTS GEWÄHLT:                  WORKOUT GEWÄHLT (z.B. Kraft):
-+---------------------------+    +---------------------------+
-| WORKOUTS                  |    | WORKOUTS                  |
-| (●🏋️)  (●🌿)  (●🏃)       |    | (●🏋️)  (●🌿)  (●🏃)       | ← Normal groß
-|  Kraft  Zone 2  VO2 Max   |    |  Kraft  Zone 2  VO2 Max   |
-|                           |    |                           |
-| AKTIVITÄT & ERHOLUNG      |    | AKTIVITÄT & ERHOLUNG      |
-| (●🔥)  (●🚶)  (○😴)       |    | (○)    (○)    (○)         | ← 60% Scale, kein Label
-|  Sauna  Bewegung  Ruhetag |    |                           |
-+---------------------------+    +---------------------------+
+VORHER (Statische bunte Buttons):
+   ┌─────────────────────────────────┐
+   │  (🟡)  (🟠)  (🟢)  (🟣)  (🔵)   │  ← Alle gleich groß, bunt
+   └─────────────────────────────────┘
 
-AKTIVITÄT GEWÄHLT (z.B. Sauna):
-+---------------------------+
-| WORKOUTS                  |
-| (○)    (○)    (○)         | ← 60% Scale, kein Label
-|                           |
-| AKTIVITÄT & ERHOLUNG      |
-| (●🔥)  (●🚶)  (○😴)       | ← Normal groß
-|  Sauna  Bewegung  Ruhetag |
-+---------------------------+
+NACHHER (Liquid Carousel mit Fokus):
+   ┌─────────────────────────────────────────┐
+   │                                         │
+   │   ◌       ◌       ●       ◌       ◌    │
+   │  0.75   0.85    1.15    0.85    0.75   │  ← Scale
+   │  30%    50%    100%     50%     30%    │  ← Opacity
+   │  ───     ──     ███      ──     ───    │  ← Glow nur in Mitte
+   │                                         │
+   │  ← ─ ─ ─ ─ SWIPE ─ ─ ─ ─ →            │
+   └─────────────────────────────────────────┘
 ```
 
-### 2. Multi-Select Dropdowns für Workout-Details
-Statt einfacher Buttons werden die Workout-Details zu Popover-Dropdowns mit Multi-Select Checkboxen:
+---
 
-- **Kraft**: Split-Typen (Push, Pull, Legs, Upper, Lower, Full) → Multi-Select
-- **Zone 2**: Cardio-Typen (Gehen, Laufen, Rad, Schwimmen, Rudern) → Multi-Select
-- **VO2 Max**: Protokolle (4x4, Tabata, HIIT) → Single-Select (bleibt)
+## Technische Architektur
 
-## Technische Umsetzung
+### Neue Komponente: `LiquidCarouselMenu.tsx`
 
-### 1. Animation Variants für Cross-Morphing
+```text
+src/components/home/
+├── LiquidDock.tsx              ← Behält 3 Hauptbuttons (Vision, ARES, Plus)
+├── LiquidCarouselMenu.tsx      ← NEU: Das Carousel-Menü
+└── ...
+```
+
+### Komponenten-Struktur
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│  LiquidCarouselMenu                                     │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  Backdrop Gradient (adaptive light/dark)          │  │
+│  │  from-background via-background/95 to-transparent │  │
+│  └───────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  Horizontal Scroll Container                      │  │
+│  │  snap-x snap-mandatory overflow-x-auto            │  │
+│  │  ┌───────────────────────────────────────────┐    │  │
+│  │  │  CarouselItem × 7                         │    │  │
+│  │  │  (Sleep, Weight, Supps, Workout, etc.)    │    │  │
+│  │  └───────────────────────────────────────────┘    │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 1. Action Items Definition
+
+### Alle Quick Actions (7 Items)
+
+| ID | Icon | Label | Farbe (Glow) | Aktion |
+|----|------|-------|--------------|--------|
+| `sleep` | Moon | Schlaf | Indigo | → QuickLogSheet (sleep tab) |
+| `weight` | Scale | Gewicht | Teal | → QuickLogSheet (weight tab) |
+| `supplements` | Pill | Supps | Purple | → ChemistryStackSheet |
+| `workout` | Dumbbell | Training | Orange | → QuickLogSheet (training tab) |
+| `hydration` | Droplet | Wasser | Blue | → Direct water log action |
+| `nutrition` | Utensils | Essen | Green | → MealSheet öffnen |
+| `journal` | BookOpen | Journal | Amber | → QuickLogSheet (journal tab) |
+
+---
+
+## 2. Smart Ordering (Zeitbasiert)
+
+### Logik für `getSmartOrderedItems()`
 
 ```typescript
-const springConfig = { type: "spring" as const, stiffness: 300, damping: 25 };
-
-// Section morphing variants
-const sectionVariants = {
-  normal: { scale: 1, opacity: 1 },
-  compact: { scale: 0.85, opacity: 0.6 }
-};
-
-// Button morphing variants  
-const buttonVariants = {
-  normal: { scale: 1 },
-  compact: { scale: 0.6 }
-};
-
-// Label variants (hide in compact mode)
-const labelVariants = {
-  normal: { opacity: 1, height: 'auto', marginTop: 8 },
-  compact: { opacity: 0, height: 0, marginTop: 0 }
+const getSmartOrderedItems = () => {
+  const hour = new Date().getHours();
+  
+  // MORGEN-ROUTINE (vor 10:00)
+  if (hour < 10) {
+    return [
+      'sleep',        // 1. Schlaf loggen (gerade aufgewacht)
+      'weight',       // 2. Wiegen (nüchtern)
+      'supplements',  // 3. Morning Stack nehmen
+      'workout',      // 4. Morning Workout
+      'hydration',    // 5. Wasser
+      'nutrition',    // 6. Frühstück
+      'journal',      // 7. Morgen-Reflektion
+    ];
+  }
+  
+  // TAG/ABEND (ab 10:00)
+  return [
+    'nutrition',    // 1. Mahlzeiten loggen
+    'hydration',    // 2. Hydration tracken
+    'workout',      // 3. Training
+    'supplements',  // 4. Abend-Stack
+    'journal',      // 5. Tages-Reflektion
+    'weight',       // 6. Optional wiegen
+    'sleep',        // 7. Schlafenszeit
+  ];
 };
 ```
 
-### 2. Logik für Cross-Morphing State
+---
+
+## 3. Visuelle Styles
+
+### Inaktive Items (Seite des Carousels)
 
 ```typescript
-// Bestimme welche Kategorie aktiv ist
-const isWorkoutSelected = selectedType && 
-  ['rpt', 'zone2', 'vo2max'].includes(selectedType);
-const isActivitySelected = selectedType && 
-  ['sauna', 'movement', 'rest'].includes(selectedType);
-
-// Workouts-Sektion: compact wenn Activity ausgewählt
-const workoutSectionState = isActivitySelected ? 'compact' : 'normal';
-
-// Activity-Sektion: compact wenn Workout ausgewählt (außer bei Rest)
-const activitySectionState = isWorkoutSelected ? 'compact' : 'normal';
+// Glass Style - Dezent und elegant
+const inactiveStyle = {
+  scale: 0.75,
+  opacity: 0.5,
+  background: "bg-slate-200/40 dark:bg-white/10",  // Milchglas
+  iconColor: "text-slate-500 dark:text-white/60",
+  shadow: "none",
+  border: "border border-white/10",
+};
 ```
 
-### 3. Aktualisierter RoundTypeButton mit Morphing
+### Aktives Item (Mitte/Fokus)
 
 ```typescript
-interface RoundTypeButtonProps {
-  // ... existing
-  isCompact: boolean;  // NEU: Cross-Morphing State
+// Glow Style - Prominent und leuchtend
+const activeStyle = {
+  scale: 1.15,
+  opacity: 1.0,
+  background: itemColor,  // z.B. "bg-indigo-500" für Sleep
+  iconColor: "text-white",
+  shadow: "shadow-lg shadow-${color}-500/40",  // Farbiger Glow
+  border: "border border-white/20",
+};
+```
+
+### Interpolation zwischen Zuständen
+
+```typescript
+// Framer Motion useTransform für smoothe Übergänge
+const getItemStyle = (distanceFromCenter: number) => {
+  // 0 = Mitte, 1 = direkt daneben, 2+ = weit weg
+  const scale = Math.max(0.75, 1.15 - distanceFromCenter * 0.2);
+  const opacity = Math.max(0.5, 1 - distanceFromCenter * 0.25);
+  const isActive = distanceFromCenter < 0.5;
+  
+  return { scale, opacity, isActive };
+};
+```
+
+---
+
+## 4. Adaptive Backdrop
+
+### Light Mode
+
+```css
+.carousel-backdrop-light {
+  background: linear-gradient(
+    to top,
+    hsl(var(--background)) 0%,
+    hsl(var(--background) / 0.95) 40%,
+    transparent 100%
+  );
+}
+```
+
+### Dark Mode
+
+```css
+.carousel-backdrop-dark {
+  background: linear-gradient(
+    to top,
+    hsl(0 0% 0%) 0%,
+    hsl(0 0% 0% / 0.95) 40%,
+    transparent 100%
+  );
+}
+```
+
+### Animation beim Öffnen
+
+```typescript
+<motion.div
+  initial={{ opacity: 0, y: 100 }}
+  animate={{ opacity: 1, y: 0 }}
+  exit={{ opacity: 0, y: 50 }}
+  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+  className="fixed bottom-0 left-0 right-0 h-[45vh] pointer-events-none"
+  style={{ background: "..." }}
+/>
+```
+
+---
+
+## 5. Interaktions-Mechanik
+
+### Scroll Snapping
+
+```typescript
+// Container
+<div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar px-[40%]">
+  {items.map((item, index) => (
+    <CarouselItem 
+      key={item.id}
+      item={item}
+      index={index}
+    />
+  ))}
+</div>
+
+// Items
+<div className="snap-center shrink-0 w-20">
+  {/* ... */}
+</div>
+```
+
+### Touch & Click Handling
+
+```typescript
+const handleItemClick = (item: QuickActionItem) => {
+  // Haptic Feedback (wenn verfügbar)
+  if ('vibrate' in navigator) {
+    navigator.vibrate(10);
+  }
+  
+  // Aktion ausführen
+  switch (item.id) {
+    case 'sleep':
+    case 'weight':
+    case 'workout':
+    case 'journal':
+      setQuickLogConfig({ open: true, tab: mapToTab(item.id) });
+      break;
+    case 'supplements':
+      setChemistrySheetOpen(true);
+      break;
+    case 'nutrition':
+      setMealSheetOpen(true);
+      break;
+    case 'hydration':
+      logWater(500);
+      break;
+  }
+  
+  // Menü schließen
+  onClose();
+};
+```
+
+---
+
+## 6. Scroll-Position Tracking
+
+### Mit IntersectionObserver
+
+```typescript
+const [activeIndex, setActiveIndex] = useState(0);
+const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+useEffect(() => {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+          const index = itemRefs.current.indexOf(entry.target as HTMLDivElement);
+          if (index !== -1) setActiveIndex(index);
+        }
+      });
+    },
+    { threshold: 0.5, root: scrollContainerRef.current }
+  );
+  
+  itemRefs.current.forEach((ref) => ref && observer.observe(ref));
+  return () => observer.disconnect();
+}, []);
+```
+
+### Alternative: Scroll Position
+
+```typescript
+const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const container = e.currentTarget;
+  const scrollPosition = container.scrollLeft;
+  const itemWidth = 80 + 16; // w-20 + gap-4
+  const centerOffset = container.clientWidth / 2;
+  
+  const activeIdx = Math.round((scrollPosition + centerOffset) / itemWidth);
+  setActiveIndex(activeIdx);
+};
+```
+
+---
+
+## 7. Komponenten-Code Struktur
+
+### `LiquidCarouselMenu.tsx`
+
+```typescript
+interface QuickActionItem {
+  id: string;
+  icon: LucideIcon;
+  label: string;
+  color: string;          // bg-indigo-500
+  glowColor: string;      // shadow-indigo-500/40
 }
 
-const RoundTypeButton: React.FC<RoundTypeButtonProps> = ({ 
-  type, 
-  isSelected, 
-  isDisabled,
-  isCompact,  // NEU
-  onSelect 
-}) => (
-  <motion.button
-    variants={buttonVariants}
-    animate={isCompact ? 'compact' : 'normal'}
-    transition={springConfig}
-    // ...
-  >
-    {/* Round Icon Button - kleiner wenn compact */}
-    <motion.div className={cn(
-      "rounded-full flex items-center justify-center transition-all",
-      isCompact ? "w-10 h-10" : "w-16 h-16",  // ← Dynamische Größe
-      // ... colors
-    )}>
-      <type.icon className={cn(
-        isCompact ? "w-4 h-4" : "w-7 h-7"  // ← Dynamische Icon-Größe
-      )} />
-    </motion.div>
-    
-    {/* Label - versteckt wenn compact */}
+interface LiquidCarouselMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAction: (actionId: string) => void;
+}
+
+export const LiquidCarouselMenu: React.FC<LiquidCarouselMenuProps> = ({
+  isOpen,
+  onClose,
+  onAction,
+}) => {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Smart ordered items based on time of day
+  const orderedItems = useMemo(() => getSmartOrderedItems(), []);
+  
+  // Initial scroll to center first item
+  useEffect(() => {
+    if (isOpen && scrollRef.current) {
+      // Scroll to first item in center
+      scrollRef.current.scrollTo({ left: 0, behavior: 'instant' });
+    }
+  }, [isOpen]);
+  
+  return (
     <AnimatePresence>
-      {!isCompact && (
-        <motion.span
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="text-xs font-medium mt-2"
-        >
-          {type.label}
-        </motion.span>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div 
+            className="fixed inset-0 z-40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+          />
+          
+          {/* Gradient Mask */}
+          <motion.div
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-0 left-0 right-0 h-[45vh] z-41 pointer-events-none
+                       bg-gradient-to-t from-background via-background/95 to-transparent"
+          />
+          
+          {/* Carousel Container */}
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 30, opacity: 0 }}
+            className="fixed bottom-28 left-0 right-0 z-42"
+          >
+            <div
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="flex gap-4 overflow-x-auto snap-x snap-mandatory 
+                         scroll-smooth hide-scrollbar px-[40%] py-4"
+            >
+              {orderedItems.map((item, index) => (
+                <CarouselItem
+                  key={item.id}
+                  item={item}
+                  index={index}
+                  isActive={index === activeIndex}
+                  onClick={() => {
+                    onAction(item.id);
+                    onClose();
+                  }}
+                />
+              ))}
+            </div>
+            
+            {/* Active Label */}
+            <motion.div 
+              key={orderedItems[activeIndex]?.label}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center text-sm font-medium text-foreground mt-2"
+            >
+              {orderedItems[activeIndex]?.label}
+            </motion.div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
-  </motion.button>
-);
-```
-
-### 4. Multi-Select State für Workouts
-
-```typescript
-// Statt einzelner Werte: Arrays für Multi-Select
-const [selectedSplits, setSelectedSplits] = useState<SplitType[]>([]);
-const [selectedCardioTypes, setSelectedCardioTypes] = useState<CardioType[]>([]);
-
-// Toggle-Funktion für Multi-Select
-const toggleSplit = (split: SplitType) => {
-  setSelectedSplits(prev => 
-    prev.includes(split)
-      ? prev.filter(s => s !== split)
-      : [...prev, split]
-  );
-};
-
-const toggleCardioType = (type: CardioType) => {
-  setSelectedCardioTypes(prev =>
-    prev.includes(type)
-      ? prev.filter(t => t !== type)
-      : [...prev, type]
   );
 };
 ```
 
-### 5. Multi-Select Dropdown UI (mit Popover)
+### `CarouselItem` Sub-Component
 
 ```typescript
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronDown } from "lucide-react";
-
-{/* KRAFT: Split Multi-Select Dropdown */}
-{selectedType === 'rpt' && (
-  <>
-    <div className="text-sm font-medium text-muted-foreground">Trainierte Splits</div>
-    
-    <Popover>
-      <PopoverTrigger asChild>
-        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
-          <span className="text-sm">
-            {selectedSplits.length > 0 
-              ? selectedSplits.map(s => SPLIT_TYPE_LABELS[s]).join(', ')
-              : 'Splits auswählen...'}
-          </span>
-          <ChevronDown className="w-4 h-4 text-muted-foreground" />
-        </button>
-      </PopoverTrigger>
-      
-      <PopoverContent className="w-56 p-2">
-        {SPLIT_OPTIONS.map((split) => (
-          <label
-            key={split.id}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted cursor-pointer"
-          >
-            <Checkbox 
-              checked={selectedSplits.includes(split.id)}
-              onCheckedChange={() => toggleSplit(split.id)}
-            />
-            <span className="text-sm">{split.label}</span>
-          </label>
-        ))}
-      </PopoverContent>
-    </Popover>
-  </>
-)}
-```
-
-### 6. Visueller Effekt des Cross-Morphing
-
-```text
-PHASE 1: Nichts gewählt          PHASE 2: "Kraft" ausgewählt
-┌─────────────────────────┐      ┌─────────────────────────┐
-│ WORKOUTS                │      │ WORKOUTS                │
-│                         │      │                         │
-│ (🏋️)    (🌿)    (🏃)    │      │ (🏋️●)   (🌿)    (🏃)   │ ← Selected
-│ Kraft  Zone 2  VO2 Max  │      │ Kraft   Zone 2  VO2 Max │
-│ w-16   w-16    w-16     │      │ w-16    w-16    w-16    │
-│                         │      │                         │
-│ AKTIVITÄT & ERHOLUNG    │      │ AKTIVITÄT & ERHOLUNG    │
-│                         │      │                         │
-│ (🔥)    (🚶)    (😴)    │      │ (○)  (○)  (○)           │ ← Compact 60%
-│ Sauna  Bewegung Ruhetag │      │                         │   Labels weg
-│ w-16   w-16     w-16    │      │ w-10 w-10 w-10          │
-└─────────────────────────┘      └─────────────────────────┘
-
-PHASE 3: "Sauna" ausgewählt
-┌─────────────────────────┐
-│ WORKOUTS                │
-│                         │
-│ (○)  (○)  (○)           │ ← Compact 60%
-│ w-10 w-10 w-10          │   Labels weg
-│                         │
-│ AKTIVITÄT & ERHOLUNG    │
-│                         │
-│ (🔥●)   (🚶)    (😴)    │ ← Selected
-│ Sauna  Bewegung Ruhetag │
-│ w-16    w-16    w-16    │
-└─────────────────────────┘
-```
-
-### 7. Session Data mit Multi-Select
-
-```typescript
-const handleSave = async () => {
-  const sessionData: Record<string, unknown> = {};
+const CarouselItem: React.FC<{
+  item: QuickActionItem;
+  index: number;
+  isActive: boolean;
+  onClick: () => void;
+}> = ({ item, index, isActive, onClick }) => {
+  const Icon = item.icon;
   
-  // Kraft: Multiple splits
-  if (selectedType === 'rpt' && selectedSplits.length > 0) {
-    sessionData.splits = selectedSplits;  // Array statt einzelner Wert
-  }
-  
-  // Zone 2: Multiple cardio types
-  if (selectedType === 'zone2' && selectedCardioTypes.length > 0) {
-    sessionData.cardio_types = selectedCardioTypes;  // Array
-  }
-  
-  // ... rest of save logic
-  
-  const success = await trackEvent('workout', { 
-    training_type: selectedType,
-    split_type: selectedSplits[0],  // Primärer Split für Kompatibilität
-    // ...
-    session_data: sessionData
-  });
+  return (
+    <motion.button
+      animate={{
+        scale: isActive ? 1.15 : 0.75,
+        opacity: isActive ? 1 : 0.5,
+      }}
+      whileTap={{ scale: isActive ? 1.05 : 0.7 }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      onClick={onClick}
+      className={cn(
+        "snap-center shrink-0 w-16 h-16 rounded-full",
+        "flex items-center justify-center",
+        "transition-shadow duration-300",
+        isActive 
+          ? `${item.color} shadow-lg ${item.glowColor} border border-white/20`
+          : "bg-slate-200/40 dark:bg-white/10 border border-white/5"
+      )}
+    >
+      <Icon className={cn(
+        "transition-colors",
+        isActive ? "w-7 h-7 text-white" : "w-5 h-5 text-slate-500 dark:text-white/60"
+      )} />
+    </motion.button>
+  );
 };
 ```
 
-## Dateien
+---
+
+## 8. Integration in LiquidDock
+
+### Änderungen an `LiquidDock.tsx`
+
+```typescript
+// VORHER: Statische Button-Reihe
+<motion.div className="flex gap-3 mb-4">
+  {quickActions.map((item) => (
+    <motion.button>...</motion.button>
+  ))}
+</motion.div>
+
+// NACHHER: LiquidCarouselMenu
+<LiquidCarouselMenu 
+  isOpen={isMenuOpen}
+  onClose={() => setIsMenuOpen(false)}
+  onAction={handleQuickAction}
+/>
+```
+
+---
+
+## 9. Dateien
 
 | Datei | Aktion |
 |-------|--------|
-| `src/components/home/loggers/TrainingLogger.tsx` | Cross-Morphing + Multi-Select Dropdowns |
+| `src/components/home/LiquidCarouselMenu.tsx` | **NEU** - Carousel-Komponente |
+| `src/components/home/LiquidDock.tsx` | Ersetze statische Buttons durch Carousel |
+| `src/pages/AresHome.tsx` | Erweitere `handleQuickAction` für neue Actions |
+| `src/components/quick/quickAddBus.ts` | Ergänze `hydration` Action |
 
-## UX-Vorteile
+---
 
-1. **Mehr Platz für Details**: Die geschrumpfte Sektion gibt Raum frei
-2. **Visueller Fokus**: Klar erkennbar welche Kategorie aktiv ist
-3. **Flexibles Training-Logging**: Mehrere Splits/Cardio-Arten pro Session möglich
-4. **Premium-Feel**: Smooth Framer-Motion Animationen
-5. **Konsistentes Pattern**: Gleiche Morphing-Logik wie Weight/Sleep/Tape Logger
+## 10. UX Flow
+
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│         [App Content / Widgets]         │
+│                                         │
+├─────────────────────────────────────────┤  ← User tippt "+"
+│                                         │
+│     ████████████████████████████████    │  ← Gradient steigt auf
+│                                         │
+│        ◌    ◌    ●    ◌    ◌           │  ← Carousel erscheint
+│                  ▲                      │
+│              [Schlaf]                   │  ← Label unter Fokus
+│                                         │
+│      [🍴]    [⚔️]    [+]               │  ← Dock bleibt sichtbar
+│                                         │
+└─────────────────────────────────────────┘
+
+→ User wischt nach rechts →
+
+│        ◌    ●    ◌    ◌    ◌           │
+│             ▲                           │
+│          [Gewicht]                      │
+
+→ User tippt auf aktives Item →
+
+│  [Sheet öffnet sich mit WeightLogger]   │
+```
+
+---
+
+## Vorteile
+
+1. **Skalierbar**: Beliebig viele Actions ohne UI-Bruch
+2. **Premium Feel**: Cover-Flow Animation wie iOS Fotos
+3. **Intelligent**: Zeigt relevante Actions zuerst
+4. **Platzsparend**: Versteckt Komplexität hinter elegantem Scroll
+5. **Barrierefrei**: Keyboard-navigierbar (Pfeiltasten)
+6. **Performance**: CSS scroll-snap statt JS-Animation
 
