@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 
 export interface SmartTask {
   id: string;
-  type: 'hydration' | 'supplements' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'profile' | 'journal' | 'sleep_fix';
+  type: 'hydration' | 'supplement' | 'supplements' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'profile' | 'journal' | 'sleep_fix';
   title: string;
   subtitle: string;
   xp: number;
@@ -200,8 +200,8 @@ interface SmartActionsProps {
 const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat, onSupplementAction }) => {
   
   // SUPPLEMENTS: Multi-action with individual timing tracking - PRIORITY BEFORE quickActions!
-  // CRITICAL: onSupplementAction MUST be used, NOT onAction (which triggers card completion)
-  if (task.type === 'supplements') {
+  // CRITICAL: Check BOTH 'supplement' (from useActionCards) AND 'supplements' for compatibility
+  if (task.type === 'supplement' || task.type === 'supplements') {
     // Only render if we have the dedicated supplement handler
     if (onSupplementAction) {
       return (
