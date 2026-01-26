@@ -64,6 +64,8 @@ export const useAresEvents = () => {
   ): Promise<boolean> => {
     
     // === A. OPTIMISTIC UPDATE (INSTANT - 0ms) ===
+    const today = new Date().toISOString().slice(0, 10);
+    
     queryClient.setQueryData<DailyMetrics>(DAILY_METRICS_KEY, (old) => {
       if (!old) return old;
       
@@ -90,6 +92,39 @@ export const useAresEvents = () => {
         };
       }
       
+      // Weight → update latest weight
+      if (category === 'weight' && payload.weight_kg) {
+        return {
+          ...old,
+          weight: {
+            latest: payload.weight_kg,
+            date: payload.date || today
+          }
+        };
+      }
+      
+      // Workout → update training info
+      if (category === 'workout' && payload.training_type) {
+        return {
+          ...old,
+          training: {
+            todayType: payload.training_type,
+            todayMinutes: payload.duration_minutes || null
+          }
+        };
+      }
+      
+      // Sleep → update sleep info
+      if (category === 'sleep' && payload.sleep_hours) {
+        return {
+          ...old,
+          sleep: {
+            lastHours: payload.sleep_hours,
+            lastQuality: payload.sleep_quality || 3
+          }
+        };
+      }
+      
       return old;
     });
 
@@ -100,7 +135,6 @@ export const useAresEvents = () => {
         throw new Error('Not authenticated');
       }
       
-      const today = new Date().toISOString().slice(0, 10);
       const now = new Date().toISOString();
       
       // Handle fluid logging (water/coffee)

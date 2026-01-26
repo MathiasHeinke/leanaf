@@ -14,9 +14,9 @@ interface TrainingWidgetProps {
 export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
   const navigate = useNavigate();
 
-  // Fetch workouts for last 7 days
+  // Fetch training sessions for last 7 days (FIXED: uses training_sessions table)
   const { data: weeklyData } = useQuery({
-    queryKey: ['workouts-weekly'],
+    queryKey: ['training-sessions-weekly'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { count: 0, days: [] as boolean[] };
@@ -29,19 +29,19 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
         dates.push(d.toISOString().slice(0, 10));
       }
       
-      const { data: workouts } = await supabase
-        .from('workouts')
-        .select('date, did_workout')
+      const { data: sessions } = await supabase
+        .from('training_sessions')
+        .select('session_date')
         .eq('user_id', user.id)
-        .in('date', dates);
+        .in('session_date', dates);
       
-      const workoutDates = new Set(
-        workouts?.filter(w => w.did_workout).map(w => w.date) || []
+      const sessionDates = new Set(
+        sessions?.map(s => s.session_date) || []
       );
       
       return {
-        count: workoutDates.size,
-        days: dates.map(d => workoutDates.has(d))
+        count: sessionDates.size,
+        days: dates.map(d => sessionDates.has(d))
       };
     },
     staleTime: 60000

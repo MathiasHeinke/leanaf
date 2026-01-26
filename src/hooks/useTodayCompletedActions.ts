@@ -56,15 +56,15 @@ export const useTodayCompletedActions = (): UseTodayCompletedActionsReturn => {
         return (data?.length ?? 0) > 0;
       };
 
-      // Parallel queries for performance
+      // Parallel queries for performance (FIXED: correct table names)
       const [sleep, weight, supps, workout, fluids, meals, journal] = await Promise.all([
-        checkTable('sleep_logs', 'date', today),
-        checkTable('weight_entries', 'date', today),
+        checkTable('sleep_tracking', 'date', today),
+        checkTable('weight_history', 'date', today),
         checkTable('supplement_intake_log', 'date', today),
         checkTable('training_sessions', 'session_date', today),
         checkTable('user_fluids', 'date', today),
         checkTable('meals', 'created_at', today, true),
-        checkTable('journal_entries', 'entry_date', today),
+        checkTable('diary_entries', 'date', today),
       ]);
 
       if (sleep) completed.add('sleep');

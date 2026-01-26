@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
-import { usePlusData } from '@/hooks/usePlusData';
+import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 
 interface MacroProgressBarProps {
   label: string;
@@ -54,16 +54,17 @@ interface NutritionWidgetProps {
 
 export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size }) => {
   const navigate = useNavigate();
-  const { goals, today } = usePlusData();
+  const { data: metrics } = useDailyMetrics();
   
-  const calories = today?.total_calories || 0;
-  const calorieGoal = goals?.calories || 2200;
-  const protein = today?.total_protein || 0;
-  const proteinGoal = goals?.protein || 150;
-  const carbs = today?.total_carbs || 0;
-  const carbGoal = goals?.carbs || 250;
-  const fats = today?.total_fats || 0;
-  const fatGoal = goals?.fats || 65;
+  // UNIFIED: Now uses central useDailyMetrics cache
+  const calories = metrics?.nutrition?.calories || 0;
+  const calorieGoal = metrics?.goals?.calories || 2200;
+  const protein = metrics?.nutrition?.protein || 0;
+  const proteinGoal = metrics?.goals?.protein || 150;
+  const carbs = metrics?.nutrition?.carbs || 0;
+  const carbGoal = metrics?.goals?.carbs || 250;
+  const fats = metrics?.nutrition?.fats || 0;
+  const fatGoal = metrics?.goals?.fats || 65;
   
   const caloriePercent = Math.min((calories / calorieGoal) * 100, 100);
 
