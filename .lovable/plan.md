@@ -1,417 +1,539 @@
 
-
-# Epiphany Card: Premium Design + Prefetch + 3D Flip
+# Unified Quick-Log Sheet: Weight, Training, Sleep
 
 ## Uebersicht
 
-Drei Optimierungen fuer die Erkenntnis-Karte:
+Ein premium Apple-Health-Style Overlay fuer die drei "Big Three" Tracking-Bereiche, die aktuell fehlen. Das Sheet oeffnet sich vom LiquidDock `+` Button und bietet ein iOS Kontrollzentrum-Feeling mit grossen Touch-Targets und haptischem Feedback.
 
-| Verbesserung | Status |
-|--------------|--------|
-| **Text zu gross** | `text-lg` → `text-sm` / `text-base` (je nach Laenge) |
-| **Flip-Animation** | Echter 3D-Kartenflip mit `rotateY(180deg)` |
-| **Prefetch** | Insight wird im Hintergrund geladen, sobald Karte sichtbar wird |
-
----
-
-## 1. Design-Fixes (RevealedState)
-
-### Problem
-Der Text `"Deine Daten zeigen..."` ist mit `text-lg` zu gross und ueberwaeltigt die kompakte Karte.
-
-### Loesung
-```text
-VORHER:                              NACHHER:
-┌───────────────────────┐            ┌───────────────────────┐
-│ 💡 ERKENNTNIS    [X]  │            │ 💡 ERKENNTNIS    [X]  │
-│                       │            │                       │
-│ "Deine Daten zeigen   │            │ "Deine Daten zeigen   │
-│ ein interessantes     │            │ ein interessantes     │
-│ Muster. An Tagen      │  (text-lg) │ Muster..."            │ (text-sm)
-│ mit..."               │            │                       │
-│                       │            │ [Was bedeutet das?]   │
-│ [Was bedeutet das?]   │            │                       │
-└───────────────────────┘            └───────────────────────┘
-```
-
-### Aenderungen EpiphanyCard.tsx (RevealedState)
-
-**Zeile 264-265 (Insight Text):**
-```typescript
-// VORHER:
-className="text-lg font-medium leading-relaxed text-white/90"
-
-// NACHHER:
-className="text-sm sm:text-base font-medium leading-relaxed text-white/90"
-```
-
-**Weitere Design-Verbesserungen:**
-- Groesseres Icon/Badge fuer visuelles Gewicht
-- Subtilere Glow-Effekte
-- Bessere vertikale Verteilung
-
----
-
-## 2. 3D Flip Animation
-
-### Konzept
-Statt nur `rotateY: 90 → 0` machen wir einen echten Karten-Flip:
-- Vorderseite (Mystery) rotiert nach hinten
-- Rueckseite (Revealed) erscheint durch Rotation nach vorne
-- `perspective` fuer 3D-Tiefe
-
-### Animation Flow
-```text
-Phase 1 (Mystery):        Phase 2 (Flip):          Phase 3 (Revealed):
-┌─────────────┐           ┌─────────────┐           ┌─────────────┐
-│ ✨ Neues    │  ──→      │    ====     │  ──→      │ 💡 Erkennt  │
-│   Muster    │           │   FLIP!     │           │   nis       │
-│             │           │    ====     │           │             │
-│ [Aufdecken] │           │             │           │ [Was ...?]  │
-└─────────────┘           └─────────────┘           └─────────────┘
-  rotateY(0)               rotateY(90)               rotateY(0)
-```
-
-### Code-Aenderungen
-
-**Wrapper mit Perspective:**
-```typescript
-<div className="relative w-full h-52 rounded-3xl overflow-hidden" 
-     style={{ perspective: '1000px' }}>
-```
-
-**Mystery Exit Animation:**
-```typescript
-exit={{ 
-  rotateY: -90,
-  opacity: 0,
-  transition: { duration: 0.3 }
-}}
-```
-
-**Revealed Entry Animation:**
-```typescript
-initial={{ rotateY: 90, opacity: 0 }}
-animate={{ rotateY: 0, opacity: 1 }}
-transition={{ 
-  duration: 0.5, 
-  type: "spring", 
-  damping: 20 
-}}
-style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
-```
-
----
-
-## 3. Prefetch System (Wichtig fuer UX)
-
-### Problem
-Aktuell wird die Erkenntnis erst generiert wenn der User klickt → 1-3 Sekunden Ladezeit.
-
-### Loesung: Hintergrund-Prefetch
-1. Sobald die Epiphany-Karte im Stack erscheint (oder kurz davor), wird die Erkenntnis im Hintergrund geladen
-2. Das Ergebnis wird im React Query Cache / LocalStorage gespeichert
-3. Beim Klick auf "Aufdecken" ist die Erkenntnis bereits da → sofortige Flip-Animation
-
-### Architektur
 ```text
 ┌─────────────────────────────────────────┐
-│      useDailyInsight() Hook             │
+│          ═══ (Drag Handle) ═══          │
 │                                         │
-│  ┌────────────┐   ┌────────────────────┐│
-│  │ localStorage│  │ React Query Cache  ││
-│  │ daily-insight│ │  ['daily-insight'] ││
-│  │ + date key  │  │                    ││
-│  └─────────────┘   └────────────────────┘│
-│           ▲                  ▲          │
-│           │                  │          │
-│  ┌────────┴──────────────────┴────────┐ │
-│  │  fetchDailyInsight()               │ │
-│  │  - Prueft erst localStorage        │ │
-│  │  - Falls leer: API call            │ │
-│  │  - Speichert mit Tagesdatum        │ │
-│  └────────────────────────────────────┘ │
-└─────────────────────────────────────────┘
-          │
-          ▼
-┌─────────────────────────────────────────┐
-│     EpiphanyCard                        │
+│   ┌─────────┬─────────┬─────────┐      │
+│   │ Gewicht │Training │  Schlaf │ ← iOS Segmented Control
+│   │   ●     │         │         │       │
+│   └─────────┴─────────┴─────────┘      │
 │                                         │
-│  - Bekommt `prefetchedInsight` als Prop │
-│  - Falls vorhanden: Skip Loading State  │
-│  - Sofortiger Flip                      │
+│           ╔═══════════════╗            │
+│           ║    85.2       ║  ← Hero Display
+│           ║      kg       ║            │
+│           ╚═══════════════╝            │
+│                                         │
+│     [ − 0.1 ]  ○──────●  [ + 0.1 ]     │
+│                                         │
+│         ┌───────────────────┐          │
+│         │    ✓ Speichern    │          │
+│         └───────────────────┘          │
 └─────────────────────────────────────────┘
 ```
 
-### Neuer Hook: `useDailyInsight.ts`
-
-```typescript
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-
-const STORAGE_KEY = 'ares-daily-insight';
-const QUERY_KEY = ['daily-insight'];
-
-interface DailyInsight {
-  insight: string;
-  date: string;
-  generated_at: string;
-}
-
-function getTodayKey(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function getCachedInsight(): DailyInsight | null {
-  try {
-    const cached = localStorage.getItem(STORAGE_KEY);
-    if (!cached) return null;
-    const parsed = JSON.parse(cached);
-    // Nur gueltig wenn vom selben Tag
-    if (parsed.date === getTodayKey()) {
-      return parsed;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedInsight(insight: DailyInsight): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(insight));
-}
-
-export const useDailyInsight = (shouldPrefetch: boolean = false) => {
-  const queryClient = useQueryClient();
-  
-  return useQuery({
-    queryKey: QUERY_KEY,
-    queryFn: async (): Promise<DailyInsight | null> => {
-      // 1. Check localStorage first
-      const cached = getCachedInsight();
-      if (cached) {
-        console.log('[DailyInsight] Using cached insight from today');
-        return cached;
-      }
-      
-      // 2. Fetch from API
-      console.log('[DailyInsight] Fetching fresh insight...');
-      const { data, error } = await supabase.functions.invoke('ares-insight-generator');
-      
-      if (error || !data?.insight) {
-        console.error('[DailyInsight] Failed:', error);
-        return null;
-      }
-      
-      // 3. Cache for today
-      const result: DailyInsight = {
-        insight: data.insight,
-        date: getTodayKey(),
-        generated_at: data.generated_at || new Date().toISOString()
-      };
-      
-      setCachedInsight(result);
-      return result;
-    },
-    // Nur fetchen wenn prefetch aktiviert
-    enabled: shouldPrefetch,
-    staleTime: 1000 * 60 * 60 * 24, // 24h
-    gcTime: 1000 * 60 * 60 * 24,
-    retry: 1,
-    refetchOnWindowFocus: false,
-  });
-};
-
-// Manueller Fetch (fuer Klick wenn Cache leer)
-export const useFetchInsight = () => {
-  const queryClient = useQueryClient();
-  
-  return async (): Promise<string | null> => {
-    // Check cache first
-    const cached = getCachedInsight();
-    if (cached) return cached.insight;
-    
-    // Fetch if not cached
-    const { data, error } = await supabase.functions.invoke('ares-insight-generator');
-    
-    if (error || !data?.insight) return null;
-    
-    const result: DailyInsight = {
-      insight: data.insight,
-      date: getTodayKey(),
-      generated_at: data.generated_at || new Date().toISOString()
-    };
-    
-    setCachedInsight(result);
-    queryClient.setQueryData(QUERY_KEY, result);
-    
-    return result.insight;
-  };
-};
-```
-
-### Integration in ActionCardStack
-
-```typescript
-// ActionCardStack.tsx
-import { useDailyInsight } from '@/hooks/useDailyInsight';
-
-// Prefetch wenn Epiphany-Karte in der Queue ist (Index 1 oder 2)
-const epiphanyCardIndex = cards.findIndex(c => c.type === 'epiphany');
-const shouldPrefetch = epiphanyCardIndex >= 0 && epiphanyCardIndex <= 2;
-
-const { data: dailyInsight } = useDailyInsight(shouldPrefetch);
-```
-
-### EpiphanyCard Props erweitern
-
-```typescript
-interface EpiphanyCardProps {
-  onOpenChat: (prompt: string) => void;
-  onDismiss: () => void;
-  prefetchedInsight?: string | null; // NEU
-}
-```
-
 ---
 
-## 4. Dateien-Uebersicht
+## Datei-Uebersicht
 
 | Aktion | Datei | Beschreibung |
 |--------|-------|--------------|
-| **CREATE** | `src/hooks/useDailyInsight.ts` | Prefetch + LocalStorage Cache |
-| **MODIFY** | `src/components/home/EpiphanyCard.tsx` | Design-Fixes, 3D Flip, Prefetch-Integration |
-| **MODIFY** | `src/components/home/ActionCardStack.tsx` | Prefetch-Trigger, Insight-Prop weitergeben |
+| **CREATE** | `src/components/home/QuickLogSheet.tsx` | Hauptkomponente mit Segmented Control |
+| **CREATE** | `src/components/home/loggers/WeightLogger.tsx` | Gewicht-Eingabe mit Stepper |
+| **CREATE** | `src/components/home/loggers/TrainingLogger.tsx` | 4-Saeulen Grid + Dauer-Slider |
+| **CREATE** | `src/components/home/loggers/SleepLogger.tsx` | Stunden-Slider + Qualitaets-Emojis |
+| **MODIFY** | `src/hooks/useAresEvents.ts` | Neue Event-Kategorien: weight, workout, sleep |
+| **MODIFY** | `src/hooks/useDailyMetrics.ts` | Erweitern um weight + training + sleep Daten |
+| **MODIFY** | `src/pages/AresHome.tsx` | QuickLogSheet Integration + State |
+| **MODIFY** | `src/components/home/LiquidDock.tsx` | Props erweitern fuer Sheet-Steuerung |
 
 ---
 
-## 5. Detaillierte Aenderungen EpiphanyCard.tsx
+## 1. QuickLogSheet.tsx - Hauptkomponente
 
-### Wrapper mit Perspective (Zeile 60)
-```typescript
-// VORHER:
-<div className="relative w-full h-52 rounded-3xl overflow-hidden">
+### Struktur
 
-// NACHHER:
-<div 
-  className="relative w-full h-52 rounded-3xl overflow-hidden"
-  style={{ perspective: '1200px' }}
->
+```text
+QuickLogSheet
+├── Backdrop (blur + fade)
+├── Sheet Container (slide-up + drag-to-dismiss)
+│   ├── Drag Handle
+│   ├── Header ("Quick Log")
+│   ├── Segmented Control (Weight | Training | Sleep)
+│   └── Content Area (AnimatePresence)
+│       ├── WeightLogger
+│       ├── TrainingLogger
+│       └── SleepLogger
 ```
 
-### MysteryState Exit (Zeile 84-88)
-```typescript
-// VORHER:
-exit={{ opacity: 0, scale: 1.05 }}
+### Props Interface
 
-// NACHHER:
-exit={{ 
-  rotateY: -90, 
-  opacity: 0,
-  scale: 1.02,
-  transition: { duration: 0.3, ease: "easeIn" }
-}}
+```typescript
+interface QuickLogSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialTab?: 'weight' | 'training' | 'sleep';
+}
 ```
 
-### RevealedState Entry (Zeile 227-232)
-```typescript
-// VORHER:
-initial={{ opacity: 0, rotateY: 90 }}
-animate={{ opacity: 1, rotateY: 0 }}
-transition={{ duration: 0.4, type: "spring", damping: 20 }}
-className="absolute inset-0"
+### Key Features
 
-// NACHHER:
-initial={{ rotateY: 90, opacity: 0 }}
-animate={{ rotateY: 0, opacity: 1 }}
-transition={{ 
-  duration: 0.6, 
-  type: "spring", 
-  stiffness: 100,
-  damping: 15 
-}}
-style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
-className="absolute inset-0"
+- **iOS Segmented Control**: Sliding highlight animation mit Framer Motion
+- **Drag-to-Dismiss**: `drag="y"` mit `dragConstraints` und `onDragEnd` Threshold
+- **AnimatePresence**: Smooth Content-Wechsel zwischen Tabs
+- **Height**: `max-h-[70vh]` mit `rounded-t-3xl` fuer Sheet-Feeling
+
+### Segmented Control Animation
+
+```typescript
+// Sliding Background berechnung:
+const tabWidth = 100 / 3; // 33.33%
+const translateX = activeTabIndex * tabWidth;
+
+<motion.div
+  className="absolute h-full bg-white dark:bg-zinc-700 rounded-xl shadow-sm"
+  style={{ width: `${tabWidth}%` }}
+  animate={{ x: `${translateX * 3}%` }}
+  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+/>
 ```
 
-### Insight Text (Zeile 264-265)
-```typescript
-// VORHER:
-className="text-lg font-medium leading-relaxed text-white/90"
+---
 
-// NACHHER:
-className="text-sm font-medium leading-relaxed text-white/85 line-clamp-4"
+## 2. WeightLogger.tsx - Gewicht-Eingabe
+
+### Design
+
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│              ╔═════════════╗            │
+│              ║   85.2      ║  ← Riesen-Display
+│              ║     kg      ║            │
+│              ╚═════════════╝            │
+│                                         │
+│    ┌───────┐              ┌───────┐    │
+│    │ −0.1  │  ○─────────● │ +0.1  │ ← Stepper
+│    └───────┘              └───────┘    │
+│                                         │
+│    ┌─────────────────────────────────┐  │
+│    │  Gestern: 84.8 kg               │ ← Last Entry Chip
+│    └─────────────────────────────────┘  │
+│                                         │
+│    ┌─────────────────────────────────┐  │
+│    │      ✓  Speichern               │  │
+│    └─────────────────────────────────┘  │
+└─────────────────────────────────────────┘
 ```
 
-### Header Icon groesser (Zeile 244-247)
-```typescript
-// VORHER:
-<div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
-  <Lightbulb className="w-4 h-4 text-amber-400" />
-</div>
+### Datenfluss
 
-// NACHHER:
-<div className="w-10 h-10 bg-gradient-to-br from-amber-500/30 to-yellow-500/20 
-                rounded-xl flex items-center justify-center border border-amber-500/20">
-  <Lightbulb className="w-5 h-5 text-amber-400" />
-</div>
+1. **Initial Value**: Letzte `weight_history.weight` als Default (via `useDailyMetrics`)
+2. **Stepper Buttons**: `+/- 0.1 kg` mit `scale(0.95)` auf Tap
+3. **Save**: `useAresEvents.trackEvent('weight', { weight_kg, date })`
+
+### DB Schema (weight_history)
+
+```typescript
+{
+  user_id: string;
+  weight: number;        // weight_kg
+  date: string;          // YYYY-MM-DD
+  // Optional:
+  body_fat_percentage?: number;
+  notes?: string;
+}
 ```
 
-### Prefetch-Logik im Component
+---
+
+## 3. TrainingLogger.tsx - 4-Saeulen Grid
+
+### Design
+
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│   ┌─────────────┐  ┌─────────────┐     │
+│   │  💪 Kraft   │  │  🏃 Zone 2  │     │
+│   │    (RPT)    │  │             │ ← Selected = Blue Border
+│   └─────────────┘  └─────────────┘     │
+│                                         │
+│   ┌─────────────┐  ┌─────────────┐     │
+│   │  ❤️ VO2max  │  │  🔥 Sauna   │     │
+│   │             │  │             │     │
+│   └─────────────┘  └─────────────┘     │
+│                                         │
+│   Dauer:  [ − ]   45 min   [ + ]       │ ← Nur fuer Cardio/Sauna
+│                                         │
+│   ┌─────────────────────────────────┐  │
+│   │      ✓  Speichern               │  │
+│   └─────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+### Training Types Mapping
+
 ```typescript
-// handleReveal wird intelligenter:
-const handleReveal = async () => {
-  // Falls bereits prefetched -> sofort zeigen
-  if (prefetchedInsight) {
-    setInsight(prefetchedInsight);
-    setPhase('revealed');
-    // XP Award...
-    return;
-  }
+const trainingTypes = [
+  { id: 'rpt',    label: 'Kraft (RPT)', icon: Dumbbell, color: 'bg-indigo-500', needsTime: false },
+  { id: 'zone2',  label: 'Zone 2',      icon: Activity, color: 'bg-emerald-500', needsTime: true },
+  { id: 'vo2max', label: 'VO2 Max',     icon: HeartPulse, color: 'bg-rose-500', needsTime: true },
+  { id: 'sauna',  label: 'Sauna',       icon: Flame,   color: 'bg-orange-500', needsTime: true },
+];
+```
+
+### DB Schema (training_sessions)
+
+```typescript
+{
+  user_id: string;
+  training_type: 'rpt' | 'zone2' | 'vo2max' | 'sauna';
+  total_duration_minutes: number;
+  session_date: string;  // YYYY-MM-DD
+}
+```
+
+---
+
+## 4. SleepLogger.tsx - Schlaf-Tracking
+
+### Design
+
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│              ╔═════════════╗            │
+│              ║    7.5h     ║            │
+│              ║  Schlafdauer║            │
+│              ╚═════════════╝            │
+│                                         │
+│     ○────────────────●──────────○       │ ← Range Slider 4-12h
+│     4h                           12h    │
+│                                         │
+│   ┌─────────┐ ┌─────────┐ ┌─────────┐  │
+│   │   😫    │ │   😐    │ │   🤩    │  │ ← Qualitaets-Auswahl
+│   │Schlecht │ │  Okay   │ │  Super  │  │
+│   └─────────┘ └─────────┘ └─────────┘  │
+│                                         │
+│   ┌─────────────────────────────────┐  │
+│   │      ✓  Speichern               │  │
+│   └─────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+
+### Qualitaets-Mapping
+
+```typescript
+const qualityLevels = [
+  { id: 'low',  label: 'Schlecht', emoji: '😫', value: 1, bg: 'bg-red-100' },
+  { id: 'med',  label: 'Okay',     emoji: '😐', value: 3, bg: 'bg-amber-100' },
+  { id: 'high', label: 'Super',    emoji: '🤩', value: 5, bg: 'bg-emerald-100' },
+];
+```
+
+### DB Schema (sleep_tracking)
+
+```typescript
+{
+  user_id: string;
+  date: string;          // YYYY-MM-DD (gestern)
+  sleep_hours: number;   // 7.5
+  sleep_quality: number; // 1, 3, oder 5
+}
+```
+
+---
+
+## 5. useAresEvents Erweiterung
+
+### Neue Event-Kategorien
+
+```typescript
+// VORHER:
+export type EventCategory = 'water' | 'coffee' | 'supplement';
+
+// NACHHER:
+export type EventCategory = 'water' | 'coffee' | 'supplement' | 'weight' | 'workout' | 'sleep';
+```
+
+### Neues EventPayload Interface
+
+```typescript
+export interface EventPayload {
+  // Existing
+  amount?: number;
+  supplementId?: string;
+  timing?: 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout';
+  customName?: string;
   
-  // Fallback: Normale Fetch-Logik
-  setPhase('loading');
-  // ... existing fetch code
+  // NEW: Weight
+  weight_kg?: number;
+  
+  // NEW: Workout
+  training_type?: 'rpt' | 'zone2' | 'vo2max' | 'sauna';
+  duration_minutes?: number;
+  
+  // NEW: Sleep
+  sleep_hours?: number;
+  sleep_quality?: number; // 1-5
+  
+  // Shared
+  date?: string;
+}
+```
+
+### trackEvent Erweiterung
+
+```typescript
+// === WEIGHT ===
+if (category === 'weight' && payload.weight_kg) {
+  const { error } = await supabase.from('weight_history').insert({
+    user_id: auth.user.id,
+    weight: payload.weight_kg,
+    date: payload.date || today
+  });
+  if (error) throw error;
+  console.log(`[AresEvents] ✓ Logged weight ${payload.weight_kg}kg`);
+  toast.success(`${payload.weight_kg} kg gespeichert`);
+}
+
+// === WORKOUT ===
+if (category === 'workout' && payload.training_type) {
+  const { error } = await supabase.from('training_sessions').insert({
+    user_id: auth.user.id,
+    training_type: payload.training_type,
+    total_duration_minutes: payload.duration_minutes || null,
+    session_date: payload.date || today
+  });
+  if (error) throw error;
+  console.log(`[AresEvents] ✓ Logged ${payload.training_type} workout`);
+  toast.success('Training gespeichert');
+}
+
+// === SLEEP ===
+if (category === 'sleep' && payload.sleep_hours) {
+  const { error } = await supabase.from('sleep_tracking').upsert({
+    user_id: auth.user.id,
+    date: payload.date || today,
+    sleep_hours: payload.sleep_hours,
+    sleep_quality: payload.sleep_quality || 3
+  }, { onConflict: 'user_id,date' });
+  if (error) throw error;
+  console.log(`[AresEvents] ✓ Logged ${payload.sleep_hours}h sleep`);
+  toast.success('Schlaf gespeichert');
+}
+```
+
+### Neue Helper-Funktionen
+
+```typescript
+const logWeight = useCallback((weightKg: number) => {
+  return trackEvent('weight', { weight_kg: weightKg });
+}, [trackEvent]);
+
+const logWorkout = useCallback((type: string, durationMin?: number) => {
+  return trackEvent('workout', { training_type: type as any, duration_minutes: durationMin });
+}, [trackEvent]);
+
+const logSleep = useCallback((hours: number, quality: number = 3) => {
+  return trackEvent('sleep', { sleep_hours: hours, sleep_quality: quality });
+}, [trackEvent]);
+```
+
+---
+
+## 6. useDailyMetrics Erweiterung
+
+### Neues Interface
+
+```typescript
+export interface DailyMetrics {
+  // Existing
+  water: { current: number; target: number };
+  supplements: { takenIds: string[]; total: number };
+  nutrition: { calories: number; protein: number; carbs: number; fats: number };
+  goals: { calories: number; protein: number; carbs: number; fats: number; fluid_goal_ml: number };
+  
+  // NEW
+  weight: { latest: number | null; date: string | null };
+  training: { todayType: string | null; todayMinutes: number | null };
+  sleep: { lastHours: number | null; lastQuality: number | null };
+}
+```
+
+### Zusaetzliche Queries
+
+```typescript
+// Im Promise.all hinzufuegen:
+
+// Latest Weight
+supabase
+  .from('weight_history')
+  .select('weight, date')
+  .eq('user_id', userId)
+  .order('date', { ascending: false })
+  .limit(1)
+  .maybeSingle(),
+
+// Today's Training
+supabase
+  .from('training_sessions')
+  .select('training_type, total_duration_minutes')
+  .eq('user_id', userId)
+  .eq('session_date', todayStr)
+  .limit(1)
+  .maybeSingle(),
+
+// Last Sleep Entry
+supabase
+  .from('sleep_tracking')
+  .select('sleep_hours, sleep_quality, date')
+  .eq('user_id', userId)
+  .order('date', { ascending: false })
+  .limit(1)
+  .maybeSingle(),
+```
+
+---
+
+## 7. AresHome Integration
+
+### State Management
+
+```typescript
+// Neuer State fuer QuickLogSheet
+const [quickLogConfig, setQuickLogConfig] = useState<{
+  open: boolean;
+  tab: 'weight' | 'training' | 'sleep';
+}>({ open: false, tab: 'weight' });
+
+// Handler fuer LiquidDock
+const handleQuickAction = useCallback((action: QuickActionType) => {
+  switch (action) {
+    case 'weight':
+      setQuickLogConfig({ open: true, tab: 'weight' });
+      break;
+    case 'workout':
+      setQuickLogConfig({ open: true, tab: 'training' });
+      break;
+    case 'sleep':
+      setQuickLogConfig({ open: true, tab: 'sleep' });
+      break;
+    // ... existing cases (water, supplements)
+  }
+}, []);
+```
+
+### Render
+
+```tsx
+{/* QuickLogSheet */}
+<QuickLogSheet
+  isOpen={quickLogConfig.open}
+  onClose={() => setQuickLogConfig(prev => ({ ...prev, open: false }))}
+  initialTab={quickLogConfig.tab}
+/>
+```
+
+---
+
+## 8. LiquidDock Anpassung
+
+Das LiquidDock aendert sich minimal - es ruft nur `onQuickAction` auf. Die Sheet-Logik liegt in AresHome.
+
+Der einzige Change: Entfernen des direkten Navigierens zu `/profile?tab=measurements` fuer `weight`:
+
+```typescript
+// VORHER (AresHome.tsx handleQuickAction):
+case 'weight':
+  navigate('/profile?tab=measurements');
+  break;
+
+// NACHHER:
+case 'weight':
+  setQuickLogConfig({ open: true, tab: 'weight' });
+  break;
+```
+
+---
+
+## 9. Animationen und UX-Details
+
+### Spring Config (konsistent mit LiquidDock)
+
+```typescript
+const springConfig = { 
+  type: "spring", 
+  stiffness: 400, 
+  damping: 30 
 };
 ```
 
----
-
-## 6. User Experience nach Implementation
-
-```text
-SZENARIO A: Prefetch erfolgreich (90% der Faelle)
-───────────────────────────────────────────────────
-1. User sieht Supplement-Karte (Position 1)
-2. Epiphany-Karte ist auf Position 2
-3. HINTERGRUND: useDailyInsight() laedt Insight
-4. User erledigt Supplement-Karte
-5. Epiphany-Karte wird sichtbar (Position 1)
-6. User klickt "Aufdecken"
-7. SOFORT: 3D-Flip → Insight erscheint (0ms Ladezeit)
-
-SZENARIO B: Kein Prefetch (10% - z.B. Epiphany auf Pos 1)
-───────────────────────────────────────────────────
-1. User sieht Epiphany-Karte sofort (Position 1)
-2. User klickt "Aufdecken"
-3. Loading-State erscheint (1-2 Sekunden)
-4. 3D-Flip → Insight erscheint
-```
-
----
-
-## 7. One-Insight-Per-Day Garantie
-
-Die LocalStorage-Logik stellt sicher:
-- **Morgens 8:00**: Erster Aufruf generiert Insight, speichert mit `date: "2026-01-26"`
-- **Mittags 12:00**: Aufruf liest aus Cache (selbes Datum)
-- **Naechster Tag 8:00**: Cache ungueltig (anderes Datum), neuer Insight wird generiert
+### Stepper Button Animation
 
 ```typescript
-// Validierung im Hook:
-if (parsed.date === getTodayKey()) {
-  return parsed; // Gueltig
-}
-return null; // Veraltet, neu fetchen
+<motion.button
+  whileTap={{ scale: 0.9 }}
+  whileHover={{ scale: 1.05 }}
+  transition={springConfig}
+  onClick={() => setWeight(w => Number((w - 0.1).toFixed(1)))}
+  className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center"
+>
+  <Minus className="w-6 h-6" />
+</motion.button>
 ```
 
+### Save Button Feedback
+
+```typescript
+<motion.button
+  whileTap={{ scale: 0.97 }}
+  className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold text-lg"
+  onClick={handleSave}
+>
+  <Check className="w-5 h-5 inline mr-2" />
+  Speichern
+</motion.button>
+```
+
+---
+
+## 10. Technische Details
+
+### Ordner-Struktur
+
+```text
+src/components/home/
+├── loggers/                 (NEU)
+│   ├── WeightLogger.tsx
+│   ├── TrainingLogger.tsx
+│   └── SleepLogger.tsx
+├── QuickLogSheet.tsx        (NEU)
+├── LiquidDock.tsx           (existiert)
+├── ActionCardStack.tsx      (existiert)
+└── ...
+```
+
+### Dependencies
+
+- `framer-motion` (bereits installiert)
+- `lucide-react` Icons: `Scale`, `Dumbbell`, `Moon`, `Activity`, `HeartPulse`, `Flame`, `Minus`, `Plus`, `Check`, `X`
+- `@radix-ui/react-slider` (bereits via `src/components/ui/slider.tsx`)
+
+### Optimistic UI
+
+Das QuickLogSheet nutzt NICHT optimistische Updates fuer die Hero-Anzeige, da:
+1. Weight/Sleep/Training haben keine "Live-Indikatoren" auf dem Home Screen (noch nicht)
+2. Der Success-Toast genuegt als Feedback
+
+Falls spaeter Widgets diese Daten anzeigen, kann `useDailyMetrics` mit optimistischen Updates erweitert werden.
+
+---
+
+## Zusammenfassung der Aenderungen
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/components/home/QuickLogSheet.tsx` | CREATE - 120 Zeilen |
+| `src/components/home/loggers/WeightLogger.tsx` | CREATE - 80 Zeilen |
+| `src/components/home/loggers/TrainingLogger.tsx` | CREATE - 100 Zeilen |
+| `src/components/home/loggers/SleepLogger.tsx` | CREATE - 90 Zeilen |
+| `src/hooks/useAresEvents.ts` | MODIFY - +60 Zeilen (neue Event-Handler) |
+| `src/hooks/useDailyMetrics.ts` | MODIFY - +30 Zeilen (neue Queries) |
+| `src/pages/AresHome.tsx` | MODIFY - +15 Zeilen (State + Render) |
