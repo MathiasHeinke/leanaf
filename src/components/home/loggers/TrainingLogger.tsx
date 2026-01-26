@@ -132,7 +132,7 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   // Multi-select states for workouts
   const [selectedSplits, setSelectedSplits] = useState<MainSplitType[]>([]);
   const [selectedCardioTypes, setSelectedCardioTypes] = useState<CardioType[]>([]);
-  const [vo2Protocol, setVo2Protocol] = useState<Vo2Protocol | null>(null);
+  const [selectedVo2Protocols, setSelectedVo2Protocols] = useState<Vo2Protocol[]>([]);
   
   // Sauna fields
   const [saunaTemp, setSaunaTemp] = useState<80 | 90 | 100>(80);
@@ -173,6 +173,14 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
     );
   };
 
+  const toggleVo2Protocol = (protocol: Vo2Protocol) => {
+    setSelectedVo2Protocols(prev =>
+      prev.includes(protocol)
+        ? prev.filter(p => p !== protocol)
+        : [...prev, protocol]
+    );
+  };
+
   const handleSave = async () => {
     if (!selectedType) return;
     
@@ -191,8 +199,9 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
       sessionData.cardio_types = selectedCardioTypes;
     }
     
-    if (selectedType === 'vo2max' && vo2Protocol) {
-      sessionData.protocol = vo2Protocol;
+    // VO2 Max: Multiple protocols
+    if (selectedType === 'vo2max' && selectedVo2Protocols.length > 0) {
+      sessionData.protocols = selectedVo2Protocols;
     }
     if (selectedType === 'sauna') {
       sessionData.temperature = saunaTemp;
@@ -386,27 +395,39 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                   </>
                 )}
 
-                {/* VO2max: Protocol (Single-Select) */}
+                {/* VO2max: Multi-Select Protocol Dropdown */}
                 {selectedType === 'vo2max' && (
                   <>
-                    <div className="text-sm font-medium text-muted-foreground">Protokoll</div>
-                    <div className="flex flex-wrap gap-2">
-                      {VO2_PROTOCOL_OPTIONS.map((v) => (
-                        <motion.button
-                          key={v.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setVo2Protocol(v.id)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                            vo2Protocol === v.id
-                              ? "bg-rose-500 text-white"
-                              : "bg-muted hover:bg-muted/80"
-                          )}
-                        >
-                          {v.label}
-                        </motion.button>
-                      ))}
-                    </div>
+                    <div className="text-sm font-medium text-muted-foreground">Protokolle & Aktivitäten</div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-muted hover:bg-muted/80 transition-colors">
+                          <span className="text-sm">
+                            {selectedVo2Protocols.length > 0 
+                              ? selectedVo2Protocols.map(p => {
+                                  const option = VO2_PROTOCOL_OPTIONS.find(o => o.id === p);
+                                  return option ? `${option.emoji} ${option.label}` : p;
+                                }).join(', ')
+                              : 'Protokolle auswählen...'}
+                          </span>
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-2 bg-popover" align="start">
+                        {VO2_PROTOCOL_OPTIONS.map((protocol) => (
+                          <label
+                            key={protocol.id}
+                            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted cursor-pointer"
+                          >
+                            <Checkbox 
+                              checked={selectedVo2Protocols.includes(protocol.id)}
+                              onCheckedChange={() => toggleVo2Protocol(protocol.id)}
+                            />
+                            <span className="text-sm">{protocol.emoji} {protocol.label}</span>
+                          </label>
+                        ))}
+                      </PopoverContent>
+                    </Popover>
                   </>
                 )}
 
