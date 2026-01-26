@@ -7,8 +7,9 @@ import { quickAddBus } from "@/components/quick/quickAddBus";
 const QuickMealSheet = lazy(() => import("./QuickMealSheet").then(m => ({ default: m.QuickMealSheet })));
 const QuickWorkoutModal = lazy(() => import("@/components/QuickWorkoutModal").then(m => ({ default: m.QuickWorkoutModal })));
 const QuickSleepModal = lazy(() => import("@/components/quick/QuickSleepModal"));
-const QuickSupplementsModal = lazy(() => import("@/components/quick/QuickSupplementsModal"));
 const QuickFluidModal = lazy(() => import("@/components/quick/QuickFluidModal"));
+const ChemistryStackSheet = lazy(() => import("@/components/home/ChemistryStackSheet"));
+const BodyStackSheet = lazy(() => import("@/components/home/BodyStackSheet"));
 
 export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' | 'partial' | 'due'>> }> = ({ statuses }) => {
   const navigate = useNavigate();
@@ -16,14 +17,12 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
   const [mealOpen, setMealOpen] = useState(false);
   const [workoutOpen, setWorkoutOpen] = useState(false);
   const [sleepOpen, setSleepOpen] = useState(false);
-  const [suppsOpen, setSuppsOpen] = useState(false);
   const [fluidOpen, setFluidOpen] = useState(false);
+  const [chemistryOpen, setChemistryOpen] = useState(false);
+  const [bodyOpen, setBodyOpen] = useState(false);
   const [recommendedWorkoutType, setRecommendedWorkoutType] = useState<string | undefined>('walking');
 
   const toggleMenu = useCallback(() => setMenuOpen((v) => !v), []);
-
-  
-
 
   const handleSelect = useCallback((type: ActionType) => {
     if (type === "meal") {
@@ -42,9 +41,14 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       setSleepOpen(true);
       return;
     }
-    if (type === "supplements") {
+    if (type === "chemistry") {
       setMenuOpen(false);
-      setSuppsOpen(true);
+      setChemistryOpen(true);
+      return;
+    }
+    if (type === "body") {
+      setMenuOpen(false);
+      setBodyOpen(true);
       return;
     }
     if (type === "fluid") {
@@ -67,8 +71,9 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
       setMenuOpen(false);
       if (action.type === 'meal') setMealOpen(true);
       if (action.type === 'sleep') setSleepOpen(true);
-      if (action.type === 'supplements') setSuppsOpen(true);
+      if (action.type === 'chemistry') setChemistryOpen(true);
       if (action.type === 'fluid') setFluidOpen(true);
+      if (action.type === 'body') setBodyOpen(true);
       if (action.type === 'workout') {
         setRecommendedWorkoutType(action.payload?.recommendedType);
         setWorkoutOpen(true);
@@ -116,9 +121,14 @@ export const QuickAddFAB: React.FC<{ statuses?: Partial<Record<ActionType, 'ok' 
         <QuickSleepModal isOpen={sleepOpen} onClose={() => setSleepOpen(false)} />
       </Suspense>
 
-      {/* Supplements flow */}
+      {/* Chemistry Stack (Supplements + Peptide) */}
       <Suspense fallback={null}>
-        <QuickSupplementsModal isOpen={suppsOpen} onClose={() => setSuppsOpen(false)} />
+        <ChemistryStackSheet isOpen={chemistryOpen} onClose={() => setChemistryOpen(false)} />
+      </Suspense>
+
+      {/* Body Stack (Weight + Tape) */}
+      <Suspense fallback={null}>
+        <BodyStackSheet isOpen={bodyOpen} onClose={() => setBodyOpen(false)} />
       </Suspense>
 
       {/* Fluid flow */}

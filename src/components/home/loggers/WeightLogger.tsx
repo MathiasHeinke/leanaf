@@ -34,14 +34,41 @@ export const WeightLogger: React.FC<WeightLoggerProps> = ({ onClose }) => {
   const [muscleMass, setMuscleMass] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const [contextTags, setContextTags] = useState<string[]>([]);
+
+  const CONTEXT_TAG_OPTIONS = [
+    { id: 'fasted', label: 'Nüchtern' },
+    { id: 'post_workout', label: 'Nach Training' },
+    { id: 'post_cheat', label: 'Nach Cheat-Meal' },
+    { id: 'creatine', label: 'Kreatin geladen' },
+    { id: 'salty', label: 'Salzig gegessen' },
+    { id: 'dehydrated', label: 'Dehydriert' },
+  ];
+
+  const toggleTag = (tagId: string) => {
+    setContextTags(prev => 
+      prev.includes(tagId) 
+        ? prev.filter(t => t !== tagId)
+        : [...prev, tagId]
+    );
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
+    // Combine context tags with notes
+    const tagString = contextTags.length > 0 
+      ? `[${contextTags.map(t => CONTEXT_TAG_OPTIONS.find(o => o.id === t)?.label).join(', ')}]`
+      : '';
+    const finalNotes = tagString 
+      ? `${tagString}${notes ? ' ' + notes : ''}`
+      : notes || undefined;
+
     const success = await trackEvent('weight', { 
       weight_kg: weight,
       body_fat_percentage: bodyFat ? parseFloat(bodyFat.replace(',', '.')) : undefined,
       muscle_percentage: muscleMass ? parseFloat(muscleMass.replace(',', '.')) : undefined,
-      notes: notes || undefined
+      notes: finalNotes
     });
     if (success) {
       onClose();
@@ -144,6 +171,38 @@ export const WeightLogger: React.FC<WeightLoggerProps> = ({ onClose }) => {
               className="flex-1"
             />
           </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* CONTEXT TAGS ACCORDION */}
+      <Collapsible open={tagsOpen} onOpenChange={setTagsOpen}>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 bg-muted rounded-xl text-sm font-medium hover:bg-muted/80 transition-colors">
+          <span>Kontext-Tags</span>
+          <ChevronDown className={cn(
+            "w-4 h-4 transition-transform duration-200",
+            tagsOpen && "rotate-180"
+          )} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3">
+          <div className="flex flex-wrap gap-2">
+            {CONTEXT_TAG_OPTIONS.map((tag) => (
+              <button
+                key={tag.id}
+                onClick={() => toggleTag(tag.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                  contextTags.includes(tag.id)
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted hover:bg-muted/80 text-foreground"
+                )}
+              >
+                {tag.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 px-1">
+            Hilft ARES, Gewichtsschwankungen zu verstehen
+          </p>
         </CollapsibleContent>
       </Collapsible>
 
