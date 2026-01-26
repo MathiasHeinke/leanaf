@@ -158,12 +158,24 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
           toast.info('Supplements auf später verschoben');
           return;
         }
-        // Swipe-right on supplement card = dismiss it (user is done for today)
+        // All supplements completed - remove card and award XP
         if (!action) {
+          toast.success('Alle Supplements erledigt!', { description: `+${card.xp} XP` });
+          window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+            detail: { amount: card.xp, reason: 'Supplements erledigt' }
+          }));
           setCards(prev => prev.filter(c => c.id !== card.id));
-          toast.success('Supplements erledigt!', { description: `+${card.xp} XP` });
         }
-        // Individual timing actions are handled by handleSupplementAction
+        return;
+        
+      case 'peptide':
+        if (!action) {
+          toast.success('Peptide injiziert!', { description: `+${card.xp} XP` });
+          window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+            detail: { amount: card.xp, reason: 'Peptide erledigt' }
+          }));
+          setCards(prev => prev.filter(c => c.id !== card.id));
+        }
         return;
         
       case 'insight':

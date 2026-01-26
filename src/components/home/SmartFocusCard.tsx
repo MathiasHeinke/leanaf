@@ -221,8 +221,8 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
 
   const handleComplete = (specificAction?: string) => {
     setIsCompleted(true);
-    // Small delay for animation, then save data
-    setTimeout(() => onComplete(specificAction), 800);
+    // Faster delay for snappier UX
+    setTimeout(() => onComplete(specificAction), 500);
   };
 
   const handleCardClick = () => {
