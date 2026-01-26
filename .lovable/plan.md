@@ -1,140 +1,51 @@
 
 
-# Ultimate Liquid Carousel - Infinite Loop & Premium UX
+# Fix: Carousel Zentrierung - Die korrekte Berechnung
 
-## Das Konzept: "Triple List Trick"
+## Das Problem
 
-Die Illusion eines unendlichen Scrolls entsteht durch das Klonen der Liste 3x. Sobald der User an den Rand scrollt, wird er unsichtbar in die Mitte "teleportiert".
+Der Screenshot zeigt, dass das "Essen"-Icon (grün hervorgehoben) weit nach rechts verschoben ist, statt exakt in der Bildschirmmitte zu stehen.
 
-```text
-SCROLL-STRUKTUR:
+### Ursachen:
 
-    ← Teleport Zone       Center Zone         Teleport Zone →
-    ┌─────────────────┬─────────────────┬─────────────────┐
-    │ [Set 1: Kopie]  │ [Set 2: Origin] │ [Set 3: Kopie]  │
-    │ sleep weight... │ sleep weight... │ sleep weight... │
-    └─────────────────┴─────────────────┴─────────────────┘
-                      ↑
-                  START HIER
-                  (scrollLeft = scrollWidth / 3)
-
-Wenn User nach links scrollt und Set 1 erreicht:
-    → Teleport zu gleicher Position in Set 2
-
-Wenn User nach rechts scrollt und Set 3 erreicht:
-    → Teleport zu gleicher Position in Set 2
-```
+1. **Initiale Scroll-Position falsch**: `scrollWidth / 3` berücksichtigt nicht das dynamische Padding (`calc(50vw - 32px)`)
+2. **Center-Berechnung ignoriert Padding**: Die `rawIndex`-Berechnung in `handleScroll` rechnet nicht mit dem Offset, der durch das linke Padding entsteht
+3. **Padding-Wert nicht konsistent**: Das Padding wird inline gesetzt, aber nicht in der Index-Berechnung verwendet
 
 ---
 
-## Technische Implementierung
+## Die Lösung
 
-### 1. Datenstruktur: Triple List mit einzigartigen Keys
+### 1. Padding als Konstante definieren
 
 ```typescript
-// Basis: Smart ordered items (7 Stück)
-const orderedItems = useMemo(() => getSmartOrderedItems(), []);
-const ITEMS_COUNT = orderedItems.length; // 7
-
-// Triple List für Infinite Scroll
-const loopedItems = useMemo(() => [
-  ...orderedItems.map(item => ({ ...item, key: `${item.id}-prev` })),  // Set 1
-  ...orderedItems.map(item => ({ ...item, key: `${item.id}-main` })),  // Set 2 (Start)
-  ...orderedItems.map(item => ({ ...item, key: `${item.id}-next` })),  // Set 3
-], [orderedItems]);
-
-// Gesamt: 21 Items (7 × 3)
+// Statt inline-Berechnung: eine verwendbare Konstante
+const HALF_ITEM_WIDTH = 32; // w-16 / 2 = 32px
 ```
 
-### 2. Initiale Position: Starte in der Mitte
+### 2. Initiale Scroll-Position korrigieren
+
+Das erste Item von Set 2 muss exakt in der Mitte starten:
 
 ```typescript
 useEffect(() => {
   if (isOpen && scrollRef.current) {
     const container = scrollRef.current;
-    // Starte bei Set 2 (mittleres Drittel)
-    const initialScroll = container.scrollWidth / 3;
-    container.scrollTo({ left: initialScroll, behavior: 'instant' });
-    setActiveIndex(ITEMS_COUNT); // Erstes Item von Set 2
+    requestAnimationFrame(() => {
+      // Berechne die Position, wo das erste Item von Set 2 zentriert ist
+      // Set 2 startet bei Index 7 (ITEMS_COUNT)
+      // Scroll-Position = (Anzahl Items vor Set 2) * ITEM_TOTAL
+      const set2StartPosition = ITEMS_COUNT * ITEM_TOTAL;
+      container.scrollTo({ left: set2StartPosition, behavior: 'instant' });
+      setActiveIndex(0);
+    });
   }
 }, [isOpen, ITEMS_COUNT]);
 ```
 
-### 3. Der "Teleport" Scroll Handler
+### 3. Center-Index-Berechnung mit Padding-Offset
 
-```typescript
-const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-  const container = e.currentTarget;
-  const scrollLeft = container.scrollLeft;
-  const scrollWidth = container.scrollWidth;
-  const clientWidth = container.clientWidth;
-  
-  // Breite eines kompletten Sets
-  const setWidth = scrollWidth / 3;
-  
-  // ===== TELEPORT LOGIK =====
-  // Wenn zu weit links (in Set 1) → Springe zu Set 2
-  if (scrollLeft < setWidth * 0.3) {
-    container.scrollLeft = scrollLeft + setWidth;
-    return; // Verhindere weitere Updates bis nächster Frame
-  }
-  
-  // Wenn zu weit rechts (in Set 3) → Springe zu Set 2
-  if (scrollLeft > setWidth * 1.7) {
-    container.scrollLeft = scrollLeft - setWidth;
-    return;
-  }
-  
-  // ===== ACTIVE INDEX BERECHNUNG =====
-  const centerPoint = scrollLeft + (clientWidth / 2);
-  const rawIndex = Math.round(centerPoint / ITEM_TOTAL);
-  // Modulo um auf 0-6 (originale Items) zu mappen
-  const normalizedIndex = rawIndex % ITEMS_COUNT;
-  
-  if (normalizedIndex !== activeIndex % ITEMS_COUNT) {
-    setActiveIndex(normalizedIndex);
-  }
-}, [activeIndex, ITEMS_COUNT, ITEM_TOTAL]);
-```
-
-### 4. Active State über alle 3 Sets synchronisieren
-
-Da das gleiche Item in allen 3 Sets aktiv sein soll:
-
-```typescript
-// Bei Rendering prüfen: ist dieses Item aktiv?
-const isItemActive = (loopedIndex: number) => {
-  return (loopedIndex % ITEMS_COUNT) === activeIndex;
-};
-
-// Im JSX:
-{loopedItems.map((item, loopedIndex) => (
-  <CarouselItem
-    key={item.key}
-    item={item}
-    isActive={isItemActive(loopedIndex)}
-    onClick={() => handleItemClick(item)}
-  />
-))}
-```
-
----
-
-## Vollständiger Code-Überblick
-
-### Neue State & Refs
-
-```typescript
-const [activeIndex, setActiveIndex] = useState(0);
-const scrollRef = useRef<HTMLDivElement>(null);
-const isJumping = useRef(false); // Verhindert Loop während Teleport
-
-const ITEM_WIDTH = 64;
-const GAP = 16;
-const ITEM_TOTAL = ITEM_WIDTH + GAP; // 80px pro Item
-```
-
-### Kompletter Scroll Handler mit Teleport
+Das Padding verschiebt den visuellen Mittelpunkt. Die Berechnung muss das berücksichtigen:
 
 ```typescript
 const handleScroll = useCallback(() => {
@@ -144,115 +55,90 @@ const handleScroll = useCallback(() => {
   const { scrollLeft, scrollWidth, clientWidth } = container;
   const setWidth = scrollWidth / 3;
   
-  // Teleport-Schwellwerte
-  const leftThreshold = setWidth * 0.4;
-  const rightThreshold = setWidth * 1.6;
+  // Teleport-Logik bleibt gleich...
   
-  // Teleport: Links zu weit → Springe rechts
-  if (scrollLeft < leftThreshold) {
-    isJumping.current = true;
-    container.scrollLeft = scrollLeft + setWidth;
-    requestAnimationFrame(() => { isJumping.current = false; });
-    return;
-  }
+  // KORRIGIERTE Center-Berechnung:
+  // Das Padding (50vw - 32px) verschiebt alles nach rechts
+  // Der visuelle Center ist bei scrollLeft + padding (nicht clientWidth/2)
+  const padding = (clientWidth / 2) - HALF_ITEM_WIDTH;
+  const visualCenter = scrollLeft + padding + HALF_ITEM_WIDTH;
   
-  // Teleport: Rechts zu weit → Springe links
-  if (scrollLeft > rightThreshold) {
-    isJumping.current = true;
-    container.scrollLeft = scrollLeft - setWidth;
-    requestAnimationFrame(() => { isJumping.current = false; });
-    return;
-  }
-  
-  // Active Index berechnen
-  const centerPoint = scrollLeft + (clientWidth / 2);
-  const rawIndex = Math.round(centerPoint / ITEM_TOTAL);
+  // Alternativ vereinfacht: scrollLeft zeigt direkt auf das zentrierte Item
+  const rawIndex = Math.round(scrollLeft / ITEM_TOTAL);
   const normalizedIndex = ((rawIndex % ITEMS_COUNT) + ITEMS_COUNT) % ITEMS_COUNT;
   
   if (normalizedIndex !== activeIndex) {
     setActiveIndex(normalizedIndex);
   }
-}, [activeIndex, ITEMS_COUNT, ITEM_TOTAL]);
+}, [activeIndex, ITEMS_COUNT]);
 ```
+
+### 4. Vereinfachte Lösung (Empfohlen)
+
+Da wir `snap-center` und festes Padding verwenden, zeigt `scrollLeft` direkt auf das zentrierte Item:
+
+```typescript
+// scrollLeft / ITEM_TOTAL = Index des zentrierten Items
+const rawIndex = Math.round(scrollLeft / ITEM_TOTAL);
+```
+
+Das funktioniert, weil:
+- `paddingLeft: calc(50vw - 32px)` → Das erste Item startet zentriert bei scrollLeft=0
+- `snap-center` → Jedes Item rastet exakt mittig ein
+- `scrollLeft` zeigt auf den linken Rand des sichtbaren Bereichs minus Padding
 
 ---
 
-## Z-Index Hierarchie (unverändert)
-
-```text
-Layer-Stack (von oben nach unten):
-┌────────────────────────────────┐
-│  Dock Buttons        z-50    │ ← ARES, Vision, Close (immer oben)
-├────────────────────────────────┤
-│  Carousel Items      z-40    │ ← Die scrollbaren Icons
-├────────────────────────────────┤
-│  Gradient Backdrop   z-30    │ ← Visueller Effekt (pointer-events-none)
-├────────────────────────────────┤
-│  Click Backdrop      z-20    │ ← Zum Schließen bei Tap außerhalb
-└────────────────────────────────┘
-```
-
----
-
-## Zusammenfassung der Änderungen
+## Vollständige Änderungen
 
 ### `LiquidCarouselMenu.tsx`
 
-| Bereich | Vorher | Nachher |
-|---------|--------|---------|
-| Items-Liste | `orderedItems` (7 Items) | `loopedItems` (21 Items = 3 × 7) |
-| Initial Scroll | `scrollTo({ left: 0 })` | `scrollTo({ left: scrollWidth / 3 })` |
-| Active Index | Index 0-6 | Normalisiert mit `% ITEMS_COUNT` |
-| Scroll Handler | Einfaches Index-Update | + Teleport-Logik für nahtlose Schleife |
-| Keys | `item.id` | `item.key` (`${id}-prev/main/next`) |
-
-### Neue Hilfsvariablen
-
-```typescript
-const ITEMS_COUNT = orderedItems.length; // 7
-const isJumping = useRef(false);         // Verhindert Scroll-Loop
-```
+| Zeile | Was | Vorher | Nachher |
+|-------|-----|--------|---------|
+| 72 | Neue Konstante | - | `const HALF_ITEM_WIDTH = 32;` |
+| 168-169 | Center-Berechnung | `centerPoint = scrollLeft + (clientWidth / 2)` `rawIndex = Math.round(centerPoint / ITEM_TOTAL)` | `rawIndex = Math.round(scrollLeft / ITEM_TOTAL)` |
+| 183 | Initial Scroll | `scrollWidth / 3` | `ITEMS_COUNT * ITEM_TOTAL` |
 
 ---
 
-## UX Flow
+## Technische Erklärung
 
 ```text
-START:
-┌─────────────────────────────────────────────────────┐
-│  [prev]  [prev]  [●]  [main]  [main]  [next]  ...  │
-│                   ↑                                 │
-│              CENTER (Aktiv)                         │
-│           scrollLeft = scrollWidth/3                │
-└─────────────────────────────────────────────────────┘
+MIT DEM PADDING:
 
-USER SCROLLT NACH RECHTS →→→
+Viewport:
+┌────────────────────────────────────────────────────┐
+│          paddingLeft          │ Item │ ...        │
+│     (50vw - 32px)             │ [●]  │            │
+│<──────────────────────────────>│<--->│            │
+│                               │ 64px │            │
+└────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────┐
-│  ...  [main]  [●]  [next]  [next]  [next]  ...     │
-│                ↑                                    │
-│           Erreicht Set 3 Grenze                     │
-│           → TELEPORT zu Set 2 (unsichtbar)          │
-└─────────────────────────────────────────────────────┘
+Wenn scrollLeft = 0:
+  → Das erste Item (Index 0) ist zentriert
+  
+Wenn scrollLeft = 80 (ITEM_TOTAL):
+  → Das zweite Item (Index 1) ist zentriert
 
-NACH TELEPORT (User merkt nichts):
-┌─────────────────────────────────────────────────────┐
-│  [prev]  [prev]  [●]  [main]  [main]  ...          │
-│                   ↑                                 │
-│           Gleiche visuelle Position                 │
-│           Kann weiter nach rechts scrollen          │
-└─────────────────────────────────────────────────────┘
+Also: rawIndex = scrollLeft / ITEM_TOTAL (gerundet)
 ```
 
 ---
 
-## Vorteile
+## Initiale Position für Set 2
 
-1. **Keine Wände**: Endloses Scrollen in beide Richtungen
-2. **Nahtlos**: Teleport ist für das Auge unsichtbar
-3. **Premium Feel**: Wie ein physisches Drehrad
-4. **Performance**: Nur CSS scroll-snap, kein schwerer JS-Listener
-5. **Konsistent**: Active State synchron über alle 3 Sets
+```text
+Looped Items Array:
+[0] [1] [2] [3] [4] [5] [6]  |  [7] [8] [9] [10] [11] [12] [13]  |  [14] ...
+         SET 1               |           SET 2 (Start)           |   SET 3
+
+scrollLeft für Index 7 (erstes Item von Set 2):
+= 7 * ITEM_TOTAL
+= 7 * 80
+= 560px
+
+Normalisiert: 7 % 7 = 0 → activeIndex = 0 ✓
+```
 
 ---
 
@@ -260,5 +146,5 @@ NACH TELEPORT (User merkt nichts):
 
 | Datei | Änderungen |
 |-------|------------|
-| `src/components/home/LiquidCarouselMenu.tsx` | Triple List, Teleport-Logik, Initial Scroll Position |
+| `src/components/home/LiquidCarouselMenu.tsx` | Konstante HALF_ITEM_WIDTH, korrigierte Center-Berechnung, korrigierte initiale Scroll-Position |
 
