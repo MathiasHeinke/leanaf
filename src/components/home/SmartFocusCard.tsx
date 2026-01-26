@@ -200,13 +200,30 @@ interface SmartActionsProps {
 const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat, onSupplementAction }) => {
   
   // SUPPLEMENTS: Multi-action with individual timing tracking - PRIORITY BEFORE quickActions!
+  // CRITICAL: onSupplementAction MUST be used, NOT onAction (which triggers card completion)
   if (task.type === 'supplements') {
+    // Only render if we have the dedicated supplement handler
+    if (onSupplementAction) {
+      return (
+        <SupplementMultiActions 
+          quickActions={task.quickActions}
+          onAction={onSupplementAction}
+          onDismiss={() => onAction('snooze')}
+        />
+      );
+    }
+    // Fallback: simple complete button if no dedicated handler
     return (
-      <SupplementMultiActions 
-        quickActions={task.quickActions}
-        onAction={onSupplementAction || onAction}
-        onDismiss={() => onAction('snooze')}
-      />
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          onAction();
+        }}
+        className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+      >
+        <Pill size={16} />
+        <span>Supplements erledigt</span>
+      </button>
     );
   }
 
@@ -327,7 +344,7 @@ const SupplementMultiActions: React.FC<SupplementMultiActionsProps> = ({ quickAc
   const allSupplementsDone = completed.length >= 2; // morning + pre_workout
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
+    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
       <AnimatePresence mode="popLayout">
         {activeActions.map((action) => (
           <motion.button
@@ -342,14 +359,14 @@ const SupplementMultiActions: React.FC<SupplementMultiActionsProps> = ({ quickAc
               handleClick(action.id);
             }}
             className={cn(
-              "flex items-center gap-2 px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap transition-transform active:scale-95 border border-white/10",
+              "flex items-center justify-center w-12 h-12 rounded-full transition-transform active:scale-95 border border-white/10",
               action.primary 
-                ? "bg-white text-indigo-600 shadow-lg" 
+                ? "bg-white text-primary shadow-lg" 
                 : "bg-white/20 text-white backdrop-blur-md hover:bg-white/30"
             )}
+            title={action.label}
           >
-            <action.icon size={16} strokeWidth={2.5} />
-            {action.label}
+            <action.icon size={20} strokeWidth={2.5} />
           </motion.button>
         ))}
 
@@ -360,8 +377,7 @@ const SupplementMultiActions: React.FC<SupplementMultiActionsProps> = ({ quickAc
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-2 text-emerald-300 font-bold px-2"
           >
-            <Check size={18} strokeWidth={3} />
-            <span>Alle Supps ✓</span>
+            <Check size={20} strokeWidth={3} />
           </motion.div>
         )}
       </AnimatePresence>
