@@ -7,7 +7,7 @@ export type SplitType = 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'full' | 
 
 export type CardioType = 'walking' | 'running' | 'cycling' | 'swimming' | 'rowing' | 'other';
 
-export type Vo2Protocol = '4x4' | 'tabata' | 'hiit' | 'other';
+export type Vo2Protocol = '4x4' | 'tabata' | 'hiit' | 'running' | 'rowing' | 'cycling' | 'stairmaster' | 'other';
 
 export type SaunaTemp = 80 | 90 | 100;
 
@@ -89,11 +89,15 @@ export const CARDIO_TYPE_OPTIONS = [
   { id: 'rowing' as const, label: 'Rudern', emoji: '🚣' },
 ];
 
-// VO2max protocol options
+// VO2max protocol options (extended)
 export const VO2_PROTOCOL_OPTIONS = [
-  { id: '4x4' as const, label: '4x4', description: '4 min high, 3 min low' },
-  { id: 'tabata' as const, label: 'Tabata', description: '20s on, 10s off' },
-  { id: 'hiit' as const, label: 'HIIT', description: 'High Intensity Intervals' },
+  { id: '4x4' as const, label: '4x4 Intervalle', emoji: '🔥' },
+  { id: 'tabata' as const, label: 'Tabata', emoji: '⚡' },
+  { id: 'hiit' as const, label: 'HIIT', emoji: '💥' },
+  { id: 'running' as const, label: 'Schnelles Joggen', emoji: '🏃' },
+  { id: 'rowing' as const, label: 'Rudern', emoji: '🚣' },
+  { id: 'cycling' as const, label: 'Radfahren', emoji: '🚴' },
+  { id: 'stairmaster' as const, label: 'Stairmaster', emoji: '🪜' },
 ];
 
 // Sauna temperature options
