@@ -7,8 +7,8 @@
 
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe, PenTool } from 'lucide-react';
-import { openJournal } from '@/components/quick/quickAddBus';
+import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe, PenTool, Scale, Utensils } from 'lucide-react';
+import { openJournal, openSleep, openTraining, openWeight, openMeal } from '@/components/quick/quickAddBus';
 import { cn } from '@/lib/utils';
 import { EpiphanyCard } from './EpiphanyCard';
 import { SupplementTimingCircles } from './cards/SupplementTimingCircles';
@@ -16,7 +16,7 @@ import { PeptideTimingCircles } from './cards/PeptideFocusCard';
 
 export interface SmartTask {
   id: string;
-  type: 'hydration' | 'supplement' | 'supplements' | 'peptide' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix';
+  type: 'hydration' | 'supplement' | 'supplements' | 'peptide' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix' | 'training' | 'weight' | 'sleep_log' | 'nutrition';
   title: string;
   subtitle: string;
   xp: number;
@@ -460,6 +460,74 @@ const SmartActions: React.FC<SmartActionsProps> = ({ task, onAction, onOpenChat,
       >
         <PenTool size={16} />
         <span>Journal schreiben</span>
+        <ChevronRight size={14} className="opacity-60" />
+      </button>
+    );
+  }
+
+  // SLEEP LOG: Open Sleep Logger
+  if (task.type === 'sleep_log') {
+    return (
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          openSleep();
+        }}
+        className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+      >
+        <Moon size={16} />
+        <span>Schlaf tracken</span>
+        <ChevronRight size={14} className="opacity-60" />
+      </button>
+    );
+  }
+
+  // TRAINING: Open Training Logger
+  if (task.type === 'training') {
+    return (
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          openTraining();
+        }}
+        className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+      >
+        <Dumbbell size={16} />
+        <span>Workout starten</span>
+        <ChevronRight size={14} className="opacity-60" />
+      </button>
+    );
+  }
+
+  // WEIGHT: Open Weight Logger
+  if (task.type === 'weight') {
+    return (
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          openWeight();
+        }}
+        className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+      >
+        <Scale size={16} />
+        <span>Gewicht loggen</span>
+        <ChevronRight size={14} className="opacity-60" />
+      </button>
+    );
+  }
+
+  // NUTRITION: Open Meal Input
+  if (task.type === 'nutrition') {
+    return (
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          openMeal();
+        }}
+        className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+      >
+        <Utensils size={16} />
+        <span>Mahlzeit loggen</span>
         <ChevronRight size={14} className="opacity-60" />
       </button>
     );
