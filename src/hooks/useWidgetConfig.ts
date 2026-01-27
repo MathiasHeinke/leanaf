@@ -3,6 +3,14 @@ import { WidgetConfig, WidgetType, WidgetSize, DEFAULT_WIDGETS, WIDGET_DEFINITIO
 import { supabase } from '@/integrations/supabase/client';
 
 const LOCAL_STORAGE_KEY = 'ares_widget_config';
+const WIDGET_UPDATE_EVENT = 'widget-config-updated';
+
+// Dispatch custom event to sync all hook instances
+const dispatchWidgetUpdate = (newWidgets: WidgetConfig[]) => {
+  window.dispatchEvent(new CustomEvent(WIDGET_UPDATE_EVENT, { 
+    detail: newWidgets 
+  }));
+};
 
 export const useWidgetConfig = () => {
   const [widgets, setWidgets] = useState<WidgetConfig[]>(() => {
@@ -86,6 +94,18 @@ export const useWidgetConfig = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Listen for updates from other hook instances
+  useEffect(() => {
+    const handleWidgetUpdate = (e: CustomEvent<WidgetConfig[]>) => {
+      setWidgets(e.detail);
+    };
+    
+    window.addEventListener(WIDGET_UPDATE_EVENT, handleWidgetUpdate as EventListener);
+    return () => {
+      window.removeEventListener(WIDGET_UPDATE_EVENT, handleWidgetUpdate as EventListener);
+    };
+  }, []);
+
   // Save to DB (fire-and-forget)
   const syncToDb = useCallback(async (newWidgets: WidgetConfig[]) => {
     try {
@@ -116,10 +136,9 @@ export const useWidgetConfig = () => {
       const newWidgets = prev.map(w => 
         w.type === type ? { ...w, size } : w
       );
-      // Immediately persist to localStorage
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newWidgets));
-      // Async DB sync
       syncToDb(newWidgets);
+      dispatchWidgetUpdate(newWidgets);
       return newWidgets;
     });
   }, [syncToDb]);
@@ -129,10 +148,9 @@ export const useWidgetConfig = () => {
       const newWidgets = prev.map(w => 
         w.type === type ? { ...w, enabled: !w.enabled } : w
       );
-      // Immediately persist to localStorage
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newWidgets));
-      // Async DB sync
       syncToDb(newWidgets);
+      dispatchWidgetUpdate(newWidgets);
       return newWidgets;
     });
   }, [syncToDb]);
@@ -146,6 +164,7 @@ export const useWidgetConfig = () => {
       
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newWidgets));
       syncToDb(newWidgets);
+      dispatchWidgetUpdate(newWidgets);
       return newWidgets;
     });
   }, [syncToDb]);
