@@ -38,6 +38,7 @@ import { PeptidesSheet } from '@/components/home/sheets/PeptidesSheet';
 import { TrainingDaySheet } from '@/components/home/sheets/TrainingDaySheet';
 import { SupplementsDaySheet } from '@/components/home/sheets/SupplementsDaySheet';
 import { SleepDaySheet } from '@/components/home/sheets/SleepDaySheet';
+import { BioAgeSheet } from '@/components/home/sheets/BioAgeSheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -67,6 +68,7 @@ export default function AresHome() {
   const [trainingSheetOpen, setTrainingSheetOpen] = useState(false);
   const [supplementsSheetOpen, setSupplementsSheetOpen] = useState(false);
   const [sleepSheetOpen, setSleepSheetOpen] = useState(false);
+  const [bioAgeSheetOpen, setBioAgeSheetOpen] = useState(false);
 
   // Meal input hook (same as Dashboard)
   const {
@@ -515,6 +517,7 @@ export default function AresHome() {
               onOpenTrainingSheet={() => setTrainingSheetOpen(true)}
               onOpenSupplementsSheet={() => setSupplementsSheetOpen(true)}
               onOpenSleepSheet={() => setSleepSheetOpen(true)}
+              onOpenBioAgeSheet={() => setBioAgeSheetOpen(true)}
             />
           </div>
         </main>
@@ -845,6 +848,12 @@ export default function AresHome() {
           setSleepSheetOpen(false);
           setQuickLogConfig({ open: true, tab: 'sleep' });
         }}
+      />
+
+      {/* Bio-Age Sheet - Layer 2 */}
+      <BioAgeSheet 
+        isOpen={bioAgeSheetOpen}
+        onClose={() => setBioAgeSheetOpen(false)}
       />
     </div>
   );
