@@ -28,6 +28,8 @@ import { AvatarSelector } from '@/components/AvatarSelector';
 import { PersonaSelector } from '@/components/persona';
 import { ProfileLoadingGuard } from '@/components/ProfileLoadingGuard';
 import { cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 
 interface ProfilePageProps {
@@ -72,6 +74,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const { user } = useAuth();
   const { language, setLanguage } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   const { completionStatus, isProfileComplete: profileComplete, refreshCompletion } = useProfileCompletion();
   
@@ -619,6 +622,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       } catch (refreshError) {
         console.warn('⚠️ Dashboard refresh failed:', refreshError);
       }
+      
+      // Invalidate cache for immediate UI update across all widgets
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
       
       toast.success('Profil erfolgreich gespeichert');
       setLastSaved(new Date());

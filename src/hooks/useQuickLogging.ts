@@ -7,6 +7,8 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateCategory } from '@/constants/queryKeys';
 
 // Helper to get current timing based on hour
 const getCurrentTiming = (): 'morning' | 'noon' | 'evening' => {
@@ -18,6 +20,7 @@ const getCurrentTiming = (): 'morning' | 'noon' | 'evening' => {
 
 export const useQuickLogging = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // HYDRATION: Save directly to user_fluids
   const logWater = useCallback(async (amountMl: number, type: 'water' | 'coffee' = 'water'): Promise<boolean> => {
@@ -41,6 +44,9 @@ export const useQuickLogging = () => {
 
       if (error) throw error;
 
+      // Invalidate cache for immediate UI update
+      invalidateCategory(queryClient, 'water');
+      
       console.log(`[useQuickLogging] Logged ${amountMl}ml ${type}`);
       return true;
     } catch (err) {
@@ -48,7 +54,7 @@ export const useQuickLogging = () => {
       toast.error('Trinken konnte nicht gespeichert werden');
       return false;
     }
-  }, [user?.id]);
+  }, [user?.id, queryClient]);
 
   // SUPPLEMENTS: Mark user supplements for specific timing as taken
   const logSupplementsTaken = useCallback(async (
@@ -101,6 +107,9 @@ export const useQuickLogging = () => {
 
       if (insertError) throw insertError;
 
+      // Invalidate cache for immediate UI update
+      invalidateCategory(queryClient, 'supplements');
+
       // Get supplement names for feedback
       const names = supplements
         .map(s => (s.supplements as any)?.name)
@@ -116,7 +125,7 @@ export const useQuickLogging = () => {
       toast.error('Supplements konnten nicht gespeichert werden');
       return false;
     }
-  }, [user?.id]);
+  }, [user?.id, queryClient]);
 
   // PROTEIN SHAKE: Quick meal entry with ~25g protein
   const logProteinShake = useCallback(async (): Promise<boolean> => {
@@ -144,6 +153,9 @@ export const useQuickLogging = () => {
 
       if (error) throw error;
 
+      // Invalidate cache for immediate UI update
+      invalidateCategory(queryClient, 'nutrition');
+
       console.log('[useQuickLogging] Logged protein shake');
       return true;
     } catch (err) {
@@ -151,10 +163,10 @@ export const useQuickLogging = () => {
       toast.error('Protein Shake konnte nicht gespeichert werden');
       return false;
     }
-  }, [user?.id]);
+  }, [user?.id, queryClient]);
 
   return { 
-    logWater, 
+    logWater,
     logSupplementsTaken, 
     logProteinShake,
     getCurrentTiming
