@@ -7,7 +7,13 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { Target, TrendingDown, TrendingUp, Minus, Calendar, Flame, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { calculateRealismScore, getRealismLabel, getRealismVariant } from '@/utils/realismCalculator';
-import { getProtocolAdjustments, getDeficitStatusColor, isDeficitExceeded, type ProtocolMode } from '@/utils/protocolAdjustments';
+import { 
+  getProtocolAdjustments, 
+  calculateEffectiveMaxDeficit,
+  getDeficitStatusColor, 
+  isDeficitExceeded, 
+  type ProtocolMode 
+} from '@/utils/protocolAdjustments';
 import { cn } from '@/lib/utils';
 
 // ============= Types =============
@@ -52,6 +58,11 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
   const protocolAdjustments = useMemo(() => {
     return getProtocolAdjustments(protocolModes);
   }, [protocolModes]);
+  
+  // Dynamic max deficit based on TDEE and Protocol (Dual-Cap System)
+  const effectiveMaxDeficit = useMemo(() => {
+    return calculateEffectiveMaxDeficit(tdee, protocolAdjustments);
+  }, [tdee, protocolAdjustments]);
   // Computed values
   const targetWeight = useMemo(() => currentWeight + weightDelta, [currentWeight, weightDelta]);
   
@@ -238,7 +249,7 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
                 <div className={cn(
                   "text-sm font-bold",
                   computedGoal === 'lose' 
-                    ? getDeficitStatusColor(weeklyStats.dailyCalorieChange, protocolAdjustments.maxDeficitKcal)
+                    ? getDeficitStatusColor(weeklyStats.dailyCalorieChange, effectiveMaxDeficit)
                     : "text-blue-500"
                 )}>
                   {computedGoal === 'lose' ? '-' : computedGoal === 'gain' ? '+' : ''}{weeklyStats.dailyCalorieChange} kcal/Tag
@@ -246,21 +257,28 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
                 <div className="text-[10px] text-muted-foreground">
                   {computedGoal === 'lose' ? 'Defizit' : computedGoal === 'gain' ? 'Überschuss' : 'Balance'}
                 </div>
-                {/* Protocol-aware deficit warning */}
-                {computedGoal === 'lose' && isDeficitExceeded(weeklyStats.dailyCalorieChange, protocolAdjustments.maxDeficitKcal) && (
+                {/* Protocol-aware deficit warning with Dual-Cap info */}
+                {computedGoal === 'lose' && isDeficitExceeded(weeklyStats.dailyCalorieChange, effectiveMaxDeficit) && (
                   <div className="flex items-center justify-center gap-1 text-[10px] text-red-500 mt-1">
                     <AlertTriangle className="h-3 w-3" />
-                    <span>Max: {protocolAdjustments.maxDeficitKcal} kcal</span>
+                    <span>
+                      Max: {effectiveMaxDeficit} kcal ({Math.round(protocolAdjustments.maxDeficitPercent * 100)}% TDEE)
+                    </span>
                   </div>
                 )}
               </div>
             </div>
             
-            {/* Protocol hint when pharmacological support is active */}
+            {/* Protocol hint with protein recommendation */}
             {protocolAdjustments.hasPharmSupport && (
-              <div className="text-xs text-purple-500 text-center mt-2 flex items-center justify-center gap-1">
-                <Flame className="h-3 w-3" />
-                <span>{protocolAdjustments.hint}</span>
+              <div className="text-xs text-center mt-2 flex items-center justify-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1 text-purple-500">
+                  <Flame className="h-3 w-3" />
+                  <span>{protocolAdjustments.hint}</span>
+                </div>
+                <span className="text-muted-foreground">
+                  • Protein: {protocolAdjustments.proteinPerKg}g/kg
+                </span>
               </div>
             )}
           </div>

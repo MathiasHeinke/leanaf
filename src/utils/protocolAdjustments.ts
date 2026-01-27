@@ -3,20 +3,25 @@
  * 
  * Provides adjustment factors based on the user's Protocol Mode
  * (Natural, Enhanced, Clinical). These adjustments affect:
- * - Maximum sustainable daily deficit
+ * - Maximum sustainable daily deficit (Dual-Cap: percentage + hard cap)
  * - Realism score multiplier (pharmacological support increases sustainability)
  * - Protein boost (enhanced protein synthesis on TRT)
+ * - Absolute protein recommendation per kg
  */
 
 export type ProtocolMode = 'natural' | 'enhanced' | 'clinical';
 
 export interface ProtocolAdjustments {
-  /** Maximum sustainable daily deficit in kcal */
+  /** Maximum deficit as percentage of TDEE (e.g., 0.20 = 20%) */
+  maxDeficitPercent: number;
+  /** Hard cap for maximum daily deficit in kcal */
   maxDeficitKcal: number;
   /** Multiplier for realism score (1.0 = no change) */
   realismMultiplier: number;
   /** Additional g/kg protein boost */
   proteinBoost: number;
+  /** Absolute protein recommendation in g/kg */
+  proteinPerKg: number;
   /** User-facing hint explaining the mode */
   hint: string;
   /** Whether any pharmacological support is active */
@@ -27,9 +32,10 @@ export interface ProtocolAdjustments {
  * Calculate protocol adjustments based on active modes
  * 
  * Scientific basis:
- * - GLP-1/Reta increases satiety and protects muscle mass during deficit
- * - TRT maximizes protein synthesis (hence +0.2g/kg usable)
- * - Combination allows aggressive recomposition without muscle loss
+ * - Natural: Max 20% deficit to prevent hormonal crash (cortisol/testosterone)
+ * - GLP-1/Reta: Increases satiety, allows 30% deficit safely
+ * - TRT: Maximizes protein synthesis, protects muscle at 40% deficit
+ * - Combination: 45% deficit possible with full pharmacological support
  * 
  * @param modes - Array of active protocol modes
  * @returns ProtocolAdjustments object with all factors
@@ -41,9 +47,11 @@ export function getProtocolAdjustments(modes: ProtocolMode[]): ProtocolAdjustmen
   // Combined: Enhanced + Clinical (Reta + TRT)
   if (hasEnhanced && hasClinical) {
     return {
-      maxDeficitKcal: 1000,
+      maxDeficitPercent: 0.45,
+      maxDeficitKcal: 1400,
       realismMultiplier: 1.5,
-      proteinBoost: 0.3,
+      proteinBoost: 0.5,
+      proteinPerKg: 2.5,
       hint: 'Reta + TRT: Maximale Rekomposition möglich',
       hasPharmSupport: true,
     };
@@ -52,10 +60,12 @@ export function getProtocolAdjustments(modes: ProtocolMode[]): ProtocolAdjustmen
   // Clinical only (TRT)
   if (hasClinical) {
     return {
-      maxDeficitKcal: 800,
+      maxDeficitPercent: 0.40,
+      maxDeficitKcal: 1200,
       realismMultiplier: 1.3,
-      proteinBoost: 0.2,
-      hint: 'TRT: Optimierter Muskelschutz',
+      proteinBoost: 0.3,
+      proteinPerKg: 2.5,
+      hint: 'TRT: Muskelschutz erlaubt aggressives Defizit',
       hasPharmSupport: true,
     };
   }
@@ -63,22 +73,46 @@ export function getProtocolAdjustments(modes: ProtocolMode[]): ProtocolAdjustmen
   // Enhanced only (GLP-1/Retatrutide)
   if (hasEnhanced) {
     return {
-      maxDeficitKcal: 750,
+      maxDeficitPercent: 0.30,
+      maxDeficitKcal: 900,
       realismMultiplier: 1.25,
-      proteinBoost: 0.1,
-      hint: 'GLP-1: Aggressiveres Defizit möglich',
+      proteinBoost: 0.2,
+      proteinPerKg: 2.2,
+      hint: 'GLP-1: Bis 30% Defizit sicher möglich',
       hasPharmSupport: true,
     };
   }
   
   // Natural (default)
   return {
-    maxDeficitKcal: 500,
+    maxDeficitPercent: 0.20,
+    maxDeficitKcal: 600,
     realismMultiplier: 1.0,
     proteinBoost: 0,
-    hint: 'Natural: Konservatives Defizit empfohlen',
+    proteinPerKg: 2.0,
+    hint: 'Natural: Max 20% Defizit empfohlen',
     hasPharmSupport: false,
   };
+}
+
+/**
+ * Calculate effective max deficit using the Dual-Cap System
+ * Takes the minimum of percentage-based and hard cap limits
+ * 
+ * This protects smaller individuals from excessive deficits:
+ * - 60kg person at 1800 TDEE: Natural max = min(360, 600) = 360 kcal
+ * - 100kg person at 3000 TDEE: Natural max = min(600, 600) = 600 kcal
+ * 
+ * @param tdee - User's Total Daily Energy Expenditure
+ * @param adjustments - Protocol adjustments with limits
+ * @returns Effective maximum deficit in kcal
+ */
+export function calculateEffectiveMaxDeficit(
+  tdee: number,
+  adjustments: ProtocolAdjustments
+): number {
+  const percentBasedLimit = Math.round(tdee * adjustments.maxDeficitPercent);
+  return Math.min(percentBasedLimit, adjustments.maxDeficitKcal);
 }
 
 /**
