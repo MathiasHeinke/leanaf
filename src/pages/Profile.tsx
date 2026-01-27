@@ -897,7 +897,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
               <Brain className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-lg md:text-xl font-bold">Kalorien & Ziel-Analyse</h2>
+            <h2 className="text-lg md:text-xl font-bold">Kalorien & Makros</h2>
           </div>
 
           <Card>
@@ -972,6 +972,28 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                       <span>Hoher Überschuss – mehr Fetteinlagerung möglich</span>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Makros */}
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <div className="text-lg font-bold text-emerald-500">{currentMacros.proteinGrams}g</div>
+                  <div className="text-xs text-muted-foreground">Protein</div>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <div className="text-lg font-bold text-blue-500">{currentMacros.carbGrams}g</div>
+                  <div className="text-xs text-muted-foreground">Carbs</div>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-3">
+                  <div className="text-lg font-bold text-amber-500">{currentMacros.fatGrams}g</div>
+                  <div className="text-xs text-muted-foreground">Fett</div>
+                </div>
+              </div>
+              {currentMacros.warnings.length > 0 && (
+                <div className="text-xs text-orange-500 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {currentMacros.warnings[0]}
                 </div>
               )}
 
@@ -1072,32 +1094,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                 </div>
               </div>
 
-              {/* Live Macro Calculation Display */}
-              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                <div className="text-sm font-medium mb-2">
-                  Deine Makros ({weight || '80'}kg bei {targetCalories} kcal):
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div>
-                    <div className="text-lg font-bold text-emerald-500">{currentMacros.proteinGrams}g</div>
-                    <div className="text-xs text-muted-foreground">Protein</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-blue-500">{currentMacros.carbGrams}g</div>
-                    <div className="text-xs text-muted-foreground">Carbs</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-amber-500">{currentMacros.fatGrams}g</div>
-                    <div className="text-xs text-muted-foreground">Fett</div>
-                  </div>
-                </div>
-                {currentMacros.warnings.length > 0 && (
-                  <div className="mt-2 text-xs text-orange-500 flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    {currentMacros.warnings[0]}
-                  </div>
-                )}
-              </div>
             </CardContent>
           </Card>
         </div>
