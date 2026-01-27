@@ -1,6 +1,7 @@
 /**
- * ARES Nutrition Advisor - AI-powered personalized meal suggestions
- * Considers macros, protocol phase, GLP-1 status, training, and time of day
+ * ARES Nutrition Advisor - AI-powered personalized meal suggestions & evaluation
+ * Considers macros, protocol phase, GLP-1 status, training, bloodwork, and time of day
+ * Supports two modes: suggestion (no input) and evaluation (with user idea)
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -21,6 +22,25 @@ interface MealSuggestion {
   tags: string[];
 }
 
+interface MealEvaluation {
+  type: 'evaluation';
+  userIdea: string;
+  verdict: 'optimal' | 'ok' | 'suboptimal';
+  reason: string;
+  macros: { kcal: number; protein: number; carbs: number; fats: number };
+  optimization: string;
+  tags: string[];
+  alternatives: MealSuggestion[];
+}
+
+interface BloodworkData {
+  hba1c: number | null;
+  fastingGlucose: number | null;
+  triglycerides: number | null;
+  insulin: number | null;
+  insulinSensitivity: 'optimal' | 'normal' | 'reduced' | 'unknown';
+}
+
 interface NutritionContext {
   currentHour: number;
   mealTiming: 'breakfast' | 'lunch' | 'snack' | 'dinner' | 'late_night';
@@ -35,6 +55,7 @@ interface NutritionContext {
   trainedToday: boolean;
   trainingType: string | null;
   dietaryRestrictions: string[];
+  bloodwork: BloodworkData;
 }
 
 function getMealTiming(hour: number): NutritionContext['mealTiming'] {
@@ -55,6 +76,111 @@ function getPhaseDescription(phase: number): string {
   return descriptions[phase] || 'Phase unbekannt';
 }
 
+function calculateInsulinSensitivity(
+  glucose: number | null, 
+  insulin: number | null
+): BloodworkData['insulinSensitivity'] {
+  if (!glucose || !insulin) return 'unknown';
+  const homaIr = (glucose * insulin) / 405;
+  if (homaIr < 1.0) return 'optimal';
+  if (homaIr < 2.5) return 'normal';
+  return 'reduced';
+}
+
+function buildBloodworkContext(bloodwork: BloodworkData): string {
+  const lines: string[] = [];
+  
+  if (bloodwork.hba1c !== null) {
+    lines.push(`- HbA1c: ${bloodwork.hba1c}%${bloodwork.hba1c > 5.7 ? ' (erhoht - High-GI vermeiden!)' : ''}`);
+  }
+  if (bloodwork.triglycerides !== null) {
+    lines.push(`- Triglyceride: ${bloodwork.triglycerides} mg/dL${bloodwork.triglycerides > 150 ? ' (erhoht - weniger Fruktose/raffinierte Carbs!)' : ''}`);
+  }
+  if (bloodwork.fastingGlucose !== null) {
+    lines.push(`- Nuechtern-Glukose: ${bloodwork.fastingGlucose} mg/dL`);
+  }
+  if (bloodwork.insulinSensitivity !== 'unknown') {
+    lines.push(`- Insulin-Sensitivitaet: ${bloodwork.insulinSensitivity}`);
+  }
+  
+  if (lines.length === 0) {
+    return 'Keine Blutwerte verfuegbar - allgemeine Low-GI Empfehlungen';
+  }
+  
+  return lines.join('\n');
+}
+
+function buildEvaluationPrompt(context: NutritionContext, userIdea: string): string {
+  const mealTimingLabels: Record<string, string> = {
+    'breakfast': 'Fruehstueck',
+    'lunch': 'Mittagessen',
+    'snack': 'Nachmittags-Snack',
+    'dinner': 'Abendessen',
+    'late_night': 'Spaeter Snack'
+  };
+
+  const glp1Info = context.glp1Active 
+    ? `GLP-1/Reta AKTIV (letzte Dosis vor ${context.daysSinceLastDose || '?'} Tagen)`
+    : 'GLP-1/Reta nicht aktiv';
+
+  const trainingInfo = context.trainedToday
+    ? `HEUTE TRAINIERT (${context.trainingType || 'Training'}) - schnelle Carbs erlaubt!`
+    : 'Kein Training heute';
+
+  return `Du bist LESTER - wissenschaftlicher Ernaehrungsberater im ARES-System.
+
+STIL (KRITISCH):
+- KURZ: 1-2 Saetze max
+- Fakt + Konsequenz (z.B. "Weissmehl + Banane = Insulin-Spike. Nicht ideal bei HbA1c 5.8%.")
+- KEINE Phrasen wie "Okay pass auf", "Hoer zu", "Die Wissenschaft sagt"
+- Direkt zur Sache, wissenschaftlich fundiert
+
+BLUTWERTE DES USERS:
+${buildBloodworkContext(context.bloodwork)}
+
+METABOLISCHE REGELN:
+1. HbA1c > 5.7%: Warne vor High-GI Carbs (Weissmehl, reife Banane, Zucker)
+2. Triglyceride > 150: Weniger Fruktose, raffinierte Kohlenhydrate
+3. Reduzierte Insulin-Sensitivitaet: Low-GI bevorzugen, Protein vor Carbs
+4. POST-WORKOUT AUSNAHME: Nach Training sind schnelle Carbs akzeptabel
+5. GLP-1/Reta: Kleine Portionen, leicht verdaulich
+
+KONTEXT:
+- Uhrzeit: ${context.currentHour}:00 (${mealTimingLabels[context.mealTiming]})
+- Verbleibende Makros: ${context.remaining.kcal} kcal, ${context.remaining.protein}g P, ${context.remaining.carbs}g C, ${context.remaining.fats}g F
+- ${trainingInfo}
+- ${glp1Info}
+
+USER-IDEE ZUM BEWERTEN: "${userIdea}"
+
+AUFGABE:
+1. BEWERTE die Idee: optimal / ok / suboptimal
+2. ERKLAERE kurz WARUM (1-2 Saetze, wissenschaftlich)
+3. SCHAETZE die Makros realistisch
+4. GIB eine konkrete OPTIMIERUNG (z.B. "+Quark = +18g Protein, stabiler BZ")
+5. GENERIERE 2-3 BESSERE Alternativen
+
+ANTWORTE NUR mit JSON:
+{
+  "type": "evaluation",
+  "userIdea": "${userIdea}",
+  "verdict": "ok",
+  "reason": "Schnelle Energie, aber Insulin-Spike bei HbA1c 5.8% suboptimal.",
+  "macros": { "kcal": 280, "protein": 6, "carbs": 52, "fats": 4 },
+  "optimization": "+Quark = stabiler Blutzucker, +18g Protein",
+  "tags": ["high-gi", "low-protein"],
+  "alternatives": [
+    {
+      "title": "Vollkorn-Quark-Bowl mit Banane",
+      "reason": "Casein fuer stabile Energie",
+      "macros": { "kcal": 350, "protein": 28, "carbs": 38, "fats": 8 },
+      "prepTime": "5 min",
+      "tags": ["optimal", "high-protein", "stable-glucose"]
+    }
+  ]
+}`;
+}
+
 function buildSystemPrompt(context: NutritionContext): string {
   const mealTimingLabels: Record<string, string> = {
     'breakfast': 'Fruehstueck',
@@ -72,6 +198,18 @@ function buildSystemPrompt(context: NutritionContext): string {
     ? `HEUTE TRAINIERT (${context.trainingType || 'Training'}). Post-Workout Ernaehrung priorisieren: schnell absorbierbares Protein + moderate Kohlenhydrate fuer Regeneration.`
     : 'Kein Training heute';
 
+  // Build bloodwork priority rules
+  const bloodworkRules: string[] = [];
+  if (context.bloodwork.hba1c !== null && context.bloodwork.hba1c > 5.7) {
+    bloodworkRules.push('PRIORISIERE Low-GI Optionen (HbA1c erhoht)');
+  }
+  if (context.bloodwork.triglycerides !== null && context.bloodwork.triglycerides > 150) {
+    bloodworkRules.push('MEIDE Fruktose/raffinierte Carbs (Triglyceride erhoht)');
+  }
+  if (context.bloodwork.insulinSensitivity === 'reduced') {
+    bloodworkRules.push('PROTEIN VOR CARBS (reduzierte Insulin-Sensitivitaet)');
+  }
+
   return `Du bist der ARES Nutrition Advisor - ein Elite-Ernaehrungsberater fuer optimierte Koerperzusammensetzung.
 
 KONTEXT-FAKTOREN (priorisiert):
@@ -82,6 +220,10 @@ KONTEXT-FAKTOREN (priorisiert):
 5. PROTOKOLL-PHASE: Phase ${context.currentPhase} (${getPhaseDescription(context.currentPhase)})
 6. ZIEL: ${context.goal} | Aktivitaetslevel: ${context.activityLevel}
 ${context.dietaryRestrictions.length > 0 ? `7. EINSCHRAENKUNGEN: ${context.dietaryRestrictions.join(', ')}` : ''}
+
+BLUTWERT-KONTEXT:
+${buildBloodworkContext(context.bloodwork)}
+${bloodworkRules.length > 0 ? '\nBLUTWERT-REGELN:\n' + bloodworkRules.map(r => `- ${r}`).join('\n') : ''}
 
 REGELN:
 1. Vorschlaege MUESSEN die verbleibenden Makros respektieren (nicht ueberschreiten!)
@@ -130,7 +272,7 @@ function generateFallbackSuggestions(context: NutritionContext): MealSuggestion[
       reason: 'Leicht verdaulich, hoher Proteingehalt',
       macros: { kcal: 180, protein: 24, carbs: 8, fats: 5 },
       prepTime: '5 min',
-      tags: ['quick', 'glp1-friendly']
+      tags: ['quick', 'glp1-friendly', 'stable-glucose']
     },
     {
       title: 'Lachs mit Brokkoli',
@@ -158,7 +300,7 @@ function generateFallbackSuggestions(context: NutritionContext): MealSuggestion[
       reason: 'Schnelles Protein, keto-freundlich',
       macros: { kcal: 340, protein: 28, carbs: 6, fats: 24 },
       prepTime: '10 min',
-      tags: ['quick', 'low-carb']
+      tags: ['quick', 'low-carb', 'stable-glucose']
     },
     {
       title: 'Thunfisch-Avocado Bowl',
@@ -183,6 +325,20 @@ function generateFallbackSuggestions(context: NutritionContext): MealSuggestion[
   return options;
 }
 
+// Fallback evaluation when AI is unavailable
+function generateFallbackEvaluation(userIdea: string, context: NutritionContext): MealEvaluation {
+  return {
+    type: 'evaluation',
+    userIdea,
+    verdict: 'ok',
+    reason: 'Bewertung derzeit nicht verfuegbar. Allgemeine Empfehlung: Protein-reiche Optionen bevorzugen.',
+    macros: { kcal: 300, protein: 15, carbs: 30, fats: 10 },
+    optimization: '+Protein-Quelle hinzufuegen',
+    tags: ['fallback'],
+    alternatives: generateFallbackSuggestions(context).slice(0, 2)
+  };
+}
+
 serve(async (req) => {
   // Handle CORS
   const preflightResponse = cors.preflight(req);
@@ -203,6 +359,11 @@ serve(async (req) => {
       return json({ error: 'Invalid token' }, { status: 401, headers: cors.headers() });
     }
 
+    // Parse request body for userIdea
+    const body = await req.json().catch(() => ({}));
+    const userIdea = (body.userIdea as string | undefined)?.trim();
+    const isEvaluationMode = !!userIdea;
+
     // Use service role for data access
     const adminClient = createClient(SUPABASE_URL, SERVICE_ROLE, {
       auth: { persistSession: false, autoRefreshToken: false }
@@ -212,14 +373,15 @@ serve(async (req) => {
     const currentHour = new Date().getHours();
     const mealTiming = getMealTiming(currentHour);
 
-    // Fetch all context data in parallel
+    // Fetch all context data in parallel (including bloodwork)
     const [
       profileRes,
       goalsRes,
       mealsRes,
       protocolRes,
       retaRes,
-      trainingRes
+      trainingRes,
+      bloodworkRes
     ] = await Promise.all([
       // Profile
       adminClient
@@ -267,6 +429,15 @@ serve(async (req) => {
         .select('training_type, total_duration_minutes')
         .eq('user_id', user.id)
         .eq('session_date', todayStr)
+        .limit(1)
+        .maybeSingle(),
+      
+      // Latest bloodwork
+      adminClient
+        .from('user_bloodwork')
+        .select('hba1c, fasting_glucose, triglycerides, insulin, test_date')
+        .eq('user_id', user.id)
+        .order('test_date', { ascending: false })
         .limit(1)
         .maybeSingle()
     ]);
@@ -321,6 +492,19 @@ serve(async (req) => {
     const trainedToday = !!trainingRes.data;
     const trainingType = trainingRes.data?.training_type || null;
 
+    // Parse bloodwork
+    const bloodworkData = bloodworkRes.data;
+    const bloodwork: BloodworkData = {
+      hba1c: bloodworkData?.hba1c ?? null,
+      fastingGlucose: bloodworkData?.fasting_glucose ?? null,
+      triglycerides: bloodworkData?.triglycerides ?? null,
+      insulin: bloodworkData?.insulin ?? null,
+      insulinSensitivity: calculateInsulinSensitivity(
+        bloodworkData?.fasting_glucose ?? null,
+        bloodworkData?.insulin ?? null
+      )
+    };
+
     // Build context
     const context: NutritionContext = {
       currentHour,
@@ -335,12 +519,18 @@ serve(async (req) => {
       daysSinceLastDose,
       trainedToday,
       trainingType,
-      dietaryRestrictions
+      dietaryRestrictions,
+      bloodwork
     };
 
-    // Build prompt
-    const systemPrompt = buildSystemPrompt(context);
-    const userPrompt = `Generiere 3 passende Mahlzeiten-Vorschlaege basierend auf dem Kontext.`;
+    // Build prompt based on mode
+    const systemPrompt = isEvaluationMode 
+      ? buildEvaluationPrompt(context, userIdea!)
+      : buildSystemPrompt(context);
+    
+    const userPrompt = isEvaluationMode
+      ? `Bewerte die Mahlzeit-Idee: "${userIdea}"`
+      : 'Generiere 3 passende Mahlzeiten-Vorschlaege basierend auf dem Kontext.';
 
     // Call Gemini Flash for quick suggestion generation
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -355,7 +545,7 @@ serve(async (req) => {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_tokens: 800,
+        max_tokens: isEvaluationMode ? 1000 : 800,
         temperature: 0.7,
       }),
     });
@@ -364,9 +554,13 @@ serve(async (req) => {
       const errorText = await aiResponse.text();
       console.error('AI Gateway error:', aiResponse.status, errorText);
       
-      // Fallback suggestions when AI is unavailable
+      // Fallback when AI is unavailable
       if (aiResponse.status === 429 || aiResponse.status === 402) {
+        if (isEvaluationMode) {
+          return json(generateFallbackEvaluation(userIdea!, context), { headers: cors.headers() });
+        }
         return json({ 
+          type: 'suggestions',
           suggestions: generateFallbackSuggestions(context),
           generated_at: new Date().toISOString(),
           fallback: true,
@@ -380,44 +574,64 @@ serve(async (req) => {
     const content = aiResult.choices?.[0]?.message?.content?.trim();
 
     if (!content) {
-      throw new Error('No suggestions generated');
+      throw new Error('No content generated');
     }
 
     // Parse JSON response (handle potential markdown code blocks)
-    let suggestions: MealSuggestion[];
+    let parsedResponse: MealSuggestion[] | MealEvaluation;
     try {
       const jsonStr = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      suggestions = JSON.parse(jsonStr);
+      parsedResponse = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error('Failed to parse AI response:', content);
-      suggestions = generateFallbackSuggestions(context);
+      if (isEvaluationMode) {
+        return json(generateFallbackEvaluation(userIdea!, context), { headers: cors.headers() });
+      }
+      parsedResponse = generateFallbackSuggestions(context);
     }
 
-    // Validate and ensure we have 3 suggestions
-    if (!Array.isArray(suggestions) || suggestions.length === 0) {
-      suggestions = generateFallbackSuggestions(context);
-    }
-
-    // Log the suggestion generation for analytics (fire-and-forget)
+    // Log the generation for analytics (fire-and-forget)
     try {
       await adminClient.from('ares_events').insert({
         user_id: user.id,
         component: 'nutrition-advisor',
-        event: 'suggestions_generated',
+        event: isEvaluationMode ? 'evaluation_generated' : 'suggestions_generated',
         meta: { 
-          suggestion_count: suggestions.length,
+          mode: isEvaluationMode ? 'evaluation' : 'suggestions',
+          user_idea: userIdea || null,
           remaining_kcal: remaining.kcal,
           glp1_active: glp1Active,
           trained_today: trainedToday,
           phase: currentPhase,
           meal_timing: mealTiming,
+          has_bloodwork: bloodwork.hba1c !== null,
         }
       });
     } catch (logError) {
       console.warn('Failed to log event:', logError);
     }
 
+    // Return response based on mode
+    if (isEvaluationMode) {
+      // Ensure it's a valid evaluation response
+      const evaluation = parsedResponse as MealEvaluation;
+      if (!evaluation.verdict || !evaluation.reason) {
+        return json(generateFallbackEvaluation(userIdea!, context), { headers: cors.headers() });
+      }
+      
+      return json({
+        ...evaluation,
+        type: 'evaluation',
+        userIdea,
+        generated_at: new Date().toISOString()
+      }, { headers: cors.headers() });
+    }
+
+    // Suggestion mode
+    const suggestions = Array.isArray(parsedResponse) ? parsedResponse : generateFallbackSuggestions(context);
+    
     return json({ 
+      type: 'suggestions',
       suggestions,
       generated_at: new Date().toISOString(),
       context: {

@@ -1,6 +1,6 @@
 /**
- * useMealAdvisor - Hook for AI-powered meal suggestions
- * Aggregates context from various hooks and calls the edge function
+ * useMealAdvisor - Hook for AI-powered meal suggestions & evaluation
+ * Supports two modes: suggestion (no input) and evaluation (with user idea)
  */
 
 import { useState, useCallback } from 'react';
@@ -16,45 +16,92 @@ export interface MealSuggestion {
   tags: string[];
 }
 
+export interface MealEvaluation {
+  type: 'evaluation';
+  userIdea: string;
+  verdict: 'optimal' | 'ok' | 'suboptimal';
+  reason: string;
+  macros: { kcal: number; protein: number; carbs: number; fats: number };
+  optimization: string;
+  tags: string[];
+  alternatives: MealSuggestion[];
+}
+
 interface MealAdvisorState {
   suggestions: MealSuggestion[];
+  evaluation: MealEvaluation | null;
   isLoading: boolean;
   error: string | null;
   isFallback: boolean;
+  mode: 'idle' | 'suggestions' | 'evaluation';
 }
 
 export function useMealAdvisor() {
   const [state, setState] = useState<MealAdvisorState>({
     suggestions: [],
+    evaluation: null,
     isLoading: false,
     error: null,
-    isFallback: false
+    isFallback: false,
+    mode: 'idle'
   });
 
   const { data: metrics } = useDailyMetrics();
   const { toast } = useToast();
 
-  const generateSuggestions = useCallback(async () => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+  const generateSuggestions = useCallback(async (userIdea?: string) => {
+    const isEvaluationMode = !!userIdea?.trim();
+    
+    setState(prev => ({ 
+      ...prev, 
+      isLoading: true, 
+      error: null,
+      mode: isEvaluationMode ? 'evaluation' : 'suggestions'
+    }));
 
     try {
       const { data, error } = await supabase.functions.invoke('ares-nutrition-advisor', {
-        body: {}
+        body: { userIdea: userIdea?.trim() || undefined }
       });
 
       if (error) {
         throw new Error(error.message || 'Vorschläge konnten nicht generiert werden');
       }
 
+      // Handle evaluation response
+      if (data?.type === 'evaluation') {
+        setState({
+          suggestions: [],
+          evaluation: {
+            type: 'evaluation',
+            userIdea: data.userIdea,
+            verdict: data.verdict,
+            reason: data.reason,
+            macros: data.macros,
+            optimization: data.optimization,
+            tags: data.tags || [],
+            alternatives: data.alternatives || []
+          },
+          isLoading: false,
+          error: null,
+          isFallback: data.fallback || false,
+          mode: 'evaluation'
+        });
+        return;
+      }
+
+      // Handle suggestions response
       if (!data?.suggestions || !Array.isArray(data.suggestions)) {
         throw new Error('Ungültige Antwort vom Server');
       }
 
       setState({
         suggestions: data.suggestions,
+        evaluation: null,
         isLoading: false,
         error: null,
-        isFallback: data.fallback || false
+        isFallback: data.fallback || false,
+        mode: 'suggestions'
       });
 
       if (data.fallback) {
@@ -70,7 +117,8 @@ export function useMealAdvisor() {
       setState(prev => ({
         ...prev,
         isLoading: false,
-        error: errorMessage
+        error: errorMessage,
+        mode: 'idle'
       }));
 
       toast({
@@ -84,9 +132,11 @@ export function useMealAdvisor() {
   const clearSuggestions = useCallback(() => {
     setState({
       suggestions: [],
+      evaluation: null,
       isLoading: false,
       error: null,
-      isFallback: false
+      isFallback: false,
+      mode: 'idle'
     });
   }, []);
 
@@ -100,10 +150,13 @@ export function useMealAdvisor() {
 
   return {
     suggestions: state.suggestions,
+    evaluation: state.evaluation,
     isLoading: state.isLoading,
     error: state.error,
     isFallback: state.isFallback,
+    mode: state.mode,
     hasSuggestions: state.suggestions.length > 0,
+    hasEvaluation: state.evaluation !== null,
     generateSuggestions,
     clearSuggestions,
     remainingMacros
