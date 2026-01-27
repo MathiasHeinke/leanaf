@@ -37,19 +37,31 @@ const MIN_FAT_PER_KG = 0.6;    // Minimum for hormonal health
  * @param targetCalories - Daily calorie target
  * @returns MacroResult with grams, percentages, and any warnings
  */
+/**
+ * Calculate macros using Protein Anchor logic
+ * 
+ * @param intensity - Protocol intensity level (rookie/warrior/elite)
+ * @param weightKg - User's body weight in kg
+ * @param targetCalories - Daily calorie target
+ * @param proteinBoostPerKg - Additional g/kg from Protocol Mode (Enhanced/Clinical)
+ * @returns MacroResult with grams, percentages, and any warnings
+ */
 export function calculateProteinAnchorMacros(
   intensity: ProtocolIntensity,
   weightKg: number,
-  targetCalories: number
+  targetCalories: number,
+  proteinBoostPerKg: number = 0
 ): MacroResult {
   const warnings: string[] = [];
   
   // Ensure valid inputs
   const safeWeight = Math.max(40, weightKg || 80);
   const safeCalories = Math.max(1000, targetCalories || 2000);
+  const safeBoost = Math.max(0, Math.min(0.5, proteinBoostPerKg)); // Cap at 0.5g/kg
   
-  // 1. Protein Anchor (fixed based on body weight)
-  let proteinGrams = Math.round(safeWeight * PROTEIN_PER_KG[intensity]);
+  // 1. Protein Anchor (fixed based on body weight) + Protocol Boost
+  // Example: Warrior (2.0g/kg) + TRT Boost (0.2g/kg) = 2.2g/kg effective
+  let proteinGrams = Math.round(safeWeight * (PROTEIN_PER_KG[intensity] + safeBoost));
   let proteinCalories = proteinGrams * 4;
   
   // 2. Safety check: Protein should not exceed 50% of calories
