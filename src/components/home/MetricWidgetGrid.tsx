@@ -18,6 +18,7 @@ interface MetricWidgetGridProps {
   onOpenBodySheet?: () => void;
   onOpenPeptidesSheet?: () => void;
   onOpenTrainingSheet?: () => void;
+  onOpenSupplementsSheet?: () => void;
 }
 
 export const MetricWidgetGrid: React.FC<MetricWidgetGridProps> = ({ 
@@ -25,7 +26,8 @@ export const MetricWidgetGrid: React.FC<MetricWidgetGridProps> = ({
   onOpenHydrationSheet,
   onOpenBodySheet,
   onOpenPeptidesSheet,
-  onOpenTrainingSheet
+  onOpenTrainingSheet,
+  onOpenSupplementsSheet
 }) => {
   const { enabledWidgets, isLoading } = useWidgetConfig();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -83,6 +85,7 @@ export const MetricWidgetGrid: React.FC<MetricWidgetGridProps> = ({
                 onOpenBodySheet={onOpenBodySheet}
                 onOpenPeptidesSheet={onOpenPeptidesSheet}
                 onOpenTrainingSheet={onOpenTrainingSheet}
+                onOpenSupplementsSheet={onOpenSupplementsSheet}
               />
             </motion.div>
           ))}

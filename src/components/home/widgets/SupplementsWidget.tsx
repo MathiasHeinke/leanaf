@@ -10,6 +10,7 @@ import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface SupplementsWidgetProps {
   size: WidgetSize;
+  onOpenSheet?: () => void;
 }
 
 interface SupplementItem {
@@ -17,8 +18,17 @@ interface SupplementItem {
   taken: boolean;
 }
 
-export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) => {
+export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size, onOpenSheet }) => {
   const navigate = useNavigate();
+
+  // Click handler: prefer sheet, fallback to navigation
+  const handleClick = () => {
+    if (onOpenSheet) {
+      onOpenSheet();
+    } else {
+      navigate('/supplements');
+    }
+  };
 
   // Fetch ACTIVE supplements and check which were taken today
   const { data: supplementsData } = useQuery({
@@ -87,7 +97,7 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) =>
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/supplements')}
+        onClick={handleClick}
         className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
       >
         {/* Background Fill */}
@@ -157,7 +167,7 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) =>
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/supplements')}
+        onClick={handleClick}
         className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors"
       >
         <div className="flex justify-between items-start mb-3">
@@ -225,7 +235,7 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) =>
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/supplements')}
+        onClick={handleClick}
         className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors flex flex-col justify-between"
       >
         <div className="flex justify-between items-start">
@@ -279,7 +289,7 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) =>
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      onClick={() => navigate('/supplements')}
+      onClick={handleClick}
       className="h-full bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors flex flex-col justify-between"
     >
       <div className="flex justify-between items-start">

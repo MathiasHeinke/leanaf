@@ -36,6 +36,7 @@ import { HydrationDaySheet } from '@/components/home/sheets/HydrationDaySheet';
 import { BodyTrendSheet } from '@/components/home/sheets/BodyTrendSheet';
 import { PeptidesSheet } from '@/components/home/sheets/PeptidesSheet';
 import { TrainingDaySheet } from '@/components/home/sheets/TrainingDaySheet';
+import { SupplementsDaySheet } from '@/components/home/sheets/SupplementsDaySheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -63,6 +64,7 @@ export default function AresHome() {
   const [bodySheetOpen, setBodySheetOpen] = useState(false);
   const [peptidesSheetOpen, setPeptidesSheetOpen] = useState(false);
   const [trainingSheetOpen, setTrainingSheetOpen] = useState(false);
+  const [supplementsSheetOpen, setSupplementsSheetOpen] = useState(false);
 
   // Meal input hook (same as Dashboard)
   const {
@@ -175,7 +177,7 @@ export default function AresHome() {
     }
   }, [logWater]);
 
-  // Subscribe to quickAddBus for journal/sleep/weight events from SmartFocusCard
+  // Subscribe to quickAddBus for all quick action events from SmartFocusCard, FAB, and LiquidDock
   useEffect(() => {
     const unsub = quickAddBus.subscribe((action) => {
       if (action.type === 'journal') {
@@ -188,6 +190,14 @@ export default function AresHome() {
         setQuickLogConfig({ open: true, tab: 'training' });
       } else if (action.type === 'tape') {
         setQuickLogConfig({ open: true, tab: 'tape' });
+      } else if (action.type === 'supplements' || action.type === 'chemistry') {
+        setSupplementsSheetOpen(true);
+      } else if (action.type === 'peptide') {
+        setPeptidesSheetOpen(true);
+      } else if (action.type === 'hydration') {
+        setHydrationSheetOpen(true);
+      } else if (action.type === 'meal') {
+        setMealOpen(true);
       }
     });
     return unsub;
@@ -501,6 +511,7 @@ export default function AresHome() {
               onOpenBodySheet={() => setBodySheetOpen(true)}
               onOpenPeptidesSheet={() => setPeptidesSheetOpen(true)}
               onOpenTrainingSheet={() => setTrainingSheetOpen(true)}
+              onOpenSupplementsSheet={() => setSupplementsSheetOpen(true)}
             />
           </div>
         </main>
@@ -810,6 +821,16 @@ export default function AresHome() {
         onOpenLogger={() => {
           setTrainingSheetOpen(false);
           setQuickLogConfig({ open: true, tab: 'training' });
+        }}
+      />
+
+      {/* Supplements Day Sheet - Layer 2 */}
+      <SupplementsDaySheet 
+        isOpen={supplementsSheetOpen}
+        onClose={() => setSupplementsSheetOpen(false)}
+        onOpenLogger={() => {
+          setSupplementsSheetOpen(false);
+          setQuickLogConfig({ open: true, tab: 'supplements' });
         }}
       />
     </div>
