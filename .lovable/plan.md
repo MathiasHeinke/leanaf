@@ -1,212 +1,210 @@
 
+# ARES Chat Vision Integration
 
-# MealInput Modal: Z-Index Fix + Favoriten-Feature
+## Problem-Zusammenfassung
 
-## Problem-Analyse
+Der ARES Chat kann **Bilder hochladen** (UI funktioniert), aber sie werden **nirgends verarbeitet**. Die Pipeline ist an 4 Stellen unterbrochen:
 
-### Z-Index Abschneidung
-Die SmartChips in Zeile 511 haben `overflow-x-auto` Container:
-```tsx
-<div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar pb-1">
-```
-Das `overflow-x-auto` schneidet Elemente ab die ueber den Container hinausragen (z.B. Fokus-Ring, Schatten, oder ein Stern-Badge).
+1. **Frontend**: `handleSendWithMedia` gibt `mediaUrls` nicht an `sendMessage` weiter
+2. **Hook**: `sendMessage` akzeptiert keine Bilder und sendet sie nicht zum Backend
+3. **Backend**: `ares-streaming` parst keine Bilder aus dem Request
+4. **AI-Call**: Kein Vision-Modell oder multimodales Message-Format
 
-### Favoriten
-Es gibt aktuell **keine Favoriten-Tabelle** in der Datenbank. Das `useFrequentMeals` Hook holt nur die haeufigsten Mahlzeiten basierend auf Frequenz - aber der User kann sie nicht manuell als Favorit markieren.
+Das Ergebnis: User laeden Bild hoch, schreiben "Was meinst du zu meiner Statur?" - ARES sieht nur den Text, nicht das Bild.
 
 ---
 
-## Loesung: Zwei-Schichten Design
+## Loesung: End-to-End Vision Pipeline
 
-### Konzept
+### Phase 1: Frontend → Hook
 
-Wir trennen:
-1. **Favoriten (Gold-Sterne)** - Max 3, vom User manuell gewaehlt, immer sichtbar
-2. **Vorschlaege (Grau)** - Automatisch basierend auf Frequenz + Tageszeit
+**Datei: `src/hooks/useAresStreaming.ts`**
 
-```text
-+----------------------------------------------------------+
-| [★ Proteinshake 30g] [★ Skyr Bowl] [★ Haferflocken]      |  <- Favoriten (gelb)
-| [Frosta Curry...] [2 Haenchenschenkel] [Reis mit Brok...]|  <- Vorschlaege (grau)
-+----------------------------------------------------------+
-```
-
-Der gelbe Stern soll **ueber** dem blauen Fokus-Ring liegen.
-
----
-
-## Technische Implementierung
-
-### Datei 1: Neue DB-Tabelle `meal_favorites`
-
-```sql
-CREATE TABLE public.meal_favorites (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  meal_text text NOT NULL,
-  position smallint DEFAULT 1,
-  created_at timestamptz DEFAULT now() NOT NULL,
-  UNIQUE(user_id, meal_text)
-);
-
--- Max 3 Favoriten pro User via Trigger oder App-Logic
-ALTER TABLE meal_favorites ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can manage their own favorites"
-  ON meal_favorites FOR ALL USING (auth.uid() = user_id);
-```
-
-### Datei 2: Neuer Hook `src/hooks/useMealFavorites.ts`
+Erweitere `sendMessage` Signatur um `imageUrls`:
 
 ```typescript
-export function useMealFavorites(userId?: string) {
-  // Query: SELECT meal_text FROM meal_favorites WHERE user_id = $1 ORDER BY position LIMIT 3
-  // Mutation: toggle(mealText) - INSERT or DELETE
-  // Max 3 enforced: if count >= 3 and adding, return error/toast
+// Zeile ~252: Erweiterte Funktion
+const sendMessage = useCallback(async (
+  message: string, 
+  coachId: string = 'ares', 
+  researchPlus: boolean = false,
+  imageUrls?: string[]  // NEU
+) => {
+```
+
+Sende Images im Body:
+
+```typescript
+// Zeile ~298: Erweiterter Body
+body: JSON.stringify({ 
+  message, 
+  coachId, 
+  researchPlus,
+  images: imageUrls || []  // NEU - Array von URLs
+})
+```
+
+**Datei: `src/components/ares/AresChat.tsx`**
+
+Uebergebe `mediaUrls` an Hook:
+
+```typescript
+// Zeile ~458: Korrigierter Aufruf
+await sendMessage(trimmed, coachId, researchPlus, mediaUrls);
+```
+
+---
+
+### Phase 2: Backend Image Parsing
+
+**Datei: `supabase/functions/ares-streaming/index.ts`**
+
+Parse Images aus Request:
+
+```typescript
+// Zeile ~476: Erweitert
+const text = body.message || body.text || '';
+const coachId = body.coachId || 'ares';
+const researchPlus = body.researchPlus === true;
+const images: string[] = body.images || []; // NEU
+const hasVision = images.length > 0;         // NEU
+```
+
+---
+
+### Phase 3: Vision-faehiges Model Routing
+
+**Datei: `supabase/functions/ares-streaming/index.ts`**
+
+Neue Helper-Funktion fuer multimodales Format:
+
+```typescript
+function buildMultimodalContent(text: string, imageUrls: string[]): any[] {
+  const content: any[] = [];
   
-  return {
-    favorites: string[],           // Max 3 meal texts
-    isFavorite: (text: string) => boolean,
-    toggleFavorite: (text: string) => void,
-    isLoading: boolean
+  // Text zuerst
+  content.push({ type: 'text', text });
+  
+  // Dann Bilder
+  for (const url of imageUrls) {
+    content.push({
+      type: 'image_url',
+      image_url: { url, detail: 'high' }
+    });
   }
+  
+  return content;
 }
 ```
 
-### Datei 3: Neue SmartChip Variante `favorite`
-
-In `src/components/ui/smart-chip.tsx`:
+Anpassung des AI-Calls (Zeile ~800+):
 
 ```typescript
-favorite: [
-  "bg-amber-100 hover:bg-amber-200 text-amber-700",
-  "border-amber-300 hover:border-amber-400",
-  "dark:bg-amber-900/50 dark:hover:bg-amber-900/70",
-  "dark:text-amber-300 dark:border-amber-700"
-]
-```
+// Wenn Bilder vorhanden, nutze Vision-faehiges Modell
+const modelToUse = hasVision 
+  ? 'google/gemini-2.5-pro'  // Vision-faehig
+  : selectedModel;           // Standard-Routing
 
-Neues Prop: `starBadge?: boolean` - Zeigt goldenen Stern ueber dem Chip
-
-### Datei 4: Update `AresHome.tsx` MealInput Sheet
-
-```tsx
-// Zeile ~509-523 ersetzen mit:
-
-{/* Container mit overflow-visible fuer Sterne */}
-<div className="relative overflow-visible">
-  {/* Favoriten-Reihe (max 3) */}
-  {favorites.length > 0 && (
-    <div className="flex gap-2 mb-2 relative z-20">
-      {favorites.map((meal, index) => (
-        <SmartChip
-          key={`fav-${index}`}
-          variant="favorite"
-          size="sm"
-          onClick={() => handleMealChipClick(meal)}
-          onLongPress={() => toggleFavorite(meal)} // Long-press to unfavorite
-          icon={<Star className="w-3 h-3 fill-amber-400 text-amber-500" />}
-        >
-          {meal}
-        </SmartChip>
-      ))}
-    </div>
-  )}
-  
-  {/* Vorschlaege-Reihe (scrollbar) */}
-  {getCurrentMealSuggestions().filter(m => !isFavorite(m)).length > 0 && (
-    <div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar pb-1 relative z-10">
-      {getCurrentMealSuggestions()
-        .filter(m => !isFavorite(m))
-        .map((meal, index) => (
-          <div key={`sug-${index}`} className="relative">
-            <SmartChip
-              variant="secondary"
-              size="sm"
-              onClick={() => handleMealChipClick(meal)}
-              onLongPress={() => toggleFavorite(meal)} // Long-press to favorite
-            >
-              {meal}
-            </SmartChip>
-          </div>
-        ))}
-    </div>
-  )}
-</div>
+const messagesPayload = hasVision
+  ? [
+      { role: 'system', content: systemPrompt },
+      ...conversationMessages,
+      { 
+        role: 'user', 
+        content: buildMultimodalContent(text, images) 
+      }
+    ]
+  : [
+      { role: 'system', content: systemPrompt },
+      ...conversationMessages,
+      { role: 'user', content: text }
+    ];
 ```
 
 ---
 
-## Z-Index Stack
+### Phase 4: Vision-Context im System Prompt
 
-| Element | Z-Index | Beschreibung |
-|---------|---------|--------------|
-| Goldener Stern Badge | z-30 | Ueber allem |
-| Favoriten-Row | z-20 | Ueber Vorschlaegen |
-| Vorschlaege-Row | z-10 | Basis |
-| Focus Ring (blue) | z-0 | Standard |
+**Datei: `supabase/functions/ares-streaming/index.ts`**
 
----
+Ergaenze `buildStreamingSystemPrompt` um Vision-Anweisungen:
 
-## Interaktions-Flow
-
-### Favorit hinzufuegen
-1. User sieht Vorschlag "Proteinshake 30g"
-2. Long-Press (oder kleines Stern-Icon antippen)
-3. Wenn < 3 Favoriten: Chip wandert nach oben, wird gold
-4. Wenn bereits 3: Toast "Maximal 3 Favoriten - entferne zuerst einen"
-
-### Favorit entfernen
-1. User long-pressed auf goldenen Favoriten-Chip
-2. Chip verschwindet aus Favoriten
-3. Erscheint wieder in Vorschlaegen (wenn haeufig genug)
-
-### Chip klicken
-1. Fuellt Textfeld mit Mahlzeit-Text
-2. Fokus auf Textarea
+```typescript
+// Am Ende der Funktion, vor return:
+if (hasVisionContext) {
+  parts.push('== BILD-ANALYSE ==');
+  parts.push('Der User hat ein Bild hochgeladen. Analysiere es sorgfaeltig:');
+  parts.push('- Bei Body-Fotos: Koerperhaltung, Muskelentwicklung, Proportionen');
+  parts.push('- Bei Mahlzeiten: Geschaetzte Makros, Portionsgroesse, Qualitaet');
+  parts.push('- Beziehe das Bild in deine Antwort ein');
+  parts.push('- Sei ehrlich aber motivierend');
+  parts.push('');
+}
+```
 
 ---
 
 ## Dateien-Uebersicht
 
-| Datei | Aktion | Beschreibung |
-|-------|--------|--------------|
-| Migration: `meal_favorites` | NEU | DB-Tabelle + RLS |
-| `src/hooks/useMealFavorites.ts` | NEU | Hook fuer Favoriten-CRUD |
-| `src/components/ui/smart-chip.tsx` | EDIT | +`favorite` Variante, +`starBadge` Prop |
-| `src/pages/AresHome.tsx` | EDIT | Integration beider Chip-Reihen |
+| Datei | Aktion | Aenderung |
+|-------|--------|-----------|
+| `src/hooks/useAresStreaming.ts` | EDIT | +`imageUrls` Parameter, sende im Body |
+| `src/components/ares/AresChat.tsx` | EDIT | Gib `mediaUrls` an Hook weiter |
+| `supabase/functions/ares-streaming/index.ts` | EDIT | Parse images, Vision-Model-Routing, multimodales Format |
 
 ---
 
-## Alternative: Ohne Datenbank
+## Technische Details
 
-Falls schnellere Implementierung gewuenscht - **localStorage**:
+### Unterstuetzte Bildformate
+- JPEG, PNG, WebP, GIF (statisch)
+- Max 20MB pro Bild (Lovable Upload Limit)
+- Gemini 2.5 Pro unterstuetzt bis zu 16 Bilder pro Request
 
-```typescript
-// In useMealFavorites.ts
-const STORAGE_KEY = 'meal_favorites';
+### Model-Routing mit Vision
 
-const getFavorites = (): string[] => {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
-};
-
-const setFavorites = (favs: string[]) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(favs.slice(0, 3)));
-};
+```text
++------------------+      +-------------------+
+| User sendet Bild | ---> | hasVision = true  |
++------------------+      +-------------------+
+                                  |
+                                  v
+                    +---------------------------+
+                    | google/gemini-2.5-pro     |
+                    | (Bestes Vision-Modell)    |
+                    +---------------------------+
 ```
 
-**Pro:** Sofort nutzbar, kein DB-Migration
-**Contra:** Nicht cross-device synchronisiert
+### Multimodales Message-Format (OpenAI-kompatibel)
+
+```json
+{
+  "role": "user",
+  "content": [
+    { "type": "text", "text": "Was meinst du zu meiner Statur?" },
+    { 
+      "type": "image_url", 
+      "image_url": { "url": "https://...", "detail": "high" }
+    }
+  ]
+}
+```
 
 ---
 
-## Empfehlung
+## Erwartetes Ergebnis
 
-Ich empfehle **DB-Loesung** weil:
-1. Favoriten sind wichtig fuer wiederkehrende Mahlzeiten
-2. Cross-device Sync (Mobile/Desktop)
-3. Kann spaeter fuer AI-Training genutzt werden ("User bevorzugt diese Mahlzeiten")
+Nach Implementation:
 
-Soll ich mit der DB-Tabelle oder localStorage-Version starten?
+1. User laedt Bild hoch (z.B. Body-Foto)
+2. User schreibt "Was meinst du zu meiner Statur?"
+3. Frontend sendet Text + Bild-URL an Backend
+4. Backend erkennt Vision-Request, waehlt Gemini 2.5 Pro
+5. AI analysiert Bild + kombiniert mit User-Daten (Gewicht, Ziele, etc.)
+6. ARES antwortet: "Ich sehe hier eine gute V-Form im Oberkörper. Bei deinem aktuellen Gewicht von 84kg und Ziel 82kg würde ich..."
 
+**Use Cases:**
+- Body-Progress-Fotos analysieren
+- Mahlzeiten bewerten ("Was haeltst du von diesem Fruehstueck?")
+- Supplement-Fotos pruefen ("Sind das gute Produkte?")
+- Blutwerte-Screenshots interpretieren
