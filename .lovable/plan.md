@@ -1,91 +1,202 @@
 
-# Fix: ARES Chat am unteren Rand abgeschnitten
+# Implementation: Protocol-Driven Goal Configurator
 
-## Problem-Diagnose
+## Zusammenfassung
 
-Das Chat-Interface wird am unteren Rand abgeschnitten. Die Buttons (Vorschläge, Upload, Mikrofon, Senden) sind kaum bedienbar. Dies betrifft:
-- **ChatOverlay** (Layer 2 Sheet auf der Home-Seite)
-- **Fullscreen Chat** (auf `/coach/ares`)
+Die "Ziele"-Sektion wird von 5+ unzusammenhängenden Inputs zu einem **protokollbasierten 3-Slider-System** refaktoriert:
 
-### Ursache 1: ChatOverlay
-```jsx
-// Zeile 242-243
-animate={{ y: "5%" }}  // Schiebt das Sheet 5% nach unten
+1. **Weight Delta Slider** (-20kg bis +15kg)
+2. **Muscle Goal Toggle** (Erhalt vs. Aufbau)
+3. **Protocol Tempo Selector** (12M / 6M / 4M)
 
-// Zeile 250  
-className="fixed inset-x-0 bottom-0 top-0"  // 100vh Höhe
-```
-Das Sheet ist 100vh hoch und wird 5% nach unten verschoben → **5% des unteren Inhalts werden abgeschnitten**.
+Das System berechnet automatisch `targetWeight`, `targetDate` und den `realismScore`.
 
-### Ursache 2: Mobile Safe Areas
-Auf iOS/Android gibt es System-Bars (Home Indicator, Navigation Bar), die nicht berücksichtigt werden.
+## Neue Komponente
 
----
+### `src/components/profile/GoalConfigurator.tsx`
 
-## Lösung
-
-### Schritt 1: ChatOverlay korrigieren
-
-**Datei:** `src/components/home/ChatOverlay.tsx`
-
-Ändern der Sheet-Höhe von `100vh` auf `95vh`, damit es mit dem `y: 5%` Offset korrekt passt:
-
-```jsx
-// Vorher (Zeile 250):
-className="fixed inset-x-0 bottom-0 top-0 z-[51] ..."
-
-// Nachher:
-className="fixed inset-x-0 bottom-0 z-[51] ..."
-// + explizite Höhe statt top-0
-style={{ height: "95vh" }}
+```text
+Props:
+- currentWeight: number
+- weightDelta: number / setWeightDelta
+- muscleGoal: 'maintain' | 'build' / setMuscleGoal
+- protocolTempo: 'sustainable' | 'standard' | 'aggressive' / setProtocolTempo
+- realismScore: number (computed)
 ```
 
-Alternativ bessere Lösung: Das `top-0` durch `top-[5%]` ersetzen, damit sich die Animation neutral verhält.
+**UI-Struktur:**
 
-### Schritt 2: Safe Area Insets hinzufügen
-
-Für Mobile-Geräte brauchen wir `pb-safe` (Tailwind Plugin) oder CSS Environment Variables:
-
-**Datei:** `src/components/EnhancedChatInput.tsx` (Button Row)
-
-```jsx
-// Zeile 198 - Button Row
-<div className="input-bar flex items-center justify-between px-4 py-2 pb-[env(safe-area-inset-bottom,8px)] border-t border-border/50">
+```text
++---------------------------------------------------+
+| GEWICHTS-ZIEL                                     |
+|                                                   |
+|   -20kg ────────⚫───────────── +15kg             |
+|   85 kg → 78 kg  (-7 kg)                          |
++---------------------------------------------------+
+| MODUS                                             |
+|                                                   |
+|  [Rekomposition]  [Aufbau]                        |
+|   (Erhalt)        (Lean Bulk)                     |
++---------------------------------------------------+
+| PROTOKOLL-TEMPO                                   |
+|                                                   |
+|  [ Nachhaltig ]  [ Standard ]  [ Aggressiv ]     |
+|     12 Monate      6 Monate      4 Monate         |
+|                                                   |
+|   → Zieldatum: 27.07.2027                         |
++---------------------------------------------------+
+| ERFOLGSWAHRSCHEINLICHKEIT                         |
+|                                                   |
+|   ████████████████░░░░░░░░  78%                   |
+|   Ambitioniert aber machbar                       |
+|                                                   |
+|   = 0.27 kg/Woche, -290 kcal/Tag                  |
++---------------------------------------------------+
 ```
 
-**Datei:** `src/components/ares/AresChat.tsx` (Embedded Input)
+## Änderungen in Profile.tsx
 
-```jsx
-// Zeile 615 - Embedded Mode Input
-<div className="flex-none border-t border-border/30 bg-background/95 backdrop-blur-md px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+### States zu entfernen
+
+| State | Zeile | Grund |
+|-------|-------|-------|
+| `goalType` | 53 | Immer 'weight' (simplifiziert) |
+| `targetBodyFat` | 54 | KFA wird aus body_measurements abgeleitet |
+| `targetWeight` | 51 | Wird berechnet: `weight + weightDelta` |
+| `targetDate` | 52 | Wird berechnet aus `protocolTempo` |
+
+### Neue States
+
+```typescript
+const [weightDelta, setWeightDelta] = useState(0); // -20 bis +15
+const [muscleGoal, setMuscleGoal] = useState<'maintain' | 'build'>('maintain');
+const [protocolTempo, setProtocolTempo] = useState<'sustainable' | 'standard' | 'aggressive'>('standard');
 ```
 
-### Schritt 3: ChatLayout Safe Areas
+### Computed Values
 
-**Datei:** `src/components/layouts/ChatLayout.tsx`
+```typescript
+// Berechnung aus weightDelta
+const computedTargetWeight = useMemo(() => {
+  const currentW = parseFloat(weight) || 80;
+  return currentW + weightDelta;
+}, [weight, weightDelta]);
 
-```jsx
-// Zeile 31-41 - Footer Zone
-<div className="flex-none z-10 bg-background/95 backdrop-blur-md border-t border-border/30 pb-[env(safe-area-inset-bottom)]">
+// Berechnung aus protocolTempo
+const computedTargetDate = useMemo(() => {
+  const months = { sustainable: 12, standard: 6, aggressive: 4 };
+  return addMonths(new Date(), months[protocolTempo]);
+}, [protocolTempo]);
+
+// Goal ableiten aus weightDelta
+const computedGoal = useMemo(() => {
+  if (weightDelta < -1) return 'lose';
+  if (weightDelta > 1) return 'gain';
+  return 'maintain';
+}, [weightDelta]);
 ```
 
----
+## UI-Änderungen in Profile.tsx
 
-## Technische Details
+### Zu entfernender Code (Zeilen 850-1029)
 
-| Komponente | Änderung | Effekt |
-|------------|----------|--------|
-| ChatOverlay | `top-0` → `top-[5%]` | Sheet hat 95vh und passt zum y-Offset |
-| EnhancedChatInput | `pb-[env(safe-area-inset-bottom,8px)]` | Berücksichtigt iOS Home Indicator |
-| AresChat (embedded) | `pb-[max(12px,env(safe-area-inset-bottom))]` | Mindest-Padding + Safe Area |
-| ChatLayout | `pb-[env(safe-area-inset-bottom)]` | Fullscreen-Modus Safe Area |
+Die gesamte "Ziele" Card wird ersetzt durch:
 
----
+```tsx
+<GoalConfigurator
+  currentWeight={parseFloat(weight) || 80}
+  weightDelta={weightDelta}
+  setWeightDelta={setWeightDelta}
+  muscleGoal={muscleGoal}
+  setMuscleGoal={setMuscleGoal}
+  protocolTempo={protocolTempo}
+  setProtocolTempo={setProtocolTempo}
+  realismScore={realismScore}
+  tdee={tdee || 2000}
+/>
+
+{/* Water Goal bleibt separat */}
+<Card className="mt-4">
+  <CardContent className="pt-5">
+    <FluidGoalSlider value={fluidGoalMl} onChange={setFluidGoalMl} />
+  </CardContent>
+</Card>
+```
+
+## Database Save Logic
+
+In `performSave()` (Zeile 489):
+
+```typescript
+const profileData = {
+  // ... andere Felder
+  goal: computedGoal,                              // 'lose'|'maintain'|'gain'
+  target_weight: computedTargetWeight,             // berechnet
+  target_date: format(computedTargetDate, 'yyyy-MM-dd'),
+  goal_type: 'weight',                             // immer 'weight'
+  muscle_maintenance_priority: muscleGoal === 'maintain',
+  // NEU: Protocol Tempo speichern
+  protocol_tempo: protocolTempo,                   // 'sustainable'|'standard'|'aggressive'
+};
+```
+
+## Realismus Calculator Update
+
+### `src/utils/realismCalculator.ts`
+
+Erweiterung um Tempo-Awareness:
+
+```typescript
+export interface TransformationGoals {
+  currentWeight: number;
+  targetWeight: number;
+  currentBodyFat?: number;
+  targetBodyFat?: number;
+  targetDate: Date;
+  protocolTempo?: 'sustainable' | 'standard' | 'aggressive'; // NEU
+}
+
+// Tempo-spezifische Labels
+export function getTempoAwareLabel(score: number, tempo: string): string {
+  if (tempo === 'aggressive' && score < 60) {
+    return "Aggressives Tempo - Hohes Risiko, erfordert strikte Disziplin";
+  }
+  // ... bestehende Logik
+}
+```
+
+## Dateien
+
+| Datei | Aktion |
+|-------|--------|
+| `src/components/profile/GoalConfigurator.tsx` | NEU erstellen |
+| `src/pages/Profile.tsx` | States ändern, UI ersetzen |
+| `src/utils/realismCalculator.ts` | Tempo-Parameter hinzufügen |
+
+## Migrations-Logik (beim Laden)
+
+Für bestehende Profile mit `target_weight` und `target_date`:
+
+```typescript
+// In loadProfile():
+if (data.target_weight && data.weight) {
+  setWeightDelta(data.target_weight - data.weight);
+}
+if (data.target_date) {
+  // Ermittle Tempo aus Datum
+  const weeksToTarget = differenceInWeeks(new Date(data.target_date), new Date());
+  if (weeksToTarget >= 48) setProtocolTempo('sustainable');
+  else if (weeksToTarget >= 20) setProtocolTempo('standard');
+  else setProtocolTempo('aggressive');
+}
+```
 
 ## Erwartetes Ergebnis
 
 | Vorher | Nachher |
 |--------|---------|
-| Buttons am unteren Rand abgeschnitten | Buttons vollständig sichtbar |
-| iOS Home Indicator überdeckt Input | Respektiert Safe Area Insets |
-| Chat kaum bedienbar auf Mobile | Native-feeling Touch-Targets |
+| 5 separate Inputs | 3 intuitive Controls |
+| Manuelle Datumsauswahl | Protokoll-Tempo wählt Timeline |
+| Keine Muskel-Option | Klarer Maintain/Build Toggle |
+| Abstrakte Datumswahl | "Aggressiv/Standard/Nachhaltig" |
+| ~180 Zeilen Goal-Code | ~40 Zeilen + Komponente |
