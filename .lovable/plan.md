@@ -1,264 +1,307 @@
 
-# Implementation: Event-Driven Card Completion System
+# Schritt 2: Neue Kartentypen implementieren
 
-## Uebersicht
+## Zusammenfassung
 
-Dieses System implementiert das `ares-card-completed` CustomEvent-Pattern, damit Karten automatisch aus dem ActionCardStack verschwinden, sobald der User die zugehoerige Aktion (Journal schreiben, Schlaf loggen, etc.) abschliesst.
+Wir fuegen 4 neue kontextbasierte ActionCards hinzu:
+- **Sleep Log** (Morgens: "Wie hast du geschlafen?")
+- **Training** (Mo/Di/Do/Fr: "Training anstehend")
+- **Weight** (Woechentlich: "Weekly Weigh-In")
+- **Nutrition** (Nach 4h ohne Mahlzeit: "Essens-Pause?")
+
+Das Event-System aus Schritt 1 sorgt automatisch dafuer, dass die Karten verschwinden wenn die zugehoerigen Logger speichern.
 
 ---
 
-## Architektur-Flow
+## Datei-Aenderungen
+
+### 1. src/hooks/useActionCards.ts
+
+**Neue Imports (Zeile 17):**
+```typescript
+import { Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell, Sparkles, Syringe, Scale, Utensils } from 'lucide-react';
+```
+
+**Neuer Hook Import (nach Zeile 16):**
+```typescript
+import { useTodaysMeals } from './useTodaysMeals';
+```
+
+**Type erweitern (Zeile 28):**
+```typescript
+type: 'insight' | 'epiphany' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein' | 'peptide' | 'training' | 'weight' | 'sleep_log' | 'nutrition';
+```
+
+**Neuer Hook im Funktionskoerper (nach Zeile 48):**
+```typescript
+const { meals } = useTodaysMeals();
+```
+
+**Neue Card-Logik (vor "Sort by priority" Zeile 228):**
+
+#### Sleep Log Card
+```typescript
+// Sleep Log - Morning routine if no sleep logged today
+const todayStr = new Date().toISOString().slice(0, 10);
+const sleepLoggedToday = dailyMetrics?.sleep?.lastHours != null && 
+  dailyMetrics?.sleep?.lastQuality != null;
+const isMorning = hour >= 6 && hour < 11;
+
+if (isMorning && !sleepLoggedToday && !plusData.sleepLoggedToday) {
+  result.push({
+    id: 'sleep_log',
+    type: 'sleep_log',
+    title: 'Wie hast du geschlafen?',
+    subtitle: 'Logge deine Schlafqualität für bessere Insights.',
+    gradient: 'from-indigo-500 to-blue-600',
+    icon: Moon,
+    actionContext: 'log_sleep',
+    priority: 4,
+    xp: 30,
+    canSwipeComplete: false
+  });
+}
+```
+
+#### Training Card
+```typescript
+// Training Card - Training day without workout
+const dayOfWeek = new Date().getDay();
+const isTrainingDay = [1, 2, 4, 5].includes(dayOfWeek); // Mo, Di, Do, Fr
+const workoutLogged = dailyMetrics?.training?.todayType != null || plusData.workoutLoggedToday;
+
+if (isTrainingDay && !workoutLogged && hour >= 8 && hour < 22) {
+  const dayNames: Record<number, string> = { 1: 'Montag', 2: 'Dienstag', 4: 'Donnerstag', 5: 'Freitag' };
+  result.push({
+    id: 'training',
+    type: 'training',
+    title: 'Training anstehend',
+    subtitle: `${dayNames[dayOfWeek]} ist Trainingstag. Bereit?`,
+    gradient: 'from-emerald-500 to-teal-600',
+    icon: Dumbbell,
+    actionContext: 'log_training',
+    priority: 5,
+    xp: 60,
+    canSwipeComplete: false
+  });
+}
+```
+
+#### Weight Card
+```typescript
+// Weight Card - Weekly weigh-in reminder
+const lastWeightDate = dailyMetrics?.weight?.date;
+const daysSinceLastWeight = lastWeightDate 
+  ? Math.floor((Date.now() - new Date(lastWeightDate).getTime()) / (1000 * 60 * 60 * 24))
+  : 999;
+
+if (daysSinceLastWeight >= 7 && hour >= 6 && hour < 12) {
+  result.push({
+    id: 'weight',
+    type: 'weight',
+    title: 'Weekly Weigh-In',
+    subtitle: lastWeightDate 
+      ? `Letzte Messung vor ${daysSinceLastWeight} Tagen.`
+      : 'Tracke dein Gewicht für den Wochentrend.',
+    gradient: 'from-violet-500 to-purple-600',
+    icon: Scale,
+    actionContext: 'log_weight',
+    priority: 6,
+    xp: 20,
+    canSwipeComplete: false
+  });
+}
+```
+
+#### Nutrition Card
+```typescript
+// Nutrition Card - Meal reminder after 4+ hours
+const lastMealTime = meals.length > 0 
+  ? new Date(meals[meals.length - 1].ts).getTime() 
+  : null;
+const hoursSinceLastMeal = lastMealTime 
+  ? (Date.now() - lastMealTime) / (1000 * 60 * 60) 
+  : null;
+const needsMealReminder = (hoursSinceLastMeal !== null && hoursSinceLastMeal > 4) || 
+                          (lastMealTime === null && hour >= 12);
+
+if (needsMealReminder && hour >= 8 && hour < 22) {
+  result.push({
+    id: 'nutrition',
+    type: 'nutrition',
+    title: 'Essens-Pause?',
+    subtitle: hoursSinceLastMeal 
+      ? `${Math.floor(hoursSinceLastMeal)}h seit der letzten Mahlzeit.`
+      : 'Zeit für den ersten Fuel-Up.',
+    gradient: 'from-orange-500 to-red-500',
+    icon: Utensils,
+    actionContext: 'log_nutrition',
+    priority: 8,
+    xp: 50,
+    canSwipeComplete: false
+  });
+}
+```
+
+**Dependencies Update (Zeile 230):**
+```typescript
+}, [isInitialLoading, plusData, dailyMetrics, profileData, groupedSupplements, totalScheduled, totalTaken, protocols, isPeptideTakenToday, meals]);
+```
+
+---
+
+### 2. src/components/home/SmartFocusCard.tsx
+
+**Neue Imports (Zeile 10-11):**
+```typescript
+import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe, PenTool, Scale, Utensils } from 'lucide-react';
+import { openJournal, openSleep, openTraining, openWeight, openMeal } from '@/components/quick/quickAddBus';
+```
+
+**SmartTask Type erweitern (Zeile 19):**
+```typescript
+type: 'hydration' | 'supplement' | 'supplements' | 'peptide' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix' | 'training' | 'weight' | 'sleep_log' | 'nutrition';
+```
+
+**Neue SmartAction Bloecke (nach journal Block, vor DEFAULT):**
+
+```typescript
+// SLEEP LOG: Open Sleep Logger
+if (task.type === 'sleep_log') {
+  return (
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        openSleep();
+      }}
+      className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+    >
+      <Moon size={16} />
+      <span>Schlaf tracken</span>
+      <ChevronRight size={14} className="opacity-60" />
+    </button>
+  );
+}
+
+// TRAINING: Open Training Logger
+if (task.type === 'training') {
+  return (
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        openTraining();
+      }}
+      className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+    >
+      <Dumbbell size={16} />
+      <span>Workout starten</span>
+      <ChevronRight size={14} className="opacity-60" />
+    </button>
+  );
+}
+
+// WEIGHT: Open Weight Logger
+if (task.type === 'weight') {
+  return (
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        openWeight();
+      }}
+      className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+    >
+      <Scale size={16} />
+      <span>Gewicht loggen</span>
+      <ChevronRight size={14} className="opacity-60" />
+    </button>
+  );
+}
+
+// NUTRITION: Open Meal Input
+if (task.type === 'nutrition') {
+  return (
+    <button 
+      onClick={(e) => {
+        e.stopPropagation();
+        openMeal();
+      }}
+      className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+    >
+      <Utensils size={16} />
+      <span>Mahlzeit loggen</span>
+      <ChevronRight size={14} className="opacity-60" />
+    </button>
+  );
+}
+```
+
+---
+
+### 3. src/components/home/ActionCardStack.tsx
+
+**XP Map erweitern (Zeile 84-91):**
+```typescript
+const xpMap: Record<string, number> = {
+  journal: 40,
+  sleep: 30,
+  sleep_log: 30,  // NEU
+  weight: 20,
+  training: 60,
+  profile: 50,
+  epiphany: 25,
+  nutrition: 50,  // NEU
+};
+```
+
+---
+
+## Technische Details
+
+### Prioritaeten-Reihenfolge (Final)
+
+| Priority | Card | Trigger |
+|----------|------|---------|
+| 1 | sleep_fix | Schlaf < 6h geloggt |
+| 2 | profile | Profil unvollstaendig |
+| 3 | supplement | Supps pending |
+| 3 | peptide | Peptide pending |
+| 4 | sleep_log | Morgens (6-11h) ohne Sleep-Log |
+| 4 | hydration | < 1L nach 12:00 |
+| 5 | training | Mo/Di/Do/Fr ohne Workout |
+| 5 | journal | Abends (18-23h) |
+| 6 | weight | > 7 Tage ohne Messung |
+| 8 | nutrition | > 4h ohne Mahlzeit |
+| 10 | epiphany | Immer (letzte Karte) |
+
+### Event-Flow nach Implementation
 
 ```text
-User klickt "Journal schreiben"
+User sieht "Training anstehend" Card
            |
            v
-   SmartFocusCard -> openJournal()
+   Klickt "Workout starten"
            |
            v
-   QuickLogSheet oeffnet mit Journal Tab
+   openTraining() -> QuickLogSheet oeffnet
            |
            v
-   User speichert -> handleSave()
+   User loggt Workout -> Save
            |
            v
-   trackEvent() erfolgreich
+   TrainingLogger dispatcht 'ares-card-completed'
            |
            v
-   dispatchEvent('ares-card-completed', { cardType: 'journal' })
-           |
-           v
-   ActionCardStack empfaengt Event
-           |
-           v
-   setCards(prev => prev.filter(c => c.type !== 'journal'))
-           |
-           v
-   Card Exit-Animation + XP Award
+   ActionCardStack entfernt Card + 60 XP
 ```
 
 ---
 
-## Aenderungen im Detail
+## Erwartetes Verhalten
 
-### 1. ActionCardStack.tsx - Zentraler Event-Listener
+1. **Morgens 07:00:** "Wie hast du geschlafen?" erscheint -> Klick -> SleepLogger -> Speichern -> Card weg + 30 XP
 
-**Wo:** Nach Zeile 63 (nach dem confetti useEffect)
+2. **Montag 10:00:** "Training anstehend" erscheint -> Klick -> TrainingLogger -> Speichern -> Card weg + 60 XP
 
-**Was:** Neuer useEffect der auf `ares-card-completed` hoert und:
-- Die passende Card aus dem State filtert
-- `dismissCard()` aufruft fuer Session-Persistenz
-- XP via `ares-xp-awarded` vergibt
+3. **Sonntag 08:00 (10 Tage ohne Wiegen):** "Weekly Weigh-In" erscheint -> Klick -> WeightLogger -> Speichern -> Card weg + 20 XP
 
-```typescript
-// Event-driven card completion listener
-useEffect(() => {
-  const handleCardCompletion = (e: CustomEvent<{ cardType: string; cardId?: string }>) => {
-    const { cardType, cardId } = e.detail;
-    
-    // Find matching card
-    const matchingCard = cards.find(c => 
-      cardId ? c.id === cardId : c.type === cardType
-    );
-    
-    if (!matchingCard) return;
-    
-    // Remove card from stack
-    setCards(prev => prev.filter(c => c.id !== matchingCard.id));
-    
-    // Persist dismissal for session
-    dismissCard(matchingCard.id, false);
-    
-    // Award XP based on card type
-    const xpMap: Record<string, number> = {
-      journal: 40,
-      sleep: 30,
-      weight: 20,
-      training: 60,
-      profile: 50,
-      epiphany: 25,
-    };
-    
-    window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
-      detail: { amount: xpMap[cardType] || 20, reason: `${cardType} completed` }
-    }));
-  };
-  
-  window.addEventListener('ares-card-completed', handleCardCompletion as EventListener);
-  return () => window.removeEventListener('ares-card-completed', handleCardCompletion as EventListener);
-}, [cards, dismissCard]);
-```
-
----
-
-### 2. JournalLogger.tsx - Dispatch nach Save
-
-**Datei:** `src/components/home/loggers/JournalLogger.tsx`
-**Zeile:** 129-131 (im `if (success)` Block)
-
-**Vorher:**
-```typescript
-if (success) {
-  toast.success('Tagebuch gespeichert ✨');
-  onClose();
-}
-```
-
-**Nachher:**
-```typescript
-if (success) {
-  toast.success('Tagebuch gespeichert ✨');
-  window.dispatchEvent(new CustomEvent('ares-card-completed', { 
-    detail: { cardType: 'journal' }
-  }));
-  onClose();
-}
-```
-
----
-
-### 3. SleepLogger.tsx - Dispatch nach Save
-
-**Datei:** `src/components/home/loggers/SleepLogger.tsx`
-**Zeile:** 102-105 (im `if (success)` Block)
-
-**Vorher:**
-```typescript
-if (success) {
-  onClose();
-}
-```
-
-**Nachher:**
-```typescript
-if (success) {
-  window.dispatchEvent(new CustomEvent('ares-card-completed', { 
-    detail: { cardType: 'sleep' }
-  }));
-  onClose();
-}
-```
-
----
-
-### 4. WeightLogger.tsx - Dispatch nach Save
-
-**Datei:** `src/components/home/loggers/WeightLogger.tsx`
-**Zeile:** 100-103 (im `if (success)` Block)
-
-**Vorher:**
-```typescript
-if (success) {
-  onClose();
-}
-```
-
-**Nachher:**
-```typescript
-if (success) {
-  window.dispatchEvent(new CustomEvent('ares-card-completed', { 
-    detail: { cardType: 'weight' }
-  }));
-  onClose();
-}
-```
-
----
-
-### 5. TrainingLogger.tsx - Dispatch nach Save
-
-**Datei:** `src/components/home/loggers/TrainingLogger.tsx`
-**Zeile:** 224 (im `if (success)` Block)
-
-**Vorher:**
-```typescript
-if (success) onClose();
-```
-
-**Nachher:**
-```typescript
-if (success) {
-  window.dispatchEvent(new CustomEvent('ares-card-completed', { 
-    detail: { cardType: 'training' }
-  }));
-  onClose();
-}
-```
-
----
-
-### 6. EpiphanyCard.tsx - Dispatch bei Chat-Oeffnung
-
-**Datei:** `src/components/home/EpiphanyCard.tsx`
-**Zeile:** 64-68 (handleAskMore Funktion)
-
-**Vorher:**
-```typescript
-const handleAskMore = () => {
-  if (insight) {
-    onOpenChat(`Du hast mir folgende Erkenntnis gezeigt: "${insight}". ...`);
-  }
-};
-```
-
-**Nachher:**
-```typescript
-const handleAskMore = () => {
-  if (insight) {
-    window.dispatchEvent(new CustomEvent('ares-card-completed', { 
-      detail: { cardType: 'epiphany' }
-    }));
-    onOpenChat(`Du hast mir folgende Erkenntnis gezeigt: "${insight}". ...`);
-  }
-};
-```
-
----
-
-### 7. Profile.tsx - Dispatch nach Profil-Save
-
-**Datei:** `src/pages/Profile.tsx`
-**Zeile:** 631 (nach toast.success im handleSave)
-
-**Hinzufuegen nach Zeile 631:**
-```typescript
-// Notify ActionCardStack that profile was completed
-window.dispatchEvent(new CustomEvent('ares-card-completed', { 
-  detail: { cardType: 'profile' }
-}));
-```
-
----
-
-## Zusammenfassung aller Aenderungen
-
-| Datei | Art | Beschreibung |
-|-------|-----|--------------|
-| `ActionCardStack.tsx` | Neuer useEffect | Event-Listener + XP Map + Dismiss-Logik |
-| `JournalLogger.tsx` | 3 Zeilen | dispatchEvent nach success |
-| `SleepLogger.tsx` | 3 Zeilen | dispatchEvent nach success |
-| `WeightLogger.tsx` | 3 Zeilen | dispatchEvent nach success |
-| `TrainingLogger.tsx` | 4 Zeilen | dispatchEvent nach success |
-| `EpiphanyCard.tsx` | 3 Zeilen | dispatchEvent in handleAskMore |
-| `Profile.tsx` | 3 Zeilen | dispatchEvent nach toast.success |
-
----
-
-## Erwartetes Verhalten nach Implementation
-
-1. **Journal Card:** User klickt "Journal schreiben" -> Sheet oeffnet -> Eintrag speichern -> Card verschwindet sofort + 40 XP Toast
-
-2. **Epiphany Card:** User klickt "Was bedeutet das?" -> Chat oeffnet -> Card verschwindet sofort + 25 XP
-
-3. **Sleep/Weight/Training:** Logger speichern -> Card verschwindet + jeweilige XP
-
-4. **Profile Card:** User speichert vollstaendiges Profil -> Card verschwindet + 50 XP
-
----
-
-## Naechster Schritt (Teil 2)
-
-Nach erfolgreicher Implementation dieses Frameworks:
-- Neue Card-Typen hinzufuegen (Training, Weight, Sleep_log, Nutrition)
-- Trigger-Bedingungen in `useActionCards.ts` erweitern
-- SmartActions fuer die neuen Typen definieren
+4. **14:00 (5h seit letzter Mahlzeit):** "Essens-Pause?" erscheint -> Klick -> MealInput -> Speichern -> Card weg + 50 XP
