@@ -2601,7 +2601,25 @@ Deno.serve(async (req) => {
       return {} as UserMoodContext;
     });
 
-    // Phase 2: Load user's selected persona with context resolution
+    // Phase 2: Load conversation history FIRST (needed for persona context)
+    // Schema uses: message_content, message_role, coach_personality (NOT message, response, coach_id)
+    const { data: rawConversations, error: convLoadError } = await supaSvc
+      .from('coach_conversations')
+      .select('message_content, message_role, created_at')
+      .eq('user_id', user.id)
+      .eq('coach_personality', coachId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    
+    if (convLoadError) {
+      console.warn('[ARES] Failed to load conversations:', convLoadError.message);
+    }
+    
+    // Convert raw user/assistant rows to paired {message, response} format
+    const conversationHistory = pairConversationMessages(rawConversations || []);
+    console.log('[ARES] Loaded ' + (rawConversations?.length || 0) + ' raw messages -> ' + conversationHistory.length + ' conversation pairs');
+
+    // Phase 3: Load user's selected persona with context resolution
     // Extract last bot message for Semantic Router context
     const lastBotMessage = rawConversations?.find(m => m.message_role === 'assistant')?.message_content || null;
     
@@ -2625,24 +2643,6 @@ Deno.serve(async (req) => {
     } else {
       console.warn('[PERSONA] No persona loaded for user ' + user.id + ', using default');
     }
-
-    // Load conversation history (last 20 raw messages = ~10 pairs) for context
-    // Schema uses: message_content, message_role, coach_personality (NOT message, response, coach_id)
-    const { data: rawConversations, error: convLoadError } = await supaSvc
-      .from('coach_conversations')
-      .select('message_content, message_role, created_at')
-      .eq('user_id', user.id)
-      .eq('coach_personality', coachId)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    
-    if (convLoadError) {
-      console.warn('[ARES] Failed to load conversations:', convLoadError.message);
-    }
-    
-    // Convert raw user/assistant rows to paired {message, response} format
-    const conversationHistory = pairConversationMessages(rawConversations || []);
-    console.log('[ARES] Loaded ' + (rawConversations?.length || 0) + ' raw messages -> ' + conversationHistory.length + ' conversation pairs');
 
     // Phase 4: Load user insights and patterns from memory system
     let userInsights: UserInsight[] = [];
