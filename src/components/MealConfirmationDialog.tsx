@@ -25,7 +25,8 @@ import { de } from "date-fns/locale";
 import { CalendarIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
-import { triggerDataRefresh } from "@/hooks/useDataRefresh";
+import { useQueryClient } from '@tanstack/react-query';
+import { invalidateCategory } from '@/constants/queryKeys';
 import { secureLogger } from "@/utils/secureLogger";
 
 interface MealConfirmationDialogProps {
@@ -60,6 +61,7 @@ export const MealConfirmationDialog = ({
   const { user } = useAuth();
   const { t } = useTranslation();
   const { evaluateMeal } = usePointsSystem();
+  const queryClient = useQueryClient();
 
   // State for editable nutritional values
   const [editableValues, setEditableValues] = useState({
@@ -312,8 +314,8 @@ export const MealConfirmationDialog = ({
         }
       }
 
-      secureLogger.debug('Triggering data refresh');
-      triggerDataRefresh();
+      secureLogger.debug('Invalidating nutrition cache for immediate UI update');
+      invalidateCategory(queryClient, 'nutrition');
       
       secureLogger.debug('Showing success message');
       const successMessage = uploadedImages.length > 0 

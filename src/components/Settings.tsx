@@ -15,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Settings as SettingsIcon, Target, Save, Moon, Sun, Clock, Globe, EyeOff, Droplets } from "lucide-react";
 import { getUserTimezone, setUserTimezone, TIMEZONE_OPTIONS } from "@/utils/dateHelpers";
 import { FluidGoalSlider } from "@/components/ui/fluid-goal-slider";
+import { useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface DailyGoal {
   calories: number;
@@ -38,6 +40,7 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const { autoSettings, saveSettings, toggleTheme, getThemeStatus, isWithinDarkModeHours } = useAutoDarkMode();
+  const queryClient = useQueryClient();
 
   // Load preferences
   useEffect(() => {
@@ -123,6 +126,9 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
         .eq('user_id', user.id);
 
       if (profileError) throw profileError;
+
+      // Invalidate cache for immediate UI update across all widgets
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
 
       // Update local state
       onGoalChange({
