@@ -1,59 +1,52 @@
 
+# Refactoring: Profil-Sektion Optimierung
 
-# Datenbank-Migration: Macro Strategy CHECK CONSTRAINT aktualisieren
+## Zusammenfassung
 
-## Problem (bestätigt durch DB-Logs)
+Die Profilseite hat zwei Probleme:
+1. **Redundante "Tägliche Makros" Sektion** - zeigt exakt dieselben Werte wie bereits in "Protokoll-Intensität" angezeigt
+2. **Falsche Reihenfolge** - "Intelligente Kalorien-Analyse" ist nicht logisch platziert
 
-Die Fehlermeldung aus den Postgres-Logs:
-```
-new row for relation "profiles" violates check constraint "macro_strategy_check"
-```
+## Änderungen
 
-Die neuen Werte `rookie`, `warrior`, `elite` werden von der Datenbank abgelehnt.
-
----
-
-## Lösung
-
-### Schritt 1: CHECK CONSTRAINT aktualisieren
-
-SQL-Migration die ausgeführt wird:
-
-```sql
--- Alten Constraint entfernen
-ALTER TABLE profiles DROP CONSTRAINT IF EXISTS macro_strategy_check;
-
--- Neuen Constraint mit allen erlaubten Werten erstellen
-ALTER TABLE profiles ADD CONSTRAINT macro_strategy_check 
-CHECK (macro_strategy IN (
-  'standard', 'high_protein', 'balanced', 'low_carb', 'athletic', 'custom',
-  'rookie', 'warrior', 'elite'
-));
+### Aktuelle Reihenfolge:
+```text
+1. Körperdaten
+2. Ziele
+3. Protokoll-Intensität (enthält Makro-Anzeige)
+4. Medical Screening
+5. Tägliche Makros ← REDUNDANT (entfernen)
+6. Intelligente Kalorien-Analyse ← FALSCH PLATZIERT
+7. Ziel-Analyse
 ```
 
-### Schritt 2: Bestehende Legacy-Daten migrieren
-
-Damit alle User konsistent die neuen Werte haben:
-
-```sql
--- high_protein → warrior (beide sind 2.0g/kg)
-UPDATE profiles SET macro_strategy = 'warrior' WHERE macro_strategy = 'high_protein';
-
--- low_carb → elite (aggressiver Ansatz)  
-UPDATE profiles SET macro_strategy = 'elite' WHERE macro_strategy = 'low_carb';
-
--- Restliche Legacy-Werte → warrior (sicherster Default)
-UPDATE profiles SET macro_strategy = 'warrior' 
-WHERE macro_strategy IN ('standard', 'balanced', 'athletic', 'custom');
+### Neue Reihenfolge:
+```text
+1. Körperdaten
+2. Ziele
+3. Intelligente Kalorien-Analyse ← HIERHER VERSCHIEBEN
+4. Protokoll-Intensität (enthält Makro-Anzeige)
+5. Medical Screening
+6. Ziel-Analyse
 ```
 
----
+## Technische Umsetzung
+
+### Datei: `src/pages/Profile.tsx`
+
+| Zeilen | Änderung |
+|--------|----------|
+| 1144-1174 | **Löschen**: Komplette "Tägliche Makros" Sektion (ca. 30 Zeilen) |
+| 1176-1236 | **Verschieben**: "Intelligente Kalorien-Analyse" Block direkt nach "Ziele" (nach Zeile 1029) |
+
+### Begründung:
+- **Redundanz entfernen**: "Tägliche Makros" zeigt `calculateMacroGrams()` - exakt dieselben Werte wie `currentMacros` in der Protokoll-Intensität Sektion
+- **Logischer Flow**: Intelligente Kalorien-Analyse (BMR, TDEE, Zielkalorien) → Protokoll-Intensität (Makros basierend auf Kalorien)
 
 ## Erwartetes Ergebnis
 
 | Vorher | Nachher |
 |--------|---------|
-| ELITE auswählen → Save schlägt fehl | ELITE auswählen → Save erfolgreich |
-| Zurückkehren → WARRIOR (alter Wert) | Zurückkehren → ELITE (gespeicherter Wert) |
-| NutritionWidget: "⚔️ 2.0g/kg" | NutritionWidget: "🏆 2.5g/kg" |
-
+| 2 Makro-Anzeigen (redundant) | 1 Makro-Anzeige (in Protokoll-Intensität) |
+| Kalorien-Analyse nach Makros | Kalorien-Analyse vor Protokoll-Intensität |
+| User sieht gleiche Daten 2x | Klarer, logischer Flow |
