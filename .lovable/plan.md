@@ -1,109 +1,212 @@
 
 
-# ChatOverlay Swipe-to-Dismiss Fix
+# MealInput Modal: Z-Index Fix + Favoriten-Feature
 
-## Problem
+## Problem-Analyse
 
-Das ARES ChatOverlay (`ChatOverlay.tsx`) unterstuetzt im Gegensatz zu allen anderen Layer 2 Sheets (Nutrition, Hydration, Body, Training, Peptides) **kein Swipe-to-Dismiss**.
+### Z-Index Abschneidung
+Die SmartChips in Zeile 511 haben `overflow-x-auto` Container:
+```tsx
+<div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar pb-1">
+```
+Das `overflow-x-auto` schneidet Elemente ab die ueber den Container hinausragen (z.B. Fokus-Ring, Schatten, oder ein Stern-Badge).
 
-Der User muss den Chevron-Button druecken oder auf das Backdrop klicken, statt einfach am Handle nach unten zu ziehen.
+### Favoriten
+Es gibt aktuell **keine Favoriten-Tabelle** in der Datenbank. Das `useFrequentMeals` Hook holt nur die haeufigsten Mahlzeiten basierend auf Frequenz - aber der User kann sie nicht manuell als Favorit markieren.
 
 ---
 
-## Ursache
+## Loesung: Zwei-Schichten Design
 
-Alle Layer 2 Sheets verwenden das Framer Motion `drag` Feature:
+### Konzept
 
-```tsx
-// NutritionDaySheet (korrekt)
-<motion.div
-  drag="y"
-  dragConstraints={{ top: 0, bottom: 0 }}
-  dragElastic={0.2}
-  onDragEnd={handleDragEnd}
->
+Wir trennen:
+1. **Favoriten (Gold-Sterne)** - Max 3, vom User manuell gewaehlt, immer sichtbar
+2. **Vorschlaege (Grau)** - Automatisch basierend auf Frequenz + Tageszeit
+
+```text
++----------------------------------------------------------+
+| [★ Proteinshake 30g] [★ Skyr Bowl] [★ Haferflocken]      |  <- Favoriten (gelb)
+| [Frosta Curry...] [2 Haenchenschenkel] [Reis mit Brok...]|  <- Vorschlaege (grau)
++----------------------------------------------------------+
 ```
 
-Das ChatOverlay hat dieses Feature nicht:
-
-```tsx
-// ChatOverlay (aktuell - fehlt)
-<motion.div 
-  initial={{ y: "100%" }}
-  animate={{ y: "5%" }}
-  exit={{ y: "100%" }}
-  // ← Kein drag="y"
-  // ← Kein onDragEnd
->
-```
+Der gelbe Stern soll **ueber** dem blauen Fokus-Ring liegen.
 
 ---
 
-## Loesung
+## Technische Implementierung
 
-### Datei: `src/components/home/ChatOverlay.tsx`
+### Datei 1: Neue DB-Tabelle `meal_favorites`
 
-**Aenderung 1: Drag Handler hinzufuegen (vor dem return)**
-
-```tsx
-// Handle drag-to-dismiss
-const handleDragEnd = useCallback(
-  (_: any, info: { offset: { y: number }; velocity: { y: number } }) => {
-    // Close if dragged down >100px or with high velocity
-    if (info.offset.y > 100 || info.velocity.y > 500) {
-      handleClose();
-    }
-  },
-  [handleClose]
+```sql
+CREATE TABLE public.meal_favorites (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  meal_text text NOT NULL,
+  position smallint DEFAULT 1,
+  created_at timestamptz DEFAULT now() NOT NULL,
+  UNIQUE(user_id, meal_text)
 );
+
+-- Max 3 Favoriten pro User via Trigger oder App-Logic
+ALTER TABLE meal_favorites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own favorites"
+  ON meal_favorites FOR ALL USING (auth.uid() = user_id);
 ```
 
-**Aenderung 2: Drag Props auf Sheet-Container (Zeile 230-236)**
+### Datei 2: Neuer Hook `src/hooks/useMealFavorites.ts`
 
-Vorher:
-```tsx
-<motion.div 
-  initial={{ y: "100%" }}
-  animate={{ y: "5%" }}
-  exit={{ y: "100%" }}
-  transition={{ type: "spring", damping: 28, stiffness: 300 }}
-  className="fixed inset-x-0 bottom-0 top-0 z-[51] ..."
->
+```typescript
+export function useMealFavorites(userId?: string) {
+  // Query: SELECT meal_text FROM meal_favorites WHERE user_id = $1 ORDER BY position LIMIT 3
+  // Mutation: toggle(mealText) - INSERT or DELETE
+  // Max 3 enforced: if count >= 3 and adding, return error/toast
+  
+  return {
+    favorites: string[],           // Max 3 meal texts
+    isFavorite: (text: string) => boolean,
+    toggleFavorite: (text: string) => void,
+    isLoading: boolean
+  }
+}
 ```
 
-Nachher:
+### Datei 3: Neue SmartChip Variante `favorite`
+
+In `src/components/ui/smart-chip.tsx`:
+
+```typescript
+favorite: [
+  "bg-amber-100 hover:bg-amber-200 text-amber-700",
+  "border-amber-300 hover:border-amber-400",
+  "dark:bg-amber-900/50 dark:hover:bg-amber-900/70",
+  "dark:text-amber-300 dark:border-amber-700"
+]
+```
+
+Neues Prop: `starBadge?: boolean` - Zeigt goldenen Stern ueber dem Chip
+
+### Datei 4: Update `AresHome.tsx` MealInput Sheet
+
 ```tsx
-<motion.div 
-  initial={{ y: "100%" }}
-  animate={{ y: "5%" }}
-  exit={{ y: "100%" }}
-  transition={{ type: "spring", damping: 28, stiffness: 300 }}
-  drag="y"
-  dragConstraints={{ top: 0, bottom: 0 }}
-  dragElastic={0.2}
-  onDragEnd={handleDragEnd}
-  className="fixed inset-x-0 bottom-0 top-0 z-[51] ..."
->
+// Zeile ~509-523 ersetzen mit:
+
+{/* Container mit overflow-visible fuer Sterne */}
+<div className="relative overflow-visible">
+  {/* Favoriten-Reihe (max 3) */}
+  {favorites.length > 0 && (
+    <div className="flex gap-2 mb-2 relative z-20">
+      {favorites.map((meal, index) => (
+        <SmartChip
+          key={`fav-${index}`}
+          variant="favorite"
+          size="sm"
+          onClick={() => handleMealChipClick(meal)}
+          onLongPress={() => toggleFavorite(meal)} // Long-press to unfavorite
+          icon={<Star className="w-3 h-3 fill-amber-400 text-amber-500" />}
+        >
+          {meal}
+        </SmartChip>
+      ))}
+    </div>
+  )}
+  
+  {/* Vorschlaege-Reihe (scrollbar) */}
+  {getCurrentMealSuggestions().filter(m => !isFavorite(m)).length > 0 && (
+    <div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar pb-1 relative z-10">
+      {getCurrentMealSuggestions()
+        .filter(m => !isFavorite(m))
+        .map((meal, index) => (
+          <div key={`sug-${index}`} className="relative">
+            <SmartChip
+              variant="secondary"
+              size="sm"
+              onClick={() => handleMealChipClick(meal)}
+              onLongPress={() => toggleFavorite(meal)} // Long-press to favorite
+            >
+              {meal}
+            </SmartChip>
+          </div>
+        ))}
+    </div>
+  )}
+</div>
 ```
 
 ---
 
-## Technische Details
+## Z-Index Stack
 
-| Parameter | Wert | Bedeutung |
-|-----------|------|-----------|
-| `drag="y"` | Nur vertikal | Verhindert horizontales Drag |
-| `dragConstraints` | `{ top: 0, bottom: 0 }` | Sheet kann nicht ueber Ursprung hinaus gezogen werden |
-| `dragElastic` | `0.2` | Leichter "Gummi"-Effekt fuer natuerliches Gefuehl |
-| `onDragEnd` Threshold | `>100px` oder `velocity >500` | Bewaehrte Werte aus anderen Sheets |
+| Element | Z-Index | Beschreibung |
+|---------|---------|--------------|
+| Goldener Stern Badge | z-30 | Ueber allem |
+| Favoriten-Row | z-20 | Ueber Vorschlaegen |
+| Vorschlaege-Row | z-10 | Basis |
+| Focus Ring (blue) | z-0 | Standard |
 
 ---
 
-## Ergebnis
+## Interaktions-Flow
 
-Nach der Aenderung:
-- User kann am Handle (oder ueberall auf dem Sheet) nach unten ziehen
-- Bei genuegend Distanz/Geschwindigkeit schliesst sich das Overlay automatisch
-- Konsistentes Verhalten mit allen anderen Layer 2 Sheets
-- Natuerliche iOS/Android-like UX
+### Favorit hinzufuegen
+1. User sieht Vorschlag "Proteinshake 30g"
+2. Long-Press (oder kleines Stern-Icon antippen)
+3. Wenn < 3 Favoriten: Chip wandert nach oben, wird gold
+4. Wenn bereits 3: Toast "Maximal 3 Favoriten - entferne zuerst einen"
+
+### Favorit entfernen
+1. User long-pressed auf goldenen Favoriten-Chip
+2. Chip verschwindet aus Favoriten
+3. Erscheint wieder in Vorschlaegen (wenn haeufig genug)
+
+### Chip klicken
+1. Fuellt Textfeld mit Mahlzeit-Text
+2. Fokus auf Textarea
+
+---
+
+## Dateien-Uebersicht
+
+| Datei | Aktion | Beschreibung |
+|-------|--------|--------------|
+| Migration: `meal_favorites` | NEU | DB-Tabelle + RLS |
+| `src/hooks/useMealFavorites.ts` | NEU | Hook fuer Favoriten-CRUD |
+| `src/components/ui/smart-chip.tsx` | EDIT | +`favorite` Variante, +`starBadge` Prop |
+| `src/pages/AresHome.tsx` | EDIT | Integration beider Chip-Reihen |
+
+---
+
+## Alternative: Ohne Datenbank
+
+Falls schnellere Implementierung gewuenscht - **localStorage**:
+
+```typescript
+// In useMealFavorites.ts
+const STORAGE_KEY = 'meal_favorites';
+
+const getFavorites = (): string[] => {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored ? JSON.parse(stored) : [];
+};
+
+const setFavorites = (favs: string[]) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(favs.slice(0, 3)));
+};
+```
+
+**Pro:** Sofort nutzbar, kein DB-Migration
+**Contra:** Nicht cross-device synchronisiert
+
+---
+
+## Empfehlung
+
+Ich empfehle **DB-Loesung** weil:
+1. Favoriten sind wichtig fuer wiederkehrende Mahlzeiten
+2. Cross-device Sync (Mobile/Desktop)
+3. Kann spaeter fuer AI-Training genutzt werden ("User bevorzugt diese Mahlzeiten")
+
+Soll ich mit der DB-Tabelle oder localStorage-Version starten?
 
