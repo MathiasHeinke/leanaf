@@ -153,6 +153,7 @@ export const MealAdvisorSection: React.FC<MealAdvisorSectionProps> = ({
             <EvaluationCard
               evaluation={evaluation}
               onLog={onLogMeal}
+              recipe={evaluation.recipe}
             />
 
             {/* Alternatives Carousel */}

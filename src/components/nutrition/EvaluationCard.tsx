@@ -8,12 +8,14 @@ import { motion } from 'framer-motion';
 import { CheckCircle, ThumbsUp, AlertTriangle, Lightbulb, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import type { MealEvaluation } from '@/hooks/useMealAdvisor';
+import { RecipePopover } from './RecipePopover';
+import type { MealEvaluation, Recipe } from '@/hooks/useMealAdvisor';
 
 interface EvaluationCardProps {
   evaluation: MealEvaluation;
   onLog?: (evaluation: MealEvaluation) => void;
   className?: string;
+  recipe?: Recipe;
 }
 
 const verdictConfig = {
@@ -65,7 +67,8 @@ const tagLabels: Record<string, string> = {
 export const EvaluationCard: React.FC<EvaluationCardProps> = ({
   evaluation,
   onLog,
-  className
+  className,
+  recipe
 }) => {
   const verdict = verdictConfig[evaluation.verdict];
   const VerdictIcon = verdict.icon;
@@ -87,7 +90,7 @@ export const EvaluationCard: React.FC<EvaluationCardProps> = ({
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
 
       <div className="relative z-10 space-y-3">
-        {/* Header: User Idea + Verdict Badge */}
+        {/* Header: User Idea + Recipe Info + Verdict Badge */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground mb-1">Deine Idee:</p>
@@ -96,16 +99,23 @@ export const EvaluationCard: React.FC<EvaluationCardProps> = ({
             </h4>
           </div>
           
-          {/* Verdict Badge */}
-          <div className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1 rounded-full border shrink-0",
-            verdict.bgColor,
-            verdict.borderColor
-          )}>
-            <VerdictIcon className={cn("w-3.5 h-3.5", verdict.textColor)} />
-            <span className={cn("text-xs font-medium", verdict.textColor)}>
-              {verdict.label}
-            </span>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Recipe Info Icon */}
+            {recipe && (
+              <RecipePopover recipe={recipe} title={evaluation.userIdea} />
+            )}
+            
+            {/* Verdict Badge */}
+            <div className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-full border",
+              verdict.bgColor,
+              verdict.borderColor
+            )}>
+              <VerdictIcon className={cn("w-3.5 h-3.5", verdict.textColor)} />
+              <span className={cn("text-xs font-medium", verdict.textColor)}>
+                {verdict.label}
+              </span>
+            </div>
           </div>
         </div>
 

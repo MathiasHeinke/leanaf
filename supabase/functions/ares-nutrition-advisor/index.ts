@@ -14,12 +14,20 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')!;
 
+interface Recipe {
+  ingredients: string[];
+  steps: string[];
+  effort: 'low' | 'medium' | 'high';
+  cost: 'low' | 'medium' | 'high';
+}
+
 interface MealSuggestion {
   title: string;
   reason: string;
   macros: { kcal: number; protein: number; carbs: number; fats: number };
   prepTime: string;
   tags: string[];
+  recipe?: Recipe;
 }
 
 interface MealEvaluation {
@@ -30,6 +38,7 @@ interface MealEvaluation {
   macros: { kcal: number; protein: number; carbs: number; fats: number };
   optimization: string;
   tags: string[];
+  recipe?: Recipe;
   alternatives: MealSuggestion[];
 }
 
@@ -169,16 +178,34 @@ ANTWORTE NUR mit JSON:
   "macros": { "kcal": 280, "protein": 6, "carbs": 52, "fats": 4 },
   "optimization": "+Quark = stabiler Blutzucker, +18g Protein",
   "tags": ["high-gi", "low-protein"],
+  "recipe": {
+    "ingredients": ["1 reife Banane", "1 Broetchen (60g)"],
+    "steps": ["Broetchen aufschneiden", "Banane essen"],
+    "effort": "low",
+    "cost": "low"
+  },
   "alternatives": [
     {
       "title": "Vollkorn-Quark-Bowl mit Banane",
       "reason": "Casein fuer stabile Energie",
       "macros": { "kcal": 350, "protein": 28, "carbs": 38, "fats": 8 },
       "prepTime": "5 min",
-      "tags": ["optimal", "high-protein", "stable-glucose"]
+      "tags": ["optimal", "high-protein", "stable-glucose"],
+      "recipe": {
+        "ingredients": ["200g Magerquark", "1 Banane", "40g Vollkorn-Haferflocken", "10g Nuesse"],
+        "steps": ["Quark in Schale", "Banane schneiden", "Haferflocken unterheben", "Nuesse drauf"],
+        "effort": "low",
+        "cost": "low"
+      }
     }
   ]
-}`;
+}
+
+REZEPT-REGELN (KRITISCH - fuer JEDE Mahlzeit inkl. Alternativen):
+- "recipe.ingredients": 4-8 Zutaten mit Mengen
+- "recipe.steps": 2-5 kurze Schritte (max 8 Worte je)
+- "recipe.effort": "low" (<10 min) | "medium" (10-20 min) | "high" (>20 min)
+- "recipe.cost": "low" (<3 EUR) | "medium" (3-6 EUR) | "high" (>6 EUR)`;
 }
 
 function buildSystemPrompt(context: NutritionContext): string {
@@ -245,9 +272,21 @@ ANTWORTE NUR mit JSON-Array, keine Erklaerung:
     "reason": "Leicht verdaulich nach Reta, trifft dein Protein-Ziel perfekt",
     "macros": { "kcal": 320, "protein": 35, "carbs": 18, "fats": 12 },
     "prepTime": "5 min",
-    "tags": ["quick", "high-protein", "glp1-friendly"]
+    "tags": ["quick", "high-protein", "glp1-friendly"],
+    "recipe": {
+      "ingredients": ["200g Magerquark", "1 Banane", "30g Haferflocken", "10g Honig"],
+      "steps": ["Quark in Schale geben", "Banane schneiden", "Haferflocken drauf", "Honig drueber"],
+      "effort": "low",
+      "cost": "low"
+    }
   }
-]`;
+]
+
+REZEPT-REGELN:
+- "recipe.ingredients": 4-8 Zutaten mit Mengen
+- "recipe.steps": 2-5 kurze Schritte (max 8 Worte je)
+- "recipe.effort": "low" (<10 min) | "medium" (10-20 min) | "high" (>20 min)
+- "recipe.cost": "low" (<3 EUR) | "medium" (3-6 EUR) | "high" (>6 EUR)`;
 }
 
 // Static fallback suggestions when AI is unavailable
@@ -258,56 +297,104 @@ function generateFallbackSuggestions(context: NutritionContext): MealSuggestion[
       reason: 'Schneller Protein-Hit ohne Voellegefuehl',
       macros: { kcal: 280, protein: 35, carbs: 25, fats: 6 },
       prepTime: '3 min',
-      tags: ['quick', 'high-protein']
+      tags: ['quick', 'high-protein'],
+      recipe: {
+        ingredients: ['30g Whey Protein', '150ml Milch', '50g Beeren', 'Eiswuerfel'],
+        steps: ['Alles in Shaker geben', 'Kraeftig schuetteln', 'Sofort trinken'],
+        effort: 'low',
+        cost: 'low'
+      }
     },
     {
       title: 'Griechischer Joghurt mit Nuessen',
       reason: 'Casein fuer langanhaltende Saettigung',
       macros: { kcal: 320, protein: 28, carbs: 18, fats: 16 },
       prepTime: '2 min',
-      tags: ['quick', 'snack']
+      tags: ['quick', 'snack'],
+      recipe: {
+        ingredients: ['200g Griechischer Joghurt', '20g Walnuesse', '10g Honig'],
+        steps: ['Joghurt in Schale', 'Nuesse hacken', 'Alles mischen'],
+        effort: 'low',
+        cost: 'low'
+      }
     },
     {
       title: 'Haettenkäse mit Gurke',
       reason: 'Leicht verdaulich, hoher Proteingehalt',
       macros: { kcal: 180, protein: 24, carbs: 8, fats: 5 },
       prepTime: '5 min',
-      tags: ['quick', 'glp1-friendly', 'stable-glucose']
+      tags: ['quick', 'glp1-friendly', 'stable-glucose'],
+      recipe: {
+        ingredients: ['200g Haettenkäse', '1/2 Gurke', 'Salz, Pfeffer', 'Dill optional'],
+        steps: ['Gurke in Scheiben schneiden', 'Mit Haettenkäse mischen', 'Wuerzen'],
+        effort: 'low',
+        cost: 'low'
+      }
     },
     {
       title: 'Lachs mit Brokkoli',
       reason: 'Omega-3 fuer Recovery, Protein fuer Muskeln',
       macros: { kcal: 450, protein: 42, carbs: 15, fats: 24 },
       prepTime: '20 min',
-      tags: ['optimal', 'post-workout']
+      tags: ['optimal', 'post-workout'],
+      recipe: {
+        ingredients: ['150g Lachsfilet', '200g Brokkoli', '1 EL Olivenoel', 'Zitrone, Salz'],
+        steps: ['Brokkoli daempfen', 'Lachs in Pfanne braten', 'Mit Zitrone servieren'],
+        effort: 'medium',
+        cost: 'high'
+      }
     },
     {
       title: 'Haehnchenbrust-Salat',
       reason: 'Volumen bei wenigen Kalorien, hochsaettigend',
       macros: { kcal: 380, protein: 45, carbs: 12, fats: 18 },
       prepTime: '15 min',
-      tags: ['optimal', 'deficit-friendly']
+      tags: ['optimal', 'deficit-friendly'],
+      recipe: {
+        ingredients: ['150g Haehnchenbrust', 'Gemischter Salat', 'Tomaten', '2 EL Olivenoel'],
+        steps: ['Haehnchen wuerzen und braten', 'Salat anrichten', 'Haehnchen drauf'],
+        effort: 'medium',
+        cost: 'medium'
+      }
     },
     {
       title: 'Rinderhack mit Gemuese',
       reason: 'Protein-Boost mit Mikronährstoffen',
       macros: { kcal: 420, protein: 38, carbs: 18, fats: 22 },
       prepTime: '18 min',
-      tags: ['creative', 'muscle-building']
+      tags: ['creative', 'muscle-building'],
+      recipe: {
+        ingredients: ['150g Rinderhack', 'Zucchini', 'Paprika', 'Zwiebel', 'Olivenoel'],
+        steps: ['Gemuese wuerfeln', 'Hack anbraten', 'Gemuese dazu', 'Wuerzen'],
+        effort: 'medium',
+        cost: 'medium'
+      }
     },
     {
       title: 'Ei-Omelette mit Spinat',
       reason: 'Schnelles Protein, keto-freundlich',
       macros: { kcal: 340, protein: 28, carbs: 6, fats: 24 },
       prepTime: '10 min',
-      tags: ['quick', 'low-carb', 'stable-glucose']
+      tags: ['quick', 'low-carb', 'stable-glucose'],
+      recipe: {
+        ingredients: ['3 Eier', '50g Spinat', '30g Kaese', 'Butter'],
+        steps: ['Eier verquirlen', 'In Butter braten', 'Spinat/Kaese rein', 'Zusammenfalten'],
+        effort: 'low',
+        cost: 'low'
+      }
     },
     {
       title: 'Thunfisch-Avocado Bowl',
       reason: 'Gesunde Fette und Protein',
       macros: { kcal: 390, protein: 32, carbs: 14, fats: 26 },
       prepTime: '8 min',
-      tags: ['creative', 'omega-3']
+      tags: ['creative', 'omega-3'],
+      recipe: {
+        ingredients: ['1 Dose Thunfisch', '1/2 Avocado', 'Zitrone', 'Salz, Pfeffer'],
+        steps: ['Thunfisch abtropfen', 'Avocado wuerfeln', 'Alles mischen', 'Zitrone drauf'],
+        effort: 'low',
+        cost: 'medium'
+      }
     }
   ];
 
@@ -335,6 +422,12 @@ function generateFallbackEvaluation(userIdea: string, context: NutritionContext)
     macros: { kcal: 300, protein: 15, carbs: 30, fats: 10 },
     optimization: '+Protein-Quelle hinzufuegen',
     tags: ['fallback'],
+    recipe: {
+      ingredients: ['Wie angegeben'],
+      steps: ['Zubereitung nach Belieben'],
+      effort: 'low',
+      cost: 'low'
+    },
     alternatives: generateFallbackSuggestions(context).slice(0, 2)
   };
 }
