@@ -20,6 +20,9 @@ export function useAresGreeting(): UseAresGreetingReturn {
   const { profileData, isLoading: profileLoading } = useUserProfile();
   const { streaks } = usePointsSystem();
 
+  // Smart loading: only "loading" if no cached data available
+  const isActuallyLoading = profileLoading && !profileData;
+
   const result = useMemo(() => {
     const now = new Date();
     const hour = now.getHours();
@@ -54,9 +57,9 @@ export function useAresGreeting(): UseAresGreetingReturn {
       dayOfWeek,
       dateFormatted,
       streak,
-      loading: profileLoading,
+      loading: isActuallyLoading,
     };
-  }, [profileData, streaks, profileLoading]);
+  }, [profileData, streaks, isActuallyLoading]);
 
   return result;
 }

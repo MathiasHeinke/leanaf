@@ -41,13 +41,31 @@ export interface ActionCard {
 export const useActionCards = () => {
   const plusData = usePlusData();
   const { data: dailyMetrics } = useDailyMetrics(); // Live optimistic data
-  const { profileData } = useUserProfile();
+  const { profileData, isLoading: profileLoading } = useUserProfile();
   const { focusTask } = useDailyFocus();
   const { groupedSupplements, totalScheduled, totalTaken } = useSupplementData();
   const { protocols } = useProtocols();
   const { isPeptideTakenToday } = useIntakeLog();
 
+  // Smart loading: only show initial loading state if no cached profile
+  const isInitialLoading = profileLoading && !profileData;
+
   const cards = useMemo(() => {
+    // Guard: During initial load without cache, only show epiphany card
+    if (isInitialLoading) {
+      return [{
+        id: 'epiphany',
+        type: 'epiphany' as const,
+        title: 'ARES hat etwas entdeckt',
+        subtitle: 'Tippe um die Erkenntnis aufzudecken',
+        gradient: 'from-indigo-900 via-violet-800 to-purple-900',
+        icon: Sparkles,
+        priority: 10,
+        xp: 25,
+        canSwipeComplete: false
+      }];
+    }
+
     const result: ActionCard[] = [];
     const hour = new Date().getHours();
     
@@ -209,7 +227,7 @@ export const useActionCards = () => {
 
     // Sort by priority and limit to 5
     return result.sort((a, b) => a.priority - b.priority).slice(0, 5);
-  }, [plusData, dailyMetrics, profileData, groupedSupplements, totalScheduled, totalTaken, protocols, isPeptideTakenToday]);
+  }, [isInitialLoading, plusData, dailyMetrics, profileData, groupedSupplements, totalScheduled, totalTaken, protocols, isPeptideTakenToday]);
 
-  return { cards };
+  return { cards, isLoading: isInitialLoading };
 };

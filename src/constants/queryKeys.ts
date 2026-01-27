@@ -4,6 +4,7 @@
  */
 
 export const QUERY_KEYS = {
+  USER_PROFILE: ['user-profile'] as const,
   DAILY_METRICS: ['daily-metrics'] as const,
   SUPPLEMENTS_TODAY: ['supplements-today-widget'] as const,
   SUPPLEMENTS_DATA: ['supplement-data'] as const,
