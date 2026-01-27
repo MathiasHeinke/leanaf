@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { addMonths, differenceInWeeks, format } from 'date-fns';
 import { calculateRealismScore as calculateRealismScoreFromUtils, getRealismLabel, getRealismVariant, type ProtocolTempo } from '@/utils/realismCalculator';
 import { calculateProteinAnchorMacros, isProtocolIntensity, mapLegacyStrategy, type ProtocolIntensity } from '@/utils/proteinAnchorCalculator';
+import { getProtocolAdjustments } from '@/utils/protocolAdjustments';
 import { Button } from '@/components/ui/button';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Input } from '@/components/ui/input';
@@ -493,11 +494,16 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     };
   };
 
-  // Calculate realism score using unified calculator
+  // ============= Protocol Adjustments =============
+  const protocolAdjustments = useMemo(() => {
+    return getProtocolAdjustments(protocolModes);
+  }, [protocolModes]);
+
+  // Calculate realism score using unified calculator with Protocol Mode multiplier
   const calculateRealismScore = () => {
     if (!weight || weightDelta === 0) return 100;
     
-    return calculateRealismScoreFromUtils({
+    const baseScore = calculateRealismScoreFromUtils({
       currentWeight: parseFloat(weight),
       targetWeight: computedTargetWeight,
       currentBodyFat: undefined,
@@ -505,6 +511,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       targetDate: computedTargetDate,
       protocolTempo,
     });
+    
+    // Apply Protocol Mode multiplier (Enhanced/Clinical increases sustainability)
+    return Math.min(100, Math.round(baseScore * protocolAdjustments.realismMultiplier));
   };
 
   const realismScore = calculateRealismScore();
@@ -519,12 +528,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     return mapLegacyStrategy(macroStrategy);
   }, [macroStrategy]);
 
-  // Calculate macros using Protein Anchor logic
+  // Calculate macros using Protein Anchor logic with Protocol Boost
   const currentMacros = useMemo(() => {
     const weightNum = parseFloat(weight) || 80;
     const calories = calculateTargetCalories() || 2000;
-    return calculateProteinAnchorMacros(currentIntensity, weightNum, calories);
-  }, [weight, currentIntensity, calculateTargetCalories]);
+    // Apply Protocol Mode protein boost (Enhanced/Clinical increases protein synthesis)
+    return calculateProteinAnchorMacros(currentIntensity, weightNum, calories, protocolAdjustments.proteinBoost);
+  }, [weight, currentIntensity, calculateTargetCalories, protocolAdjustments.proteinBoost]);
 
   // Handler for intensity change
   const handleIntensityChange = useCallback((intensity: ProtocolIntensity) => {
@@ -1027,6 +1037,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             protocolTempo={protocolTempo}
             setProtocolTempo={setProtocolTempo}
             tdee={tdee || 2000}
+            protocolModes={protocolModes}
           />
         </div>
 

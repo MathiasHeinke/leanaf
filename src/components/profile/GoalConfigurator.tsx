@@ -5,8 +5,9 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
-import { Target, TrendingDown, TrendingUp, Minus, Calendar, Flame, Clock, CheckCircle } from 'lucide-react';
+import { Target, TrendingDown, TrendingUp, Minus, Calendar, Flame, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { calculateRealismScore, getRealismLabel, getRealismVariant } from '@/utils/realismCalculator';
+import { getProtocolAdjustments, getDeficitStatusColor, isDeficitExceeded, type ProtocolMode } from '@/utils/protocolAdjustments';
 import { cn } from '@/lib/utils';
 
 // ============= Types =============
@@ -23,6 +24,7 @@ interface GoalConfiguratorProps {
   protocolTempo: ProtocolTempo;
   setProtocolTempo: (tempo: ProtocolTempo) => void;
   tdee?: number;
+  protocolModes?: ProtocolMode[];
 }
 
 // ============= Constants =============
@@ -44,7 +46,12 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
   protocolTempo,
   setProtocolTempo,
   tdee = 2000,
+  protocolModes = ['natural'],
 }) => {
+  // Protocol-aware adjustments
+  const protocolAdjustments = useMemo(() => {
+    return getProtocolAdjustments(protocolModes);
+  }, [protocolModes]);
   // Computed values
   const targetWeight = useMemo(() => currentWeight + weightDelta, [currentWeight, weightDelta]);
   
@@ -219,7 +226,7 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
               {getRealismLabel(realismScore)}
             </div>
             
-            {/* Stats breakdown */}
+            {/* Stats breakdown with Protocol-aware feedback */}
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div className="bg-muted/50 rounded-lg p-2 text-center">
                 <div className="text-sm font-bold text-primary">
@@ -228,14 +235,34 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
                 <div className="text-[10px] text-muted-foreground">Geschwindigkeit</div>
               </div>
               <div className="bg-muted/50 rounded-lg p-2 text-center">
-                <div className="text-sm font-bold text-orange-500">
+                <div className={cn(
+                  "text-sm font-bold",
+                  computedGoal === 'lose' 
+                    ? getDeficitStatusColor(weeklyStats.dailyCalorieChange, protocolAdjustments.maxDeficitKcal)
+                    : "text-blue-500"
+                )}>
                   {computedGoal === 'lose' ? '-' : computedGoal === 'gain' ? '+' : ''}{weeklyStats.dailyCalorieChange} kcal/Tag
                 </div>
                 <div className="text-[10px] text-muted-foreground">
                   {computedGoal === 'lose' ? 'Defizit' : computedGoal === 'gain' ? 'Überschuss' : 'Balance'}
                 </div>
+                {/* Protocol-aware deficit warning */}
+                {computedGoal === 'lose' && isDeficitExceeded(weeklyStats.dailyCalorieChange, protocolAdjustments.maxDeficitKcal) && (
+                  <div className="flex items-center justify-center gap-1 text-[10px] text-red-500 mt-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>Max: {protocolAdjustments.maxDeficitKcal} kcal</span>
+                  </div>
+                )}
               </div>
             </div>
+            
+            {/* Protocol hint when pharmacological support is active */}
+            {protocolAdjustments.hasPharmSupport && (
+              <div className="text-xs text-purple-500 text-center mt-2 flex items-center justify-center gap-1">
+                <Flame className="h-3 w-3" />
+                <span>{protocolAdjustments.hint}</span>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
