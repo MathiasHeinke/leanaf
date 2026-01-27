@@ -8,12 +8,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { useDailyMetrics } from './useDailyMetrics';
 import { useToast } from './use-toast';
 
+export interface Recipe {
+  ingredients: string[];
+  steps: string[];
+  effort: 'low' | 'medium' | 'high';
+  cost: 'low' | 'medium' | 'high';
+}
+
 export interface MealSuggestion {
   title: string;
   reason: string;
   macros: { kcal: number; protein: number; carbs: number; fats: number };
   prepTime: string;
   tags: string[];
+  recipe?: Recipe;
 }
 
 export interface MealEvaluation {
@@ -24,6 +32,7 @@ export interface MealEvaluation {
   macros: { kcal: number; protein: number; carbs: number; fats: number };
   optimization: string;
   tags: string[];
+  recipe?: Recipe;
   alternatives: MealSuggestion[];
 }
 
@@ -80,6 +89,7 @@ export function useMealAdvisor() {
             macros: data.macros,
             optimization: data.optimization,
             tags: data.tags || [],
+            recipe: data.recipe,
             alternatives: data.alternatives || []
           },
           isLoading: false,

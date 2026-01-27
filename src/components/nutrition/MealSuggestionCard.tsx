@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import { Clock, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { RecipePopover } from './RecipePopover';
 import type { MealSuggestion } from '@/hooks/useMealAdvisor';
 
 interface MealSuggestionCardProps {
@@ -80,15 +81,20 @@ export const MealSuggestionCard: React.FC<MealSuggestionCardProps> = ({
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
 
       <div className="relative z-10 space-y-3">
-        {/* Header: Title + Prep Time */}
+        {/* Header: Title + Recipe Info + Prep Time */}
         <div className="flex items-start justify-between gap-2">
           <h4 className="font-semibold text-foreground text-base leading-tight flex-1">
             {meal.title}
           </h4>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full shrink-0">
-            <Clock className="w-3 h-3" />
-            {meal.prepTime}
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            {meal.recipe && (
+              <RecipePopover recipe={meal.recipe} title={meal.title} />
+            )}
+            <span className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
+              <Clock className="w-3 h-3" />
+              {meal.prepTime}
+            </span>
+          </div>
         </div>
 
         {/* Reason - italic, context-aware */}
