@@ -10,7 +10,6 @@ import { useMemo } from 'react';
 import { usePlusData } from './usePlusData';
 import { useDailyMetrics } from './useDailyMetrics';
 import { useUserProfile } from './useUserProfile';
-import { useDailyFocus } from './useDailyFocus';
 import { useSupplementData } from './useSupplementData';
 import { useProtocols } from './useProtocols';
 import { useIntakeLog } from './useIntakeLog';
@@ -43,7 +42,6 @@ export const useActionCards = () => {
   const plusData = usePlusData();
   const { data: dailyMetrics } = useDailyMetrics(); // Live optimistic data
   const { profileData, isLoading: profileLoading } = useUserProfile();
-  const { focusTask } = useDailyFocus();
   const { groupedSupplements, totalScheduled, totalTaken } = useSupplementData();
   const { protocols } = useProtocols();
   const { isPeptideTakenToday } = useIntakeLog();
