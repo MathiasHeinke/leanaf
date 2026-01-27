@@ -74,7 +74,10 @@ export default function AresHome() {
     analyzedMealData,
     selectedMealType,
     setSelectedMealType,
-    closeDialog
+    closeDialog,
+    // Dialog control for pre-fill
+    setShowConfirmationDialog,
+    setAnalyzedMealData
   } = useGlobalMealInput();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -204,7 +207,49 @@ export default function AresHome() {
     adjustTextareaHeight();
   }, [inputText, adjustTextareaHeight]);
 
-  // Submit handler
+  // Pre-fill meal data from localStorage (from AI Nutrition Advisor)
+  useEffect(() => {
+    if (mealOpen) {
+      const prefillJson = localStorage.getItem('prefill_meal');
+      if (prefillJson) {
+        try {
+          const prefillData = JSON.parse(prefillJson);
+          
+          // Clear localStorage immediately to prevent double-processing
+          localStorage.removeItem('prefill_meal');
+          
+          // If we have macros, skip the input sheet and go directly to confirmation
+          if (prefillData.calories !== undefined) {
+            const analyzedData = {
+              title: prefillData.title || 'Mahlzeit',
+              calories: prefillData.calories || 0,
+              protein: prefillData.protein || 0,
+              carbs: prefillData.carbs || 0,
+              fats: prefillData.fats || 0,
+              meal_type: 'other' as const,
+              confidence: 0.9
+            };
+            
+            // Close sheet first, then open confirmation dialog
+            setMealOpen(false);
+            
+            // Small delay to allow sheet animation to complete
+            setTimeout(() => {
+              setAnalyzedMealData(analyzedData);
+              setShowConfirmationDialog(true);
+            }, 100);
+          } else if (prefillData.title) {
+            // No macros, just pre-fill the text input
+            setInputText(prefillData.title);
+          }
+        } catch (e) {
+          console.warn('Failed to parse prefill_meal data:', e);
+          localStorage.removeItem('prefill_meal');
+        }
+      }
+    }
+  }, [mealOpen, setInputText, setAnalyzedMealData, setShowConfirmationDialog]);
+
   const handleSubmit = useCallback(async () => {
     const hasImages = uploadedImages.length > 0 || optimisticImages.some(img => img.status === 'completed');
     const hasText = inputText.trim();
