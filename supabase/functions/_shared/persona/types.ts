@@ -130,6 +130,10 @@ export interface PersonaResolutionContext {
   timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'night';
   /** Wie lange ist der User schon dabei (in Tagen) */
   userTenure?: number;
+  /** AI-Native Detail Level vom Semantic Router */
+  detailLevel?: 'ultra_short' | 'concise' | 'moderate' | 'extensive';
+  /** Intent vom Semantic Router */
+  intent?: string;
 }
 
 /**
