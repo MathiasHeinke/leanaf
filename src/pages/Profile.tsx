@@ -587,8 +587,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       protein_percentage: dailyGoals.protein,
       carbs_percentage: dailyGoals.carbs,
       fats_percentage: dailyGoals.fats,
-      // NEW: Protocol tempo
-      protocol_tempo: protocolTempo,
+      // Protocol tempo is derived from target_date, no extra column needed
     };
 
     if (profileExists) {
