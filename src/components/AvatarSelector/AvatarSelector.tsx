@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Upload, ChevronDown } from 'lucide-react';
+import { Upload, ChevronDown, Images } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AvatarPresetGrid } from './AvatarPresetGrid';
 import { AvatarUploadZone } from './AvatarUploadZone';
@@ -13,13 +13,16 @@ interface AvatarSelectorProps {
   currentPresetId?: string;
   avatarType?: 'preset' | 'uploaded';
   onAvatarChange: (avatarUrl: string, avatarType: 'preset' | 'uploaded', presetId?: string) => void;
+  /** When true, renders without Card wrapper (for embedding in parent card) */
+  embedded?: boolean;
 }
 
 export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
   currentAvatarUrl,
   currentPresetId,
   avatarType = 'preset',
-  onAvatarChange
+  onAvatarChange,
+  embedded = false
 }) => {
   const [showUpload, setShowUpload] = useState(false);
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -28,11 +31,12 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
 
   const handlePresetSelect = (presetId: string, avatarUrl: string) => {
     onAvatarChange(avatarUrl, 'preset', presetId);
-    setPresetsOpen(false); // Close accordion after selection
+    setPresetsOpen(false);
   };
 
   const handleUploadClick = () => {
     setShowUpload(true);
+    setPresetsOpen(false);
   };
 
   const handleImageSelected = (file: File) => {
@@ -44,55 +48,33 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
     onAvatarChange(croppedImageUrl, 'uploaded');
     setCropModalOpen(false);
     setImageToCrop(null);
+    setShowUpload(false);
   };
 
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-            👤
-          </div>
-          Profilbild
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Current Avatar Display */}
-        {currentAvatarUrl && (
-          <div className="flex items-center gap-3">
-            <img
-              src={currentAvatarUrl}
-              alt="Current Avatar"
-              className="w-14 h-14 rounded-full object-cover border-2 border-border"
-            />
-            <div className="text-sm text-muted-foreground">
-              Aktueller Avatar ({avatarType === 'preset' ? 'Vorlage' : 'Hochgeladen'})
-            </div>
-          </div>
-        )}
-        
-        {/* Avatar Presets in Collapsible Accordion */}
-        <Collapsible open={presetsOpen} onOpenChange={setPresetsOpen}>
-          <div className="flex items-center justify-between">
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-2 px-0 hover:bg-transparent">
-                <span className="font-medium">Avatar-Vorlagen</span>
-                <ChevronDown className={cn(
-                  "h-4 w-4 transition-transform duration-200",
-                  presetsOpen && "rotate-180"
-                )} />
-              </Button>
-            </CollapsibleTrigger>
-            <Button
-              variant="outline"
+  const content = (
+    <div className="space-y-3">
+      {/* Action Row */}
+      <div className="flex items-center gap-2">
+        <Collapsible open={presetsOpen} onOpenChange={setPresetsOpen} className="flex-1">
+          <CollapsibleTrigger asChild>
+            <Button 
+              variant="outline" 
               size="sm"
-              onClick={handleUploadClick}
-              className="flex items-center gap-2"
+              className={cn(
+                "w-full justify-between h-9 text-xs",
+                presetsOpen && "bg-primary/5 border-primary/30"
+              )}
             >
-              <Upload className="w-4 h-4" />
-              Eigenes Bild
+              <span className="flex items-center gap-2">
+                <Images className="h-3.5 w-3.5" />
+                Vorlagen wählen
+              </span>
+              <ChevronDown className={cn(
+                "h-3.5 w-3.5 transition-transform duration-200",
+                presetsOpen && "rotate-180"
+              )} />
             </Button>
-          </div>
+          </CollapsibleTrigger>
           
           <CollapsibleContent className="pt-3">
             <AvatarPresetGrid
@@ -102,21 +84,45 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
           </CollapsibleContent>
         </Collapsible>
 
-        {showUpload && (
-          <AvatarUploadZone
-            onImageSelected={handleImageSelected}
-            onCancel={() => setShowUpload(false)}
-          />
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleUploadClick}
+          className="h-9 text-xs gap-1.5 shrink-0"
+        >
+          <Upload className="h-3.5 w-3.5" />
+          Hochladen
+        </Button>
+      </div>
 
-        {cropModalOpen && imageToCrop && (
-          <AvatarCropModal
-            image={imageToCrop}
-            isOpen={cropModalOpen}
-            onClose={() => setCropModalOpen(false)}
-            onCropComplete={handleCropComplete}
-          />
-        )}
+      {showUpload && (
+        <AvatarUploadZone
+          onImageSelected={handleImageSelected}
+          onCancel={() => setShowUpload(false)}
+        />
+      )}
+
+      {cropModalOpen && imageToCrop && (
+        <AvatarCropModal
+          image={imageToCrop}
+          isOpen={cropModalOpen}
+          onClose={() => setCropModalOpen(false)}
+          onCropComplete={handleCropComplete}
+        />
+      )}
+    </div>
+  );
+
+  // Embedded mode: no card wrapper
+  if (embedded) {
+    return content;
+  }
+
+  // Standalone mode: with card wrapper (legacy support)
+  return (
+    <Card>
+      <CardContent className="p-4">
+        {content}
       </CardContent>
     </Card>
   );

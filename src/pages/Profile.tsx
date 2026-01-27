@@ -822,35 +822,59 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <h2 className="text-lg md:text-xl font-bold">Profil & Identität</h2>
           </div>
 
-          {/* Preferred Name Section - Now FIRST */}
-          <Card>
-            <CardContent className="space-y-4 pt-5">
-              <div className="space-y-2">
-                <Label htmlFor="preferred-name">Wie sollen die Coaches dich ansprechen?</Label>
-                <Input
-                  id="preferred-name"
-                  value={preferredName}
-                  onChange={(e) => setPreferredName(e.target.value)}
-                  placeholder="Dein Vorname oder Spitzname"
-                  className="w-full"
+          {/* Combined Identity Card - Premium Design */}
+          <Card className="overflow-hidden">
+            <CardContent className="p-0">
+              {/* Avatar + Name Row */}
+              <div className="flex items-center gap-4 p-4 border-b border-border/50">
+                {/* Avatar Preview */}
+                <div className="relative group">
+                  <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-primary/20 ring-offset-2 ring-offset-background">
+                    {profileAvatarUrl ? (
+                      <img
+                        src={profileAvatarUrl}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <User className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Name Input */}
+                <div className="flex-1 space-y-1">
+                  <Label htmlFor="preferred-name" className="text-xs text-muted-foreground">
+                    Anzeigename
+                  </Label>
+                  <Input
+                    id="preferred-name"
+                    value={preferredName}
+                    onChange={(e) => setPreferredName(e.target.value)}
+                    placeholder="Wie soll ARES dich nennen?"
+                    className="h-10 bg-background/50 border-border/50"
+                  />
+                </div>
+              </div>
+              
+              {/* Avatar Selection - Collapsible */}
+              <div className="p-4">
+                <AvatarSelector
+                  currentAvatarUrl={profileAvatarUrl}
+                  currentPresetId={avatarPresetId}
+                  avatarType={avatarType}
+                  onAvatarChange={(avatarUrl, type, presetId) => {
+                    setProfileAvatarUrl(avatarUrl);
+                    setAvatarType(type);
+                    setAvatarPresetId(presetId || '');
+                  }}
+                  embedded
                 />
-                <p className="text-sm text-muted-foreground">
-                  Anzeigename für&apos;s Coaching
-                </p>
               </div>
             </CardContent>
           </Card>
-
-          <AvatarSelector
-            currentAvatarUrl={profileAvatarUrl}
-            currentPresetId={avatarPresetId}
-            avatarType={avatarType}
-            onAvatarChange={(avatarUrl, type, presetId) => {
-              setProfileAvatarUrl(avatarUrl);
-              setAvatarType(type);
-              setAvatarPresetId(presetId || '');
-            }}
-          />
         </div>
 
         {/* ============= SECTION 2: KÖRPER-BASICS ============= */}
