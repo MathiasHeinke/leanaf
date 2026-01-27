@@ -1385,10 +1385,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </Card>
             </div>
           )}
-        
-        {/* 8. Tracking Preferences */}
-        <TrackingPreferences />
-
         {/* 9. Coach Persona Selection */}
         <PersonaSelector />
 
