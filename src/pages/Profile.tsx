@@ -70,7 +70,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   // Coach Settings State
   const [coachPersonality, setCoachPersonality] = useState('motivierend');
   const [muscleMaintenancePriority, setMuscleMaintenancePriority] = useState(false);
-  const [macroStrategy, setMacroStrategy] = useState('high_protein');
+  const [macroStrategy, setMacroStrategy] = useState('warrior');
   
   const { user } = useAuth();
   const { language, setLanguage } = useTranslation();
@@ -88,10 +88,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Individual macro percentages for custom strategy
-  const [proteinPercentage, setProteinPercentage] = useState(30);
-  const [carbsPercentage, setCarbsPercentage] = useState(40);
-  const [fatsPercentage, setFatsPercentage] = useState(30);
+  // REMOVED: Legacy percentage states - now using Protein Anchor System (currentMacros)
 
   // Avatar state
   const [profileAvatarUrl, setProfileAvatarUrl] = useState('');
@@ -117,22 +114,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     setValidationErrors(errors);
   }, [weight, height, age, gender, activityLevel, goal]);
 
-  // Update macro percentages when strategy changes
-  useEffect(() => {
-    if (macroStrategy === 'high_protein') {
-      setProteinPercentage(40);
-      setCarbsPercentage(30);
-      setFatsPercentage(30);
-    } else if (macroStrategy === 'balanced') {
-      setProteinPercentage(30);
-      setCarbsPercentage(40);
-      setFatsPercentage(30);
-    } else if (macroStrategy === 'low_carb') {
-      setProteinPercentage(35);
-      setCarbsPercentage(20);
-      setFatsPercentage(45);
-    }
-  }, [macroStrategy]);
+  // REMOVED: Legacy useEffect for percentage mapping - now using Protein Anchor System
 
   // Auto-save function
   const autoSave = async () => {
@@ -242,7 +224,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setTargetBodyFat(data.target_body_fat_percentage ? data.target_body_fat_percentage.toString() : '');
         setCoachPersonality(data.coach_personality || 'motivierend');
         setMuscleMaintenancePriority(data.muscle_maintenance_priority || false);
-        setMacroStrategy(data.macro_strategy || 'high_protein');
+        setMacroStrategy(data.macro_strategy || 'warrior');
         setProfileAvatarUrl(data.profile_avatar_url || '');
         setAvatarType((data.avatar_type as 'preset' | 'uploaded') || 'preset');
         setAvatarPresetId(data.avatar_preset_id || '');
@@ -255,7 +237,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         console.log('⚠️ No profile data found, using defaults');
         setProfileExists(false);
         // Set default strategy to high_protein for new users
-        setMacroStrategy('high_protein');
+        setMacroStrategy('warrior');
       }
     } catch (error: any) {
       console.error('❌ Error loading profile:', error);
@@ -696,9 +678,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const tdee = calculateMaintenanceCalories();
   const targetCalories = calculateTargetCalories();
   const calorieDeficit = calculateRequiredCalorieDeficit()?.daily || dailyGoals.calorieDeficit;
-  const proteinGrams = targetCalories ? (targetCalories * proteinPercentage / 100) / 4 : 0;
-  const carbsGrams = targetCalories ? (targetCalories * carbsPercentage / 100) / 4 : 0;
-  const fatsGrams = targetCalories ? (targetCalories * fatsPercentage / 100) / 9 : 0;
+  // Use Protein Anchor System for gram calculations
+  const proteinGrams = currentMacros.proteinGrams;
+  const carbsGrams = currentMacros.carbGrams;
+  const fatsGrams = currentMacros.fatGrams;
 
   const handleSuccessDialogContinue = () => {
     setShowSuccessDialog(false);

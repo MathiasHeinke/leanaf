@@ -6,6 +6,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============= Protein Anchor System Mapping =============
+type ProtocolIntensity = 'rookie' | 'warrior' | 'elite';
+
+function mapToProteinAnchorIntensity(strategy: string): ProtocolIntensity {
+  if (['rookie', 'warrior', 'elite'].includes(strategy)) {
+    return strategy as ProtocolIntensity;
+  }
+  // Legacy mapping
+  if (strategy === 'high_protein' || strategy === 'zone_balanced') return 'warrior';
+  if (strategy === 'low_carb' || strategy === 'keto') return 'elite';
+  return 'warrior'; // Safe default
+}
+
 interface MealData {
   calories: number;
   protein: number;
@@ -171,17 +184,15 @@ function evaluateMacroBalance(meal: MealData, profile: UserProfile, dailyGoals: 
     }
   }
 
-  // Evaluate based on macro strategy
-  if (profile.macro_strategy === 'high_protein') {
-    if (proteinRatio < 0.8) {
-      score -= 3;
-      feedback = "Mehr Protein wäre optimal für deine High-Protein Strategie.";
-    }
-  } else if (profile.macro_strategy === 'low_carb') {
-    if (carbRatio > 1.2) {
-      score -= 3;
-      feedback = "Weniger Kohlenhydrate für deine Low-Carb Strategie.";
-    }
+  // Evaluate based on Protein Anchor intensity
+  const intensity = mapToProteinAnchorIntensity(profile.macro_strategy);
+  const minProteinRatio = intensity === 'elite' ? 0.9 : intensity === 'warrior' ? 0.85 : 0.7;
+  
+  if (proteinRatio < minProteinRatio) {
+    score -= 3;
+    const intensityLabel = intensity === 'elite' ? 'ELITE (2.5g/kg)' : 
+                           intensity === 'warrior' ? 'WARRIOR (2.0g/kg)' : 'ROOKIE (1.2g/kg)';
+    feedback = `Mehr Protein für deine ${intensityLabel} Intensität.`;
   }
 
   // General balance check
@@ -478,8 +489,16 @@ function getPersonalityPrompt(personality: string): string {
 
 function getGoalContext(goal: string, macroStrategy: string): string {
   const goalText = goal === 'lose' ? 'Abnehmen' : goal === 'gain' ? 'Zunehmen/Muskelaufbau' : 'Gewicht halten';
-  const strategyText = macroStrategy === 'high_protein' ? 'High-Protein' : macroStrategy === 'low_carb' ? 'Low-Carb' : 'Standard';
-  return `User-Ziel: ${goalText}, Strategie: ${strategyText}.`;
+  
+  // Map to Protein Anchor System
+  const intensity = mapToProteinAnchorIntensity(macroStrategy);
+  const intensityLabels: Record<ProtocolIntensity, string> = {
+    rookie: 'ROOKIE (1.2g/kg Protein)',
+    warrior: 'WARRIOR (2.0g/kg Protein)', 
+    elite: 'ELITE (2.5g/kg Protein)'
+  };
+  
+  return `User-Ziel: ${goalText}, Protokoll-Intensität: ${intensityLabels[intensity]}.`;
 }
 
 function getDefaultFeedback(personality: string, score: number, criteria: any = null): string {
