@@ -1028,6 +1028,67 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
+        {/* 3. Intelligent Calorie Analysis */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
+              <Brain className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold">Intelligente Kalorien-Analyse</h2>
+          </div>
+
+          <Card>
+            <CardContent className="pt-5">
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="text-center">
+                  <div className="text-base md:text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
+                  <div className="text-xs text-muted-foreground">BMR</div>
+                  <div className="text-xs text-muted-foreground mt-1">Grundumsatz</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-base md:text-lg font-bold">{tdee || '-'}</div>
+                  <div className="text-xs text-muted-foreground">TDEE</div>
+                  <div className="text-xs text-muted-foreground mt-1">Tagesbedarf</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-base md:text-lg font-bold">{targetCalories}</div>
+                  <div className="text-xs text-muted-foreground">Ziel</div>
+                  <div className="text-xs text-muted-foreground mt-1">Kalorien</div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Berechnungsgenauigkeit</span>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    isProfileComplete ? 'bg-green-500' : 
+                    (weight && height && age && gender) ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}></div>
+                  <span className="text-xs text-muted-foreground">
+                    {isProfileComplete ? '95%' : 
+                     (weight && height && age && gender) ? '75%' : '25%'}
+                  </span>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {isProfileComplete ? 
+                  'Alle Daten vorhanden - sehr genaue Berechnung' :
+                  (weight && height && age && gender) ? 
+                    'Grunddaten vorhanden - gute Berechnung' :
+                    'Weitere Daten für genauere Berechnung erforderlich'
+                }
+              </div>
+              {intelligentCalories && intelligentCalories.recommendations && intelligentCalories.recommendations.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-border">
+                  <div className="text-xs font-medium mb-1">Empfehlungen:</div>
+                  {intelligentCalories.recommendations.slice(0, 2).map((rec, index) => (
+                    <div key={index} className="text-xs text-muted-foreground">• {rec}</div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* 3. Macro Strategy */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
@@ -1141,101 +1202,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         {/* 4. Medical Screening */}
         <MedicalScreening onScreeningComplete={refreshCompletion} />
 
-        {/* 5. Daily Macros */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-green-500 rounded-xl flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-lg md:text-xl font-bold">Tägliche Makros</h2>
-          </div>
 
-          <Card>
-            <CardContent className="pt-5">
-              <div className="grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().protein}g</div>
-                  <div className="text-sm text-muted-foreground">Protein</div>
-                </div>
-                <div>
-                  <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().carbs}g</div>
-                  <div className="text-sm text-muted-foreground">Kohlenhydrate</div>
-                </div>
-                <div>
-                  <div className="text-xl md:text-2xl font-bold">{calculateMacroGrams().fats}g</div>
-                  <div className="text-sm text-muted-foreground">Fette</div>
-                </div>
-              </div>
-              <div className="text-center mt-4 text-sm text-muted-foreground">
-                Basierend auf {targetCalories} kcal täglich
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 6. Intelligent Calorie Analysis */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <Brain className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-lg md:text-xl font-bold">Intelligente Kalorien-Analyse</h2>
-          </div>
-
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="pt-5">
-                <div className="grid grid-cols-3 gap-3 mb-4">
-                  <div className="text-center">
-                    <div className="text-base md:text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
-                    <div className="text-xs text-muted-foreground">BMR</div>
-                    <div className="text-xs text-muted-foreground mt-1">Grundumsatz</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-base md:text-lg font-bold">{tdee || '-'}</div>
-                    <div className="text-xs text-muted-foreground">TDEE</div>
-                    <div className="text-xs text-muted-foreground mt-1">Tagesbedarf</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-base md:text-lg font-bold">{targetCalories}</div>
-                    <div className="text-xs text-muted-foreground">Ziel</div>
-                    <div className="text-xs text-muted-foreground mt-1">Kalorien</div>
-                  </div>
-                </div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Berechnungsgenauigkeit</span>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    isProfileComplete ? 'bg-green-500' : 
-                    (weight && height && age && gender) ? 'bg-yellow-500' : 'bg-red-500'
-                  }`}></div>
-                  <span className="text-xs text-muted-foreground">
-                    {isProfileComplete ? '95%' : 
-                     (weight && height && age && gender) ? '75%' : '25%'}
-                  </span>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {isProfileComplete ? 
-                  'Alle Daten vorhanden - sehr genaue Berechnung' :
-                  (weight && height && age && gender) ? 
-                    'Grunddaten vorhanden - gute Berechnung' :
-                    'Weitere Daten für genauere Berechnung erforderlich'
-                }
-              </div>
-              {intelligentCalories && intelligentCalories.recommendations && intelligentCalories.recommendations.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-border">
-                  <div className="text-xs font-medium mb-1">Empfehlungen:</div>
-                  {intelligentCalories.recommendations.slice(0, 2).map((rec, index) => (
-                    <div key={index} className="text-xs text-muted-foreground">• {rec}</div>
-                  ))}
-                </div>
-              )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* 7. Target Analysis */}
+        {/* 5. Target Analysis */}
           {targetWeight && targetDate && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 mb-4">
@@ -1417,7 +1385,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </Card>
             </div>
           )}
-        </div>
         
         {/* 8. Tracking Preferences */}
         <TrackingPreferences />
