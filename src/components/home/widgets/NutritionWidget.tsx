@@ -6,6 +6,7 @@ import { WidgetSize } from '@/types/widgets';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface MacroProgressBarProps {
   label: string;
@@ -59,7 +60,7 @@ export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size, onOpenDa
   
   // Fetch macro strategy for badge display
   const { data: profile } = useQuery({
-    queryKey: ['user-profile-strategy'],
+    queryKey: QUERY_KEYS.USER_PROFILE_STRATEGY,
     queryFn: async () => {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return null;

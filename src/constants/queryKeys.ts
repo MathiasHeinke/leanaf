@@ -5,6 +5,7 @@
 
 export const QUERY_KEYS = {
   USER_PROFILE: ['user-profile'] as const,
+  USER_PROFILE_STRATEGY: ['user-profile-strategy'] as const,
   DAILY_METRICS: ['daily-metrics'] as const,
   SUPPLEMENTS_TODAY: ['supplements-today-widget'] as const,
   SUPPLEMENTS_DATA: ['supplement-data'] as const,
@@ -25,6 +26,7 @@ export const CATEGORY_QUERY_MAP: Record<string, readonly (readonly string[])[]> 
   sleep: [QUERY_KEYS.SLEEP_RECENT, QUERY_KEYS.DAILY_METRICS],
   nutrition: [QUERY_KEYS.DAILY_METRICS],
   journal: [QUERY_KEYS.DAILY_METRICS],
+  profile: [QUERY_KEYS.USER_PROFILE, QUERY_KEYS.USER_PROFILE_STRATEGY, QUERY_KEYS.DAILY_METRICS],
 };
 
 /**

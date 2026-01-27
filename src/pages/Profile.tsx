@@ -646,9 +646,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         console.warn('⚠️ Dashboard refresh failed:', refreshError);
       }
       
-      // Invalidate cache for immediate UI update across all widgets
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+      // AKTIVER Refetch statt nur Invalidation - Cache wird sofort aktualisiert
+      // auch wenn kein Observer aktiv ist (User ist noch auf Profil-Seite)
+      await Promise.all([
+        queryClient.refetchQueries({ queryKey: QUERY_KEYS.DAILY_METRICS }),
+        queryClient.refetchQueries({ queryKey: QUERY_KEYS.USER_PROFILE })
+      ]);
+      // Strategy-Query für NutritionWidget Badge invalidieren
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE_STRATEGY });
       
       // Trigger legacy event system for usePlusData to ensure homescreen updates
       const { triggerDataRefresh } = await import('@/hooks/useDataRefresh');
