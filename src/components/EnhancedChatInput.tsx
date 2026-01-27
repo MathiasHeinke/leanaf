@@ -195,7 +195,7 @@ export const EnhancedChatInput: React.FC<EnhancedChatInputProps> = ({
         )}
 
         {/* Button Row - Input Bar with icon order: ① Suggestions ② Tool-Picker ③ Red Microphone ④ Send */}
-        <div className="input-bar flex items-center justify-between px-4 py-2 border-t border-border/50">
+        <div className="input-bar flex items-center justify-between px-4 py-2 pb-[max(8px,env(safe-area-inset-bottom))] border-t border-border/50">
           <div className="flex items-center gap-1">
             {/* ① Suggestions Button with Badge - 44x44pt touch target */}
             <div className="relative" ref={suggestionsContainerRef}>

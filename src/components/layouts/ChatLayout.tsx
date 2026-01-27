@@ -28,7 +28,7 @@ export const ChatLayout = ({ children, chatInput }: ChatLayoutProps) => {
       </div>
 
       {/* ZONE C: Input Area + Footer (Sticky Bottom) */}
-      <div className="flex-none z-10 bg-background/95 backdrop-blur-md border-t border-border/30">
+      <div className="flex-none z-10 bg-background/95 backdrop-blur-md border-t border-border/30 pb-[env(safe-area-inset-bottom)]">
         {chatInput && (
           <div className="px-4 py-3 pb-2">
             {chatInput}

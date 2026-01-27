@@ -247,7 +247,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
             onDragEnd={handleDragEnd}
-            className="fixed inset-x-0 bottom-0 top-0 z-[51] bg-background rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
+            className="fixed inset-x-0 bottom-0 top-[5%] z-[51] bg-background rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Drag Handle - clickable to close */}
             <div 

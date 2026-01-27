@@ -612,7 +612,7 @@ export default function AresChat({
         {messageContent}
         
         {/* Input Area */}
-        <div className="flex-none border-t border-border/30 bg-background/95 backdrop-blur-md px-4 py-3">
+        <div className="flex-none border-t border-border/30 bg-background/95 backdrop-blur-md px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
           {chatInputComponent}
         </div>
       </div>
