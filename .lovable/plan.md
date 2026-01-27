@@ -1,154 +1,148 @@
 
-# Pull-to-Refresh & Sync-Fix für Homescreen
+# Fix: Protein Anchor Makros werden nicht korrekt gespeichert
 
-## Problem-Analyse
+## Problem-Zusammenfassung
 
-Der Homescreen aktualisiert sich nicht automatisch nach Änderungen im Profil (Makrostrategie, Kalorien etc.) weil:
+Die WARRIOR-Strategie zeigt in der Kachel **202g/120g/77g**, aber:
+1. Die "Tägliche Makros" Card zeigt **248g/99g/66g** (falsch)
+2. Die Datenbank speichert die falschen Werte (248g statt 202g)
+3. Das NutritionWidget auf dem Homescreen zeigt die falschen Ziele
 
-1. **Kein Pull-to-Refresh**: Es gibt keine Möglichkeit für User, manuell Daten zu aktualisieren
-2. **Zwei parallele Daten-Systeme**: 
-   - `useDailyMetrics` (React Query, für Widgets)
-   - `usePlusData` (Legacy useState/useEffect, für ActionCards)
-3. **Keine Cross-Invalidierung**: Profil-Änderungen invalidieren `daily-metrics`, aber `usePlusData` nutzt das alte Event-System
-
----
-
-## Lösung
-
-### Phase 1: Pull-to-Refresh Komponente erstellen
-
-**Neue Datei: `src/components/ui/pull-to-refresh.tsx`**
-
-Erstelle eine mobile-native Pull-to-Refresh Geste:
-
-```text
-+---------------------------+
-|  ↓ Ziehe zum Aktualisieren |
-|           ⟳               |
-|  (Spinner während Refresh) |
-+---------------------------+
-```
-
-**Features:**
-- Touch-basiert mit `touchstart`, `touchmove`, `touchend`
-- Threshold: 80px ziehen für Trigger
-- Haptic Feedback (vibration) wenn verfügbar
-- Smooth Animation beim Release
-- Loading-Spinner während Refresh
-
-### Phase 2: AresHome.tsx mit Pull-to-Refresh wrappen
-
-**Datei: `src/pages/AresHome.tsx`**
-
-Wrapper um den Hauptinhalt:
-
-```typescript
-// Neuer Import
-import { PullToRefresh } from '@/components/ui/pull-to-refresh';
-import { useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/constants/queryKeys';
-
-// In der Komponente
-const queryClient = useQueryClient();
-
-const handleRefresh = useCallback(async () => {
-  // Alle relevanten Queries invalidieren
-  await Promise.all([
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS }),
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE }),
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY }),
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRAINING_WEEKLY }),
-  ]);
-  
-  // Plus-Data Legacy-System auch triggern
-  triggerDataRefresh();
-  
-  toast.success('Daten aktualisiert', { duration: 1500 });
-}, [queryClient]);
-
-// Im Return
-<PullToRefresh onRefresh={handleRefresh}>
-  {/* Bestehender Inhalt */}
-</PullToRefresh>
-```
-
-### Phase 3: usePlusData auf React Query migrieren (optional aber empfohlen)
-
-**Datei: `src/hooks/usePlusData.tsx`**
-
-Alternative: Statt komplett zu migrieren, füge Query-Invalidierung hinzu:
-
-```typescript
-// Am Ende von fetchData() 
-// Synchronisiere mit React Query Cache
-queryClient.setQueryData(QUERY_KEYS.DAILY_METRICS, (old) => ({
-  ...old,
-  goals: { ...goals }
-}));
-```
-
-Oder: Nach Profile Save auch `usePlusData` manuell triggern:
-
-**Datei: `src/pages/Profile.tsx` (Zeile ~650)**
-
-```typescript
-// Nach DAILY_METRICS invalidation
-queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
-queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
-
-// Legacy-System triggern für usePlusData
-triggerDataRefresh();
-```
+**Root Cause:** Die Funktion `calculateMacroGrams()` (Zeile 378-385) nutzt noch die alte Prozent-Logik statt das Protein Anchor System.
 
 ---
 
-## Technische Details
+## Lösungsplan
 
-### Pull-to-Refresh Komponente Architektur
+### Schritt 1: `calculateMacroGrams()` durch `currentMacros` ersetzen
 
-```text
-┌─────────────────────────────────────────┐
-│ PullToRefresh                           │
-│  ├── Pull Indicator (↓ / Spinner)       │
-│  └── children (scrollable content)      │
-│       └── touch events tracked          │
-└─────────────────────────────────────────┘
+**Datei:** `src/pages/Profile.tsx`
 
-State Machine:
-  IDLE → PULLING → REFRESHING → IDLE
-          ↑                      │
-          └──────────────────────┘
+**Zeile 378-385 - ERSETZEN:**
+
+```typescript
+// ALT (Prozent-basiert):
+const calculateMacroGrams = () => {
+  const targetCalories = calculateTargetCalories();
+  return {
+    protein: Math.round((targetCalories * dailyGoals.protein / 100) / 4),
+    carbs: Math.round((targetCalories * dailyGoals.carbs / 100) / 4),
+    fats: Math.round((targetCalories * dailyGoals.fats / 100) / 9),
+  };
+};
+
+// NEU (Protein Anchor System):
+const calculateMacroGrams = () => {
+  // Nutze das bereits berechnete Protein Anchor System
+  return {
+    protein: currentMacros.proteinGrams,
+    carbs: currentMacros.carbGrams,
+    fats: currentMacros.fatGrams,
+  };
+};
 ```
 
-### Datei-Übersicht
+Das sorgt dafür, dass:
+- Die "Tägliche Makros" Card die korrekten Werte zeigt
+- `performSave()` die korrekten Werte in die DB schreibt
+- Das NutritionWidget die korrekten Ziele bekommt
 
-| Datei | Aktion | Beschreibung |
-|-------|--------|--------------|
-| `src/components/ui/pull-to-refresh.tsx` | NEU | Pull-to-Refresh UI Komponente |
-| `src/pages/AresHome.tsx` | EDIT | Wrapper + handleRefresh Callback |
-| `src/pages/Profile.tsx` | EDIT | `triggerDataRefresh()` nach Save hinzufügen |
-| `src/constants/queryKeys.ts` | EDIT | (optional) Neue Keys für vollständiges Refresh |
+### Schritt 2: NutritionWidget um Strategie-Anzeige erweitern
+
+**Datei:** `src/components/home/widgets/NutritionWidget.tsx`
+
+Füge einen kompakten Strategie-Badge hinzu (z.B. "⚔️ 2.0g/kg"):
+
+**Import hinzufügen:**
+```typescript
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+```
+
+**Neuen Query für Strategie hinzufügen:**
+```typescript
+const { data: profile } = useQuery({
+  queryKey: ['user-profile-strategy'],
+  queryFn: async () => {
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return null;
+    const { data } = await supabase
+      .from('profiles')
+      .select('macro_strategy, weight')
+      .eq('user_id', auth.user.id)
+      .maybeSingle();
+    return data;
+  },
+  staleTime: 1000 * 60 * 5,
+});
+
+// Strategie-Info ableiten
+const getStrategyBadge = () => {
+  const strategy = profile?.macro_strategy;
+  if (strategy === 'elite') return { emoji: '🏆', label: '2.5g/kg' };
+  if (strategy === 'rookie') return { emoji: '🌱', label: '1.2g/kg' };
+  return { emoji: '⚔️', label: '2.0g/kg' }; // Default: Warrior
+};
+const strategyBadge = getStrategyBadge();
+```
+
+**UI-Änderung im WIDE/LARGE Layout (Zeile 177-188):**
+
+```tsx
+<div className="flex justify-between items-center mb-3">
+  <div className="flex items-center gap-2">
+    <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+      <Utensils className="w-5 h-5" />
+    </div>
+    <div className="flex flex-col">
+      <span className="font-semibold text-foreground">Ernährung</span>
+      {/* NEU: Strategie-Badge */}
+      <span className="text-[10px] text-amber-500 font-medium">
+        {strategyBadge.emoji} {strategyBadge.label} Protein
+      </span>
+    </div>
+  </div>
+  <div className="text-right">
+    <span className="text-lg font-bold text-foreground">{Math.round(calories)}</span>
+    <span className="text-sm text-muted-foreground">/{calorieGoal} kcal</span>
+  </div>
+</div>
+```
+
+---
+
+## Datei-Übersicht
+
+| Datei | Zeilen | Änderung |
+|-------|--------|----------|
+| `src/pages/Profile.tsx` | 378-385 | `calculateMacroGrams()` auf `currentMacros` umstellen |
+| `src/components/home/widgets/NutritionWidget.tsx` | ~55-60, 177-188 | Strategie-Query + Badge-Anzeige |
 
 ---
 
 ## Erwartetes Ergebnis
 
 ### Vorher
-- User ändert Makrostrategie auf WARRIOR (2.0g/kg)
-- User geht zurück zum Homescreen
-- Widgets zeigen noch alte Werte (2500 kcal statt 2200 kcal)
-- Einzige Lösung: App schließen und neu öffnen
+- Kachel: 202g/120g/77g (korrekt)
+- "Tägliche Makros" Card: 248g/99g/66g (falsch)
+- DB: protein=248 (falsch)
+- NutritionWidget: 122/248g (falsch)
 
 ### Nachher
-- User ändert Makrostrategie auf WARRIOR
-- User geht zurück zum Homescreen
-- Widgets aktualisieren sich automatisch (Profile.tsx invalidiert alle Keys)
-- ODER: User zieht von oben nach unten (Pull-to-Refresh)
-- Kurzer Spinner, dann alle Widgets zeigen neue Werte
-- Toast: "Daten aktualisiert"
+- Kachel: 202g/120g/77g (korrekt)
+- "Tägliche Makros" Card: 202g/120g/77g (korrekt)
+- DB: protein=202 (korrekt)
+- NutritionWidget: 122/202g + "⚔️ 2.0g/kg Protein" Badge
 
-### UX Details
-- Pull-Geste zeigt sanften Bounce-Effekt
-- Loading-Spinner während Daten geladen werden
-- Haptic Feedback auf unterstützten Geräten
-- Funktioniert nur wenn bereits ganz oben gescrollt
+### Visuelle Änderung am Widget
+
+```text
+┌─────────────────────────────────────────┐
+│  🍽  Ernährung           1335/1984 kcal │
+│      ⚔️ 2.0g/kg Protein                 │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
+│  Protein  ████████████░░░░░░  122/202g  │
+│  Carbs    ██████████░░░░░░░░   74/120g  │
+│  Fett     ██████████████████   65/77g   │
+└─────────────────────────────────────────┘
+```
