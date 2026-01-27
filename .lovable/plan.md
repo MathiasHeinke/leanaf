@@ -1,252 +1,209 @@
 
 
-# Widget-Sortierung im Editor Sheet
+# Fix: Widget-Editor Aenderungen synchron auf Homescreen anzeigen
 
-## Uebersicht
+## Das Problem
 
-Der Screenshot zeigt den Widget-Editor mit Toggle und Groessen-Auswahl - aber ohne Moeglichkeit die Reihenfolge zu aendern. Wir fuegen eine moderne Drag-and-Drop Sortierung hinzu.
+Der Widget-Editor speichert Aenderungen korrekt in localStorage und DB, aber der Homescreen aktualisiert sich nicht, weil:
 
-## Technischer Ansatz
+1. `useWidgetConfig()` wird in zwei Komponenten separat aufgerufen
+2. Jeder Hook-Aufruf hat seinen **eigenen React State**
+3. Wenn das Sheet aendert, weiss das Grid nichts davon
 
-Wir nutzen die bereits installierte `@dnd-kit` Library (wie in Dashboard.tsx verwendet) zusammen mit der vorhandenen `reorderWidgets` Funktion aus dem Hook.
+```text
+┌────────────────────┐     ┌────────────────────┐
+│  MetricWidgetGrid  │     │  WidgetEditorSheet │
+│  useWidgetConfig() │     │  useWidgetConfig() │
+│  [State A]         │     │  [State B]         │
+└────────────────────┘     └────────────────────┘
+         │                          │
+         └──────────────────────────┘
+                    │
+            localStorage (sync)
+            aber State nicht sync!
+```
+
+---
+
+## Loesung: Shared State via React Context
+
+Wir erstellen einen **WidgetConfigProvider** der den State zentral haelt und allen Komponenten zur Verfuegung stellt. So teilen sich Editor und Grid denselben State.
+
+---
 
 ## Aenderungen
 
-### Datei: `src/components/home/WidgetEditorSheet.tsx`
-
-**1. Neue Imports hinzufuegen:**
+### 1. Neuer Context: `src/contexts/WidgetConfigContext.tsx`
 
 ```typescript
-import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
-```
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { WidgetConfig, WidgetType, WidgetSize, DEFAULT_WIDGETS, WIDGET_DEFINITIONS } from '@/types/widgets';
+import { supabase } from '@/integrations/supabase/client';
 
-**2. reorderWidgets aus Hook nutzen (Zeile 37):**
+const LOCAL_STORAGE_KEY = 'ares_widget_config';
 
-```typescript
-const { widgets, toggleWidget, updateWidgetSize, reorderWidgets } = useWidgetConfig();
-```
-
-**3. Sortierbare Widget-Komponente erstellen:**
-
-Neue Komponente innerhalb oder vor WidgetEditorSheet:
-
-```typescript
-interface SortableWidgetItemProps {
-  widget: WidgetConfig;
-  definition: WidgetDefinition;
-  onToggle: () => void;
-  onSizeChange: (size: WidgetSize) => void;
+interface WidgetConfigContextType {
+  widgets: WidgetConfig[];
+  enabledWidgets: WidgetConfig[];
+  updateWidgetSize: (type: WidgetType, size: WidgetSize) => void;
+  toggleWidget: (type: WidgetType) => void;
+  reorderWidgets: (newOrder: WidgetType[]) => void;
+  isLoading: boolean;
 }
 
-const SortableWidgetItem: React.FC<SortableWidgetItemProps> = ({ 
-  widget, definition, onToggle, onSizeChange 
-}) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: widget.type });
+const WidgetConfigContext = createContext<WidgetConfigContextType | undefined>(undefined);
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : 'auto',
-  } as React.CSSProperties;
-
-  const IconComponent = definition.icon;
-  const isEnabled = widget.enabled;
-  const currentSize = widget.size || definition.defaultSize;
-
+export const WidgetConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ... (komplette Hook-Logik aus useWidgetConfig.ts hierher verschieben)
+  
   return (
-    <div 
-      ref={setNodeRef}
-      style={style}
-      className={cn(
-        "flex items-center justify-between py-4 border-b border-border/50 bg-background",
-        !isEnabled && "opacity-60",
-        isDragging && "shadow-lg rounded-xl"
-      )}
-    >
-      {/* Drag Handle (links) */}
-      <div 
-        {...attributes}
-        {...listeners}
-        className="p-2 cursor-grab active:cursor-grabbing touch-none"
-      >
-        <GripVertical className="w-5 h-5 text-muted-foreground" />
-      </div>
-      
-      {/* Icon + Text */}
-      <div className="flex items-center gap-3 flex-1">
-        <div className={cn(
-          "p-2 rounded-xl",
-          isEnabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-        )}>
-          <IconComponent className="w-5 h-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-medium text-foreground truncate">{definition.label}</p>
-          <p className="text-xs text-muted-foreground truncate">{definition.description}</p>
-        </div>
-      </div>
-
-      {/* Size + Toggle (rechts) */}
-      <div className="flex items-center gap-3 shrink-0">
-        <Select 
-          value={currentSize} 
-          onValueChange={(v) => onSizeChange(v as WidgetSize)}
-          disabled={!isEnabled}
-        >
-          <SelectTrigger className="w-20 h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {definition.availableSizes.map(s => (
-              <SelectItem key={s} value={s} className="text-xs">
-                {sizeLabelMap[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Switch 
-          checked={isEnabled}
-          onCheckedChange={onToggle}
-        />
-      </div>
-    </div>
+    <WidgetConfigContext.Provider value={{
+      widgets: sortedWidgets,
+      enabledWidgets,
+      updateWidgetSize,
+      toggleWidget,
+      reorderWidgets,
+      isLoading
+    }}>
+      {children}
+    </WidgetConfigContext.Provider>
   );
+};
+
+export const useWidgetConfig = () => {
+  const context = useContext(WidgetConfigContext);
+  if (!context) {
+    throw new Error('useWidgetConfig must be used within WidgetConfigProvider');
+  }
+  return context;
 };
 ```
 
-**4. DndContext in der Hauptkomponente:**
+### 2. Provider in App einbinden: `src/App.tsx`
+
+Den Provider moeglichst weit oben in der Komponenten-Hierarchie einbinden:
 
 ```typescript
-export const WidgetEditorSheet: React.FC<WidgetEditorSheetProps> = ({ open, onClose }) => {
-  const { widgets, toggleWidget, updateWidgetSize, reorderWidgets } = useWidgetConfig();
+import { WidgetConfigProvider } from '@/contexts/WidgetConfigContext';
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      const oldIndex = widgets.findIndex(w => w.type === active.id);
-      const newIndex = widgets.findIndex(w => w.type === over.id);
-      const newOrder = arrayMove(widgets.map(w => w.type), oldIndex, newIndex);
-      reorderWidgets(newOrder);
+// In der App-Komponente:
+<WidgetConfigProvider>
+  {/* ... existing routes */}
+</WidgetConfigProvider>
+```
+
+### 3. Hook umstellen: `src/hooks/useWidgetConfig.ts`
+
+Den alten Hook zu einem Re-Export machen:
+
+```typescript
+// Re-export from context for backwards compatibility
+export { useWidgetConfig } from '@/contexts/WidgetConfigContext';
+```
+
+---
+
+## Alternative (einfacher): Storage Event Listener
+
+Falls Context zu aufwaendig erscheint, koennen wir auch einen **Storage Event Listener** nutzen:
+
+```typescript
+// In useWidgetConfig.ts - nach dem useState
+useEffect(() => {
+  const handleStorageChange = (e: StorageEvent) => {
+    if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
+      try {
+        setWidgets(JSON.parse(e.newValue));
+      } catch {}
     }
   };
+  
+  window.addEventListener('storage', handleStorageChange);
+  return () => window.removeEventListener('storage', handleStorageChange);
+}, []);
+```
 
-  return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent ...>
-        <SheetHeader>
-          <SheetTitle>Widgets anpassen</SheetTitle>
-          <SheetDescription>
-            Wähle aus welche Metriken du sehen möchtest, in welcher Größe und Reihenfolge
-          </SheetDescription>
-        </SheetHeader>
+**Problem:** Storage Events feuern nur zwischen Tabs/Windows, nicht innerhalb desselben Tabs!
 
-        <ScrollArea className="h-[50vh] pr-4">
-          <DndContext 
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext 
-              items={widgets.map(w => w.type)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="space-y-1">
-                {widgets.map((widget) => {
-                  const def = WIDGET_DEFINITIONS.find(d => d.type === widget.type);
-                  if (!def) return null;
-                  return (
-                    <SortableWidgetItem
-                      key={widget.type}
-                      widget={widget}
-                      definition={def}
-                      onToggle={() => toggleWidget(widget.type)}
-                      onSizeChange={(size) => updateWidgetSize(widget.type, size)}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </ScrollArea>
-        
-        <div className="pt-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            Halte gedrückt zum Sortieren • Änderungen werden automatisch gespeichert
-          </p>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
+---
+
+## Empfohlene Loesung: Custom Event Dispatch
+
+Die einfachste Loesung ohne grosse Architektur-Aenderung:
+
+### In `useWidgetConfig.ts`:
+
+**1. Custom Event nach jeder Aenderung dispatchen:**
+
+```typescript
+const dispatchWidgetUpdate = (newWidgets: WidgetConfig[]) => {
+  window.dispatchEvent(new CustomEvent('widget-config-updated', { 
+    detail: newWidgets 
+  }));
 };
 ```
 
----
+**2. In updateWidgetSize, toggleWidget, reorderWidgets:**
 
-## Visuelles Ergebnis
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  Widgets anpassen                              [X]      │
-│  Wähle Metriken, Größe und Reihenfolge                 │
-├─────────────────────────────────────────────────────────┤
-│  ≡  [🧠] ARES Protokoll           [Flach ▾]    ●───    │ <- Drag Handle links
-│─────────────────────────────────────────────────────────│
-│  ≡  [🍴] Ernährung                [Breit ▾]    ●───    │
-│─────────────────────────────────────────────────────────│
-│  ≡  [💧] Wasser                   [Flach ▾]    ●───    │
-│─────────────────────────────────────────────────────────│
-│  ≡  [🏋️] Training                 [Mittel ▾]   ●───    │
-│─────────────────────────────────────────────────────────│
-│  ≡  [🌙] Schlaf                   [Mittel ▾]   ●───    │
-│─────────────────────────────────────────────────────────│
-│                                                         │
-│     Halte gedrückt zum Sortieren                        │
-│     Änderungen werden automatisch gespeichert           │
-└─────────────────────────────────────────────────────────┘
+```typescript
+const updateWidgetSize = useCallback((type: WidgetType, size: WidgetSize) => {
+  setWidgets(prev => {
+    const newWidgets = prev.map(w => 
+      w.type === type ? { ...w, size } : w
+    );
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newWidgets));
+    syncToDb(newWidgets);
+    dispatchWidgetUpdate(newWidgets);  // NEU
+    return newWidgets;
+  });
+}, [syncToDb]);
 ```
 
-**Drag-Interaktion:**
-- User drueckt und haelt auf `≡` Icon (GripVertical)
-- Widget wird angehoben (opacity 0.5, shadow)
-- Beim Loslassen wird `reorderWidgets` aufgerufen
-- Dashboard aktualisiert sich sofort (dank sortedWidgets Memo)
+**3. Event Listener beim Mount:**
+
+```typescript
+useEffect(() => {
+  const handleWidgetUpdate = (e: CustomEvent<WidgetConfig[]>) => {
+    setWidgets(e.detail);
+  };
+  
+  window.addEventListener('widget-config-updated', handleWidgetUpdate as EventListener);
+  return () => {
+    window.removeEventListener('widget-config-updated', handleWidgetUpdate as EventListener);
+  };
+}, []);
+```
 
 ---
 
-## Warum @dnd-kit statt Alternativen?
+## Visuelle Bestaetigung
 
-| Bibliothek | Vorteile | Nachteile |
-|------------|----------|-----------|
-| @dnd-kit | Bereits installiert, Touch-optimiert, performant | - |
-| @hello-pangea/dnd | Auch installiert, klassisch | Weniger modern |
-| Framer Motion Reorder | Elegante Animationen | Erfordert state restructure |
-
-**Entscheidung:** @dnd-kit - bereits im Projekt verwendet (Dashboard.tsx), bewaehrtes Pattern.
+Nach dem Fix:
+- User aendert Groesse im Editor von "Mittel" zu "Gross"
+- Custom Event wird gefeuert
+- MetricWidgetGrid empfaengt Event
+- State wird aktualisiert
+- Widget rendert sofort in neuer Groesse
 
 ---
 
-## Dateien die geaendert werden
+## Zusammenfassung der Datei-Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/home/WidgetEditorSheet.tsx` | DndContext + SortableContext + SortableWidgetItem |
+| `src/hooks/useWidgetConfig.ts` | Custom Event dispatch + listener hinzufuegen |
+
+**Eine einzige Datei muss geaendert werden** - keine neue Architektur noetig.
 
 ---
 
-## Touch-Optimierung
+## Technische Details
 
-Die @dnd-kit Library ist bereits touch-optimiert:
-- `touch-none` auf dem Handle verhindert Scroll-Konflikte
-- Natuerliche Verzoegerung vor Drag-Start (kein versehentliches Ziehen)
-- Smooth Animation bei Neuordnung
+Die Aenderung in `useWidgetConfig.ts`:
+
+1. **dispatchWidgetUpdate** Funktion hinzufuegen (Zeile ~88)
+2. **useEffect** fuer Event Listener hinzufuegen (nach loadWidgets useEffect)
+3. In **updateWidgetSize**, **toggleWidget**, **reorderWidgets** den Dispatch aufrufen
+
+Das Custom Event synchronisiert alle Hook-Instanzen sofort, sodass Aenderungen im Editor unmittelbar auf dem Homescreen sichtbar werden.
 
