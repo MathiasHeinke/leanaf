@@ -396,7 +396,7 @@ export default function AresHome() {
       </AnimatePresence>
 
       {/* Top Navigation */}
-      <AresTopNav onOpenChat={() => setShowChat(true)} />
+      <AresTopNav />
 
       {/* Main Content */}
       <main className="relative z-10 max-w-md mx-auto px-5 pt-14 pb-36 space-y-5">
