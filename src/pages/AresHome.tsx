@@ -6,6 +6,7 @@
 import React, { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Navigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePointsSystem } from '@/hooks/usePointsSystem';
 import { useBioAge } from '@/hooks/useBioAge';
@@ -16,6 +17,8 @@ import { useGlobalMealInput } from '@/hooks/useGlobalMealInput';
 import { useFrequentMeals, type Daypart } from '@/hooks/useFrequentMeals';
 import { useMealFavorites } from '@/hooks/useMealFavorites';
 import { useAresEvents } from '@/hooks/useAresEvents';
+import { triggerDataRefresh } from '@/hooks/useDataRefresh';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 import { toast } from 'sonner';
 
 import { ExperienceBeam } from '@/components/home/ExperienceBeam';
@@ -35,6 +38,7 @@ import { PeptidesSheet } from '@/components/home/sheets/PeptidesSheet';
 import { TrainingDaySheet } from '@/components/home/sheets/TrainingDaySheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -46,6 +50,7 @@ import { cn } from '@/lib/utils';
 
 export default function AresHome() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, loading: authLoading } = useAuth();
   const [showChat, setShowChat] = useState(false);
   const [chatContext, setChatContext] = useState<string | null>(null);
@@ -102,6 +107,23 @@ export default function AresHome() {
   const { profileData } = useUserProfile();
   const { logWater } = useAresEvents();
   const { favorites, isFavorite, toggleFavorite } = useMealFavorites();
+
+  // Pull-to-Refresh Handler - invalidates ALL data sources
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRAINING_WEEKLY }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.WEIGHT_RECENT }),
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SLEEP_RECENT }),
+    ]);
+    
+    // Trigger legacy event system for usePlusData
+    triggerDataRefresh();
+    
+    toast.success('Daten aktualisiert', { duration: 1500 });
+  }, [queryClient]);
 
   // Chat context trigger from action cards
   const handleActionTrigger = useCallback((contextOrPrompt: string) => {
@@ -449,38 +471,40 @@ export default function AresHome() {
       {/* Top Navigation */}
       <AresTopNav />
 
-      {/* Main Content */}
-      <main className="relative z-10 max-w-md mx-auto px-5 pt-14 pb-36 space-y-5">
-        
-        {/* Header: Greeting + Bio Age */}
-        <div className="flex justify-between items-start">
-          <AresGreeting userName={userName} streak={streak || undefined} />
-          <BioAgeBadge 
-            bioAge={bioAge} 
-            realAge={realAge} 
-            chronologicalAge={profileData?.age}
-          />
-        </div>
+      {/* Main Content with Pull-to-Refresh */}
+      <PullToRefresh onRefresh={handleRefresh} className="h-[calc(100vh-3px)]">
+        <main className="relative z-10 max-w-md mx-auto px-5 pt-14 pb-36 space-y-5">
+          
+          {/* Header: Greeting + Bio Age */}
+          <div className="flex justify-between items-start">
+            <AresGreeting userName={userName} streak={streak || undefined} />
+            <BioAgeBadge 
+              bioAge={bioAge} 
+              realAge={realAge} 
+              chronologicalAge={profileData?.age}
+            />
+          </div>
 
-        {/* Action Card Stack - Tinder-style prioritized cards */}
-        <motion.div layout>
-          <ActionCardStack onTriggerChat={handleActionTrigger} />
-        </motion.div>
+          {/* Action Card Stack - Tinder-style prioritized cards */}
+          <motion.div layout>
+            <ActionCardStack onTriggerChat={handleActionTrigger} />
+          </motion.div>
 
-        {/* Live Metrics Section */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-            Live Metriken
-          </h3>
-          <MetricWidgetGrid 
-            onOpenNutritionSheet={() => setNutritionSheetOpen(true)}
-            onOpenHydrationSheet={() => setHydrationSheetOpen(true)}
-            onOpenBodySheet={() => setBodySheetOpen(true)}
-            onOpenPeptidesSheet={() => setPeptidesSheetOpen(true)}
-            onOpenTrainingSheet={() => setTrainingSheetOpen(true)}
-          />
-        </div>
-      </main>
+          {/* Live Metrics Section */}
+          <div className="space-y-3">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+              Live Metriken
+            </h3>
+            <MetricWidgetGrid 
+              onOpenNutritionSheet={() => setNutritionSheetOpen(true)}
+              onOpenHydrationSheet={() => setHydrationSheetOpen(true)}
+              onOpenBodySheet={() => setBodySheetOpen(true)}
+              onOpenPeptidesSheet={() => setPeptidesSheetOpen(true)}
+              onOpenTrainingSheet={() => setTrainingSheetOpen(true)}
+            />
+          </div>
+        </main>
+      </PullToRefresh>
 
       {/* Liquid Crystal Dock */}
       <LiquidDock 
