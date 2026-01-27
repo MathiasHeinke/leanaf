@@ -5,13 +5,14 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ChevronRight, Lightbulb, X, MessageCircle } from 'lucide-react';
+import { Sparkles, ChevronRight, Lightbulb, X, MessageCircle, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFetchInsight } from '@/hooks/useDailyInsight';
 
 interface EpiphanyCardProps {
   onOpenChat: (prompt: string) => void;
   onDismiss: () => void;
+  onSnooze?: () => void;
   prefetchedInsight?: string | null;
 }
 
@@ -20,6 +21,7 @@ type Phase = 'mystery' | 'loading' | 'revealed';
 export const EpiphanyCard: React.FC<EpiphanyCardProps> = ({ 
   onOpenChat, 
   onDismiss,
+  onSnooze,
   prefetchedInsight 
 }) => {
   const [phase, setPhase] = useState<Phase>('mystery');
@@ -89,6 +91,7 @@ export const EpiphanyCard: React.FC<EpiphanyCardProps> = ({
             insight={insight!} 
             onAskMore={handleAskMore}
             onDismiss={onDismiss}
+            onSnooze={onSnooze}
           />
         )}
       </AnimatePresence>
@@ -96,8 +99,27 @@ export const EpiphanyCard: React.FC<EpiphanyCardProps> = ({
   );
 };
 
+// --- SNOOZE HINT (Bottom Right) ---
+const SnoozeHint: React.FC<{ onSnooze: () => void }> = ({ onSnooze }) => (
+  <motion.button
+    onClick={(e) => { 
+      e.stopPropagation(); 
+      onSnooze(); 
+    }}
+    whileTap={{ scale: 0.9 }}
+    className="absolute bottom-3 right-3 z-20 flex items-center gap-1 px-2 py-1 
+               rounded-full bg-white/10 backdrop-blur-sm border border-white/10
+               text-white/40 text-[10px] font-medium hover:bg-white/20 hover:text-white/60 
+               transition-all"
+  >
+    <Clock size={10} />
+    <span>2h</span>
+    <ChevronRight size={10} className="opacity-60" />
+  </motion.button>
+);
+
 // --- MYSTERY STATE ---
-const MysteryState: React.FC<{ onReveal: () => void }> = ({ onReveal }) => (
+const MysteryState: React.FC<{ onReveal: () => void; onSnooze?: () => void }> = ({ onReveal, onSnooze }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
@@ -144,7 +166,7 @@ const MysteryState: React.FC<{ onReveal: () => void }> = ({ onReveal }) => (
     />
 
     {/* Content */}
-    <div className="relative h-full p-6 flex flex-col text-white">
+    <div className="relative h-full p-6 pb-10 flex flex-col text-white">
       {/* Badge */}
       <div className="flex justify-between items-start">
         <motion.span 
@@ -194,6 +216,9 @@ const MysteryState: React.FC<{ onReveal: () => void }> = ({ onReveal }) => (
         <ChevronRight className="w-4 h-4" />
       </motion.button>
     </div>
+    
+    {/* Snooze Hint */}
+    {onSnooze && <SnoozeHint onSnooze={onSnooze} />}
   </motion.div>
 );
 
@@ -247,7 +272,8 @@ const RevealedState: React.FC<{
   insight: string;
   onAskMore: () => void;
   onDismiss: () => void;
-}> = ({ insight, onAskMore, onDismiss }) => (
+  onSnooze?: () => void;
+}> = ({ insight, onAskMore, onDismiss, onSnooze }) => (
   <motion.div
     initial={{ rotateY: 90, opacity: 0 }}
     animate={{ rotateY: 0, opacity: 1 }}
@@ -269,7 +295,7 @@ const RevealedState: React.FC<{
     <div className="absolute bottom-0 left-0 w-32 h-32 bg-amber-600/5 rounded-full blur-2xl" />
 
     {/* Content */}
-    <div className="relative h-full p-5 flex flex-col text-white">
+    <div className="relative h-full p-5 pb-10 flex flex-col text-white">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2.5">
@@ -322,6 +348,9 @@ const RevealedState: React.FC<{
         <span>Was bedeutet das?</span>
       </motion.button>
     </div>
+    
+    {/* Snooze Hint */}
+    {onSnooze && <SnoozeHint onSnooze={onSnooze} />}
   </motion.div>
 );
 
