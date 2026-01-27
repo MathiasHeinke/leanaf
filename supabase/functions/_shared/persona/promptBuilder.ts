@@ -251,6 +251,40 @@ export function resolvePersonaWithContext(
   const baseDials = { ...persona.dials };
   const appliedModifiers: string[] = [];
   
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // AI-NATIVE DETAIL LEVEL MODULATION (Semantic Router Integration)
+  // This is the "neuro-link" between AI understanding and persona behavior
+  // ═══════════════════════════════════════════════════════════════════════════════
+  if (context.detailLevel) {
+    switch (context.detailLevel) {
+      case 'ultra_short':
+        // Bestaetigung: Wissenschafts-Regler stark runter
+        // "Ok, danke" → Lester antwortet mit 2-3 Sätzen statt Vorlesung
+        baseDials.depth = Math.max(2, Math.round(baseDials.depth * 0.3));
+        baseDials.opinion = Math.max(2, Math.round(baseDials.opinion * 0.5));
+        appliedModifiers.push('semantic_ultra_short');
+        break;
+      case 'concise':
+        // Kurze Frage: Moderate Reduktion
+        // "Was essen?" → Lester gibt praktischen Tipp ohne Studie
+        baseDials.depth = Math.max(3, Math.round(baseDials.depth * 0.5));
+        baseDials.opinion = Math.max(3, Math.round(baseDials.opinion * 0.6));
+        appliedModifiers.push('semantic_concise');
+        break;
+      case 'moderate':
+        // Standard: Leichte Reduktion für Balance
+        baseDials.depth = Math.max(4, Math.round(baseDials.depth * 0.7));
+        baseDials.opinion = Math.max(4, Math.round(baseDials.opinion * 0.8));
+        appliedModifiers.push('semantic_moderate');
+        break;
+      case 'extensive':
+        // Deep Dive: Volle Wissenschafts-Power!
+        // "Warum ist Schlaf wichtig?" → Lester darf voll aufdrehen
+        appliedModifiers.push('semantic_extensive_full');
+        break;
+    }
+  }
+  
   // Topic-basierte Anpassungen
   if (context.topic === 'motivation' || context.topic === 'mindset') {
     baseDials.energy = Math.min(10, Math.round(baseDials.energy * 1.2));

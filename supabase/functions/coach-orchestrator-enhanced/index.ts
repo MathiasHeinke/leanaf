@@ -82,6 +82,14 @@ import {
   getPhaseCoachingRules,
 } from '../_shared/prompts/ares_protocol_knowledge.ts';
 
+// Phase 10: Semantic Router for AI-Native Complexity Detection
+import {
+  analyzeConversationContext,
+  getDetailLevelInstruction,
+  type ConversationAnalysis,
+  type DetailLevel,
+} from '../_shared/ai/semanticRouter.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -1095,35 +1103,72 @@ async function loadPersona({ coachId }: { coachId: string }) {
 async function loadUserPersonaWithContext(
   userId: string,
   moodContext: UserMoodContext,
-  text: string
-): Promise<{ persona: CoachPersona | ResolvedPersona; personaPrompt: string }> {
+  text: string,
+  lastBotMessage?: string | null
+): Promise<{ 
+  persona: CoachPersona | ResolvedPersona; 
+  personaPrompt: string;
+  semanticAnalysis?: ConversationAnalysis;
+}> {
   try {
     // Load user's selected persona (with STANDARD fallback)
     const persona = await loadUserPersona(userId);
     console.log('[PERSONA] Loaded persona for user ' + userId + ': ' + persona.name + ' (' + persona.id + ')');
     
-    // Build resolution context from available data
+    // ═══════════════════════════════════════════════════════════════════════════
+    // AI-NATIVE COMPLEXITY DETECTION via Semantic Router
+    // Only for messages under 200 chars (latency optimization)
+    // ═══════════════════════════════════════════════════════════════════════════
+    let semanticAnalysis: ConversationAnalysis | null = null;
+    
+    if (text.length < 200) {
+      try {
+        semanticAnalysis = await analyzeConversationContext(text, lastBotMessage, {
+          timeout: 2500,
+          fallbackOnError: true
+        });
+        console.log('[PERSONA-SEMANTIC] Analysis: intent=' + semanticAnalysis.intent + 
+                    ', detail=' + semanticAnalysis.required_detail_level +
+                    ', reasoning=' + semanticAnalysis.reasoning);
+      } catch (e) {
+        console.warn('[PERSONA-SEMANTIC] Analysis failed, continuing without:', e);
+      }
+    } else {
+      console.log('[PERSONA-SEMANTIC] Skipped for long message (' + text.length + ' chars)');
+    }
+    
+    // Build resolution context WITH Semantic Router result
     const resolutionContext: PersonaResolutionContext = {
       mood: detectMoodFromContext(moodContext, text),
       timeOfDay: getTimeOfDayForPersona(),
-      userTenure: moodContext.streak || 0, // Use streak as a proxy for tenure
+      userTenure: moodContext.streak || 0,
       topic: detectTopicFromText(text),
+      // AI-Native: Semantic Router integration
+      detailLevel: semanticAnalysis?.required_detail_level,
+      intent: semanticAnalysis?.intent,
     };
     
-    // Resolve persona with context modifiers
+    // Resolve persona with context modifiers (now includes depth modulation!)
     const resolvedPersona = resolvePersonaWithContext(persona, resolutionContext);
     console.log('[PERSONA] Applied modifiers: ' + (resolvedPersona.appliedModifiers.join(', ') || 'none'));
+    
+    // Log dial changes for debugging
+    if (semanticAnalysis && persona.dials) {
+      console.log('[PERSONA-DEPTH] Original depth=' + persona.dials.depth + 
+                  ' → Resolved depth=' + resolvedPersona.resolvedDials.depth +
+                  ' (detailLevel=' + semanticAnalysis.required_detail_level + ')');
+    }
     
     // Generate the persona prompt
     const personaPrompt = buildPersonaPrompt(resolvedPersona, resolutionContext);
     
-    return { persona: resolvedPersona, personaPrompt };
+    return { persona: resolvedPersona, personaPrompt, semanticAnalysis };
   } catch (error) {
     console.error('[PERSONA] Error loading user persona:', error);
-    // Return empty prompt on error - will use existing mode-based prompt
     return { 
       persona: { id: 'STANDARD', name: 'ARES Standard' } as CoachPersona, 
-      personaPrompt: '' 
+      personaPrompt: '',
+      semanticAnalysis: undefined
     };
   }
 }
@@ -2557,13 +2602,17 @@ Deno.serve(async (req) => {
     });
 
     // Phase 2: Load user's selected persona with context resolution
-    const { persona: userPersona, personaPrompt } = await loadUserPersonaWithContext(
+    // Extract last bot message for Semantic Router context
+    const lastBotMessage = rawConversations?.find(m => m.message_role === 'assistant')?.message_content || null;
+    
+    const { persona: userPersona, personaPrompt, semanticAnalysis } = await loadUserPersonaWithContext(
       user.id,
       userMoodContext,
-      text
+      text,
+      lastBotMessage
     ).catch((e) => {
       console.warn('[ARES-WARN] loadUserPersonaWithContext failed:', e);
-      return { persona: null, personaPrompt: '' };
+      return { persona: null, personaPrompt: '', semanticAnalysis: undefined };
     });
     
     // Enhanced persona logging for debugging
