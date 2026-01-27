@@ -16,6 +16,23 @@ export interface IntakeLogEntry {
   notes: string | null;
 }
 
+// Site rotation order for smart suggestions
+const SITE_ROTATION = [
+  'abdomen_left',
+  'abdomen_right',
+  'thigh_left',
+  'thigh_right',
+  'deltoid_left',
+  'deltoid_right',
+] as const;
+
+export type InjectionSite = typeof SITE_ROTATION[number];
+
+export interface SiteRotationSuggestion {
+  suggested: InjectionSite;
+  lastUsed: InjectionSite | null;
+}
+
 export function useIntakeLog(date: Date = new Date()) {
   const [logs, setLogs] = useState<IntakeLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +66,52 @@ export function useIntakeLog(date: Date = new Date()) {
     }
   }, [dateStr]);
 
+  // Get smart site rotation suggestion based on last used site
+  const getNextSuggestedSite = useCallback(async (protocolId: string): Promise<SiteRotationSuggestion> => {
+    try {
+      const { data } = await supabase
+        .from('peptide_intake_log')
+        .select('injection_site')
+        .eq('protocol_id', protocolId)
+        .not('injection_site', 'is', null)
+        .order('taken_at', { ascending: false })
+        .limit(1);
+
+      const lastSite = data?.[0]?.injection_site as InjectionSite | null;
+      
+      if (!lastSite) {
+        return { suggested: 'abdomen_left', lastUsed: null };
+      }
+
+      const lastIndex = SITE_ROTATION.indexOf(lastSite);
+      const nextSite = SITE_ROTATION[(lastIndex + 1) % SITE_ROTATION.length];
+      
+      return { suggested: nextSite, lastUsed: lastSite };
+    } catch (err) {
+      console.error('Error getting site suggestion:', err);
+      return { suggested: 'abdomen_left', lastUsed: null };
+    }
+  }, []);
+
+  // Decrement vial using RPC function
+  const decrementVial = useCallback(async (protocolId: string): Promise<number | null> => {
+    try {
+      const { data, error } = await supabase.rpc('decrement_vial', { 
+        p_protocol_id: protocolId 
+      });
+      
+      if (error) {
+        console.error('Error decrementing vial:', error);
+        return null;
+      }
+      
+      return data;
+    } catch (err) {
+      console.error('Error decrementing vial:', err);
+      return null;
+    }
+  }, []);
+
   const logIntake = async (
     protocolId: string,
     peptideName: string,
@@ -76,6 +139,10 @@ export function useIntakeLog(date: Date = new Date()) {
         });
 
       if (error) throw error;
+      
+      // Decrement vial inventory after successful log
+      await decrementVial(protocolId);
+      
       await fetchLogs();
       return true;
     } catch (err) {
@@ -147,6 +214,8 @@ export function useIntakeLog(date: Date = new Date()) {
     isProtocolTakenToday,
     isPeptideTakenToday,
     isPeptideSkippedToday,
+    getNextSuggestedSite,
+    decrementVial,
     refetch: fetchLogs,
   };
 }

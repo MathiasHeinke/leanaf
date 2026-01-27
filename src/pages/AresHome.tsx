@@ -30,6 +30,7 @@ import { QuickLogSheet, type QuickLogTab } from '@/components/home/QuickLogSheet
 import { NutritionDaySheet } from '@/components/home/sheets/NutritionDaySheet';
 import { HydrationDaySheet } from '@/components/home/sheets/HydrationDaySheet';
 import { BodyTrendSheet } from '@/components/home/sheets/BodyTrendSheet';
+import { PeptidesSheet } from '@/components/home/sheets/PeptidesSheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
@@ -53,6 +54,7 @@ export default function AresHome() {
   const [nutritionSheetOpen, setNutritionSheetOpen] = useState(false);
   const [hydrationSheetOpen, setHydrationSheetOpen] = useState(false);
   const [bodySheetOpen, setBodySheetOpen] = useState(false);
+  const [peptidesSheetOpen, setPeptidesSheetOpen] = useState(false);
 
   // Meal input hook (same as Dashboard)
   const {
@@ -470,6 +472,7 @@ export default function AresHome() {
             onOpenNutritionSheet={() => setNutritionSheetOpen(true)}
             onOpenHydrationSheet={() => setHydrationSheetOpen(true)}
             onOpenBodySheet={() => setBodySheetOpen(true)}
+            onOpenPeptidesSheet={() => setPeptidesSheetOpen(true)}
           />
         </div>
       </main>
@@ -715,6 +718,12 @@ export default function AresHome() {
           setBodySheetOpen(false);
           setQuickLogConfig({ open: true, tab: 'weight' });
         }}
+      />
+
+      {/* Peptides Sheet - Layer 2 */}
+      <PeptidesSheet 
+        isOpen={peptidesSheetOpen}
+        onClose={() => setPeptidesSheetOpen(false)}
       />
     </div>
   );

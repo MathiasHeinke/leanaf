@@ -9,19 +9,22 @@ import { WeightWidget } from './WeightWidget';
 import { HRVWidget } from './HRVWidget';
 import { SupplementsWidget } from './SupplementsWidget';
 import { BioAgeWidget } from './BioAgeWidget';
+import { PeptidesWidget } from './PeptidesWidget';
 
 interface WidgetRendererProps {
   config: WidgetConfig;
   onOpenNutritionSheet?: () => void;
   onOpenHydrationSheet?: () => void;
   onOpenBodySheet?: () => void;
+  onOpenPeptidesSheet?: () => void;
 }
 
 export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ 
   config, 
   onOpenNutritionSheet,
   onOpenHydrationSheet,
-  onOpenBodySheet
+  onOpenBodySheet,
+  onOpenPeptidesSheet
 }) => {
   const { type, size } = config;
 
@@ -44,6 +47,8 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
       return <SupplementsWidget size={size} />;
     case 'bio_age':
       return <BioAgeWidget size={size} />;
+    case 'peptides':
+      return <PeptidesWidget size={size} onOpenSheet={onOpenPeptidesSheet} />;
     default:
       return null;
   }

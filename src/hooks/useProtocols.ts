@@ -65,6 +65,11 @@ export interface Protocol {
   cycle_started_at: string;
   titration_schedule: TitrationScheduleData | null;
   timing: string;
+  // Inventory tracking
+  vial_total_doses: number;
+  vial_remaining_doses: number;
+  vial_started_at: string | null;
+  isLowInventory: boolean; // Computed: remaining < 3
 }
 
 // Input for creating new protocol
@@ -96,6 +101,11 @@ function parseProtocol(row: ProtocolDB): Protocol {
     };
   }
 
+  // Parse inventory fields with defaults
+  const vialTotalDoses = (row as any).vial_total_doses ?? 20;
+  const vialRemainingDoses = (row as any).vial_remaining_doses ?? 20;
+  const vialStartedAt = (row as any).vial_started_at ?? null;
+
   return {
     id: row.id,
     user_id: row.user_id,
@@ -114,6 +124,11 @@ function parseProtocol(row: ProtocolDB): Protocol {
     cycle_started_at: row.cycle_started_at,
     titration_schedule: row.titration_schedule as unknown as TitrationScheduleData | null,
     timing: row.timing || 'evening_fasted',
+    // Inventory tracking
+    vial_total_doses: vialTotalDoses,
+    vial_remaining_doses: vialRemainingDoses,
+    vial_started_at: vialStartedAt,
+    isLowInventory: vialRemainingDoses < 3,
   };
 }
 
@@ -250,6 +265,37 @@ export function useProtocols() {
     }
   };
 
+  // Refill vial - reset remaining doses to total
+  const refillVial = async (protocolId: string, totalDoses: number = 20): Promise<boolean> => {
+    try {
+      const { error: updateError } = await supabase
+        .from('peptide_protocols')
+        .update({
+          vial_total_doses: totalDoses,
+          vial_remaining_doses: totalDoses,
+          vial_started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', protocolId);
+
+      if (updateError) throw updateError;
+
+      await fetchProtocols();
+      toast({
+        title: "Vial aufgefüllt",
+        description: `${totalDoses} Dosen verfügbar`,
+      });
+      return true;
+    } catch (err) {
+      toast({
+        title: "Fehler",
+        description: err instanceof Error ? err.message : "Unbekannter Fehler",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   // Initial fetch
   useEffect(() => {
     fetchProtocols();
@@ -262,6 +308,7 @@ export function useProtocols() {
     createProtocol,
     toggleProtocolActive,
     deleteProtocol,
+    refillVial,
     refetch: fetchProtocols,
   };
 }

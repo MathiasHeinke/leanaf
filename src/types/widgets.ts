@@ -1,4 +1,4 @@
-import { Dumbbell, Moon, Droplets, Activity, Scale, Utensils, Pill, Brain, Heart } from 'lucide-react';
+import { Dumbbell, Moon, Droplets, Activity, Scale, Utensils, Pill, Brain, Heart, Syringe } from 'lucide-react';
 import React from 'react';
 
 export type WidgetSize = 'small' | 'medium' | 'large' | 'wide' | 'flat';
@@ -12,7 +12,8 @@ export type WidgetType =
   | 'weight' 
   | 'hrv' 
   | 'supplements' 
-  | 'bio_age';
+  | 'bio_age'
+  | 'peptides';
 
 export interface WidgetConfig {
   id: string;
@@ -104,6 +105,14 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     availableSizes: ['small', 'medium', 'large', 'wide', 'flat'], 
     defaultSize: 'small', 
     icon: Heart 
+  },
+  { 
+    type: 'peptides', 
+    label: 'Peptide', 
+    description: 'Injektionen & Vials', 
+    availableSizes: ['small', 'medium', 'large', 'flat'], 
+    defaultSize: 'flat', 
+    icon: Syringe 
   },
 ];
 
