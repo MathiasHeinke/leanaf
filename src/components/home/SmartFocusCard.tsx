@@ -200,14 +200,14 @@ const SnoozeHint: React.FC<SnoozeHintProps> = ({ onSnooze }) => (
       onSnooze(); 
     }}
     whileTap={{ scale: 0.9 }}
-    className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 
+    className="absolute bottom-3 right-3 z-20 flex items-center gap-1 px-2 py-1 
                rounded-full bg-white/10 backdrop-blur-sm border border-white/10
-               text-white/50 text-[10px] font-medium hover:bg-white/20 hover:text-white/70 
-               transition-all group"
+               text-white/40 text-[10px] font-medium hover:bg-white/20 hover:text-white/60 
+               transition-all"
   >
-    <ChevronLeft size={10} className="opacity-50 group-hover:opacity-100" />
+    <Clock size={10} />
     <span>2h</span>
-    <Clock size={11} className="opacity-50 group-hover:opacity-100" />
+    <ChevronRight size={10} className="opacity-60" />
   </motion.button>
 );
 

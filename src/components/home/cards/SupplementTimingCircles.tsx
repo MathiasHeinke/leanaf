@@ -54,12 +54,17 @@ const TimingCircle: React.FC<TimingCircleProps> = ({
   disabled,
 }) => {
   const [isLogging, setIsLogging] = useState(false);
+  const [showLabel, setShowLabel] = useState(false);
   const config = TIMING_CONFIG[timing] || { icon: Sun, label: timing };
   const Icon = config.icon;
 
   const handleClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isComplete || disabled || isLogging) return;
+    
+    // Show label briefly on tap
+    setShowLabel(true);
+    setTimeout(() => setShowLabel(false), 1500);
     
     setIsLogging(true);
     await onLog();
@@ -72,15 +77,15 @@ const TimingCircle: React.FC<TimingCircleProps> = ({
       disabled={isComplete || disabled || isLogging}
       whileTap={{ scale: isComplete ? 1 : 0.9 }}
       className={cn(
-        "relative flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all min-w-[56px]",
+        "relative flex items-center justify-center transition-all",
         isComplete && "cursor-default",
-        !isComplete && !disabled && "cursor-pointer hover:bg-white/10",
+        !isComplete && !disabled && "cursor-pointer",
       )}
     >
-      {/* Circle */}
+      {/* Circle - no label underneath */}
       <div
         className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center transition-all border-2",
+          "w-11 h-11 rounded-full flex items-center justify-center transition-all border-2",
           isComplete && "bg-white border-white",
           isCurrent && !isComplete && "border-white bg-transparent animate-pulse",
           !isCurrent && !isComplete && "border-white/30 bg-white/10 opacity-50"
@@ -118,15 +123,21 @@ const TimingCircle: React.FC<TimingCircleProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Label */}
-      <span className={cn(
-        "text-[10px] font-medium whitespace-nowrap",
-        isComplete && "text-white",
-        isCurrent && !isComplete && "text-white",
-        !isCurrent && !isComplete && "text-white/50"
-      )}>
-        {config.label}
-      </span>
+      {/* Floating Label - only visible on tap */}
+      <AnimatePresence>
+        {showLabel && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.8 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.9 }}
+            className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-2 py-0.5 
+                       bg-black/80 backdrop-blur-sm rounded text-[9px] font-medium 
+                       text-white whitespace-nowrap z-30"
+          >
+            {config.label}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Count badge - only show if multiple supplements */}
       {supplementCount > 1 && (
