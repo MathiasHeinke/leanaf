@@ -13,7 +13,7 @@ import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { useTodaysMeals } from '@/hooks/useTodaysMeals';
 import { Button } from '@/components/ui/button';
 import { MealAdvisorSection } from '@/components/nutrition/MealAdvisorSection';
-import type { MealSuggestion } from '@/hooks/useMealAdvisor';
+import type { MealSuggestion, MealEvaluation } from '@/hooks/useMealAdvisor';
 
 interface NutritionDaySheetProps {
   isOpen: boolean;
@@ -250,9 +250,24 @@ export const NutritionDaySheet: React.FC<NutritionDaySheetProps> = ({
               
               {/* AI Meal Advisor */}
               <MealAdvisorSection 
-                onLogMeal={(meal: MealSuggestion) => {
-                  // Pre-fill meal with suggestion data
-                  console.log('Log meal:', meal);
+                onLogMeal={(meal: MealSuggestion | MealEvaluation) => {
+                  // Determine title based on meal type
+                  const title = 'userIdea' in meal ? meal.userIdea : meal.title;
+                  
+                  // Pre-fill meal data for MealConfirmationDialog
+                  const prefillData = {
+                    title,
+                    calories: meal.macros.kcal,
+                    protein: meal.macros.protein,
+                    carbs: meal.macros.carbs,
+                    fats: meal.macros.fats
+                  };
+                  
+                  // Store in localStorage for pre-fill
+                  localStorage.setItem('prefill_meal', JSON.stringify(prefillData));
+                  
+                  // Close sheet and open meal dialog
+                  onClose();
                   onAddMeal();
                 }}
               />

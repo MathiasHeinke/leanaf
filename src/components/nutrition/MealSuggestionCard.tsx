@@ -12,7 +12,7 @@ import type { MealSuggestion } from '@/hooks/useMealAdvisor';
 
 interface MealSuggestionCardProps {
   meal: MealSuggestion;
-  onLog?: (meal: MealSuggestion) => void;
+  onLog?: () => void;
   className?: string;
 }
 
@@ -29,6 +29,12 @@ const tagStyles: Record<string, string> = {
   'omega-3': 'bg-teal-500/15 text-teal-400 border-teal-500/30',
   'muscle-building': 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
   'evening': 'bg-violet-500/15 text-violet-400 border-violet-500/30',
+  // New bloodwork-aware tags
+  'stable-glucose': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  'low-gi': 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  'high-gi': 'bg-red-500/15 text-red-400 border-red-500/30',
+  'insulin-spike': 'bg-orange-500/15 text-orange-400 border-orange-500/30',
+  'triglyceride-friendly': 'bg-teal-500/15 text-teal-400 border-teal-500/30',
 };
 
 const tagLabels: Record<string, string> = {
@@ -44,6 +50,12 @@ const tagLabels: Record<string, string> = {
   'omega-3': 'Omega-3',
   'muscle-building': 'Aufbau',
   'evening': 'Abends',
+  // New bloodwork-aware tags
+  'stable-glucose': 'Stabil',
+  'low-gi': 'Low-GI',
+  'high-gi': 'High-GI',
+  'insulin-spike': 'Spike',
+  'triglyceride-friendly': 'TG-OK',
 };
 
 export const MealSuggestionCard: React.FC<MealSuggestionCardProps> = ({
@@ -112,7 +124,7 @@ export const MealSuggestionCard: React.FC<MealSuggestionCardProps> = ({
           <Button
             variant="default"
             size="sm"
-            onClick={() => onLog(meal)}
+            onClick={onLog}
             className="w-full h-9 mt-2 rounded-xl font-medium"
           >
             <Plus className="w-4 h-4 mr-1.5" />

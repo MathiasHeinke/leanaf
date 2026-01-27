@@ -1,55 +1,103 @@
 /**
- * MealAdvisorSection - AI-powered meal suggestion section
- * Displays button, loading state, and carousel of suggestions
+ * MealAdvisorSection - AI-powered meal suggestion & evaluation section
+ * Shows input field, dynamic button, loading state, and results (suggestions or evaluation)
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
+import { Sparkles, Search, RefreshCw, AlertCircle, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
 } from '@/components/ui/carousel';
-import { useMealAdvisor, type MealSuggestion } from '@/hooks/useMealAdvisor';
+import { useMealAdvisor, type MealSuggestion, type MealEvaluation } from '@/hooks/useMealAdvisor';
 import { MealSuggestionCard } from './MealSuggestionCard';
+import { EvaluationCard } from './EvaluationCard';
 
 interface MealAdvisorSectionProps {
-  onLogMeal?: (meal: MealSuggestion) => void;
+  onLogMeal?: (meal: MealSuggestion | MealEvaluation) => void;
 }
 
 export const MealAdvisorSection: React.FC<MealAdvisorSectionProps> = ({
   onLogMeal
 }) => {
+  const [userIdea, setUserIdea] = useState('');
+  
   const {
     suggestions,
+    evaluation,
     isLoading,
     error,
     hasSuggestions,
+    hasEvaluation,
+    mode,
     generateSuggestions,
     clearSuggestions,
     isFallback
   } = useMealAdvisor();
 
+  const hasInput = userIdea.trim().length > 0;
+  const showResults = hasSuggestions || hasEvaluation;
+
+  const handleSubmit = () => {
+    generateSuggestions(hasInput ? userIdea : undefined);
+  };
+
+  const handleRefresh = () => {
+    setUserIdea('');
+    clearSuggestions();
+  };
+
+  const handleNewQuery = () => {
+    setUserIdea('');
+    clearSuggestions();
+  };
+
   return (
     <div className="py-4 border-b border-border/30">
       <AnimatePresence mode="wait">
-        {/* Initial State - Show Button */}
-        {!hasSuggestions && !isLoading && !error && (
+        {/* Initial/Idle State - Show Input + Button */}
+        {!showResults && !isLoading && !error && (
           <motion.div
-            key="button"
+            key="input"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
+            className="space-y-3"
           >
-            <AdvisorButton onClick={generateSuggestions} />
+            {/* Input Field */}
+            <div className="relative">
+              <Input
+                value={userIdea}
+                onChange={(e) => setUserIdea(e.target.value)}
+                placeholder='z.B. "Banane und Brötchen"'
+                className="pr-8 h-11 rounded-xl bg-muted/50 border-border/50 focus:border-primary/50"
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              />
+              {hasInput && (
+                <button
+                  onClick={() => setUserIdea('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Dynamic Button */}
+            <AdvisorButton 
+              onClick={handleSubmit} 
+              hasInput={hasInput}
+            />
           </motion.div>
         )}
 
-        {/* Loading State - Skeleton Cards */}
+        {/* Loading State */}
         {isLoading && (
           <motion.div
             key="loading"
@@ -57,7 +105,7 @@ export const MealAdvisorSection: React.FC<MealAdvisorSectionProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <LoadingSkeleton />
+            <LoadingSkeleton isEvaluation={hasInput} />
           </motion.div>
         )}
 
@@ -69,14 +117,71 @@ export const MealAdvisorSection: React.FC<MealAdvisorSectionProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            <ErrorState error={error} onRetry={generateSuggestions} />
+            <ErrorState error={error} onRetry={handleSubmit} />
           </motion.div>
         )}
 
-        {/* Success State - Carousel */}
+        {/* Evaluation Result */}
+        {hasEvaluation && evaluation && !isLoading && (
+          <motion.div
+            key="evaluation"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-4"
+          >
+            {/* Header with Refresh */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">
+                  Bewertung
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleNewQuery}
+                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+              >
+                <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                Neu
+              </Button>
+            </div>
+
+            {/* Evaluation Card */}
+            <EvaluationCard
+              evaluation={evaluation}
+              onLog={onLogMeal}
+            />
+
+            {/* Alternatives Carousel */}
+            {evaluation.alternatives.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                  Bessere Alternativen
+                </p>
+                <Carousel opts={{ align: 'start', loop: false }} className="w-full">
+                  <CarouselContent className="-ml-3">
+                    {evaluation.alternatives.map((meal, idx) => (
+                      <CarouselItem key={idx} className="pl-3 basis-[88%] md:basis-[320px]">
+                        <MealSuggestionCard
+                          meal={meal}
+                          onLog={onLogMeal ? () => onLogMeal(meal) : undefined}
+                        />
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                </Carousel>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Suggestions Result */}
         {hasSuggestions && !isLoading && (
           <motion.div
-            key="success"
+            key="suggestions"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -85,10 +190,7 @@ export const MealAdvisorSection: React.FC<MealAdvisorSectionProps> = ({
               suggestions={suggestions}
               isFallback={isFallback}
               onLogMeal={onLogMeal}
-              onRefresh={() => {
-                clearSuggestions();
-                generateSuggestions();
-              }}
+              onRefresh={handleRefresh}
             />
           </motion.div>
         )}
@@ -97,8 +199,8 @@ export const MealAdvisorSection: React.FC<MealAdvisorSectionProps> = ({
   );
 };
 
-// Premium button with gradient border
-const AdvisorButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
+// Dynamic button with gradient border
+const AdvisorButton: React.FC<{ onClick: () => void; hasInput: boolean }> = ({ onClick, hasInput }) => (
   <motion.button
     onClick={onClick}
     whileHover={{ scale: 1.02 }}
@@ -118,38 +220,52 @@ const AdvisorButton: React.FC<{ onClick: () => void }> = ({ onClick }) => (
     
     <div className="relative flex items-center justify-center gap-2">
       <motion.div
-        animate={{ rotate: [0, 15, -15, 0] }}
-        transition={{ repeat: Infinity, duration: 2, repeatDelay: 3 }}
+        animate={{ rotate: hasInput ? 0 : [0, 15, -15, 0] }}
+        transition={{ repeat: hasInput ? 0 : Infinity, duration: 2, repeatDelay: 3 }}
       >
-        <Sparkles className="w-5 h-5 text-primary" />
+        {hasInput ? (
+          <Search className="w-5 h-5 text-primary" />
+        ) : (
+          <Sparkles className="w-5 h-5 text-primary" />
+        )}
       </motion.div>
       <span className="font-semibold text-foreground">
-        Was soll ich jetzt essen?
+        {hasInput ? 'Check meine Idee' : 'Was soll ich jetzt essen?'}
       </span>
     </div>
   </motion.button>
 );
 
 // Loading skeleton
-const LoadingSkeleton: React.FC = () => (
+const LoadingSkeleton: React.FC<{ isEvaluation: boolean }> = ({ isEvaluation }) => (
   <div className="space-y-3">
     <div className="flex items-center justify-center gap-2 py-2">
       <motion.div
         animate={{ rotate: 360 }}
         transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
       >
-        <Sparkles className="w-4 h-4 text-primary" />
+        {isEvaluation ? (
+          <Search className="w-4 h-4 text-primary" />
+        ) : (
+          <Sparkles className="w-4 h-4 text-primary" />
+        )}
       </motion.div>
-      <span className="text-sm text-muted-foreground">Analysiere deinen Kontext...</span>
+      <span className="text-sm text-muted-foreground">
+        {isEvaluation ? 'Lester analysiert deine Idee...' : 'Analysiere deinen Kontext...'}
+      </span>
     </div>
     
-    <div className="flex gap-3 overflow-hidden">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="min-w-[85%] md:min-w-[280px]">
-          <Skeleton className="h-[200px] rounded-2xl" />
-        </div>
-      ))}
-    </div>
+    {isEvaluation ? (
+      <Skeleton className="h-[240px] rounded-2xl" />
+    ) : (
+      <div className="flex gap-3 overflow-hidden">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="min-w-[85%] md:min-w-[280px]">
+            <Skeleton className="h-[200px] rounded-2xl" />
+          </div>
+        ))}
+      </div>
+    )}
   </div>
 );
 
@@ -169,7 +285,7 @@ const ErrorState: React.FC<{ error: string; onRetry: () => void }> = ({ error, o
 const SuggestionCarousel: React.FC<{
   suggestions: MealSuggestion[];
   isFallback: boolean;
-  onLogMeal?: (meal: MealSuggestion) => void;
+  onLogMeal?: (meal: MealSuggestion | MealEvaluation) => void;
   onRefresh: () => void;
 }> = ({ suggestions, isFallback, onLogMeal, onRefresh }) => (
   <div className="space-y-3">
@@ -207,7 +323,7 @@ const SuggestionCarousel: React.FC<{
           <CarouselItem key={idx} className="pl-3 basis-[88%] md:basis-[320px]">
             <MealSuggestionCard
               meal={meal}
-              onLog={onLogMeal}
+              onLog={onLogMeal ? () => onLogMeal(meal) : undefined}
             />
           </CarouselItem>
         ))}
