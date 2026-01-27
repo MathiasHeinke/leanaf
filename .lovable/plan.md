@@ -1,168 +1,237 @@
 
 
-# ARES Protokoll Widget - Flat View + Reihenfolge
+# Widget-Sortierung im Editor Sheet
 
 ## Uebersicht
 
-Basierend auf dem Screenshot soll:
-1. Das ARES Protokoll Widget eine flache, horizontale Variante bekommen (wie das Wasser-Widget)
-2. Das Protokoll Widget an erster Stelle stehen, Ernaehrung darunter
-3. Die neue "flat" Groesse im Widget-Editor auswaehlbar sein
+Der Screenshot zeigt den Widget-Editor mit Toggle und Groessen-Auswahl - aber ohne Moeglichkeit die Reihenfolge zu aendern. Wir fuegen eine moderne Drag-and-Drop Sortierung hinzu.
 
----
+## Technischer Ansatz
+
+Wir nutzen die bereits installierte `@dnd-kit` Library (wie in Dashboard.tsx verwendet) zusammen mit der vorhandenen `reorderWidgets` Funktion aus dem Hook.
 
 ## Aenderungen
 
-### 1. ProtocolWidget.tsx - Neue "flat" Variante
+### Datei: `src/components/home/WidgetEditorSheet.tsx`
 
-Die neue "flat"-Ansicht folgt dem Design des HydrationWidget:
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  [Brain]  ARES Protokoll               Phase 0    5/9  ▸   │
-│  ████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░    │
-└──────────────────────────────────────────────────────────────┘
-```
-
-**Eigenschaften:**
-- Volle Breite (col-span-2)
-- Minimale Hoehe (~60px wie Wasser)
-- Hintergrund-Fill-Effekt basierend auf Progress (56% = halbe Fuellung)
-- Icon links, Text Mitte, Progress rechts
-- Progress-Balken unten integriert (subtil)
-- Klick navigiert zu `/protocol`
-
-**Implementierung in ProtocolWidget.tsx:**
-
-Neuer Block VOR dem "large/wide" Check:
+**1. Neue Imports hinzufuegen:**
 
 ```typescript
-// FLAT: Horizontaler kompakter Streifen
-if (size === 'flat') {
-  return (
-    <motion.div 
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      onClick={() => navigate('/protocol')}
-      className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-primary/20 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
-    >
-      {/* Background Fill basierend auf Fortschritt */}
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: `${protocolPercent}%` }}
-        transition={{ duration: 0.8, delay: 0.3 }}
-        className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/5"
-      />
-      
-      {/* Icon */}
-      <div className="relative z-10 p-2 rounded-xl bg-primary/20 text-primary">
-        <Brain className="w-5 h-5" />
-      </div>
-      
-      {/* Text */}
-      <div className="relative z-10 flex-1">
-        <span className="text-sm font-medium text-foreground">ARES Protokoll</span>
-        <span className="ml-2 text-xs text-muted-foreground">Phase {protocolPhase}</span>
-      </div>
-      
-      {/* Progress Counter + Chevron */}
-      <div className="relative z-10 flex items-center gap-2">
-        <span className="text-sm font-bold text-primary">{progress}/9</span>
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-      </div>
-    </motion.div>
-  );
+import { DndContext, closestCenter, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
+```
+
+**2. reorderWidgets aus Hook nutzen (Zeile 37):**
+
+```typescript
+const { widgets, toggleWidget, updateWidgetSize, reorderWidgets } = useWidgetConfig();
+```
+
+**3. Sortierbare Widget-Komponente erstellen:**
+
+Neue Komponente innerhalb oder vor WidgetEditorSheet:
+
+```typescript
+interface SortableWidgetItemProps {
+  widget: WidgetConfig;
+  definition: WidgetDefinition;
+  onToggle: () => void;
+  onSizeChange: (size: WidgetSize) => void;
 }
+
+const SortableWidgetItem: React.FC<SortableWidgetItemProps> = ({ 
+  widget, definition, onToggle, onSizeChange 
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: widget.type });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : 'auto',
+  } as React.CSSProperties;
+
+  const IconComponent = definition.icon;
+  const isEnabled = widget.enabled;
+  const currentSize = widget.size || definition.defaultSize;
+
+  return (
+    <div 
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center justify-between py-4 border-b border-border/50 bg-background",
+        !isEnabled && "opacity-60",
+        isDragging && "shadow-lg rounded-xl"
+      )}
+    >
+      {/* Drag Handle (links) */}
+      <div 
+        {...attributes}
+        {...listeners}
+        className="p-2 cursor-grab active:cursor-grabbing touch-none"
+      >
+        <GripVertical className="w-5 h-5 text-muted-foreground" />
+      </div>
+      
+      {/* Icon + Text */}
+      <div className="flex items-center gap-3 flex-1">
+        <div className={cn(
+          "p-2 rounded-xl",
+          isEnabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+        )}>
+          <IconComponent className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-foreground truncate">{definition.label}</p>
+          <p className="text-xs text-muted-foreground truncate">{definition.description}</p>
+        </div>
+      </div>
+
+      {/* Size + Toggle (rechts) */}
+      <div className="flex items-center gap-3 shrink-0">
+        <Select 
+          value={currentSize} 
+          onValueChange={(v) => onSizeChange(v as WidgetSize)}
+          disabled={!isEnabled}
+        >
+          <SelectTrigger className="w-20 h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {definition.availableSizes.map(s => (
+              <SelectItem key={s} value={s} className="text-xs">
+                {sizeLabelMap[s]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Switch 
+          checked={isEnabled}
+          onCheckedChange={onToggle}
+        />
+      </div>
+    </div>
+  );
+};
 ```
 
----
-
-### 2. src/types/widgets.ts - Definition aktualisieren
-
-**Protocol Widget Definition (Zeile 52-59):**
+**4. DndContext in der Hauptkomponente:**
 
 ```typescript
-// VORHER
-{ 
-  type: 'protocol', 
-  label: 'ARES Protokoll', 
-  description: 'Phase & Fortschritt', 
-  availableSizes: ['small', 'medium', 'large', 'wide'],  // <- kein 'flat'
-  defaultSize: 'medium', 
-  icon: Brain 
-},
+export const WidgetEditorSheet: React.FC<WidgetEditorSheetProps> = ({ open, onClose }) => {
+  const { widgets, toggleWidget, updateWidgetSize, reorderWidgets } = useWidgetConfig();
 
-// NACHHER
-{ 
-  type: 'protocol', 
-  label: 'ARES Protokoll', 
-  description: 'Phase & Fortschritt', 
-  availableSizes: ['small', 'medium', 'large', 'wide', 'flat'],  // <- 'flat' hinzu
-  defaultSize: 'flat',  // <- Default auf flat
-  icon: Brain 
-},
-```
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = widgets.findIndex(w => w.type === active.id);
+      const newIndex = widgets.findIndex(w => w.type === over.id);
+      const newOrder = arrayMove(widgets.map(w => w.type), oldIndex, newIndex);
+      reorderWidgets(newOrder);
+    }
+  };
 
----
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent ...>
+        <SheetHeader>
+          <SheetTitle>Widgets anpassen</SheetTitle>
+          <SheetDescription>
+            Wähle aus welche Metriken du sehen möchtest, in welcher Größe und Reihenfolge
+          </SheetDescription>
+        </SheetHeader>
 
-### 3. src/types/widgets.ts - Reihenfolge aendern
-
-**DEFAULT_WIDGETS Array (Zeile 111-121):**
-
-```typescript
-// VORHER: nutrition (order 0), hydration (1), protocol (2)
-export const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: '1', type: 'nutrition', size: 'wide', enabled: true, order: 0 },
-  { id: '2', type: 'hydration', size: 'flat', enabled: true, order: 1 },
-  { id: '3', type: 'protocol', size: 'medium', enabled: true, order: 2 },
-  // ...
-];
-
-// NACHHER: protocol (order 0), nutrition (1), hydration (2)
-export const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: '3', type: 'protocol', size: 'flat', enabled: true, order: 0 },   // <- Erste Stelle, flat
-  { id: '1', type: 'nutrition', size: 'wide', enabled: true, order: 1 },  // <- Zweite Stelle
-  { id: '2', type: 'hydration', size: 'flat', enabled: true, order: 2 },  // <- Dritte Stelle
-  { id: '4', type: 'training', size: 'medium', enabled: true, order: 3 },
-  { id: '5', type: 'sleep', size: 'medium', enabled: true, order: 4 },
-  { id: '6', type: 'weight', size: 'small', enabled: true, order: 5 },
-  { id: '7', type: 'hrv', size: 'small', enabled: false, order: 6 },
-  { id: '8', type: 'supplements', size: 'small', enabled: false, order: 7 },
-  { id: '9', type: 'bio_age', size: 'small', enabled: false, order: 8 },
-];
+        <ScrollArea className="h-[50vh] pr-4">
+          <DndContext 
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext 
+              items={widgets.map(w => w.type)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-1">
+                {widgets.map((widget) => {
+                  const def = WIDGET_DEFINITIONS.find(d => d.type === widget.type);
+                  if (!def) return null;
+                  return (
+                    <SortableWidgetItem
+                      key={widget.type}
+                      widget={widget}
+                      definition={def}
+                      onToggle={() => toggleWidget(widget.type)}
+                      onSizeChange={(size) => updateWidgetSize(widget.type, size)}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </ScrollArea>
+        
+        <div className="pt-4 text-center">
+          <p className="text-xs text-muted-foreground">
+            Halte gedrückt zum Sortieren • Änderungen werden automatisch gespeichert
+          </p>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
 ```
 
 ---
 
 ## Visuelles Ergebnis
 
-Nach der Aenderung sieht das Dashboard so aus:
-
 ```text
-┌─────────────────────────────────────────────────────┐
-│ LIVE METRIKEN                                       │
-├─────────────────────────────────────────────────────┤
-│ [Brain] ARES Protokoll  Phase 0       5/9  ▸       │  <- NEU: Flat Protocol (oben)
-│ ████████████████████████░░░░░░░░░░░░░░░░░░         │
-├─────────────────────────────────────────────────────┤
-│ [Fork] Ernaehrung                   0/1963 kcal    │  <- Nutrition (darunter)
-│ Protein ████████████████████░░░░░░░░    0/245g     │
-│ Carbs   ████████████████████░░░░░░░░    0/98g      │
-│ Fett    ████████████████████░░░░░░░░    0/65g      │
-├─────────────────────────────────────────────────────┤
-│ [Drop] Wasser                       0.0L / 4.0L    │  <- Hydration
-│ ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░    │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Widgets anpassen                              [X]      │
+│  Wähle Metriken, Größe und Reihenfolge                 │
+├─────────────────────────────────────────────────────────┤
+│  ≡  [🧠] ARES Protokoll           [Flach ▾]    ●───    │ <- Drag Handle links
+│─────────────────────────────────────────────────────────│
+│  ≡  [🍴] Ernährung                [Breit ▾]    ●───    │
+│─────────────────────────────────────────────────────────│
+│  ≡  [💧] Wasser                   [Flach ▾]    ●───    │
+│─────────────────────────────────────────────────────────│
+│  ≡  [🏋️] Training                 [Mittel ▾]   ●───    │
+│─────────────────────────────────────────────────────────│
+│  ≡  [🌙] Schlaf                   [Mittel ▾]   ●───    │
+│─────────────────────────────────────────────────────────│
+│                                                         │
+│     Halte gedrückt zum Sortieren                        │
+│     Änderungen werden automatisch gespeichert           │
+└─────────────────────────────────────────────────────────┘
 ```
+
+**Drag-Interaktion:**
+- User drueckt und haelt auf `≡` Icon (GripVertical)
+- Widget wird angehoben (opacity 0.5, shadow)
+- Beim Loslassen wird `reorderWidgets` aufgerufen
+- Dashboard aktualisiert sich sofort (dank sortedWidgets Memo)
 
 ---
 
-## Wichtig: Bestehende User
+## Warum @dnd-kit statt Alternativen?
 
-Fuer User die bereits Widget-Preferences gespeichert haben:
-- Die `ensureAllWidgets` Funktion in `useWidgetConfig.ts` fuegt automatisch fehlende Widgets hinzu
-- Bestehende Reihenfolgen bleiben erhalten (nur neue Installationen bekommen die neue Default-Reihenfolge)
-- User koennen im Widget-Editor die "Flat"-Groesse fuer das Protocol Widget manuell auswaehlen
+| Bibliothek | Vorteile | Nachteile |
+|------------|----------|-----------|
+| @dnd-kit | Bereits installiert, Touch-optimiert, performant | - |
+| @hello-pangea/dnd | Auch installiert, klassisch | Weniger modern |
+| Framer Motion Reorder | Elegante Animationen | Erfordert state restructure |
+
+**Entscheidung:** @dnd-kit - bereits im Projekt verwendet (Dashboard.tsx), bewaehrtes Pattern.
 
 ---
 
@@ -170,6 +239,14 @@ Fuer User die bereits Widget-Preferences gespeichert haben:
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/home/widgets/ProtocolWidget.tsx` | Neue "flat" Variante hinzufuegen |
-| `src/types/widgets.ts` | `availableSizes` + Default-Reihenfolge aendern |
+| `src/components/home/WidgetEditorSheet.tsx` | DndContext + SortableContext + SortableWidgetItem |
+
+---
+
+## Touch-Optimierung
+
+Die @dnd-kit Library ist bereits touch-optimiert:
+- `touch-none` auf dem Handle verhindert Scroll-Konflikte
+- Natuerliche Verzoegerung vor Drag-Start (kein versehentliches Ziehen)
+- Smooth Animation bei Neuordnung
 
