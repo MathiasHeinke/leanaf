@@ -80,6 +80,17 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
     onClose();
   }, [onClose]);
 
+  // Handle drag-to-dismiss (consistent with other Layer 2 sheets)
+  const handleDragEnd = useCallback(
+    (_: any, info: { offset: { y: number }; velocity: { y: number } }) => {
+      // Close if dragged down >100px or with high velocity
+      if (info.offset.y > 100 || info.velocity.y > 500) {
+        handleClose();
+      }
+    },
+    [handleClose]
+  );
+
   // Format history date
   const formatHistoryDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
@@ -232,6 +243,10 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
             animate={{ y: "5%" }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={handleDragEnd}
             className="fixed inset-x-0 bottom-0 top-0 z-[51] bg-background rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Drag Handle - clickable to close */}
