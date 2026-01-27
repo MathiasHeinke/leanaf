@@ -822,18 +822,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <h2 className="text-lg md:text-xl font-bold">Profil & Identität</h2>
           </div>
 
-          <AvatarSelector
-            currentAvatarUrl={profileAvatarUrl}
-            currentPresetId={avatarPresetId}
-            avatarType={avatarType}
-            onAvatarChange={(avatarUrl, type, presetId) => {
-              setProfileAvatarUrl(avatarUrl);
-              setAvatarType(type);
-              setAvatarPresetId(presetId || '');
-            }}
-          />
-
-          {/* Preferred Name Section */}
+          {/* Preferred Name Section - Now FIRST */}
           <Card>
             <CardContent className="space-y-4 pt-5">
               <div className="space-y-2">
@@ -851,6 +840,17 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
             </CardContent>
           </Card>
+
+          <AvatarSelector
+            currentAvatarUrl={profileAvatarUrl}
+            currentPresetId={avatarPresetId}
+            avatarType={avatarType}
+            onAvatarChange={(avatarUrl, type, presetId) => {
+              setProfileAvatarUrl(avatarUrl);
+              setAvatarType(type);
+              setAvatarPresetId(presetId || '');
+            }}
+          />
         </div>
 
         {/* ============= SECTION 2: KÖRPER-BASICS ============= */}
