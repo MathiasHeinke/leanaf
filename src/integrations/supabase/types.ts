@@ -5109,6 +5109,7 @@ export type Database = {
           daily_calorie_target: number | null
           display_name: string | null
           email: string | null
+          fasting_protocol: string | null
           fats_percentage: number | null
           fats_target_g: number | null
           first_name: string | null
@@ -5131,6 +5132,8 @@ export type Database = {
           profile_avatar_url: string | null
           protein_percentage: number | null
           protein_target_g: number | null
+          protocol_mode: string | null
+          rapamycin_day: string | null
           start_bmi: number | null
           start_weight: number | null
           steps_goal: number | null
@@ -5141,8 +5144,11 @@ export type Database = {
           target_date: string | null
           target_weight: number | null
           tdee: number | null
+          track_dunedin_pace: boolean | null
+          track_senolytics: boolean | null
           updated_at: string
           user_id: string
+          weekly_training_sessions: number | null
           weekly_weight_loss_target: number | null
           weight: number | null
         }
@@ -5163,6 +5169,7 @@ export type Database = {
           daily_calorie_target?: number | null
           display_name?: string | null
           email?: string | null
+          fasting_protocol?: string | null
           fats_percentage?: number | null
           fats_target_g?: number | null
           first_name?: string | null
@@ -5185,6 +5192,8 @@ export type Database = {
           profile_avatar_url?: string | null
           protein_percentage?: number | null
           protein_target_g?: number | null
+          protocol_mode?: string | null
+          rapamycin_day?: string | null
           start_bmi?: number | null
           start_weight?: number | null
           steps_goal?: number | null
@@ -5195,8 +5204,11 @@ export type Database = {
           target_date?: string | null
           target_weight?: number | null
           tdee?: number | null
+          track_dunedin_pace?: boolean | null
+          track_senolytics?: boolean | null
           updated_at?: string
           user_id: string
+          weekly_training_sessions?: number | null
           weekly_weight_loss_target?: number | null
           weight?: number | null
         }
@@ -5217,6 +5229,7 @@ export type Database = {
           daily_calorie_target?: number | null
           display_name?: string | null
           email?: string | null
+          fasting_protocol?: string | null
           fats_percentage?: number | null
           fats_target_g?: number | null
           first_name?: string | null
@@ -5239,6 +5252,8 @@ export type Database = {
           profile_avatar_url?: string | null
           protein_percentage?: number | null
           protein_target_g?: number | null
+          protocol_mode?: string | null
+          rapamycin_day?: string | null
           start_bmi?: number | null
           start_weight?: number | null
           steps_goal?: number | null
@@ -5249,8 +5264,11 @@ export type Database = {
           target_date?: string | null
           target_weight?: number | null
           tdee?: number | null
+          track_dunedin_pace?: boolean | null
+          track_senolytics?: boolean | null
           updated_at?: string
           user_id?: string
+          weekly_training_sessions?: number | null
           weekly_weight_loss_target?: number | null
           weight?: number | null
         }
