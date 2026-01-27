@@ -62,6 +62,43 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
     }
   }, [cards.length, initialCards.length, hasShownConfetti]);
 
+  // Event-driven card completion listener
+  useEffect(() => {
+    const handleCardCompletion = (e: CustomEvent<{ cardType: string; cardId?: string }>) => {
+      const { cardType, cardId } = e.detail;
+      
+      // Find matching card
+      const matchingCard = cards.find(c => 
+        cardId ? c.id === cardId : c.type === cardType
+      );
+      
+      if (!matchingCard) return;
+      
+      // Remove card from stack
+      setCards(prev => prev.filter(c => c.id !== matchingCard.id));
+      
+      // Persist dismissal for session
+      dismissCard(matchingCard.id, false);
+      
+      // Award XP based on card type
+      const xpMap: Record<string, number> = {
+        journal: 40,
+        sleep: 30,
+        weight: 20,
+        training: 60,
+        profile: 50,
+        epiphany: 25,
+      };
+      
+      window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+        detail: { amount: xpMap[cardType] || 20, reason: `${cardType} completed` }
+      }));
+    };
+    
+    window.addEventListener('ares-card-completed', handleCardCompletion as EventListener);
+    return () => window.removeEventListener('ares-card-completed', handleCardCompletion as EventListener);
+  }, [cards, dismissCard]);
+
   // Handle individual supplement timing action (card stays open)
   const handleSupplementAction = useCallback(async (card: ActionCard, timing: string) => {
     const success = await logSupplementsTaken(timing as 'morning' | 'noon' | 'evening' | 'pre_workout' | 'post_workout');

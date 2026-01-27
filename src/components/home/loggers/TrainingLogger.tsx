@@ -221,7 +221,13 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
       did_workout: selectedType !== 'rest'
     });
     
-    if (success) onClose();
+    if (success) {
+      // Dispatch completion event for ActionCardStack
+      window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+        detail: { cardType: 'training' }
+      }));
+      onClose();
+    }
     setIsSaving(false);
   };
 
