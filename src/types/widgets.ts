@@ -127,4 +127,5 @@ export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: '7', type: 'hrv', size: 'small', enabled: false, order: 6 },
   { id: '8', type: 'supplements', size: 'small', enabled: false, order: 7 },
   { id: '9', type: 'bio_age', size: 'small', enabled: false, order: 8 },
+  { id: '10', type: 'peptides', size: 'flat', enabled: false, order: 9 },
 ];
