@@ -1028,63 +1028,103 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
-        {/* 3. Intelligent Calorie Analysis */}
+        {/* 3. Intelligent Calorie Analysis + Goal Progress */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
               <Brain className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-lg md:text-xl font-bold">Intelligente Kalorien-Analyse</h2>
+            <h2 className="text-lg md:text-xl font-bold">Kalorien & Ziel-Analyse</h2>
           </div>
 
           <Card>
-            <CardContent className="pt-5">
-              <div className="grid grid-cols-3 gap-3 mb-4">
+            <CardContent className="pt-5 space-y-4">
+              {/* BMR / TDEE / Target Row */}
+              <div className="grid grid-cols-3 gap-3">
                 <div className="text-center">
                   <div className="text-base md:text-lg font-bold">{bmr ? Math.round(bmr) : '-'}</div>
                   <div className="text-xs text-muted-foreground">BMR</div>
-                  <div className="text-xs text-muted-foreground mt-1">Grundumsatz</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Grundumsatz</div>
                 </div>
                 <div className="text-center">
                   <div className="text-base md:text-lg font-bold">{tdee || '-'}</div>
                   <div className="text-xs text-muted-foreground">TDEE</div>
-                  <div className="text-xs text-muted-foreground mt-1">Tagesbedarf</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Tagesbedarf</div>
                 </div>
                 <div className="text-center">
                   <div className="text-base md:text-lg font-bold">{targetCalories}</div>
                   <div className="text-xs text-muted-foreground">Ziel</div>
-                  <div className="text-xs text-muted-foreground mt-1">Kalorien</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Kalorien</div>
                 </div>
               </div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Berechnungsgenauigkeit</span>
+
+              {/* Goal Deficit/Surplus Section - Only if target set */}
+              {targetWeight && targetDate && calculateRequiredCalorieDeficit() && (
+                <div className="pt-3 border-t border-border">
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className="bg-muted/50 rounded-lg p-2">
+                      <div className="text-sm font-bold text-primary">
+                        {Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')).toFixed(1)} kg
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {parseFloat(targetWeight || '0') > parseFloat(weight || '0') ? '↑' : '↓'} Differenz
+                      </div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-2">
+                      <div className="text-sm font-bold text-orange-500">
+                        {calculateRequiredCalorieDeficit()?.daily}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        kcal/Tag
+                      </div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-2">
+                      <div className="text-sm font-bold text-teal-500">
+                        {calculateRequiredCalorieDeficit()?.weekly}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        kcal/Woche
+                      </div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-2">
+                      <div className="text-sm font-bold text-indigo-500">
+                        {Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))}w
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">
+                        verbleibend
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Warning if too aggressive */}
+                  {!calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) > 1000 && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-destructive">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>Aggressives Defizit – Muskelabbau-Risiko</span>
+                    </div>
+                  )}
+                  {calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) > 800 && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-orange-500">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>Hoher Überschuss – mehr Fetteinlagerung möglich</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Accuracy Indicator */}
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="text-sm font-medium">Genauigkeit</span>
                 <div className="flex items-center gap-2">
                   <div className={`w-2 h-2 rounded-full ${
                     isProfileComplete ? 'bg-green-500' : 
                     (weight && height && age && gender) ? 'bg-yellow-500' : 'bg-red-500'
                   }`}></div>
                   <span className="text-xs text-muted-foreground">
-                    {isProfileComplete ? '95%' : 
-                     (weight && height && age && gender) ? '75%' : '25%'}
+                    {isProfileComplete ? '95%' : (weight && height && age && gender) ? '75%' : '25%'}
                   </span>
                 </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                {isProfileComplete ? 
-                  'Alle Daten vorhanden - sehr genaue Berechnung' :
-                  (weight && height && age && gender) ? 
-                    'Grunddaten vorhanden - gute Berechnung' :
-                    'Weitere Daten für genauere Berechnung erforderlich'
-                }
-              </div>
-              {intelligentCalories && intelligentCalories.recommendations && intelligentCalories.recommendations.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-border">
-                  <div className="text-xs font-medium mb-1">Empfehlungen:</div>
-                  {intelligentCalories.recommendations.slice(0, 2).map((rec, index) => (
-                    <div key={index} className="text-xs text-muted-foreground">• {rec}</div>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
@@ -1202,189 +1242,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         {/* 4. Medical Screening */}
         <MedicalScreening onScreeningComplete={refreshCompletion} />
 
-
-        {/* 5. Target Analysis */}
-          {targetWeight && targetDate && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 bg-purple-500 rounded-xl flex items-center justify-center">
-                  <Activity className="h-5 w-5 text-white" />
-                </div>
-                <h2 className="text-xl font-bold">Ziel-Analyse</h2>
-              </div>
-
-              <Card>
-                <CardContent className="space-y-6 pt-5">
-                  {calculateRequiredCalorieDeficit() && (
-                    <>
-                      <div className="space-y-4">
-                      
-                      {/* Hauptmetriken - Größer und prominenter */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/10 dark:from-purple-500/20 dark:to-purple-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-purple-200/20 dark:border-purple-500/30 shadow-sm">
-                          <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 dark:from-purple-400 dark:to-purple-300 bg-clip-text text-transparent">
-                            {Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')).toFixed(1)} kg
-                          </div>
-                          <div className="text-sm text-muted-foreground mt-1">Gewichtsunterschied</div>
-                          <div className="text-xs text-purple-600/70 dark:text-purple-400 mt-1">
-                            {parseFloat(targetWeight || '0') > parseFloat(weight || '0') ? 'Zunehmen' : 'Abnehmen'}
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-blue-200/20 dark:border-blue-500/30 shadow-sm">
-                          <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-300 bg-clip-text text-transparent">
-                            {Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))} Wochen
-                          </div>
-                          <div className="text-sm text-muted-foreground mt-1">bis zum Ziel</div>
-                          <div className="text-xs text-blue-600/70 dark:text-blue-400 mt-1">
-                            ca. {Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} Tage
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Detailmetriken - Schönere Gestaltung */}
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-green-200/20 dark:border-green-500/30 shadow-sm">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-green-600 to-green-800 dark:from-green-400 dark:to-green-300 bg-clip-text text-transparent">
-                            {((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 1000) / 
-                              Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))).toFixed(0)}g
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">pro Woche</div>
-                          <div className="text-xs text-green-600/70 dark:text-green-400 mt-1">
-                            {((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 1000) / 
-                              Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))).toFixed(0)}g täglich
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 dark:from-orange-500/20 dark:to-orange-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-orange-200/20 dark:border-orange-500/30 shadow-sm">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-orange-800 dark:from-orange-400 dark:to-orange-300 bg-clip-text text-transparent">
-                            {calculateRequiredCalorieDeficit()?.daily}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">kcal täglich</div>
-                          <div className="text-xs text-orange-600/70 dark:text-orange-400 mt-1">
-                            {goal === 'lose' ? 'Defizit' : goal === 'gain' ? 'Überschuss' : 'Erhaltung'}
-                          </div>
-                        </div>
-                        <div className="bg-gradient-to-br from-teal-500/10 to-teal-600/10 dark:from-teal-500/20 dark:to-teal-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 text-center border border-teal-200/20 dark:border-teal-500/30 shadow-sm">
-                          <div className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-teal-800 dark:from-teal-400 dark:to-teal-300 bg-clip-text text-transparent">
-                            {calculateRequiredCalorieDeficit()?.weekly}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">kcal wöchentlich</div>
-                          <div className="text-xs text-teal-600/70 dark:text-teal-400 mt-1">
-                            {Math.round((calculateRequiredCalorieDeficit()?.weekly || 0) / 7700 * 1000)}g Fett/Woche
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Zusätzliche Metriken */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 dark:from-indigo-500/20 dark:to-indigo-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-3 text-center border border-indigo-200/20 dark:border-indigo-500/30 shadow-sm">
-                          <div className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-indigo-800 dark:from-indigo-400 dark:to-indigo-300 bg-clip-text text-transparent">
-                            {Math.round((Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')) * 7700))}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">Gesamt-kcal</div>
-                          <div className="text-xs text-indigo-600/70 dark:text-indigo-400 mt-1">benötigt für Ziel</div>
-                        </div>
-                        <div className="bg-gradient-to-br from-pink-500/10 to-pink-600/10 dark:from-pink-500/20 dark:to-pink-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-3 text-center border border-pink-200/20 dark:border-pink-500/30 shadow-sm">
-                          <div className="text-lg font-bold bg-gradient-to-r from-pink-600 to-pink-800 dark:from-pink-400 dark:to-pink-300 bg-clip-text text-transparent">
-                            {new Date(targetDate).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">Zieldatum</div>
-                          <div className="text-xs text-pink-600/70 dark:text-pink-400 mt-1">
-                            {new Date(targetDate).toLocaleDateString('de-DE', { weekday: 'long' })}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Warnungen und Empfehlungen */}
-                    {!calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) > 1000 && (
-                      <div className="bg-gradient-to-br from-red-500/10 to-red-600/10 dark:from-red-500/20 dark:to-red-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-red-200/30 dark:border-red-500/30 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 bg-red-500/20 rounded-lg">
-                            <AlertTriangle className="h-5 w-5 text-red-500" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium text-red-700 dark:text-red-300 mb-1">Zu aggressives Ziel ⚠️</div>
-                            <div className="text-sm text-red-600 dark:text-red-400">
-                              Ein Defizit von über 1000 Kalorien täglich ist schwer nachhaltig und kann zu Muskelabbau führen. 
-                              Empfehlung: Verlängere den Zeitraum oder reduziere das Gewichtsziel.
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) > 800 && (
-                      <div className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 dark:from-orange-500/20 dark:to-orange-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-orange-200/30 dark:border-orange-500/30 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 bg-orange-500/20 rounded-lg">
-                            <AlertTriangle className="h-5 w-5 text-orange-500" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium text-orange-700 dark:text-orange-300 mb-1">Sehr schnelle Gewichtszunahme ⚡</div>
-                            <div className="text-sm text-orange-600 dark:text-orange-400">
-                              Ein Überschuss von über 800 Kalorien täglich kann zu verstärkter Fetteinlagerung führen. 
-                              Empfehlung: Verlängere den Zeitraum für kontrollierte Gewichtszunahme.
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {!calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) < 500 && (calculateRequiredCalorieDeficit()?.daily || 0) > 0 && (
-                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-green-200/30 dark:border-green-500/30 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 bg-green-500/20 rounded-lg">
-                            <CheckCircle2 className="h-5 w-5 text-green-500" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium text-green-700 dark:text-green-300 mb-1">Moderates, nachhaltiges Ziel ✨</div>
-                            <div className="text-sm text-green-600 dark:text-green-400">
-                              Perfekt für langfristigen Erfolg! Dieses Tempo erhält deine Muskelmasse und ist gut durchhaltbar.
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {calculateRequiredCalorieDeficit()?.isGaining && (calculateRequiredCalorieDeficit()?.daily || 0) >= 200 && (calculateRequiredCalorieDeficit()?.daily || 0) <= 500 && (
-                      <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 dark:from-green-500/20 dark:to-green-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-green-200/30 dark:border-green-500/30 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="p-2 bg-green-500/20 rounded-lg">
-                            <CheckCircle2 className="h-5 w-5 text-green-500" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="font-medium text-green-700 dark:text-green-300 mb-1">Optimaler Muskelaufbau-Überschuss 💪</div>
-                            <div className="text-sm text-green-600 dark:text-green-400">
-                              Perfekt für kontrollierten Muskelaufbau! Dieser Kalorienüberschuss minimiert Fettaufbau und maximiert Muskelzuwächse.
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 dark:from-blue-500/20 dark:to-blue-600/20 dark:bg-card backdrop-blur-sm rounded-xl p-4 border border-blue-200/30 dark:border-blue-500/30 shadow-sm">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-blue-500/20 rounded-lg">
-                          <Calculator className="h-5 w-5 text-blue-500" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-blue-700 dark:text-blue-300 mb-2">Wissenschaftliche Grundlage 🧮</div>
-                           <div className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
-                             <div>• 1 kg Körperfett = ca. 7.700 kcal Energieinhalt</div>
-                             {goal === 'lose' && <div>• Empfohlenes Defizit: 300-500 kcal/Tag für nachhaltigen Fettabbau</div>}
-                             {goal === 'gain' && <div>• Bei Muskelaufbau: 200-500 kcal/Tag Überschuss optimal</div>}
-                             {goal === 'maintain' && <div>• Für Gewichtserhaltung: Kalorienbilanz ausgleichen</div>}
-                             <div>• Deine Kalorienziele werden automatisch an dein Ziel angepasst</div>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
         {/* 9. Coach Persona Selection */}
         <PersonaSelector />
 
