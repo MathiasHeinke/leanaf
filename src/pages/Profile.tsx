@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { calculateRealismScore as calculateRealismScoreFromUtils, getRealismLabel, getRealismVariant } from '@/utils/realismCalculator';
+import { calculateProteinAnchorMacros, isProtocolIntensity, mapLegacyStrategy, type ProtocolIntensity } from '@/utils/proteinAnchorCalculator';
 import { Button } from '@/components/ui/button';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Input } from '@/components/ui/input';
@@ -441,6 +442,44 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   };
 
   const realismScore = calculateRealismScore();
+
+  // ============= Protein Anchor System =============
+  
+  // Derive current intensity from macroStrategy (handle legacy values)
+  const currentIntensity: ProtocolIntensity = useMemo(() => {
+    if (isProtocolIntensity(macroStrategy)) {
+      return macroStrategy;
+    }
+    return mapLegacyStrategy(macroStrategy);
+  }, [macroStrategy]);
+
+  // Calculate macros using Protein Anchor logic
+  const currentMacros = useMemo(() => {
+    const weightNum = parseFloat(weight) || 80;
+    const calories = calculateTargetCalories() || 2000;
+    return calculateProteinAnchorMacros(currentIntensity, weightNum, calories);
+  }, [weight, currentIntensity, calculateTargetCalories]);
+
+  // Handler for intensity change
+  const handleIntensityChange = useCallback((intensity: ProtocolIntensity) => {
+    setMacroStrategy(intensity);
+    
+    const weightNum = parseFloat(weight) || 80;
+    const calories = calculateTargetCalories() || 2000;
+    const result = calculateProteinAnchorMacros(intensity, weightNum, calories);
+    
+    // Update dailyGoals with calculated percentages (DB compatibility)
+    setDailyGoals(prev => ({
+      ...prev,
+      protein: result.proteinPercent,
+      carbs: result.carbPercent,
+      fats: result.fatPercent
+    }));
+    
+    setHasUserModifiedMacros(false);
+  }, [weight]);
+
+  // ============= End Protein Anchor System =============
 
   const applyMacroStrategy = (strategy: string) => {
     // Only apply strategy if user hasn't manually modified macros
@@ -1002,154 +1041,106 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
               <PieChart className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-lg md:text-xl font-bold">Makronährstoff-Strategie</h2>
+            <h2 className="text-lg md:text-xl font-bold">Protokoll-Intensität</h2>
           </div>
 
           <Card>
-            <CardContent className="space-y-4 pt-5">
-              <div className="space-y-3">
-                {[
-                  { 
-                    id: 'amdr_basis',
-                    label: 'AMDR-Basis',
-                    percentages: 'P:20/C:52/F:28',
-                    desc: 'Gesunde Durchschnittsernährung (DGE/WHO)',
-                    protein: 20, carbs: 52, fats: 28
-                  },
-                  { 
-                    id: 'zone_balanced',
-                    label: 'Zone/Balanced',
-                    percentages: 'P:30/C:40/F:30',
-                    desc: 'Recomp, Alltag - stabiler Blutzucker',
-                    protein: 30, carbs: 40, fats: 30
-                  },
-                  { 
-                    id: 'high_protein',
-                    label: 'High Protein',
-                    percentages: 'P:45/C:30/F:25',
-                    desc: 'Muskelaufbau, Defizitdiäten - sättigt gut',
-                    protein: 45, carbs: 30, fats: 25
-                  },
-                  { 
-                    id: 'high_carb',
-                    label: 'High Carb',
-                    percentages: 'P:15/C:60/F:25',
-                    desc: 'Ausdauersport, Volumen-Tage',
-                    protein: 15, carbs: 60, fats: 25
-                  },
-                  {
-                    id: 'low_carb',
-                    label: 'Low Carb/Moderate',
-                    percentages: 'P:35/C:25/F:40',
-                    desc: 'Fettverlust, Insulinempfindlichkeit',
-                    protein: 35, carbs: 25, fats: 40
-                  },
-                  {
-                    id: 'keto',
-                    label: 'Keto',
-                    percentages: 'P:22/C:8/F:70',
-                    desc: 'Therapeutisch, Keto-Fans - Adaption nötig',
-                    protein: 22, carbs: 8, fats: 70
-                  },
-                  {
-                    id: 'carb_cycling',
-                    label: 'Carb-Cycling',
-                    percentages: 'P:30/C:35/F:35',
-                    desc: 'Kraft-/HIIT-Athleten - wechselnde Tage',
-                    protein: 30, carbs: 35, fats: 35
-                  },
-                  {
-                    id: 'custom',
-                    label: 'Individuell',
-                    percentages: `P:${dailyGoals.protein}/C:${dailyGoals.carbs}/F:${dailyGoals.fats}`,
-                    desc: 'Eigene Werte definieren',
-                    protein: dailyGoals.protein, carbs: dailyGoals.carbs, fats: dailyGoals.fats
-                  }
-                ].map((strategy) => (
-                  <div 
-                    key={strategy.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                      macroStrategy === strategy.id 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => {
-                      setMacroStrategy(strategy.id);
-                      if (strategy.id !== 'custom') {
-                        setDailyGoals(prev => ({
-                          ...prev,
-                          protein: strategy.protein,
-                          carbs: strategy.carbs,
-                          fats: strategy.fats
-                        }));
-                        setHasUserModifiedMacros(false);
-                      }
-                    }}
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="font-medium text-sm">{strategy.label}</div>
-                        <div className="text-xs text-muted-foreground">{strategy.desc}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs font-mono bg-muted px-2 py-1 rounded mb-1">
-                          {strategy.percentages}
-                        </div>
-                        <div className="text-xs font-mono">
-                          {macroStrategy === strategy.id ? '✓' : '○'}
-                        </div>
+            <CardContent className="pt-5">
+              <div className="grid grid-cols-1 gap-3">
+                {/* ROOKIE */}
+                <div 
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    currentIntensity === 'rookie' 
+                      ? 'border-emerald-500 bg-emerald-500/10' 
+                      : 'border-border hover:border-emerald-500/50'
+                  }`}
+                  onClick={() => handleIntensityChange('rookie')}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🌱</span>
+                    <div className="flex-1">
+                      <div className="font-bold text-base">ROOKIE</div>
+                      <div className="text-sm text-muted-foreground">1.2g/kg Protein</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Startphase. Magen an Protein gewöhnen.
                       </div>
                     </div>
+                    {currentIntensity === 'rookie' && <CheckCircle className="h-5 w-5 text-emerald-500" />}
                   </div>
-                ))}
+                </div>
+
+                {/* WARRIOR (Recommended) */}
+                <div 
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all relative ${
+                    currentIntensity === 'warrior' 
+                      ? 'border-amber-500 bg-amber-500/10' 
+                      : 'border-border hover:border-amber-500/50'
+                  }`}
+                  onClick={() => handleIntensityChange('warrior')}
+                >
+                  <Badge className="absolute -top-2 right-3 bg-amber-500 text-white border-0">Empfohlen bei Reta</Badge>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">⚔️</span>
+                    <div className="flex-1">
+                      <div className="font-bold text-base">WARRIOR</div>
+                      <div className="text-sm text-muted-foreground">2.0g/kg Protein</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Rekomposition. Maximaler Muskelschutz + stabiler Blutzucker.
+                      </div>
+                    </div>
+                    {currentIntensity === 'warrior' && <CheckCircle className="h-5 w-5 text-amber-500" />}
+                  </div>
+                </div>
+
+                {/* ELITE */}
+                <div 
+                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                    currentIntensity === 'elite' 
+                      ? 'border-purple-500 bg-purple-500/10' 
+                      : 'border-border hover:border-purple-500/50'
+                  }`}
+                  onClick={() => handleIntensityChange('elite')}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🏆</span>
+                    <div className="flex-1">
+                      <div className="font-bold text-base">ELITE</div>
+                      <div className="text-sm text-muted-foreground">2.5g/kg Protein</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Profi-Defizit. Aggressive Trockenlegung.
+                      </div>
+                    </div>
+                    {currentIntensity === 'elite' && <CheckCircle className="h-5 w-5 text-purple-500" />}
+                  </div>
+                </div>
               </div>
 
-              {macroStrategy === 'custom' && (
-                <>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <Label className="text-xs">Protein %</Label>
-                      <NumericInput
-                        value={dailyGoals.protein.toString()}
-                        onChange={(value) => {
-                          setDailyGoals(prev => ({ ...prev, protein: parseInt(value) || 0 }));
-                          setHasUserModifiedMacros(true);
-                        }}
-                        className="mt-1 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Kohlenhydrate %</Label>
-                      <NumericInput
-                        value={dailyGoals.carbs.toString()}
-                        onChange={(value) => {
-                          setDailyGoals(prev => ({ ...prev, carbs: parseInt(value) || 0 }));
-                          setHasUserModifiedMacros(true);
-                        }}
-                        className="mt-1 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Fette %</Label>
-                      <NumericInput
-                        value={dailyGoals.fats.toString()}
-                        onChange={(value) => {
-                          setDailyGoals(prev => ({ ...prev, fats: parseInt(value) || 0 }));
-                          setHasUserModifiedMacros(true);
-                        }}
-                        className="mt-1 text-sm"
-                      />
-                    </div>
+              {/* Live Macro Calculation Display */}
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <div className="text-sm font-medium mb-2">
+                  Deine Makros ({weight || '80'}kg bei {targetCalories} kcal):
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-lg font-bold text-emerald-500">{currentMacros.proteinGrams}g</div>
+                    <div className="text-xs text-muted-foreground">Protein</div>
                   </div>
-
-                  <div className="text-center text-xs text-muted-foreground">
-                    Summe: {dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats}%
-                    {(dailyGoals.protein + dailyGoals.carbs + dailyGoals.fats) !== 100 && (
-                      <span className="text-orange-500 ml-2">⚠️ Sollte 100% sein</span>
-                    )}
+                  <div>
+                    <div className="text-lg font-bold text-blue-500">{currentMacros.carbGrams}g</div>
+                    <div className="text-xs text-muted-foreground">Carbs</div>
                   </div>
-                </>
-              )}
+                  <div>
+                    <div className="text-lg font-bold text-amber-500">{currentMacros.fatGrams}g</div>
+                    <div className="text-xs text-muted-foreground">Fett</div>
+                  </div>
+                </div>
+                {currentMacros.warnings.length > 0 && (
+                  <div className="mt-2 text-xs text-orange-500 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    {currentMacros.warnings[0]}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
