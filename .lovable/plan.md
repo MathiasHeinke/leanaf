@@ -1,148 +1,130 @@
 
-# Fix: Protein Anchor Makros werden nicht korrekt gespeichert
 
-## Problem-Zusammenfassung
+# Fix: Makro-Ziele werden nach Profil-Speicherung nicht aktualisiert
 
-Die WARRIOR-Strategie zeigt in der Kachel **202g/120g/77g**, aber:
-1. Die "Tägliche Makros" Card zeigt **248g/99g/66g** (falsch)
-2. Die Datenbank speichert die falschen Werte (248g statt 202g)
-3. Das NutritionWidget auf dem Homescreen zeigt die falschen Ziele
+## Problem-Analyse
 
-**Root Cause:** Die Funktion `calculateMacroGrams()` (Zeile 378-385) nutzt noch die alte Prozent-Logik statt das Protein Anchor System.
+### Was passiert:
+1. Du änderst die Makrostrategie auf WARRIOR im Profil
+2. Die DB wird korrekt aktualisiert: `protein: 202, carbs: 120, fats: 77` ✅
+3. Das Widget zeigt aber noch `248g` statt `202g` ❌
+
+### Root Cause:
+Das Problem liegt im **React Query Caching-Verhalten**:
+
+```text
+┌────────────────────────────────────────────────────────────────┐
+│                        PROFILE SAVE                            │
+│  1. DB Update: daily_goals.protein = 202                   ✅  │
+│  2. invalidateQueries(['daily-metrics'])                   ✅  │
+│  3. User navigiert zurück → Kein aktiver Observer!         ⚠️  │
+└────────────────────────────────────────────────────────────────┘
+                              ↓
+┌────────────────────────────────────────────────────────────────┐
+│                    HOMESCREEN (Remount)                        │
+│  useDailyMetrics() prüft: "Ist Cache stale?"                   │
+│  → staleTime: 5 min → Cache gilt noch als "frisch"         ⚠️  │
+│  → Zeigt gecachte Werte: protein = 248                     ❌  │
+└────────────────────────────────────────────────────────────────┘
+```
+
+**Das Kernproblem:**
+- `invalidateQueries()` markiert den Cache als "invalid"
+- Aber der Refetch passiert nur wenn ein **aktiver Observer** existiert
+- Beim Navigieren zum Homescreen wird der "invalidierte aber noch nicht refetchte" Cache verwendet
 
 ---
 
 ## Lösungsplan
 
-### Schritt 1: `calculateMacroGrams()` durch `currentMacros` ersetzen
+### Schritt 1: Profile.tsx - Aktiver Refetch statt nur Invalidation
 
-**Datei:** `src/pages/Profile.tsx`
+**Datei:** `src/pages/Profile.tsx`  
+**Zeilen:** 649-651
 
-**Zeile 378-385 - ERSETZEN:**
-
+Ersetze:
 ```typescript
-// ALT (Prozent-basiert):
-const calculateMacroGrams = () => {
-  const targetCalories = calculateTargetCalories();
-  return {
-    protein: Math.round((targetCalories * dailyGoals.protein / 100) / 4),
-    carbs: Math.round((targetCalories * dailyGoals.carbs / 100) / 4),
-    fats: Math.round((targetCalories * dailyGoals.fats / 100) / 9),
-  };
-};
-
-// NEU (Protein Anchor System):
-const calculateMacroGrams = () => {
-  // Nutze das bereits berechnete Protein Anchor System
-  return {
-    protein: currentMacros.proteinGrams,
-    carbs: currentMacros.carbGrams,
-    fats: currentMacros.fatGrams,
-  };
-};
+// ALT: Nur Invalidierung (refetcht nicht sofort)
+queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
+queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
 ```
 
-Das sorgt dafür, dass:
-- Die "Tägliche Makros" Card die korrekten Werte zeigt
-- `performSave()` die korrekten Werte in die DB schreibt
-- Das NutritionWidget die korrekten Ziele bekommt
-
-### Schritt 2: NutritionWidget um Strategie-Anzeige erweitern
-
-**Datei:** `src/components/home/widgets/NutritionWidget.tsx`
-
-Füge einen kompakten Strategie-Badge hinzu (z.B. "⚔️ 2.0g/kg"):
-
-**Import hinzufügen:**
+Mit:
 ```typescript
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+// NEU: Aktiver Refetch, damit der Cache sofort aktualisiert wird
+await queryClient.refetchQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
+await queryClient.refetchQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+// Auch den Strategy-Query refreshen (für NutritionWidget Badge)
+queryClient.invalidateQueries({ queryKey: ['user-profile-strategy'] });
 ```
 
-**Neuen Query für Strategie hinzufügen:**
-```typescript
-const { data: profile } = useQuery({
-  queryKey: ['user-profile-strategy'],
-  queryFn: async () => {
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) return null;
-    const { data } = await supabase
-      .from('profiles')
-      .select('macro_strategy, weight')
-      .eq('user_id', auth.user.id)
-      .maybeSingle();
-    return data;
-  },
-  staleTime: 1000 * 60 * 5,
-});
+### Schritt 2: useDailyMetrics - Bessere Cache-Strategie
 
-// Strategie-Info ableiten
-const getStrategyBadge = () => {
-  const strategy = profile?.macro_strategy;
-  if (strategy === 'elite') return { emoji: '🏆', label: '2.5g/kg' };
-  if (strategy === 'rookie') return { emoji: '🌱', label: '1.2g/kg' };
-  return { emoji: '⚔️', label: '2.0g/kg' }; // Default: Warrior
+**Datei:** `src/hooks/useDailyMetrics.ts`  
+**Zeilen:** 173-175
+
+Füge `refetchOnMount: 'always'` hinzu für kritische Queries:
+```typescript
+staleTime: 1000 * 60 * 5,  // 5 min fresh
+gcTime: 1000 * 60 * 30,    // 30 min cache
+refetchOnMount: 'always',  // NEU: Immer refetchen wenn gemountet
+retry: 1
+```
+
+### Schritt 3: NutritionWidget - Strategy Query Key registrieren
+
+**Datei:** `src/constants/queryKeys.ts`
+
+Füge den neuen Key hinzu:
+```typescript
+export const QUERY_KEYS = {
+  USER_PROFILE: ['user-profile'] as const,
+  USER_PROFILE_STRATEGY: ['user-profile-strategy'] as const, // NEU
+  DAILY_METRICS: ['daily-metrics'] as const,
+  // ... rest
+} as const;
+
+// Im CATEGORY_QUERY_MAP:
+export const CATEGORY_QUERY_MAP: Record<string, readonly (readonly string[])[]> = {
+  profile: [QUERY_KEYS.USER_PROFILE, QUERY_KEYS.USER_PROFILE_STRATEGY, QUERY_KEYS.DAILY_METRICS], // NEU
+  // ... rest
 };
-const strategyBadge = getStrategyBadge();
-```
-
-**UI-Änderung im WIDE/LARGE Layout (Zeile 177-188):**
-
-```tsx
-<div className="flex justify-between items-center mb-3">
-  <div className="flex items-center gap-2">
-    <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
-      <Utensils className="w-5 h-5" />
-    </div>
-    <div className="flex flex-col">
-      <span className="font-semibold text-foreground">Ernährung</span>
-      {/* NEU: Strategie-Badge */}
-      <span className="text-[10px] text-amber-500 font-medium">
-        {strategyBadge.emoji} {strategyBadge.label} Protein
-      </span>
-    </div>
-  </div>
-  <div className="text-right">
-    <span className="text-lg font-bold text-foreground">{Math.round(calories)}</span>
-    <span className="text-sm text-muted-foreground">/{calorieGoal} kcal</span>
-  </div>
-</div>
 ```
 
 ---
 
-## Datei-Übersicht
+## Technische Details
 
-| Datei | Zeilen | Änderung |
-|-------|--------|----------|
-| `src/pages/Profile.tsx` | 378-385 | `calculateMacroGrams()` auf `currentMacros` umstellen |
-| `src/components/home/widgets/NutritionWidget.tsx` | ~55-60, 177-188 | Strategie-Query + Badge-Anzeige |
+### Warum `refetchQueries` statt `invalidateQueries`?
+
+| Methode | Verhalten | Wann refetcht? |
+|---------|-----------|----------------|
+| `invalidateQueries` | Markiert Cache als stale | Nur wenn aktiver Observer |
+| `refetchQueries` | Holt sofort neue Daten | Sofort |
+
+Da der User noch auf der Profil-Seite ist wenn gespeichert wird, gibt es keinen aktiven Observer für `['daily-metrics']`. Mit `refetchQueries` erzwingen wir den Fetch.
+
+### Dateien die geändert werden:
+
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/Profile.tsx` | `refetchQueries` statt `invalidateQueries` |
+| `src/hooks/useDailyMetrics.ts` | `refetchOnMount: 'always'` hinzufügen |
+| `src/constants/queryKeys.ts` | `USER_PROFILE_STRATEGY` Key + profile category |
 
 ---
 
 ## Erwartetes Ergebnis
 
-### Vorher
-- Kachel: 202g/120g/77g (korrekt)
-- "Tägliche Makros" Card: 248g/99g/66g (falsch)
-- DB: protein=248 (falsch)
-- NutritionWidget: 122/248g (falsch)
+### Vorher:
+- Profil speichern mit WARRIOR (202g Protein)
+- Zurück zum Homescreen
+- Widget zeigt noch 248g (alter Cache)
+- Pull-to-Refresh nötig um zu aktualisieren
 
-### Nachher
-- Kachel: 202g/120g/77g (korrekt)
-- "Tägliche Makros" Card: 202g/120g/77g (korrekt)
-- DB: protein=202 (korrekt)
-- NutritionWidget: 122/202g + "⚔️ 2.0g/kg Protein" Badge
+### Nachher:
+- Profil speichern mit WARRIOR (202g Protein)
+- `refetchQueries` holt sofort neue Daten in den Cache
+- Zurück zum Homescreen
+- Widget zeigt sofort 202g (frischer Cache)
 
-### Visuelle Änderung am Widget
-
-```text
-┌─────────────────────────────────────────┐
-│  🍽  Ernährung           1335/1984 kcal │
-│      ⚔️ 2.0g/kg Protein                 │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
-│  Protein  ████████████░░░░░░  122/202g  │
-│  Carbs    ██████████░░░░░░░░   74/120g  │
-│  Fett     ██████████████████   65/77g   │
-└─────────────────────────────────────────┘
-```
