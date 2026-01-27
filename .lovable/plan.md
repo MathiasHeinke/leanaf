@@ -1,307 +1,197 @@
 
-# Schritt 2: Neue Kartentypen implementieren
+
+# UX Refactor: Swipe-Logik vereinfachen
 
 ## Zusammenfassung
 
-Wir fuegen 4 neue kontextbasierte ActionCards hinzu:
-- **Sleep Log** (Morgens: "Wie hast du geschlafen?")
-- **Training** (Mo/Di/Do/Fr: "Training anstehend")
-- **Weight** (Woechentlich: "Weekly Weigh-In")
-- **Nutrition** (Nach 4h ohne Mahlzeit: "Essens-Pause?")
+Wir vereinfachen die Gestures auf ein intuitives 2-Aktionen-System:
+- **Swipe RECHTS** = 2h Standby (Snooze)
+- **X-Button oben** = Permanent fuer heute schliessen
 
-Das Event-System aus Schritt 1 sorgt automatisch dafuer, dass die Karten verschwinden wenn die zugehoerigen Logger speichern.
+Swipe nach links wird entfernt - es macht semantisch keinen Sinn mehr.
 
 ---
 
-## Datei-Aenderungen
+## Neue UX-Logik
 
-### 1. src/hooks/useActionCards.ts
-
-**Neue Imports (Zeile 17):**
-```typescript
-import { Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell, Sparkles, Syringe, Scale, Utensils } from 'lucide-react';
-```
-
-**Neuer Hook Import (nach Zeile 16):**
-```typescript
-import { useTodaysMeals } from './useTodaysMeals';
-```
-
-**Type erweitern (Zeile 28):**
-```typescript
-type: 'insight' | 'epiphany' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein' | 'peptide' | 'training' | 'weight' | 'sleep_log' | 'nutrition';
-```
-
-**Neuer Hook im Funktionskoerper (nach Zeile 48):**
-```typescript
-const { meals } = useTodaysMeals();
-```
-
-**Neue Card-Logik (vor "Sort by priority" Zeile 228):**
-
-#### Sleep Log Card
-```typescript
-// Sleep Log - Morning routine if no sleep logged today
-const todayStr = new Date().toISOString().slice(0, 10);
-const sleepLoggedToday = dailyMetrics?.sleep?.lastHours != null && 
-  dailyMetrics?.sleep?.lastQuality != null;
-const isMorning = hour >= 6 && hour < 11;
-
-if (isMorning && !sleepLoggedToday && !plusData.sleepLoggedToday) {
-  result.push({
-    id: 'sleep_log',
-    type: 'sleep_log',
-    title: 'Wie hast du geschlafen?',
-    subtitle: 'Logge deine Schlafqualität für bessere Insights.',
-    gradient: 'from-indigo-500 to-blue-600',
-    icon: Moon,
-    actionContext: 'log_sleep',
-    priority: 4,
-    xp: 30,
-    canSwipeComplete: false
-  });
-}
-```
-
-#### Training Card
-```typescript
-// Training Card - Training day without workout
-const dayOfWeek = new Date().getDay();
-const isTrainingDay = [1, 2, 4, 5].includes(dayOfWeek); // Mo, Di, Do, Fr
-const workoutLogged = dailyMetrics?.training?.todayType != null || plusData.workoutLoggedToday;
-
-if (isTrainingDay && !workoutLogged && hour >= 8 && hour < 22) {
-  const dayNames: Record<number, string> = { 1: 'Montag', 2: 'Dienstag', 4: 'Donnerstag', 5: 'Freitag' };
-  result.push({
-    id: 'training',
-    type: 'training',
-    title: 'Training anstehend',
-    subtitle: `${dayNames[dayOfWeek]} ist Trainingstag. Bereit?`,
-    gradient: 'from-emerald-500 to-teal-600',
-    icon: Dumbbell,
-    actionContext: 'log_training',
-    priority: 5,
-    xp: 60,
-    canSwipeComplete: false
-  });
-}
-```
-
-#### Weight Card
-```typescript
-// Weight Card - Weekly weigh-in reminder
-const lastWeightDate = dailyMetrics?.weight?.date;
-const daysSinceLastWeight = lastWeightDate 
-  ? Math.floor((Date.now() - new Date(lastWeightDate).getTime()) / (1000 * 60 * 60 * 24))
-  : 999;
-
-if (daysSinceLastWeight >= 7 && hour >= 6 && hour < 12) {
-  result.push({
-    id: 'weight',
-    type: 'weight',
-    title: 'Weekly Weigh-In',
-    subtitle: lastWeightDate 
-      ? `Letzte Messung vor ${daysSinceLastWeight} Tagen.`
-      : 'Tracke dein Gewicht für den Wochentrend.',
-    gradient: 'from-violet-500 to-purple-600',
-    icon: Scale,
-    actionContext: 'log_weight',
-    priority: 6,
-    xp: 20,
-    canSwipeComplete: false
-  });
-}
-```
-
-#### Nutrition Card
-```typescript
-// Nutrition Card - Meal reminder after 4+ hours
-const lastMealTime = meals.length > 0 
-  ? new Date(meals[meals.length - 1].ts).getTime() 
-  : null;
-const hoursSinceLastMeal = lastMealTime 
-  ? (Date.now() - lastMealTime) / (1000 * 60 * 60) 
-  : null;
-const needsMealReminder = (hoursSinceLastMeal !== null && hoursSinceLastMeal > 4) || 
-                          (lastMealTime === null && hour >= 12);
-
-if (needsMealReminder && hour >= 8 && hour < 22) {
-  result.push({
-    id: 'nutrition',
-    type: 'nutrition',
-    title: 'Essens-Pause?',
-    subtitle: hoursSinceLastMeal 
-      ? `${Math.floor(hoursSinceLastMeal)}h seit der letzten Mahlzeit.`
-      : 'Zeit für den ersten Fuel-Up.',
-    gradient: 'from-orange-500 to-red-500',
-    icon: Utensils,
-    actionContext: 'log_nutrition',
-    priority: 8,
-    xp: 50,
-    canSwipeComplete: false
-  });
-}
-```
-
-**Dependencies Update (Zeile 230):**
-```typescript
-}, [isInitialLoading, plusData, dailyMetrics, profileData, groupedSupplements, totalScheduled, totalTaken, protocols, isPeptideTakenToday, meals]);
-```
+| Aktion | Verhalten | Feedback |
+|--------|-----------|----------|
+| Swipe Rechts | 2h Snooze | Gelbe/Orange Overlay + "⏸️ 2h" Animation |
+| X-Button oben | Permanent dismiss | Card verschwindet (kein Comeback) |
+| Swipe Links | Deaktiviert | Kein visuelles Feedback, Card snappt zurueck |
 
 ---
 
-### 2. src/components/home/SmartFocusCard.tsx
+## Technische Aenderungen
 
-**Neue Imports (Zeile 10-11):**
-```typescript
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe, PenTool, Scale, Utensils } from 'lucide-react';
-import { openJournal, openSleep, openTraining, openWeight, openMeal } from '@/components/quick/quickAddBus';
-```
+### 1. SmartFocusCard.tsx - Swipe-Handler anpassen
 
-**SmartTask Type erweitern (Zeile 19):**
-```typescript
-type: 'hydration' | 'supplement' | 'supplements' | 'peptide' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix' | 'training' | 'weight' | 'sleep_log' | 'nutrition';
-```
-
-**Neue SmartAction Bloecke (nach journal Block, vor DEFAULT):**
+**handleDragEnd Funktion (Zeile 213-221):**
 
 ```typescript
-// SLEEP LOG: Open Sleep Logger
-if (task.type === 'sleep_log') {
-  return (
-    <button 
-      onClick={(e) => {
-        e.stopPropagation();
-        openSleep();
-      }}
-      className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
-    >
-      <Moon size={16} />
-      <span>Schlaf tracken</span>
-      <ChevronRight size={14} className="opacity-60" />
-    </button>
-  );
-}
+// VORHER:
+const handleDragEnd = (_: any, info: PanInfo) => {
+  if (info.offset.x > 100 && task.canSwipeComplete !== false) {
+    // SWIPE RIGHT -> COMPLETE (default action)
+    handleComplete();
+  } else if (info.offset.x < -100) {
+    // SWIPE LEFT -> DISMISS
+    onDismiss();
+  }
+};
 
-// TRAINING: Open Training Logger
-if (task.type === 'training') {
-  return (
-    <button 
-      onClick={(e) => {
-        e.stopPropagation();
-        openTraining();
-      }}
-      className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
-    >
-      <Dumbbell size={16} />
-      <span>Workout starten</span>
-      <ChevronRight size={14} className="opacity-60" />
-    </button>
-  );
-}
-
-// WEIGHT: Open Weight Logger
-if (task.type === 'weight') {
-  return (
-    <button 
-      onClick={(e) => {
-        e.stopPropagation();
-        openWeight();
-      }}
-      className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
-    >
-      <Scale size={16} />
-      <span>Gewicht loggen</span>
-      <ChevronRight size={14} className="opacity-60" />
-    </button>
-  );
-}
-
-// NUTRITION: Open Meal Input
-if (task.type === 'nutrition') {
-  return (
-    <button 
-      onClick={(e) => {
-        e.stopPropagation();
-        openMeal();
-      }}
-      className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
-    >
-      <Utensils size={16} />
-      <span>Mahlzeit loggen</span>
-      <ChevronRight size={14} className="opacity-60" />
-    </button>
-  );
-}
-```
-
----
-
-### 3. src/components/home/ActionCardStack.tsx
-
-**XP Map erweitern (Zeile 84-91):**
-```typescript
-const xpMap: Record<string, number> = {
-  journal: 40,
-  sleep: 30,
-  sleep_log: 30,  // NEU
-  weight: 20,
-  training: 60,
-  profile: 50,
-  epiphany: 25,
-  nutrition: 50,  // NEU
+// NACHHER:
+const handleDragEnd = (_: any, info: PanInfo) => {
+  if (info.offset.x > 100) {
+    // SWIPE RIGHT -> 2H SNOOZE (Standby)
+    onSnooze();
+  }
+  // Swipe links deaktiviert - Card snappt zurueck
 };
 ```
 
+### 2. Props erweitern
+
+**SmartFocusCardProps Interface (Zeile 37-46):**
+
+```typescript
+interface SmartFocusCardProps {
+  task: SmartTask;
+  onComplete: (action?: string) => void;
+  onDismiss: () => void;           // Permanent dismiss (X-Button)
+  onSnooze: () => void;            // NEU: 2h Snooze (Swipe Right)
+  onOpenChat?: (prompt: string) => void;
+  onSupplementAction?: (timing: string) => void;
+  onHydrationAction?: (action: string) => void;
+  style?: React.CSSProperties;
+  className?: string;
+}
+```
+
+### 3. Swipe Feedback Farben anpassen
+
+**bgOverlayColor Transform (Zeile 208-209):**
+
+```typescript
+// VORHER: Rot links, Gruen rechts
+const bgOverlayOpacity = useTransform(x, [-150, 0, 150], [0.5, 0, 0.5]);
+const bgOverlayColor = useTransform(x, [-150, 0, 150], ["#ef4444", "transparent", "#22c55e"]);
+
+// NACHHER: Nur Orange/Amber rechts fuer Snooze-Feedback
+const bgOverlayOpacity = useTransform(x, [0, 100, 150], [0, 0.3, 0.5]);
+const bgOverlayColor = useTransform(x, [0, 100, 150], ["transparent", "#f59e0b", "#f59e0b"]);
+```
+
+### 4. Drag Constraints anpassen
+
+**drag Constraints (Zeile 251-252):**
+
+```typescript
+// VORHER: Kann nach links und rechts gezogen werden
+dragConstraints={{ left: 0, right: 0 }}
+
+// NACHHER: Nur nach rechts erlaubt, links blockiert
+dragConstraints={{ left: 0, right: 0 }}
+// Plus: Negative X-Werte ignorieren
+```
+
+Alternative: Elasticity nur fuer positive Werte:
+```typescript
+dragElastic={{ left: 0, right: 0.7 }}
+```
+
+### 5. Snooze-Indicator unten rechts hinzufuegen
+
+Ein dezentes visuelles Cue das die Swipe-Richtung andeutet:
+
+```typescript
+// Neue Komponente nach SmartActions
+const SnoozeHint: React.FC = () => (
+  <div className="absolute bottom-3 right-3 flex items-center gap-1 text-white/40 text-[10px]">
+    <Clock size={10} />
+    <span>Swipe → 2h</span>
+  </div>
+);
+```
+
 ---
 
-## Technische Details
+### 6. ActionCardStack.tsx - Handler anpassen
 
-### Prioritaeten-Reihenfolge (Final)
+**handleDismissCard Funktion splitten:**
 
-| Priority | Card | Trigger |
-|----------|------|---------|
-| 1 | sleep_fix | Schlaf < 6h geloggt |
-| 2 | profile | Profil unvollstaendig |
-| 3 | supplement | Supps pending |
-| 3 | peptide | Peptide pending |
-| 4 | sleep_log | Morgens (6-11h) ohne Sleep-Log |
-| 4 | hydration | < 1L nach 12:00 |
-| 5 | training | Mo/Di/Do/Fr ohne Workout |
-| 5 | journal | Abends (18-23h) |
-| 6 | weight | > 7 Tage ohne Messung |
-| 8 | nutrition | > 4h ohne Mahlzeit |
-| 10 | epiphany | Immer (letzte Karte) |
+```typescript
+// Snooze Handler (2h - fuer Swipe Rechts)
+const handleSnoozeCard = useCallback((card: ActionCard) => {
+  dismissCard(card.id, true); // true = 2h snooze
+  setCards(prev => prev.filter(c => c.id !== card.id));
+  
+  toast('Auf Standby', { 
+    description: 'Kommt in 2h wieder',
+    icon: '⏸️'
+  });
+}, [dismissCard]);
 
-### Event-Flow nach Implementation
+// Permanent Dismiss Handler (fuer X-Button)
+const handleDismissCard = useCallback((card: ActionCard) => {
+  dismissCard(card.id, false); // false = permanent fuer heute
+  setCards(prev => prev.filter(c => c.id !== card.id));
+}, [dismissCard]);
+```
+
+**SmartFocusCard Aufruf anpassen:**
+
+```typescript
+<SmartFocusCard
+  key={card.id}
+  task={mapCardToTask(card)}
+  onComplete={(action) => handleCompleteCard(card, action)}
+  onDismiss={() => handleDismissCard(card)}   // X-Button = permanent
+  onSnooze={() => handleSnoozeCard(card)}     // NEU: Swipe = 2h
+  onOpenChat={onTriggerChat}
+  // ...
+/>
+```
+
+---
+
+## Visuelles Ergebnis
 
 ```text
-User sieht "Training anstehend" Card
-           |
-           v
-   Klickt "Workout starten"
-           |
-           v
-   openTraining() -> QuickLogSheet oeffnet
-           |
-           v
-   User loggt Workout -> Save
-           |
-           v
-   TrainingLogger dispatcht 'ares-card-completed'
-           |
-           v
-   ActionCardStack entfernt Card + 60 XP
++----------------------------------------+
+|  PRIORITY  +30 XP              [X]     |  <- X = Permanent weg fuer heute
+|                                        |
+|  Training anstehend                    |
+|  Montag ist Trainingstag. Bereit?      |
+|                                        |
+|   [ Workout starten ]                  |
+|                                        |
+|                        [🕐 Swipe → 2h] |  <- Dezenter Hint
++----------------------------------------+
+
+        -----> Swipe RECHTS ----->
+              Orange Overlay
+            Card verschwindet
+          "Auf Standby" Toast
+         Kommt in 2h wieder
 ```
+
+---
+
+## Zusammenfassung der Aenderungen
+
+| Datei | Aenderung |
+|-------|-----------|
+| `SmartFocusCard.tsx` | Props + `onSnooze`, Swipe-Handler, Feedback-Farben, Snooze-Hint |
+| `ActionCardStack.tsx` | Neue `handleSnoozeCard` Funktion, Props durchreichen |
 
 ---
 
 ## Erwartetes Verhalten
 
-1. **Morgens 07:00:** "Wie hast du geschlafen?" erscheint -> Klick -> SleepLogger -> Speichern -> Card weg + 30 XP
+1. **User sieht Card** → Snooze-Hint unten rechts sichtbar
+2. **Swipe nach rechts** → Orange Overlay, Card verschwindet, Toast "Auf Standby"
+3. **Nach 2 Stunden** → Card erscheint wieder im Stack
+4. **X-Button klicken** → Card verschwindet permanent fuer heute (kein Comeback)
+5. **Swipe nach links** → Nichts passiert, Card snappt zurueck
 
-2. **Montag 10:00:** "Training anstehend" erscheint -> Klick -> TrainingLogger -> Speichern -> Card weg + 60 XP
-
-3. **Sonntag 08:00 (10 Tage ohne Wiegen):** "Weekly Weigh-In" erscheint -> Klick -> WeightLogger -> Speichern -> Card weg + 20 XP
-
-4. **14:00 (5h seit letzter Mahlzeit):** "Essens-Pause?" erscheint -> Klick -> MealInput -> Speichern -> Card weg + 50 XP
