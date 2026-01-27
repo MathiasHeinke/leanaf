@@ -37,7 +37,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'nutrition', 
     label: 'Ernährung', 
     description: 'Kalorien & Makros', 
-    availableSizes: ['medium', 'wide', 'large'], 
+    availableSizes: ['flat', 'medium', 'wide', 'large'], 
     defaultSize: 'wide', 
     icon: Utensils 
   },
