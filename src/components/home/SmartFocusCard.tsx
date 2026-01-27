@@ -52,7 +52,7 @@ interface DismissButtonProps {
   onDismiss: () => void;
 }
 
-const DismissButton: React.FC<DismissButtonProps> = ({ icon: Icon, onDismiss }) => {
+export const DismissButton: React.FC<DismissButtonProps> = ({ icon: Icon, onDismiss }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
