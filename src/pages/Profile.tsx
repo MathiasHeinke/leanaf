@@ -889,18 +889,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             tdee={tdee || 2000}
           />
 
-          {/* Water Goal - Separate Card */}
-          <Card>
-            <CardContent className="pt-5">
-              <FluidGoalSlider
-                value={fluidGoalMl}
-                onChange={setFluidGoalMl}
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                Empfohlen: 2.0 - 3.0 Liter pro Tag basierend auf Aktivitätslevel
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* 3. Intelligent Calorie Analysis + Goal Progress */}
