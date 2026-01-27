@@ -13,9 +13,12 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle, User, MessageSquare, PieChart, Calculator, Brain, TrendingDown, Info, AlertTriangle, CheckCircle2, CalendarIcon, Droplets } from 'lucide-react';
+import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle, User, MessageSquare, PieChart, Calculator, Brain, TrendingDown, Info, AlertTriangle, CheckCircle2, CalendarIcon, Droplets, Scale } from 'lucide-react';
 import { FluidGoalSlider } from '@/components/ui/fluid-goal-slider';
 import { GoalConfigurator, type MuscleGoal } from '@/components/profile/GoalConfigurator';
+import { ProtocolModeSelector, type ProtocolMode } from '@/components/profile/ProtocolModeSelector';
+import { LongevitySettings, type FastingProtocol } from '@/components/profile/LongevitySettings';
+import { TrainingFrequencySelector } from '@/components/profile/TrainingFrequencySelector';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,6 +52,21 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [gender, setGender] = useState('');
   const [activityLevel, setActivityLevel] = useState('moderate');
   const [goal, setGoal] = useState('maintain');
+  
+  // NEW: Protocol Mode state
+  const [protocolMode, setProtocolMode] = useState<ProtocolMode>('natural');
+  const [weeklyTrainingSessions, setWeeklyTrainingSessions] = useState(3);
+  
+  // NEW: Longevity settings (Phase 3+)
+  const [rapamycinDay, setRapamycinDay] = useState('sunday');
+  const [fastingProtocol, setFastingProtocol] = useState<FastingProtocol>('16:8');
+  const [trackDunedinPace, setTrackDunedinPace] = useState(false);
+  const [trackSenolytics, setTrackSenolytics] = useState(false);
+  
+  // NEW: Current protocol phase (read-only from user_protocol_status)
+  const [currentPhase, setCurrentPhase] = useState(0);
+  const [phaseProgress, setPhaseProgress] = useState<{ completed: number; total: number } | undefined>();
+  
   // NEW: Protocol-driven goal states (replacing targetWeight, targetDate, goalType, targetBodyFat)
   const [weightDelta, setWeightDelta] = useState(0);
   const [muscleGoal, setMuscleGoal] = useState<MuscleGoal>('maintain');
@@ -88,8 +106,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-
-  // REMOVED: Legacy percentage states - now using Protein Anchor System (currentMacros)
 
   // Avatar state
   const [profileAvatarUrl, setProfileAvatarUrl] = useState('');
@@ -135,8 +151,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     setValidationErrors(errors);
   }, [weight, height, age, gender, activityLevel, goal]);
 
-  // REMOVED: Legacy useEffect for percentage mapping - now using Protein Anchor System
-
   // Auto-save function
   const autoSave = async () => {
     if (!user || autoSaving) return;
@@ -168,7 +182,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     dailyGoals.fats, dailyGoals.calorieDeficit,
     coachPersonality, muscleMaintenancePriority, macroStrategy,
     profileAvatarUrl, avatarType, avatarPresetId,
-    fluidGoalMl
+    fluidGoalMl, protocolMode, weeklyTrainingSessions,
+    rapamycinDay, fastingProtocol, trackDunedinPace, trackSenolytics
   ]);
 
   useEffect(() => {
@@ -180,6 +195,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         loadProfile(),
         loadDailyGoals(),
         loadCurrentWeight(),
+        loadProtocolStatus(),
         calculateIntelligentCalories()
       ]).then(() => {
         setProfileLoadingState('loaded');
@@ -239,6 +255,15 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setGender(data.gender || '');
         setActivityLevel(data.activity_level || 'moderate');
         setGoal(data.goal || 'maintain');
+        
+        // Load new protocol fields
+        setProtocolMode((data.protocol_mode as ProtocolMode) || 'natural');
+        setWeeklyTrainingSessions(data.weekly_training_sessions ?? 3);
+        setRapamycinDay(data.rapamycin_day || 'sunday');
+        setFastingProtocol((data.fasting_protocol as FastingProtocol) || '16:8');
+        setTrackDunedinPace(data.track_dunedin_pace || false);
+        setTrackSenolytics(data.track_senolytics || false);
+        
         // Migrate from legacy targetWeight/targetDate to new protocol system
         if (data.target_weight && data.weight) {
           setWeightDelta(data.target_weight - data.weight);
@@ -336,6 +361,34 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       }
     } catch (error: any) {
       console.error('Error loading current weight:', error);
+    }
+  };
+
+  // NEW: Load protocol status for Phase badge
+  const loadProtocolStatus = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_protocol_status')
+        .select('current_phase, phase_0_checklist')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading protocol status:', error);
+        return;
+      }
+
+      if (data) {
+        setCurrentPhase(data.current_phase || 0);
+        // Parse checklist for progress
+        if (data.phase_0_checklist && typeof data.phase_0_checklist === 'object') {
+          const items = Object.values(data.phase_0_checklist as Record<string, boolean>);
+          const completed = items.filter(Boolean).length;
+          setPhaseProgress({ completed, total: items.length });
+        }
+      }
+    } catch (error: any) {
+      console.error('Error loading protocol status:', error);
     }
   };
 
@@ -587,7 +640,13 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       protein_percentage: dailyGoals.protein,
       carbs_percentage: dailyGoals.carbs,
       fats_percentage: dailyGoals.fats,
-      // Protocol tempo is derived from target_date, no extra column needed
+      // NEW: Protocol fields
+      protocol_mode: protocolMode,
+      weekly_training_sessions: weeklyTrainingSessions,
+      rapamycin_day: rapamycinDay,
+      fasting_protocol: fastingProtocol,
+      track_dunedin_pace: trackDunedinPace,
+      track_senolytics: trackSenolytics,
     };
 
     if (profileExists) {
@@ -754,15 +813,54 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       <div className="p-4 max-w-lg mx-auto">
         <div className="space-y-6 pb-20">
         
-        {/* 1. Personal Data */}
+        {/* ============= SECTION 1: PROFIL & IDENTITÄT ============= */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-indigo-500 rounded-xl flex items-center justify-center">
+              <User className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold">Profil & Identität</h2>
+          </div>
+
+          <AvatarSelector
+            currentAvatarUrl={profileAvatarUrl}
+            currentPresetId={avatarPresetId}
+            avatarType={avatarType}
+            onAvatarChange={(avatarUrl, type, presetId) => {
+              setProfileAvatarUrl(avatarUrl);
+              setAvatarType(type);
+              setAvatarPresetId(presetId || '');
+            }}
+          />
+
+          {/* Preferred Name Section */}
+          <Card>
+            <CardContent className="space-y-4 pt-5">
+              <div className="space-y-2">
+                <Label htmlFor="preferred-name">Wie sollen die Coaches dich ansprechen?</Label>
+                <Input
+                  id="preferred-name"
+                  value={preferredName}
+                  onChange={(e) => setPreferredName(e.target.value)}
+                  placeholder="Dein Vorname oder Spitzname"
+                  className="w-full"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Anzeigename für&apos;s Coaching
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ============= SECTION 2: KÖRPER-BASICS ============= */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
-              <Settings className="h-5 w-5 text-white" />
+              <Scale className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-lg md:text-xl font-bold">Persönliche Daten bearbeiten</h2>
+            <h2 className="text-lg md:text-xl font-bold">Körper-Basics</h2>
           </div>
-
 
           <Card>
             <CardContent className="space-y-4 pt-5">
@@ -849,9 +947,23 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   <ProfileFieldIndicator isComplete={completionStatus.gender} />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </div>
 
+        {/* ============= SECTION 3: LIFESTYLE ============= */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+              <Activity className="h-5 w-5 text-white" />
+            </div>
+            <h2 className="text-lg md:text-xl font-bold">Lifestyle</h2>
+          </div>
+
+          <Card>
+            <CardContent className="space-y-4 pt-5">
               <div className="profile-activity-level">
-                <Label className="text-sm">Aktivitätslevel</Label>
+                <Label className="text-sm">Aktivitätslevel (Alltag)</Label>
                 <Select value={activityLevel} onValueChange={setActivityLevel}>
                   <SelectTrigger className={cn("mt-1", validationErrors.activityLevel && "border-red-500")}>
                     <SelectValue placeholder="Wählen..." />
@@ -865,11 +977,25 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     </SelectContent>
                 </Select>
               </div>
+
+              {/* NEW: Training Frequency */}
+              <TrainingFrequencySelector
+                value={weeklyTrainingSessions}
+                onChange={setWeeklyTrainingSessions}
+              />
             </CardContent>
           </Card>
         </div>
 
-        {/* 2. Goals - Protocol-Driven Configurator */}
+        {/* ============= SECTION 4: ARES PROTOKOLL-MODUS ============= */}
+        <ProtocolModeSelector
+          mode={protocolMode}
+          onModeChange={setProtocolMode}
+          currentPhase={currentPhase}
+          phaseProgress={phaseProgress}
+        />
+
+        {/* ============= SECTION 5: ZIELE ============= */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">
@@ -888,10 +1014,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             setProtocolTempo={setProtocolTempo}
             tdee={tdee || 2000}
           />
-
         </div>
 
-        {/* 3. Intelligent Calorie Analysis + Goal Progress */}
+        {/* ============= SECTION 6: KALORIEN & MAKROS ============= */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
@@ -915,35 +1040,35 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   <div className="text-xs text-muted-foreground mt-0.5">Tagesbedarf</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-base md:text-lg font-bold">{targetCalories}</div>
+                  <div className="text-base md:text-lg font-bold text-primary">{targetCalories}</div>
                   <div className="text-xs text-muted-foreground">Ziel</div>
                   <div className="text-xs text-muted-foreground mt-0.5">Kalorien</div>
                 </div>
               </div>
 
-              {/* Goal Deficit/Surplus Section - Only if target set */}
-              {weightDelta !== 0 && calculateRequiredCalorieDeficit() && (
-                <div className="pt-3 border-t border-border">
+              {/* Weight delta and target display */}
+              {weightDelta !== 0 && (
+                <div className="bg-muted/50 rounded-xl p-3">
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div className="bg-muted/50 rounded-lg p-2">
-                      <div className="text-sm font-bold text-primary">
-                        {Math.abs(weightDelta).toFixed(1)} kg
+                      <div className={`text-sm font-bold ${weightDelta < 0 ? 'text-green-500' : 'text-blue-500'}`}>
+                        {weightDelta > 0 ? '+' : ''}{weightDelta.toFixed(1)} kg
                       </div>
                       <div className="text-[10px] text-muted-foreground">
-                        {weightDelta > 0 ? '↑' : '↓'} Differenz
+                        {weightDelta < 0 ? '↓ Abnehmen' : '↑ Zunehmen'}
                       </div>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-2">
-                      <div className="text-sm font-bold text-orange-500">
-                        {calculateRequiredCalorieDeficit()?.daily}
+                      <div className={`text-sm font-bold ${calculateRequiredCalorieDeficit()?.isGaining ? 'text-blue-500' : 'text-red-500'}`}>
+                        {calculateRequiredCalorieDeficit()?.isGaining ? '+' : '-'}{calculateRequiredCalorieDeficit()?.daily || 0}
                       </div>
                       <div className="text-[10px] text-muted-foreground">
                         kcal/Tag
                       </div>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-2">
-                      <div className="text-sm font-bold text-teal-500">
-                        {calculateRequiredCalorieDeficit()?.weekly}
+                      <div className="text-sm font-bold text-orange-500">
+                        {calculateRequiredCalorieDeficit()?.weekly || 0}
                       </div>
                       <div className="text-[10px] text-muted-foreground">
                         kcal/Woche
@@ -1014,7 +1139,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
-        {/* 3. Macro Strategy */}
+        {/* ============= SECTION 7: PROTOKOLL-INTENSITÄT ============= */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
@@ -1098,51 +1223,26 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
-        {/* 4. Medical Screening */}
+        {/* ============= SECTION 8: GESUNDHEIT ============= */}
         <MedicalScreening onScreeningComplete={refreshCompletion} />
 
-        {/* 9. Coach Persona Selection */}
+        {/* ============= SECTION 9: LONGEVITY (Phase 3+ only) ============= */}
+        {currentPhase >= 3 && (
+          <LongevitySettings
+            rapamycinDay={rapamycinDay}
+            onRapamycinDayChange={setRapamycinDay}
+            fastingProtocol={fastingProtocol}
+            onFastingProtocolChange={setFastingProtocol}
+            trackDunedinPace={trackDunedinPace}
+            onTrackDunedinPaceChange={setTrackDunedinPace}
+            trackSenolytics={trackSenolytics}
+            onTrackSenolyticsChange={setTrackSenolytics}
+          />
+        )}
+
+        {/* ============= SECTION 10: COACH PERSONA ============= */}
         <PersonaSelector />
 
-        {/* 10. Avatar Selection */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-indigo-500 rounded-xl flex items-center justify-center">
-              <User className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-lg md:text-xl font-bold">Profilbild & Coach-Ansprache</h2>
-          </div>
-
-          <AvatarSelector
-            currentAvatarUrl={profileAvatarUrl}
-            currentPresetId={avatarPresetId}
-            avatarType={avatarType}
-            onAvatarChange={(avatarUrl, type, presetId) => {
-              setProfileAvatarUrl(avatarUrl);
-              setAvatarType(type);
-              setAvatarPresetId(presetId || '');
-            }}
-          />
-
-          {/* Preferred Name Section */}
-          <Card>
-            <CardContent className="space-y-4 pt-5">
-              <div className="space-y-2">
-                <Label htmlFor="preferred-name">Wie sollen die Coaches dich ansprechen?</Label>
-                <Input
-                  id="preferred-name"
-                  value={preferredName}
-                  onChange={(e) => setPreferredName(e.target.value)}
-                  placeholder="Dein Vorname oder Spitzname"
-                  className="w-full"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Anzeigename für&apos;s Coaching
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
         </div>
 
         {/* Save Status */}
