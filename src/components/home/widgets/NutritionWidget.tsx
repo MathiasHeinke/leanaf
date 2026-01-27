@@ -66,6 +66,48 @@ export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size, onOpenDa
   const fatGoal = metrics?.goals?.fats || 65;
   
   const caloriePercent = Math.min((calories / calorieGoal) * 100, 100);
+  const isOver = calories > calorieGoal;
+
+  // FLAT: Horizontaler kompakter Streifen mit Kalorien-Progress
+  if (size === 'flat') {
+    return (
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={() => onOpenDaySheet?.()}
+        className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
+      >
+        {/* Background Fill basierend auf Kalorien-Fortschritt */}
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${caloriePercent}%` }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className={cn(
+            "absolute inset-0",
+            isOver 
+              ? "bg-gradient-to-r from-destructive/20 to-destructive/10" 
+              : "bg-gradient-to-r from-purple-600/20 to-violet-400/10"
+          )}
+        />
+        
+        {/* Icon */}
+        <div className="relative z-10 p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+          <Utensils className="w-5 h-5" />
+        </div>
+        
+        {/* Label */}
+        <span className="relative z-10 flex-1 text-sm font-medium text-foreground">Ernährung</span>
+        
+        {/* Kalorien Counter */}
+        <span className={cn(
+          "relative z-10 text-sm font-bold",
+          isOver ? "text-destructive" : "text-purple-600 dark:text-violet-400"
+        )}>
+          {Math.round(calories)} / {calorieGoal} kcal
+        </span>
+      </motion.div>
+    );
+  }
 
   // WIDE: Volle Breite mit horizontalen Makro-Bars
   if (size === 'wide' || size === 'large') {
