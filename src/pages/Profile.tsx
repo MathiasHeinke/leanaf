@@ -947,38 +947,26 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   <ProfileFieldIndicator isComplete={completionStatus.gender} />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* ============= SECTION 3: LIFESTYLE ============= */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-10 w-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-              <Activity className="h-5 w-5 text-white" />
-            </div>
-            <h2 className="text-lg md:text-xl font-bold">Lifestyle</h2>
-          </div>
-
-          <Card>
-            <CardContent className="space-y-4 pt-5">
-              <div className="profile-activity-level">
-                <Label className="text-sm">Aktivitätslevel (Alltag)</Label>
+              {/* Activity Level - Now part of Body Basics */}
+              <div className="profile-activity-level pt-2 border-t border-border">
+                <Label className="text-sm">Aktivitätslevel (Alltag ohne Sport)</Label>
                 <Select value={activityLevel} onValueChange={setActivityLevel}>
                   <SelectTrigger className={cn("mt-1", validationErrors.activityLevel && "border-red-500")}>
                     <SelectValue placeholder="Wählen..." />
                   </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="sedentary">Sitzend (wenig/keine Bewegung)</SelectItem>
-                      <SelectItem value="light">Leicht aktiv (1-2 Tage/Woche Sport, wenig Schritte)</SelectItem>
-                      <SelectItem value="moderate">Moderat aktiv (2-3 Tage/Woche Sport, 5-6k Schritte)</SelectItem>
-                      <SelectItem value="active">Sehr aktiv (3-5 Tage/Woche Sport, 6-8k Schritte)</SelectItem>
-                      <SelectItem value="very_active">Extrem aktiv (5+ Tage/Woche Sport, 8k+ Schritte)</SelectItem>
+                      <SelectItem value="sedentary">Sitzend (Bürojob, wenig Bewegung)</SelectItem>
+                      <SelectItem value="light">Leicht aktiv (Büro + gelegentlich Gehen)</SelectItem>
+                      <SelectItem value="moderate">Moderat aktiv (Stehender Beruf, 5-8k Schritte)</SelectItem>
+                      <SelectItem value="active">Sehr aktiv (Handwerk/körperliche Arbeit)</SelectItem>
+                      <SelectItem value="very_active">Extrem aktiv (Bau, Lager, 10k+ Schritte)</SelectItem>
                     </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">Dein Alltag ohne geplantes Training</p>
               </div>
 
-              {/* NEW: Training Frequency */}
+              {/* Training Frequency - Now part of Body Basics */}
               <TrainingFrequencySelector
                 value={weeklyTrainingSessions}
                 onChange={setWeeklyTrainingSessions}
@@ -987,7 +975,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
-        {/* ============= SECTION 4: ARES PROTOKOLL-MODUS ============= */}
+        {/* ============= SECTION 3: ARES PROTOKOLL-MODUS ============= */}
         <ProtocolModeSelector
           mode={protocolMode}
           onModeChange={setProtocolMode}
@@ -995,7 +983,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           phaseProgress={phaseProgress}
         />
 
-        {/* ============= SECTION 5: ZIELE ============= */}
+        {/* ============= SECTION 4: ZIELE ============= */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">

@@ -63,7 +63,7 @@ export const TrainingFrequencySelector: React.FC<TrainingFrequencySelectorProps>
         })}
       </div>
       <p className="text-xs text-muted-foreground mt-1">
-        Verbessert die TDEE-Berechnung zusammen mit dem Aktivitätslevel
+        Geplantes Kraft- oder Ausdauertraining pro Woche
       </p>
     </div>
   );
