@@ -1,24 +1,38 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Heart, TrendingDown, TrendingUp, Minus, Sparkles } from 'lucide-react';
+import { Heart, TrendingDown, TrendingUp, Minus, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
+import { useAresBioAge } from '@/hooks/useAresBioAge';
 import { useBioAge } from '@/hooks/useBioAge';
 import { useUserProfile } from '@/hooks/useUserProfile';
 
 interface BioAgeWidgetProps {
   size: WidgetSize;
+  onOpenSheet?: () => void;
 }
 
-export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
+export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size, onOpenSheet }) => {
   const navigate = useNavigate();
-  const { latestMeasurement, loading } = useBioAge();
+  const { proxyBioAge, agingPace, chronoAge, confidenceLevel, loading: proxyLoading } = useAresBioAge();
+  const { latestMeasurement, loading: dunedinLoading } = useBioAge();
   const { profileData } = useUserProfile();
   
-  const chronoAge = profileData?.age || 0;
-  const bioAge = latestMeasurement?.calculated_bio_age;
-  const ageDiff = bioAge && chronoAge ? bioAge - chronoAge : null;
+  // Check if user has DunedinPACE measurement
+  const hasDunedin = latestMeasurement?.measurement_type === 'dunedin_pace';
+  
+  // Use DunedinPACE if available, otherwise use proxy
+  const bioAge = hasDunedin 
+    ? latestMeasurement?.calculated_bio_age 
+    : proxyBioAge;
+  const chrono = hasDunedin 
+    ? latestMeasurement?.chronological_age || profileData?.age || 0
+    : chronoAge || profileData?.age || 0;
+  
+  const loading = proxyLoading || dunedinLoading;
+  
+  const ageDiff = bioAge && chrono ? bioAge - chrono : null;
   
   const isYounger = ageDiff !== null && ageDiff < 0;
   const isOlder = ageDiff !== null && ageDiff > 0;
@@ -36,13 +50,21 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
       ? 'from-destructive/20 to-destructive/10' 
       : 'from-muted/20 to-muted/10';
 
+  const handleClick = () => {
+    if (onOpenSheet) {
+      onOpenSheet();
+    } else {
+      navigate('/bio-age');
+    }
+  };
+
   // FLAT: Horizontal compact strip
   if (size === 'flat') {
     return (
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/bio-age')}
+        onClick={handleClick}
         className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
       >
         {/* Background Fill */}
@@ -74,10 +96,10 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
         <div className="relative z-10 flex-1 flex items-center justify-center">
           {bioAge ? (
             <span className="text-sm text-muted-foreground">
-              Bio <span className="font-bold text-foreground">{bioAge}</span> vs <span className="font-bold text-muted-foreground">{chronoAge}</span>
+              Bio <span className="font-bold text-foreground">{typeof bioAge === 'number' ? bioAge.toFixed(1) : bioAge}</span> vs <span className="font-bold text-muted-foreground">{chrono}</span>
             </span>
           ) : (
-            <span className="text-xs text-muted-foreground">Kein Test</span>
+            <span className="text-xs text-muted-foreground">Berechnung läuft...</span>
           )}
         </div>
         
@@ -86,7 +108,7 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
           <div className={cn("relative z-10 flex items-center gap-1 shrink-0", trendColor)}>
             <TrendIcon className="w-4 h-4" />
             <span className="text-sm font-bold">
-              {Math.abs(ageDiff)} J. {isYounger ? 'jünger' : isOlder ? 'älter' : ''}
+              {Math.abs(ageDiff).toFixed(1)} J. {isYounger ? 'jünger' : isOlder ? 'älter' : ''}
             </span>
           </div>
         ) : (
@@ -102,7 +124,7 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/bio-age')}
+        onClick={handleClick}
         className={cn(
           "h-full rounded-2xl p-4 cursor-pointer transition-all",
           isYounger 
@@ -136,20 +158,20 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
         ) : bioAge ? (
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-3xl font-bold text-foreground">{bioAge}</p>
+              <p className="text-3xl font-bold text-foreground">{typeof bioAge === 'number' ? bioAge.toFixed(1) : bioAge}</p>
               <p className="text-xs text-muted-foreground">Bio-Age</p>
             </div>
             <div className="flex flex-col items-center justify-center">
               <TrendIcon className={cn("w-6 h-6", trendColor)} />
               <p className={cn("text-lg font-semibold", trendColor)}>
-                {ageDiff !== null ? (ageDiff > 0 ? '+' : '') + ageDiff : '--'}
+                {ageDiff !== null ? (ageDiff > 0 ? '+' : '') + ageDiff.toFixed(1) : '--'}
               </p>
               <p className="text-[10px] text-muted-foreground">
                 {isYounger ? 'Jahre jünger' : isOlder ? 'Jahre älter' : 'Jahre'}
               </p>
             </div>
             <div>
-              <p className="text-3xl font-bold text-muted-foreground">{chronoAge}</p>
+              <p className="text-3xl font-bold text-muted-foreground">{chrono}</p>
               <p className="text-xs text-muted-foreground">Chrono</p>
             </div>
           </div>
@@ -171,7 +193,7 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/bio-age')}
+        onClick={handleClick}
         className={cn(
           "h-full rounded-2xl p-4 cursor-pointer transition-all flex flex-col justify-between",
           isYounger 
@@ -203,13 +225,13 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
         <div>
           {bioAge ? (
             <>
-              <p className="text-2xl font-bold text-foreground">{bioAge}</p>
+              <p className="text-2xl font-bold text-foreground">{typeof bioAge === 'number' ? bioAge.toFixed(1) : bioAge}</p>
               <p className="text-xs text-muted-foreground">Bio-Age</p>
             </>
           ) : (
             <>
               <p className="text-xl font-bold text-muted-foreground/50">--</p>
-              <p className="text-xs text-muted-foreground">Kein Test</p>
+              <p className="text-xs text-muted-foreground">Berechnung...</p>
             </>
           )}
         </div>
@@ -222,7 +244,7 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      onClick={() => navigate('/bio-age')}
+      onClick={handleClick}
       className={cn(
         "h-full rounded-2xl p-4 cursor-pointer transition-all flex flex-col justify-between",
         isYounger 

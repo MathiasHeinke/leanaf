@@ -20,6 +20,7 @@ interface WidgetRendererProps {
   onOpenTrainingSheet?: () => void;
   onOpenSupplementsSheet?: () => void;
   onOpenSleepSheet?: () => void;
+  onOpenBioAgeSheet?: () => void;
 }
 
 export const WidgetRenderer: React.FC<WidgetRendererProps> = ({ 
@@ -30,7 +31,8 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
   onOpenPeptidesSheet,
   onOpenTrainingSheet,
   onOpenSupplementsSheet,
-  onOpenSleepSheet
+  onOpenSleepSheet,
+  onOpenBioAgeSheet
 }) => {
   const { type, size } = config;
 
@@ -52,7 +54,7 @@ export const WidgetRenderer: React.FC<WidgetRendererProps> = ({
     case 'supplements':
       return <SupplementsWidget size={size} onOpenSheet={onOpenSupplementsSheet} />;
     case 'bio_age':
-      return <BioAgeWidget size={size} />;
+      return <BioAgeWidget size={size} onOpenSheet={onOpenBioAgeSheet} />;
     case 'peptides':
       return <PeptidesWidget size={size} onOpenSheet={onOpenPeptidesSheet} />;
     default:
