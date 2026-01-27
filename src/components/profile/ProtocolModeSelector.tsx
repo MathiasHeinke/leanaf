@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Leaf, Pill, FlaskConical, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils';
 export type ProtocolMode = 'natural' | 'enhanced' | 'clinical';
 
 interface ProtocolModeSelectorProps {
-  mode: ProtocolMode;
-  onModeChange: (mode: ProtocolMode) => void;
+  modes: ProtocolMode[];
+  onModesChange: (modes: ProtocolMode[]) => void;
   currentPhase?: number;
   phaseProgress?: { completed: number; total: number };
 }
@@ -58,12 +58,51 @@ const phaseNames: Record<number, string> = {
   3: 'Longevity',
 };
 
+// Get dynamic hint based on selected modes
+const getModeHint = (modes: ProtocolMode[]): string => {
+  const hasEnhanced = modes.includes('enhanced');
+  const hasClinical = modes.includes('clinical');
+  
+  if (hasEnhanced && hasClinical) {
+    return '💡 Reta + TRT Kombination: Maximale Rekomposition möglich – bis 1000 kcal Defizit.';
+  }
+  if (hasClinical) {
+    return '💡 TRT ermöglicht maximale Rekomposition – individuelle Anpassung durch Coach.';
+  }
+  if (hasEnhanced) {
+    return '💡 GLP-1 schützt Muskeln – aggressivere Defizite (bis 750 kcal/Tag) möglich.';
+  }
+  return '💡 Konservatives Defizit (max 500 kcal/Tag) empfohlen für optimalen Muskelerhalt.';
+};
+
 export const ProtocolModeSelector: React.FC<ProtocolModeSelectorProps> = ({
-  mode,
-  onModeChange,
+  modes,
+  onModesChange,
   currentPhase = 0,
   phaseProgress,
 }) => {
+  const handleModeClick = (clickedMode: ProtocolMode) => {
+    if (clickedMode === 'natural') {
+      // Natural ist exklusiv - deselektiert alle anderen
+      onModesChange(['natural']);
+    } else {
+      // Enhanced/Clinical können kombiniert werden
+      let newModes: ProtocolMode[] = modes.filter(m => m !== 'natural');
+      
+      if (newModes.includes(clickedMode)) {
+        // Toggle off
+        newModes = newModes.filter(m => m !== clickedMode);
+        if (newModes.length === 0) {
+          newModes = ['natural'];
+        }
+      } else {
+        // Toggle on
+        newModes.push(clickedMode);
+      }
+      onModesChange(newModes);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 mb-4">
@@ -75,16 +114,16 @@ export const ProtocolModeSelector: React.FC<ProtocolModeSelectorProps> = ({
 
       <Card>
         <CardContent className="pt-5 space-y-4">
-          {/* Mode Selection Grid */}
+          {/* Mode Selection Grid - Multi-Select */}
           <div className="grid grid-cols-3 gap-2">
             {(Object.keys(modeConfig) as ProtocolMode[]).map((modeKey) => {
               const config = modeConfig[modeKey];
-              const isSelected = mode === modeKey;
+              const isSelected = modes.includes(modeKey);
               
               return (
                 <div
                   key={modeKey}
-                  onClick={() => onModeChange(modeKey)}
+                  onClick={() => handleModeClick(modeKey)}
                   className={cn(
                     'relative flex flex-col items-center p-3 rounded-xl border-2 cursor-pointer transition-all',
                     isSelected 
@@ -137,17 +176,9 @@ export const ProtocolModeSelector: React.FC<ProtocolModeSelectorProps> = ({
             </div>
           </div>
 
-          {/* Mode-specific hints */}
+          {/* Dynamic mode-specific hints */}
           <div className="text-xs text-muted-foreground">
-            {mode === 'natural' && (
-              <p>💡 Konservatives Defizit (max 500 kcal/Tag) empfohlen für optimalen Muskelerhalt.</p>
-            )}
-            {mode === 'enhanced' && (
-              <p>💡 GLP-1 schützt Muskeln – aggressivere Defizite (bis 750 kcal/Tag) möglich.</p>
-            )}
-            {mode === 'clinical' && (
-              <p>💡 TRT ermöglicht maximale Rekomposition – individuelle Anpassung durch Coach.</p>
-            )}
+            <p>{getModeHint(modes)}</p>
           </div>
         </CardContent>
       </Card>

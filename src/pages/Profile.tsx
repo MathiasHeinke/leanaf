@@ -54,7 +54,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [goal, setGoal] = useState('maintain');
   
   // NEW: Protocol Mode state
-  const [protocolMode, setProtocolMode] = useState<ProtocolMode>('natural');
+  const [protocolModes, setProtocolModes] = useState<ProtocolMode[]>(['natural']);
   const [weeklyTrainingSessions, setWeeklyTrainingSessions] = useState(3);
   
   // NEW: Longevity settings (Phase 3+)
@@ -182,7 +182,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     dailyGoals.fats, dailyGoals.calorieDeficit,
     coachPersonality, muscleMaintenancePriority, macroStrategy,
     profileAvatarUrl, avatarType, avatarPresetId,
-    fluidGoalMl, protocolMode, weeklyTrainingSessions,
+    fluidGoalMl, protocolModes, weeklyTrainingSessions,
     rapamycinDay, fastingProtocol, trackDunedinPace, trackSenolytics
   ]);
 
@@ -256,8 +256,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setActivityLevel(data.activity_level || 'moderate');
         setGoal(data.goal || 'maintain');
         
-        // Load new protocol fields
-        setProtocolMode((data.protocol_mode as ProtocolMode) || 'natural');
+        // Load new protocol fields - parse comma-separated modes
+        const savedModes = data.protocol_mode?.split(',').filter(Boolean) as ProtocolMode[] || ['natural'];
+        setProtocolModes(savedModes.length > 0 ? savedModes : ['natural']);
         setWeeklyTrainingSessions(data.weekly_training_sessions ?? 3);
         setRapamycinDay(data.rapamycin_day || 'sunday');
         setFastingProtocol((data.fasting_protocol as FastingProtocol) || '16:8');
@@ -380,10 +381,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
       if (data) {
         setCurrentPhase(data.current_phase || 0);
-        // Parse checklist for progress
+        // Parse checklist for progress - fix: count .completed === true, not truthy objects
         if (data.phase_0_checklist && typeof data.phase_0_checklist === 'object') {
-          const items = Object.values(data.phase_0_checklist as Record<string, boolean>);
-          const completed = items.filter(Boolean).length;
+          const checklist = data.phase_0_checklist as Record<string, { completed?: boolean }>;
+          const items = Object.values(checklist);
+          const completed = items.filter(item => item?.completed === true).length;
           setPhaseProgress({ completed, total: items.length });
         }
       }
@@ -641,7 +643,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       carbs_percentage: dailyGoals.carbs,
       fats_percentage: dailyGoals.fats,
       // NEW: Protocol fields
-      protocol_mode: protocolMode,
+      protocol_mode: protocolModes.join(','),
       weekly_training_sessions: weeklyTrainingSessions,
       rapamycin_day: rapamycinDay,
       fasting_protocol: fastingProtocol,
@@ -1001,8 +1003,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
         {/* ============= SECTION 3: ARES PROTOKOLL-MODUS ============= */}
         <ProtocolModeSelector
-          mode={protocolMode}
-          onModeChange={setProtocolMode}
+          modes={protocolModes}
+          onModesChange={setProtocolModes}
           currentPhase={currentPhase}
           phaseProgress={phaseProgress}
         />
