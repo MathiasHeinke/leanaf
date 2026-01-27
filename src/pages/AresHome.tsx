@@ -215,11 +215,8 @@ export default function AresHome() {
     setMealOpen(false); // Close sheet after submission
   }, [inputText, uploadedImages, optimisticImages, handleSubmitMeal]);
 
-  // Smart Loading: Only show skeleton if auth loading OR (profile loading AND no cache)
-  const hasProfileCache = !!profileData;
-  const isInitialLoading = authLoading || (!hasProfileCache && !user);
-
-  if (isInitialLoading) {
+  // 1. Auth noch nicht fertig -> Skeleton
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background p-6 space-y-6">
         <Skeleton className="h-[3px] w-full" />
@@ -230,9 +227,25 @@ export default function AresHome() {
     );
   }
 
+  // 2. Auth fertig, kein User -> Redirect zu Login
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
+
+  // 3. User da, aber Profil lädt noch und kein Cache -> Skeleton
+  const hasProfileCache = !!profileData;
+  if (!hasProfileCache) {
+    return (
+      <div className="min-h-screen bg-background p-6 space-y-6">
+        <Skeleton className="h-[3px] w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-40 w-full rounded-3xl" />
+        <Skeleton className="h-60 w-full rounded-2xl" />
+      </div>
+    );
+  }
+
+  // 4. Ab hier: User authentifiziert UND profileData vorhanden
 
   // Calculate XP values
   const currentXP = userPoints?.total_points || 0;
