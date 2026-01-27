@@ -385,6 +385,18 @@ function buildStreamingSystemPrompt(
   parts.push('- Beende mit einer Rueckfrage wenn sinnvoll');
   parts.push('');
   
+  // Vision instructions (will be activated when hasVision context is true)
+  parts.push('== BILD-ANALYSE (falls Bild hochgeladen) ==');
+  parts.push('Wenn der User ein Bild hochlaedt, analysiere es sorgfaeltig:');
+  parts.push('- Bei Body-Fotos: Koerperhaltung, Muskelentwicklung, Symmetrie, Proportionen bewerten');
+  parts.push('- Bei Mahlzeiten: Portionsgroesse, geschaetzte Makros (Protein/Carbs/Fett), Qualitaet');
+  parts.push('- Bei Supplements: Inhaltsstoffe pruefen, Dosierungen bewerten');
+  parts.push('- Bei Blutwerten/Screenshots: Werte interpretieren, Optimierungspotenzial nennen');
+  parts.push('- Beziehe das Bild IMMER in deine Antwort ein');
+  parts.push('- Kombiniere Bildanalyse mit den bekannten User-Daten (Gewicht, Ziele, etc.)');
+  parts.push('- Sei ehrlich aber motivierend bei Koerperanalysen');
+  parts.push('');
+  
   // Current date
   const now = new Date();
   const germanDays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
@@ -475,6 +487,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const text = body.message || body.text || '';
     const coachId = body.coachId || 'ares';
+    const images: string[] = body.images || [];
+    const hasVision = images.length > 0;
     const researchPlus = body.researchPlus === true;
     
     if (!text) {
@@ -790,7 +804,7 @@ Deno.serve(async (req) => {
           
           // Determine routing based on message content AND semantic analysis
           const routingContext: RoutingContext = {
-            hasImages: false,
+            hasImages: hasVision,
             messageLength: text.length,
             conversationLength: conversationHistory.length,
           };
@@ -861,14 +875,24 @@ Deno.serve(async (req) => {
                   'Content-Type': 'application/json',
                 },
               body: JSON.stringify({
-                  model,
+                  model: hasVision ? 'google/gemini-2.5-pro' : model, // Vision requires Pro
                   stream: true,
                   temperature: 0.7,
                   // KRITISCH: Minimum 2500 tokens für ALLE Antworten um Abschneiden zu verhindern
                   max_tokens: Math.max(semanticMaxTokens || detectQuestionComplexity(text).maxTokens, 2500),
                   messages: [
                     { role: 'system', content: systemPrompt },
-                    { role: 'user', content: text }
+                    // Multimodal message format when images present
+                    hasVision ? { 
+                      role: 'user', 
+                      content: [
+                        { type: 'text', text },
+                        ...images.map(url => ({ 
+                          type: 'image_url', 
+                          image_url: { url, detail: 'high' as const } 
+                        }))
+                      ] 
+                    } : { role: 'user', content: text }
                   ]
                 })
               });

@@ -454,8 +454,8 @@ export default function AresChat({
     setInput('');
     onMessageSent?.(trimmed);
 
-    // Send to ARES with optional Research Plus flag
-    await sendMessage(trimmed, coachId, researchPlus);
+    // Send to ARES with optional Research Plus flag and images
+    await sendMessage(trimmed, coachId, researchPlus, mediaUrls);
   }, [isStreaming, sendMessage, coachId, onMessageSent, clearChips]);
 
   // Handle chip click
