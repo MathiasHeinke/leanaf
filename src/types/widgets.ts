@@ -53,8 +53,8 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'protocol', 
     label: 'ARES Protokoll', 
     description: 'Phase & Fortschritt', 
-    availableSizes: ['small', 'medium', 'large', 'wide'], 
-    defaultSize: 'medium', 
+    availableSizes: ['small', 'medium', 'large', 'wide', 'flat'], 
+    defaultSize: 'flat', 
     icon: Brain 
   },
   { 
@@ -109,9 +109,9 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
 
 // Default widget configuration
 export const DEFAULT_WIDGETS: WidgetConfig[] = [
-  { id: '1', type: 'nutrition', size: 'wide', enabled: true, order: 0 },
-  { id: '2', type: 'hydration', size: 'flat', enabled: true, order: 1 },
-  { id: '3', type: 'protocol', size: 'medium', enabled: true, order: 2 },
+  { id: '3', type: 'protocol', size: 'flat', enabled: true, order: 0 },
+  { id: '1', type: 'nutrition', size: 'wide', enabled: true, order: 1 },
+  { id: '2', type: 'hydration', size: 'flat', enabled: true, order: 2 },
   { id: '4', type: 'training', size: 'medium', enabled: true, order: 3 },
   { id: '5', type: 'sleep', size: 'medium', enabled: true, order: 4 },
   { id: '6', type: 'weight', size: 'small', enabled: true, order: 5 },
