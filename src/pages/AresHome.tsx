@@ -215,8 +215,11 @@ export default function AresHome() {
     setMealOpen(false); // Close sheet after submission
   }, [inputText, uploadedImages, optimisticImages, handleSubmitMeal]);
 
-  // Auth check
-  if (authLoading) {
+  // Smart Loading: Only show skeleton if auth loading OR (profile loading AND no cache)
+  const hasProfileCache = !!profileData;
+  const isInitialLoading = authLoading || (!hasProfileCache && !user);
+
+  if (isInitialLoading) {
     return (
       <div className="min-h-screen bg-background p-6 space-y-6">
         <Skeleton className="h-[3px] w-full" />
