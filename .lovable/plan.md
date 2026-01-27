@@ -1,209 +1,156 @@
 
+# Ernaehrung Widget Flat-Variante mit Makros
 
-# Fix: Widget-Editor Aenderungen synchron auf Homescreen anzeigen
+## Uebersicht
 
-## Das Problem
+Die flache Variante des Ernaehrung-Widgets soll zusaetzlich zu den Kalorien auch die 3 Makros (Protein, Carbs, Fett) anzeigen - kompakt und platzsparend.
 
-Der Widget-Editor speichert Aenderungen korrekt in localStorage und DB, aber der Homescreen aktualisiert sich nicht, weil:
+## Design-Konzept
 
-1. `useWidgetConfig()` wird in zwei Komponenten separat aufgerufen
-2. Jeder Hook-Aufruf hat seinen **eigenen React State**
-3. Wenn das Sheet aendert, weiss das Grid nichts davon
+Da wir nur begrenzt Platz haben, nutzen wir **Mini-Fortschrittsbalken** mit farbigen Punkten statt Text-Labels:
 
 ```text
-┌────────────────────┐     ┌────────────────────┐
-│  MetricWidgetGrid  │     │  WidgetEditorSheet │
-│  useWidgetConfig() │     │  useWidgetConfig() │
-│  [State A]         │     │  [State B]         │
-└────────────────────┘     └────────────────────┘
-         │                          │
-         └──────────────────────────┘
-                    │
-            localStorage (sync)
-            aber State nicht sync!
+┌──────────────────────────────────────────────────────────────────────┐
+│ [🍴]  Ernaehrung    P ███░░  C ██░░░  F ████░   850/2200 kcal       │
+│ ████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
+**Elemente (von links nach rechts):**
+1. Icon (Utensils)
+2. Label "Ernaehrung"
+3. **3 Mini-Makro-Bars** mit Buchstaben-Prefix (P/C/F)
+4. Kalorien-Counter
+
 ---
 
-## Loesung: Shared State via React Context
+## Technische Umsetzung
 
-Wir erstellen einen **WidgetConfigProvider** der den State zentral haelt und allen Komponenten zur Verfuegung stellt. So teilen sich Editor und Grid denselben State.
+### Datei: `src/components/home/widgets/NutritionWidget.tsx`
 
----
+**Aenderung im `if (size === 'flat')` Block (Zeile 72-109):**
 
-## Aenderungen
-
-### 1. Neuer Context: `src/contexts/WidgetConfigContext.tsx`
+Die flache Variante wird erweitert um eine kompakte Makro-Anzeige zwischen Label und Kalorien-Counter:
 
 ```typescript
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { WidgetConfig, WidgetType, WidgetSize, DEFAULT_WIDGETS, WIDGET_DEFINITIONS } from '@/types/widgets';
-import { supabase } from '@/integrations/supabase/client';
-
-const LOCAL_STORAGE_KEY = 'ares_widget_config';
-
-interface WidgetConfigContextType {
-  widgets: WidgetConfig[];
-  enabledWidgets: WidgetConfig[];
-  updateWidgetSize: (type: WidgetType, size: WidgetSize) => void;
-  toggleWidget: (type: WidgetType) => void;
-  reorderWidgets: (newOrder: WidgetType[]) => void;
-  isLoading: boolean;
-}
-
-const WidgetConfigContext = createContext<WidgetConfigContextType | undefined>(undefined);
-
-export const WidgetConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // ... (komplette Hook-Logik aus useWidgetConfig.ts hierher verschieben)
+// FLAT: Horizontaler kompakter Streifen mit Kalorien + Makros
+if (size === 'flat') {
+  // Helper fuer Makro-Prozent
+  const proteinPercent = Math.min((protein / proteinGoal) * 100, 100);
+  const carbsPercent = Math.min((carbs / carbGoal) * 100, 100);
+  const fatsPercent = Math.min((fats / fatGoal) * 100, 100);
   
   return (
-    <WidgetConfigContext.Provider value={{
-      widgets: sortedWidgets,
-      enabledWidgets,
-      updateWidgetSize,
-      toggleWidget,
-      reorderWidgets,
-      isLoading
-    }}>
-      {children}
-    </WidgetConfigContext.Provider>
+    <motion.div 
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      onClick={() => onOpenDaySheet?.()}
+      className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
+    >
+      {/* Background Fill */}
+      <motion.div 
+        initial={{ width: 0 }}
+        animate={{ width: `${caloriePercent}%` }}
+        transition={{ duration: 0.8, delay: 0.3 }}
+        className={cn(
+          "absolute inset-0",
+          isOver 
+            ? "bg-gradient-to-r from-destructive/20 to-destructive/10" 
+            : "bg-gradient-to-r from-purple-600/20 to-violet-400/10"
+        )}
+      />
+      
+      {/* Icon */}
+      <div className="relative z-10 p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+        <Utensils className="w-5 h-5" />
+      </div>
+      
+      {/* Label */}
+      <span className="relative z-10 text-sm font-medium text-foreground shrink-0">Ernaehrung</span>
+      
+      {/* Mini Makro Bars */}
+      <div className="relative z-10 flex items-center gap-2 flex-1 justify-center">
+        {/* Protein */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">P</span>
+          <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${proteinPercent}%` }}
+              className={cn(
+                "h-full rounded-full",
+                protein > proteinGoal ? "bg-destructive" : "bg-emerald-500"
+              )}
+            />
+          </div>
+        </div>
+        
+        {/* Carbs */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">C</span>
+          <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${carbsPercent}%` }}
+              className={cn(
+                "h-full rounded-full",
+                carbs > carbGoal ? "bg-destructive" : "bg-blue-500"
+              )}
+            />
+          </div>
+        </div>
+        
+        {/* Fats */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">F</span>
+          <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${fatsPercent}%` }}
+              className={cn(
+                "h-full rounded-full",
+                fats > fatGoal ? "bg-destructive" : "bg-amber-500"
+              )}
+            />
+          </div>
+        </div>
+      </div>
+      
+      {/* Kalorien Counter */}
+      <span className={cn(
+        "relative z-10 text-sm font-bold shrink-0",
+        isOver ? "text-destructive" : "text-purple-600 dark:text-violet-400"
+      )}>
+        {Math.round(calories)} / {calorieGoal} kcal
+      </span>
+    </motion.div>
   );
-};
-
-export const useWidgetConfig = () => {
-  const context = useContext(WidgetConfigContext);
-  if (!context) {
-    throw new Error('useWidgetConfig must be used within WidgetConfigProvider');
-  }
-  return context;
-};
-```
-
-### 2. Provider in App einbinden: `src/App.tsx`
-
-Den Provider moeglichst weit oben in der Komponenten-Hierarchie einbinden:
-
-```typescript
-import { WidgetConfigProvider } from '@/contexts/WidgetConfigContext';
-
-// In der App-Komponente:
-<WidgetConfigProvider>
-  {/* ... existing routes */}
-</WidgetConfigProvider>
-```
-
-### 3. Hook umstellen: `src/hooks/useWidgetConfig.ts`
-
-Den alten Hook zu einem Re-Export machen:
-
-```typescript
-// Re-export from context for backwards compatibility
-export { useWidgetConfig } from '@/contexts/WidgetConfigContext';
+}
 ```
 
 ---
 
-## Alternative (einfacher): Storage Event Listener
+## Visuelles Ergebnis
 
-Falls Context zu aufwaendig erscheint, koennen wir auch einen **Storage Event Listener** nutzen:
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [🍴]  Ernaehrung     P ███░░  C ██░░░  F ████░      850 / 2200 kcal   │
+│ ████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │
+└─────────────────────────────────────────────────────────────────────────┘
 
-```typescript
-// In useWidgetConfig.ts - nach dem useState
-useEffect(() => {
-  const handleStorageChange = (e: StorageEvent) => {
-    if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
-      try {
-        setWidgets(JSON.parse(e.newValue));
-      } catch {}
-    }
-  };
-  
-  window.addEventListener('storage', handleStorageChange);
-  return () => window.removeEventListener('storage', handleStorageChange);
-}, []);
+Legende:
+- P = Protein (gruen/emerald)
+- C = Carbs (blau)  
+- F = Fett (orange/amber)
+- Hintergrund-Fill = Kalorien-Fortschritt (lila)
 ```
 
-**Problem:** Storage Events feuern nur zwischen Tabs/Windows, nicht innerhalb desselben Tabs!
+**Bei Ueberschreitung eines Makros:** Der entsprechende Mini-Balken wird rot (`bg-destructive`).
 
 ---
 
-## Empfohlene Loesung: Custom Event Dispatch
-
-Die einfachste Loesung ohne grosse Architektur-Aenderung:
-
-### In `useWidgetConfig.ts`:
-
-**1. Custom Event nach jeder Aenderung dispatchen:**
-
-```typescript
-const dispatchWidgetUpdate = (newWidgets: WidgetConfig[]) => {
-  window.dispatchEvent(new CustomEvent('widget-config-updated', { 
-    detail: newWidgets 
-  }));
-};
-```
-
-**2. In updateWidgetSize, toggleWidget, reorderWidgets:**
-
-```typescript
-const updateWidgetSize = useCallback((type: WidgetType, size: WidgetSize) => {
-  setWidgets(prev => {
-    const newWidgets = prev.map(w => 
-      w.type === type ? { ...w, size } : w
-    );
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(newWidgets));
-    syncToDb(newWidgets);
-    dispatchWidgetUpdate(newWidgets);  // NEU
-    return newWidgets;
-  });
-}, [syncToDb]);
-```
-
-**3. Event Listener beim Mount:**
-
-```typescript
-useEffect(() => {
-  const handleWidgetUpdate = (e: CustomEvent<WidgetConfig[]>) => {
-    setWidgets(e.detail);
-  };
-  
-  window.addEventListener('widget-config-updated', handleWidgetUpdate as EventListener);
-  return () => {
-    window.removeEventListener('widget-config-updated', handleWidgetUpdate as EventListener);
-  };
-}, []);
-```
-
----
-
-## Visuelle Bestaetigung
-
-Nach dem Fix:
-- User aendert Groesse im Editor von "Mittel" zu "Gross"
-- Custom Event wird gefeuert
-- MetricWidgetGrid empfaengt Event
-- State wird aktualisiert
-- Widget rendert sofort in neuer Groesse
-
----
-
-## Zusammenfassung der Datei-Aenderungen
+## Datei die geaendert wird
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/hooks/useWidgetConfig.ts` | Custom Event dispatch + listener hinzufuegen |
-
-**Eine einzige Datei muss geaendert werden** - keine neue Architektur noetig.
-
----
-
-## Technische Details
-
-Die Aenderung in `useWidgetConfig.ts`:
-
-1. **dispatchWidgetUpdate** Funktion hinzufuegen (Zeile ~88)
-2. **useEffect** fuer Event Listener hinzufuegen (nach loadWidgets useEffect)
-3. In **updateWidgetSize**, **toggleWidget**, **reorderWidgets** den Dispatch aufrufen
-
-Das Custom Event synchronisiert alle Hook-Instanzen sofort, sodass Aenderungen im Editor unmittelbar auf dem Homescreen sichtbar werden.
-
+| `src/components/home/widgets/NutritionWidget.tsx` | Flat-Variante mit Mini-Makro-Bars erweitern |
