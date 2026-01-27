@@ -1,127 +1,171 @@
 
-# Ernaehrung Widget Flat-Variante mit Makros
+# Flat Widgets fuer alle Kategorien implementieren
 
 ## Uebersicht
 
-Die flache Variante des Ernaehrung-Widgets soll zusaetzlich zu den Kalorien auch die 3 Makros (Protein, Carbs, Fett) anzeigen - kompakt und platzsparend.
-
-## Design-Konzept
-
-Da wir nur begrenzt Platz haben, nutzen wir **Mini-Fortschrittsbalken** mit farbigen Punkten statt Text-Labels:
-
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│ [🍴]  Ernaehrung    P ███░░  C ██░░░  F ████░   850/2200 kcal       │
-│ ████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
-**Elemente (von links nach rechts):**
-1. Icon (Utensils)
-2. Label "Ernaehrung"
-3. **3 Mini-Makro-Bars** mit Buchstaben-Prefix (P/C/F)
-4. Kalorien-Counter
+Wir implementieren die "flat"-Variante fuer 6 Widgets. Der Plan nutzt das etablierte Design-Pattern: horizontaler Streifen (col-span-2, min-h-[60px]) mit Icon, Label, Visualisierung und Key-Metric.
 
 ---
 
-## Technische Umsetzung
+## 1. TrainingWidget.tsx - Wochentags-Dots
 
-### Datei: `src/components/home/widgets/NutritionWidget.tsx`
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [🏋️]  Training     ●●●○○○○ (7 Wochentags-Dots)              3/4 Woche │
+│ ████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
-**Aenderung im `if (size === 'flat')` Block (Zeile 72-109):**
+**Technische Umsetzung:**
+- Hintergrund-Fill: `(weeklyWorkouts / workoutTarget) * 100%`
+- Farbe: Orange-Gradient, wechselt je nach workoutStatus (emerald/orange/destructive)
+- 7 kleine Dots fuer Mo-So, gefuellt wenn Training an dem Tag stattfand
+- Rechts: "3/4" Counter mit "Woche" Suffix
 
-Die flache Variante wird erweitert um eine kompakte Makro-Anzeige zwischen Label und Kalorien-Counter:
+---
+
+## 2. SleepWidget.tsx - Mini-Sparkline
+
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [🌙]  Schlaf       ▁▃▅▆▄▅▇ (7-Tage Sparkline)        7.5h  Ø 7.2h     │
+│ ████████████████████████████████████████████████████████░░░░░░░░░░░░   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Technische Umsetzung:**
+- Hintergrund-Fill: `(sleepHours / 8) * 100%` (8h = 100%)
+- Farbe: Indigo-Gradient
+- Mini-Sparkline mit 7 Balken fuer die letzten 7 Tage
+- Rechts: Heutige Stunden + Wochenschnitt
+
+---
+
+## 3. WeightWidget.tsx - Trend-Anzeige
+
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [⚖️]  Gewicht      ▁▂▃▄▃▂▁ (Trend-Sparkline)    ↓0.5        82.3 kg   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Technische Umsetzung:**
+- Kein Hintergrund-Fill (statische Metrik)
+- Mini-Sparkline fuer letzte 7 Eintraege
+- Trend-Pfeil: Gruen (TrendingDown) wenn Gewicht sinkt, Orange/Rot wenn steigend
+- Rechts: Aktuelles Gewicht in kg
+
+---
+
+## 4. SupplementsWidget.tsx - Timing-Dots
+
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [💊]  Supplements   ●●○●○ (5 Timing-Dots)                  3/5 heute   │
+│ ████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Technische Umsetzung:**
+- Hintergrund-Fill: `(taken / total) * 100%`
+- Farbe: Cyan wenn offen, Emerald wenn alle genommen
+- 5 generische Dots (nicht timing-spezifisch, sondern einfach taken/total visualisieren)
+- Rechts: "3/5 heute" Counter
+
+---
+
+## 5. BioAgeWidget.tsx - Alter-Vergleich
+
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [✨]  Bio-Alter             Bio 32 vs 35           ↓3 Jahre juenger    │
+│ ████████████████████████████████████████████████░░░░░░░░░░░░░░░░░░░░   │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Technische Umsetzung:**
+- Hintergrund: Emerald-Gradient wenn juenger, Red-Gradient wenn aelter
+- Mitte: "Bio X vs Y" Vergleich
+- Rechts: Trend-Pfeil + Differenz + "Jahre juenger/aelter"
+
+---
+
+## 6. HRVWidget.tsx - Coming Soon Placeholder
+
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [💓]  HRV                     Coming Soon                      -- ms   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Technische Umsetzung:**
+- Kein Hintergrund-Fill
+- "Bald" Badge in der Mitte
+- Rechts: "-- ms" Placeholder
+
+---
+
+## 7. Types Update - widgets.ts
+
+Alle `availableSizes` Arrays erhalten `'flat'`:
+
+| Widget | Vorher | Nachher |
+|--------|--------|---------|
+| training | `['small', 'medium', 'large', 'wide']` | `['small', 'medium', 'large', 'wide', 'flat']` |
+| sleep | `['small', 'medium', 'large']` | `['small', 'medium', 'large', 'flat']` |
+| weight | `['small', 'medium', 'large', 'wide']` | `['small', 'medium', 'large', 'wide', 'flat']` |
+| hrv | `['small', 'medium', 'large', 'wide']` | `['small', 'medium', 'large', 'wide', 'flat']` |
+| supplements | `['small', 'medium', 'large', 'wide']` | `['small', 'medium', 'large', 'wide', 'flat']` |
+| bio_age | `['small', 'medium', 'large', 'wide']` | `['small', 'medium', 'large', 'wide', 'flat']` |
+
+---
+
+## Gemeinsames Code-Pattern
+
+Jedes Widget bekommt einen neuen `if (size === 'flat')` Block mit dieser Grundstruktur:
 
 ```typescript
-// FLAT: Horizontaler kompakter Streifen mit Kalorien + Makros
 if (size === 'flat') {
-  // Helper fuer Makro-Prozent
-  const proteinPercent = Math.min((protein / proteinGoal) * 100, 100);
-  const carbsPercent = Math.min((carbs / carbGoal) * 100, 100);
-  const fatsPercent = Math.min((fats / fatGoal) * 100, 100);
-  
   return (
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      onClick={() => onOpenDaySheet?.()}
+      onClick={() => navigate('/route')}
       className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
     >
-      {/* Background Fill */}
+      {/* Optional: Background Fill */}
       <motion.div 
         initial={{ width: 0 }}
-        animate={{ width: `${caloriePercent}%` }}
-        transition={{ duration: 0.8, delay: 0.3 }}
-        className={cn(
-          "absolute inset-0",
-          isOver 
-            ? "bg-gradient-to-r from-destructive/20 to-destructive/10" 
-            : "bg-gradient-to-r from-purple-600/20 to-violet-400/10"
-        )}
+        animate={{ width: `${progressPercent}%` }}
+        className="absolute inset-0 bg-gradient-to-r from-color/20 to-color/10"
       />
       
       {/* Icon */}
-      <div className="relative z-10 p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
-        <Utensils className="w-5 h-5" />
+      <div className="relative z-10 p-2 rounded-xl bg-X-100 dark:bg-X-900/30 text-X-600">
+        <Icon className="w-5 h-5" />
       </div>
       
       {/* Label */}
-      <span className="relative z-10 text-sm font-medium text-foreground shrink-0">Ernaehrung</span>
+      <span className="relative z-10 text-sm font-medium text-foreground shrink-0">
+        Widget Name
+      </span>
       
-      {/* Mini Makro Bars */}
-      <div className="relative z-10 flex items-center gap-2 flex-1 justify-center">
-        {/* Protein */}
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">P</span>
-          <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${proteinPercent}%` }}
-              className={cn(
-                "h-full rounded-full",
-                protein > proteinGoal ? "bg-destructive" : "bg-emerald-500"
-              )}
-            />
-          </div>
-        </div>
-        
-        {/* Carbs */}
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">C</span>
-          <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${carbsPercent}%` }}
-              className={cn(
-                "h-full rounded-full",
-                carbs > carbGoal ? "bg-destructive" : "bg-blue-500"
-              )}
-            />
-          </div>
-        </div>
-        
-        {/* Fats */}
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">F</span>
-          <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${fatsPercent}%` }}
-              className={cn(
-                "h-full rounded-full",
-                fats > fatGoal ? "bg-destructive" : "bg-amber-500"
-              )}
-            />
-          </div>
-        </div>
+      {/* Middle Content (Dots, Sparkline, etc.) */}
+      <div className="relative z-10 flex-1 flex items-center justify-center gap-1">
+        {/* Widget-spezifische Visualisierung */}
       </div>
       
-      {/* Kalorien Counter */}
-      <span className={cn(
-        "relative z-10 text-sm font-bold shrink-0",
-        isOver ? "text-destructive" : "text-purple-600 dark:text-violet-400"
-      )}>
-        {Math.round(calories)} / {calorieGoal} kcal
+      {/* Value */}
+      <span className="relative z-10 text-sm font-bold shrink-0">
+        Value
       </span>
     </motion.div>
   );
@@ -130,27 +174,24 @@ if (size === 'flat') {
 
 ---
 
-## Visuelles Ergebnis
-
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│ [🍴]  Ernaehrung     P ███░░  C ██░░░  F ████░      850 / 2200 kcal   │
-│ ████████████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░   │
-└─────────────────────────────────────────────────────────────────────────┘
-
-Legende:
-- P = Protein (gruen/emerald)
-- C = Carbs (blau)  
-- F = Fett (orange/amber)
-- Hintergrund-Fill = Kalorien-Fortschritt (lila)
-```
-
-**Bei Ueberschreitung eines Makros:** Der entsprechende Mini-Balken wird rot (`bg-destructive`).
-
----
-
-## Datei die geaendert wird
+## Dateien die geaendert werden
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/home/widgets/NutritionWidget.tsx` | Flat-Variante mit Mini-Makro-Bars erweitern |
+| `src/components/home/widgets/TrainingWidget.tsx` | Flat-Variante mit Wochentags-Dots |
+| `src/components/home/widgets/SleepWidget.tsx` | Flat-Variante mit Mini-Sparkline |
+| `src/components/home/widgets/WeightWidget.tsx` | Flat-Variante mit Trend-Sparkline |
+| `src/components/home/widgets/SupplementsWidget.tsx` | Flat-Variante mit Supplement-Dots |
+| `src/components/home/widgets/BioAgeWidget.tsx` | Flat-Variante mit Alter-Vergleich |
+| `src/components/home/widgets/HRVWidget.tsx` | Flat-Variante als Placeholder |
+| `src/types/widgets.ts` | `'flat'` zu allen availableSizes hinzufuegen |
+
+---
+
+## Ergebnis
+
+Nach der Implementierung:
+- Alle 9 Widgets (inkl. Nutrition, Hydration, Protocol) haben eine flat-Variante
+- User koennen im Widget-Editor jedes Widget auf "Flach" umstellen
+- Das Dashboard kann komplett aus flachen Widgets bestehen fuer maximale Informationsdichte
+- Konsistentes Design ueber alle Widget-Kategorien hinweg
