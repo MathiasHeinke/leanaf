@@ -4837,6 +4837,9 @@ export type Database = {
           titration_schedule: Json | null
           updated_at: string | null
           user_id: string
+          vial_remaining_doses: number | null
+          vial_started_at: string | null
+          vial_total_doses: number | null
         }
         Insert: {
           coach_id?: string
@@ -4859,6 +4862,9 @@ export type Database = {
           titration_schedule?: Json | null
           updated_at?: string | null
           user_id: string
+          vial_remaining_doses?: number | null
+          vial_started_at?: string | null
+          vial_total_doses?: number | null
         }
         Update: {
           coach_id?: string
@@ -4881,6 +4887,9 @@ export type Database = {
           titration_schedule?: Json | null
           updated_at?: string | null
           user_id?: string
+          vial_remaining_doses?: number | null
+          vial_started_at?: string | null
+          vial_total_doses?: number | null
         }
         Relationships: []
       }
@@ -8468,6 +8477,7 @@ export type Database = {
         Args: { p_month: number; p_year: number }
         Returns: number
       }
+      decrement_vial: { Args: { p_protocol_id: string }; Returns: number }
       deduct_credits: {
         Args: { p_credits: number; p_user_id: string }
         Returns: Json

@@ -1,14 +1,13 @@
 /**
  * PeptideLogger - Peptide injection tracking with site selection
- * Beginner: 1-click "Injiziert" button
- * Expert: Injection site selection (auto-expands after click)
+ * Now with smart site rotation suggestions
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Loader2, Syringe, ChevronDown, Info } from 'lucide-react';
+import { Check, Loader2, Syringe, ChevronDown, Info, ArrowRight } from 'lucide-react';
 import { useProtocols } from '@/hooks/useProtocols';
-import { useIntakeLog } from '@/hooks/useIntakeLog';
+import { useIntakeLog, type InjectionSite } from '@/hooks/useIntakeLog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -18,7 +17,7 @@ interface PeptideLoggerProps {
   onClose: () => void;
 }
 
-const INJECTION_SITES = [
+const INJECTION_SITES: { id: InjectionSite; label: string; short: string }[] = [
   { id: 'abdomen_left', label: 'Bauch L', short: 'BL' },
   { id: 'abdomen_right', label: 'Bauch R', short: 'BR' },
   { id: 'thigh_left', label: 'Obersch. L', short: 'OL' },
@@ -35,16 +34,39 @@ const TIMING_LABELS: Record<string, string> = {
   bedtime: 'Vor dem Schlaf',
 };
 
+const SITE_LABELS: Record<string, string> = {
+  abdomen_left: 'Bauch Links',
+  abdomen_right: 'Bauch Rechts',
+  thigh_left: 'Oberschenkel Links',
+  thigh_right: 'Oberschenkel Rechts',
+  deltoid_left: 'Schulter Links',
+  deltoid_right: 'Schulter Rechts',
+};
+
 export const PeptideLogger: React.FC<PeptideLoggerProps> = ({ onClose }) => {
   const { protocols, loading: protocolsLoading } = useProtocols();
-  const { logIntake, isPeptideTakenToday, loading: intakeLoading } = useIntakeLog();
+  const { logIntake, isPeptideTakenToday, getNextSuggestedSite, loading: intakeLoading } = useIntakeLog();
 
   const [expandedProtocol, setExpandedProtocol] = useState<string | null>(null);
-  const [selectedSite, setSelectedSite] = useState<Record<string, string>>({});
+  const [selectedSite, setSelectedSite] = useState<Record<string, InjectionSite>>({});
+  const [suggestedSites, setSuggestedSites] = useState<Record<string, { suggested: InjectionSite; lastUsed: InjectionSite | null }>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
 
   const activeProtocols = protocols.filter(p => p.is_active);
+
+  // Load site suggestion when protocol is expanded
+  useEffect(() => {
+    if (expandedProtocol && !suggestedSites[expandedProtocol]) {
+      getNextSuggestedSite(expandedProtocol).then(suggestion => {
+        setSuggestedSites(prev => ({ ...prev, [expandedProtocol]: suggestion }));
+        // Pre-select the suggested site
+        if (!selectedSite[expandedProtocol]) {
+          setSelectedSite(prev => ({ ...prev, [expandedProtocol]: suggestion.suggested }));
+        }
+      });
+    }
+  }, [expandedProtocol, getNextSuggestedSite, suggestedSites, selectedSite]);
 
   const handleInject = async (protocolId: string) => {
     const protocol = activeProtocols.find(p => p.id === protocolId);
@@ -72,7 +94,17 @@ export const PeptideLogger: React.FC<PeptideLoggerProps> = ({ onClose }) => {
       if (success) {
         toast.success(`${peptide.name} geloggt`);
         setExpandedProtocol(null);
-        setSelectedSite(prev => ({ ...prev, [protocolId]: '' }));
+        // Clear selection for this protocol - need to remove key instead of setting to empty
+        setSelectedSite(prev => {
+          const next = { ...prev };
+          delete next[protocolId];
+          return next;
+        });
+        setSuggestedSites(prev => {
+          const next = { ...prev };
+          delete next[protocolId];
+          return next;
+        });
       } else {
         toast.error('Fehler beim Speichern');
       }
@@ -83,7 +115,7 @@ export const PeptideLogger: React.FC<PeptideLoggerProps> = ({ onClose }) => {
     }
   };
 
-  const handleSiteSelect = (protocolId: string, siteId: string) => {
+  const handleSiteSelect = (protocolId: string, siteId: InjectionSite) => {
     setSelectedSite(prev => ({ ...prev, [protocolId]: siteId }));
   };
 
@@ -124,6 +156,7 @@ export const PeptideLogger: React.FC<PeptideLoggerProps> = ({ onClose }) => {
         const isExpanded = expandedProtocol === protocol.id;
         const isSaving = saving === protocol.id;
         const hasSiteSelected = !!selectedSite[protocol.id];
+        const suggestion = suggestedSites[protocol.id];
 
         return (
           <motion.div
@@ -185,6 +218,27 @@ export const PeptideLogger: React.FC<PeptideLoggerProps> = ({ onClose }) => {
                   className="border-t border-border"
                 >
                   <div className="p-4 space-y-3">
+                    {/* Site rotation hint */}
+                    {suggestion && (
+                      <div className="flex items-center gap-2 text-xs">
+                        {suggestion.lastUsed ? (
+                          <>
+                            <span className="text-muted-foreground">
+                              Letzte: {SITE_LABELS[suggestion.lastUsed]}
+                            </span>
+                            <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                            <span className="text-primary font-medium">
+                              Vorschlag: {SITE_LABELS[suggestion.suggested]}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-primary font-medium">
+                            Erste Injektion – Vorschlag: {SITE_LABELS[suggestion.suggested]}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    
                     <p className="text-sm font-medium text-muted-foreground">Injektionsstelle</p>
                     <div className="grid grid-cols-3 gap-2">
                       {INJECTION_SITES.map((site) => (
@@ -195,7 +249,9 @@ export const PeptideLogger: React.FC<PeptideLoggerProps> = ({ onClose }) => {
                             "px-3 py-2 rounded-xl text-sm font-medium transition-all",
                             selectedSite[protocol.id] === site.id
                               ? "bg-primary text-primary-foreground ring-2 ring-primary/50"
-                              : "bg-muted hover:bg-muted/80 text-foreground"
+                              : suggestion?.suggested === site.id
+                                ? "bg-primary/20 text-primary border border-primary/30"
+                                : "bg-muted hover:bg-muted/80 text-foreground"
                           )}
                         >
                           {site.label}
