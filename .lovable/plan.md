@@ -1,145 +1,196 @@
 
-# Profile Protocol Mode: Bugfixes + Multi-Select
+# Protocol Mode Integration: Berechnung mit Enhanced/Clinical
 
-## Gefundene Probleme
+## Zusammenfassung
 
-### 1. Phase Progress wird falsch berechnet
-**Bug**: Die `loadProtocolStatus` Funktion zählt `Object.values(checklist).filter(Boolean).length`, aber die Werte sind Objekte `{completed: true/false, ...}`, nicht Booleans.
-
-**Aktuell**: Zeigt "9/9 Kriterien erfüllt" (alle Objekte sind truthy)
-**Soll**: Zeigt "5/9 Kriterien erfüllt" (nur `.completed === true` zählen)
-
-### 2. Protocol Mode: Multi-Select statt Single-Select
-**Anforderung**: User möchte mehrere Modi kombinieren können:
-- Natural + TRT (Klinisch)
-- Reta (Enhanced) + TRT (Klinisch)
-- Nur Natural
-- etc.
-
-**Logik**:
-- "Natural" bedeutet "Keine Hilfsmittel" - kann nicht mit anderen kombiniert werden
-- "Enhanced" (Reta/Peptide) und "Klinisch" (TRT) können kombiniert werden
+Die ausgewählten Protocol Modes (Natural, Enhanced, Clinical) werden aktuell gespeichert, haben aber **keinen Einfluss** auf die Berechnungen. Diese Integration fügt drei präzise Anpassungen hinzu, ohne die Kern-TDEE-Physik zu verändern.
 
 ---
 
-## Technische Änderungen
+## Was wird geändert?
 
-### Datei 1: `src/pages/Profile.tsx`
+### 1. Neue Utility: `protocolAdjustments.ts`
 
-**Zeile 381-388 - Phase Progress Fix:**
-```typescript
-// ALT (falsch):
-const items = Object.values(data.phase_0_checklist as Record<string, boolean>);
-const completed = items.filter(Boolean).length;
+Zentralisierte Logik für alle Protocol-Mode-abhängigen Faktoren:
 
-// NEU (korrekt):
-const checklist = data.phase_0_checklist as Record<string, { completed?: boolean }>;
-const items = Object.values(checklist);
-const completed = items.filter(item => item?.completed === true).length;
+```text
++---------------------+------------+------------+-------------+
+| Protocol Mode       | Max Defizit| Realism    | Protein     |
+|                     | (Hint)     | Multiplier | Boost       |
++---------------------+------------+------------+-------------+
+| Natural             | 500 kcal   | 1.0x       | +0.0 g/kg   |
+| Enhanced (Reta/GLP) | 750 kcal   | 1.25x      | +0.1 g/kg   |
+| Clinical (TRT)      | 800 kcal   | 1.30x      | +0.2 g/kg   |
+| Enhanced + Clinical | 1000 kcal  | 1.50x      | +0.3 g/kg   |
++---------------------+------------+------------+-------------+
 ```
 
-**State-Änderung für Multi-Select:**
+**Wissenschaftliche Basis:**
+- GLP-1/Reta erhöht Sättigung und schützt Muskelmasse bei höherem Defizit
+- TRT maximiert Proteinsynthese (daher +0.2g/kg nutzbar)
+- Kombination erlaubt aggressive Rekomposition ohne Muskelabbau
+
+---
+
+### 2. Protein Anchor Calculator Update
+
+**Datei:** `src/utils/proteinAnchorCalculator.ts`
+
+Neuer optionaler Parameter `proteinBoostPerKg`:
+
 ```typescript
-// ALT:
-const [protocolMode, setProtocolMode] = useState<ProtocolMode>('natural');
-
-// NEU:
-const [protocolModes, setProtocolModes] = useState<ProtocolMode[]>(['natural']);
-```
-
-**Save-Logik anpassen:**
-```typescript
-// Speichere als Array oder JSON-String
-protocol_mode: protocolModes.join(','), // z.B. "enhanced,clinical"
-```
-
-### Datei 2: `src/components/profile/ProtocolModeSelector.tsx`
-
-**Props erweitern:**
-```typescript
-interface ProtocolModeSelectorProps {
-  modes: ProtocolMode[];  // Array statt single value
-  onModesChange: (modes: ProtocolMode[]) => void;
-  currentPhase?: number;
-  phaseProgress?: { completed: number; total: number };
+export function calculateProteinAnchorMacros(
+  intensity: ProtocolIntensity,
+  weightKg: number,
+  targetCalories: number,
+  proteinBoostPerKg: number = 0  // NEU
+): MacroResult {
+  // Base: 2.0g/kg (Warrior)
+  // + Boost: 0.2g/kg (TRT)
+  // = Effektiv: 2.2g/kg
+  let proteinGrams = Math.round(
+    safeWeight * (PROTEIN_PER_KG[intensity] + proteinBoostPerKg)
+  );
+  // ... Rest bleibt identisch
 }
 ```
 
-**Multi-Select Logik:**
+---
+
+### 3. Profile.tsx Integration
+
+**Datei:** `src/pages/Profile.tsx`
+
+#### A) Import und Berechnung der Adjustments
+
 ```typescript
-const handleModeClick = (clickedMode: ProtocolMode) => {
-  if (clickedMode === 'natural') {
-    // Natural ist exklusiv - deselektiert alle anderen
-    onModesChange(['natural']);
-  } else {
-    // Enhanced/Clinical können kombiniert werden
-    let newModes = modes.filter(m => m !== 'natural');
-    
-    if (newModes.includes(clickedMode)) {
-      // Toggle off
-      newModes = newModes.filter(m => m !== clickedMode);
-      if (newModes.length === 0) newModes = ['natural']; // Fallback
-    } else {
-      // Toggle on
-      newModes.push(clickedMode);
-    }
-    onModesChange(newModes);
-  }
+import { getProtocolAdjustments } from '@/utils/protocolAdjustments';
+
+// In der Komponente:
+const protocolAdjustments = useMemo(() => {
+  return getProtocolAdjustments(protocolModes);
+}, [protocolModes]);
+```
+
+#### B) Protein Boost anwenden (Zeile ~523-527)
+
+```typescript
+const currentMacros = useMemo(() => {
+  const weightNum = parseFloat(weight) || 80;
+  const calories = calculateTargetCalories() || 2000;
+  // NEU: Protein Boost aus Protocol Mode
+  return calculateProteinAnchorMacros(
+    currentIntensity, 
+    weightNum, 
+    calories, 
+    protocolAdjustments.proteinBoost
+  );
+}, [weight, currentIntensity, protocolAdjustments]);
+```
+
+#### C) Realism Score mit Multiplier (Zeile ~497-508)
+
+```typescript
+const calculateRealismScore = () => {
+  if (!weight || weightDelta === 0) return 100;
+  
+  const baseScore = calculateRealismScoreFromUtils({
+    currentWeight: parseFloat(weight),
+    targetWeight: computedTargetWeight,
+    targetDate: computedTargetDate,
+    protocolTempo,
+  });
+  
+  // NEU: Protocol Mode erhöht Erfolgswahrscheinlichkeit
+  return Math.min(100, Math.round(baseScore * protocolAdjustments.realismMultiplier));
 };
 ```
 
-**UI-Anpassung:**
-- Checkmarks bei allen ausgewählten Modi anzeigen
-- Visual Feedback für kombinierte Auswahl (z.B. Enhanced + Clinical beide highlighted)
+#### D) UI Badge für Protein Boost
+
+Kleine visuelle Anzeige wenn Boost aktiv:
+
+```typescript
+{protocolAdjustments.proteinBoost > 0 && (
+  <Badge variant="outline" className="text-xs text-purple-500">
+    +{(protocolAdjustments.proteinBoost * (parseFloat(weight) || 80)).toFixed(0)}g TRT Boost
+  </Badge>
+)}
+```
 
 ---
 
-## Datenbank-Kompatibilität
+### 4. GoalConfigurator Smart Feedback
 
-Das bestehende `protocol_mode` Feld ist `text`. Zwei Optionen:
+**Datei:** `src/components/profile/GoalConfigurator.tsx`
 
-**Option A: Comma-Separated (einfach)**
-```sql
-protocol_mode = 'enhanced,clinical'  -- String mit Komma
+#### A) Props erweitern
+
+```typescript
+interface GoalConfiguratorProps {
+  // ... bestehende props ...
+  protocolModes?: ProtocolMode[];  // NEU
+}
 ```
 
-**Option B: Array-Feld (sauberer)**
-```sql
-ALTER TABLE profiles 
-ALTER COLUMN protocol_mode TYPE text[] USING string_to_array(protocol_mode, ',');
+#### B) Defizit-Ampel-Logik
+
+```typescript
+const protocolAdjustments = getProtocolAdjustments(protocolModes || ['natural']);
+
+// Farbe basierend auf Protocol Mode
+const getDeficitColor = (deficit: number) => {
+  if (deficit <= protocolAdjustments.maxDeficitKcal * 0.7) return 'text-green-500';
+  if (deficit <= protocolAdjustments.maxDeficitKcal) return 'text-amber-500';
+  return 'text-red-500';
+};
+
+// Warnung nur anzeigen wenn Limit überschritten
+const showDeficitWarning = weeklyStats.dailyCalorieChange > protocolAdjustments.maxDeficitKcal;
 ```
 
-Empfehlung: **Option A** (keine Migration nötig, Parse beim Laden)
+#### C) UI Update in Stats-Bereich
+
+```typescript
+<div className="bg-muted/50 rounded-lg p-2 text-center">
+  <div className={cn("text-sm font-bold", getDeficitColor(weeklyStats.dailyCalorieChange))}>
+    {computedGoal === 'lose' ? '-' : '+'}{weeklyStats.dailyCalorieChange} kcal/Tag
+  </div>
+  {showDeficitWarning && (
+    <div className="text-[10px] text-red-500 mt-1">
+      Max empfohlen: {protocolAdjustments.maxDeficitKcal} kcal
+    </div>
+  )}
+</div>
+```
 
 ---
 
 ## Betroffene Dateien
 
-| Datei | Änderungen |
-|-------|------------|
-| `src/pages/Profile.tsx` | Phase Progress Fix, Multi-Select State, Laden/Speichern |
-| `src/components/profile/ProtocolModeSelector.tsx` | Multi-Select UI + Toggle-Logik |
+| Datei | Aktion | Beschreibung |
+|-------|--------|--------------|
+| `src/utils/protocolAdjustments.ts` | NEU | Zentralisierte Protocol-Logik |
+| `src/utils/proteinAnchorCalculator.ts` | EDIT | Optionaler proteinBoostPerKg Parameter |
+| `src/pages/Profile.tsx` | EDIT | Integration aller 3 Anpassungen |
+| `src/components/profile/GoalConfigurator.tsx` | EDIT | Smart Deficit Feedback |
 
 ---
 
-## Kombinationslogik
+## Erwartetes Ergebnis
 
-| Auswahl | Gespeicherter Wert | Defizit-Limit |
-|---------|-------------------|---------------|
-| Natural | `natural` | Max 500 kcal/Tag |
-| Enhanced only | `enhanced` | Max 750 kcal/Tag |
-| Clinical only | `clinical` | Individuell (Coach) |
-| Enhanced + Clinical | `enhanced,clinical` | Max 1000 kcal/Tag |
+**Beispiel: User mit Reta + TRT, 100kg Körpergewicht**
 
----
+| Berechnung | Natural | Enhanced+Clinical |
+|------------|---------|-------------------|
+| Protein (Warrior 2.0g/kg) | 200g | 230g (+30g Boost) |
+| Max Defizit "grün" | 500 kcal | 1000 kcal |
+| Realism Score bei 800kcal Defizit | ~50% (rot) | ~75% (grün) |
+| UI Feedback | Warnung | Alles ok |
 
-## UI-Preview nach Änderung
+**Keine Änderungen an:**
+- TDEE-Berechnung (Physik bleibt Physik)
+- BMR-Formel
+- Aktivitäts-Multiplikatoren
+- Datenbank-Schema (keine Migration nötig)
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  [ 🌱 Natural ]  [✓💊 Enhanced ]  [✓🔬 Klinisch ]          │
-│     Diät only      Reta/Peptide      TRT+                  │
-│                                                             │
-│  💡 Reta + TRT Kombination: Maximale Rekomposition möglich │
-└─────────────────────────────────────────────────────────────┘
-```
