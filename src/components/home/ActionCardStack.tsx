@@ -84,10 +84,12 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
       const xpMap: Record<string, number> = {
         journal: 40,
         sleep: 30,
+        sleep_log: 30,
         weight: 20,
         training: 60,
         profile: 50,
         epiphany: 25,
+        nutrition: 50,
       };
       
       window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 

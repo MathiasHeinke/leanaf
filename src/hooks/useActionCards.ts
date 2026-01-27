@@ -14,7 +14,8 @@ import { useDailyFocus } from './useDailyFocus';
 import { useSupplementData } from './useSupplementData';
 import { useProtocols } from './useProtocols';
 import { useIntakeLog } from './useIntakeLog';
-import { Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell, Sparkles, Syringe } from 'lucide-react';
+import { Moon, PenTool, Pill, User, Droplets, Coffee, Check, LucideIcon, Sunrise, Clock, Dumbbell, Sparkles, Syringe, Scale, Utensils } from 'lucide-react';
+import { useTodaysMeals } from './useTodaysMeals';
 
 export interface QuickAction {
   id: string;
@@ -25,7 +26,7 @@ export interface QuickAction {
 
 export interface ActionCard {
   id: string;
-  type: 'insight' | 'epiphany' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein' | 'peptide';
+  type: 'insight' | 'epiphany' | 'sleep_fix' | 'journal' | 'supplement' | 'profile' | 'hydration' | 'protein' | 'peptide' | 'training' | 'weight' | 'sleep_log' | 'nutrition';
   title: string;
   subtitle: string;
   gradient: string;
@@ -46,6 +47,7 @@ export const useActionCards = () => {
   const { groupedSupplements, totalScheduled, totalTaken } = useSupplementData();
   const { protocols } = useProtocols();
   const { isPeptideTakenToday } = useIntakeLog();
+  const { meals } = useTodaysMeals();
 
   // Smart loading: only show initial loading state if no cached profile
   const isInitialLoading = profileLoading && !profileData;
@@ -212,6 +214,96 @@ export const useActionCards = () => {
       });
     }
 
+    // NEW: Sleep Log Card - Morning routine if no sleep logged
+    const sleepLogged = dailyMetrics?.sleep?.lastHours != null || plusData.sleepLoggedToday;
+    const isMorning = hour >= 6 && hour < 11;
+
+    if (isMorning && !sleepLogged) {
+      result.push({
+        id: 'sleep_log',
+        type: 'sleep_log',
+        title: 'Wie hast du geschlafen?',
+        subtitle: 'Logge deine Schlafqualität für bessere Insights.',
+        gradient: 'from-indigo-500 to-blue-600',
+        icon: Moon,
+        actionContext: 'log_sleep',
+        priority: 4,
+        xp: 30,
+        canSwipeComplete: false
+      });
+    }
+
+    // NEW: Training Card - Training day without workout
+    const dayOfWeek = new Date().getDay();
+    const isTrainingDay = [1, 2, 4, 5].includes(dayOfWeek); // Mo, Di, Do, Fr
+    const workoutLogged = dailyMetrics?.training?.todayType != null || plusData.workoutLoggedToday;
+
+    if (isTrainingDay && !workoutLogged && hour >= 8 && hour < 22) {
+      const dayNames: Record<number, string> = { 1: 'Montag', 2: 'Dienstag', 4: 'Donnerstag', 5: 'Freitag' };
+      result.push({
+        id: 'training',
+        type: 'training',
+        title: 'Training anstehend',
+        subtitle: `${dayNames[dayOfWeek]} ist Trainingstag. Bereit?`,
+        gradient: 'from-emerald-500 to-teal-600',
+        icon: Dumbbell,
+        actionContext: 'log_training',
+        priority: 5,
+        xp: 60,
+        canSwipeComplete: false
+      });
+    }
+
+    // NEW: Weight Card - Weekly weigh-in reminder
+    const lastWeightDate = dailyMetrics?.weight?.date;
+    const daysSinceLastWeight = lastWeightDate 
+      ? Math.floor((Date.now() - new Date(lastWeightDate).getTime()) / (1000 * 60 * 60 * 24))
+      : 999;
+
+    if (daysSinceLastWeight >= 7 && hour >= 6 && hour < 12) {
+      result.push({
+        id: 'weight',
+        type: 'weight',
+        title: 'Weekly Weigh-In',
+        subtitle: lastWeightDate 
+          ? `Letzte Messung vor ${daysSinceLastWeight} Tagen.`
+          : 'Tracke dein Gewicht für den Wochentrend.',
+        gradient: 'from-violet-500 to-purple-600',
+        icon: Scale,
+        actionContext: 'log_weight',
+        priority: 6,
+        xp: 20,
+        canSwipeComplete: false
+      });
+    }
+
+    // NEW: Nutrition Card - Meal reminder after 4+ hours
+    const lastMealTime = meals.length > 0 
+      ? new Date(meals[meals.length - 1].ts).getTime() 
+      : null;
+    const hoursSinceLastMeal = lastMealTime 
+      ? (Date.now() - lastMealTime) / (1000 * 60 * 60) 
+      : null;
+    const needsMealReminder = (hoursSinceLastMeal !== null && hoursSinceLastMeal > 4) || 
+                              (lastMealTime === null && hour >= 12);
+
+    if (needsMealReminder && hour >= 8 && hour < 22) {
+      result.push({
+        id: 'nutrition',
+        type: 'nutrition',
+        title: 'Essens-Pause?',
+        subtitle: hoursSinceLastMeal 
+          ? `${Math.floor(hoursSinceLastMeal)}h seit der letzten Mahlzeit.`
+          : 'Zeit für den ersten Fuel-Up.',
+        gradient: 'from-orange-500 to-red-500',
+        icon: Utensils,
+        actionContext: 'log_nutrition',
+        priority: 8,
+        xp: 50,
+        canSwipeComplete: false
+      });
+    }
+
     // 6. ARES Epiphany Card - AI-generated insight with reveal mechanic
     result.push({
       id: 'epiphany',
@@ -227,7 +319,7 @@ export const useActionCards = () => {
 
     // Sort by priority and limit to 5
     return result.sort((a, b) => a.priority - b.priority).slice(0, 5);
-  }, [isInitialLoading, plusData, dailyMetrics, profileData, groupedSupplements, totalScheduled, totalTaken, protocols, isPeptideTakenToday]);
+  }, [isInitialLoading, plusData, dailyMetrics, profileData, groupedSupplements, totalScheduled, totalTaken, protocols, isPeptideTakenToday, meals]);
 
   return { cards, isLoading: isInitialLoading };
 };
