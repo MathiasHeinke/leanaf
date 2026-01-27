@@ -14,6 +14,7 @@ import { useAresGreeting } from '@/hooks/useAresGreeting';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useGlobalMealInput } from '@/hooks/useGlobalMealInput';
 import { useFrequentMeals, type Daypart } from '@/hooks/useFrequentMeals';
+import { useMealFavorites } from '@/hooks/useMealFavorites';
 import { useAresEvents } from '@/hooks/useAresEvents';
 import { toast } from 'sonner';
 
@@ -37,7 +38,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { MealConfirmationDialog } from '@/components/MealConfirmationDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Camera, Mic, ArrowRight, Square, X, Zap, Crown, Trophy, ChevronRight } from 'lucide-react';
+import { Camera, Mic, ArrowRight, Square, X, Zap, Crown, Trophy, ChevronRight, Star } from 'lucide-react';
 import { SmartChip } from '@/components/ui/smart-chip';
 import { SimpleProgressBar } from '@/components/SimpleProgressBar';
 import { Progress } from '@/components/ui/progress';
@@ -100,6 +101,7 @@ export default function AresHome() {
   const { userName, streak } = useAresGreeting();
   const { profileData } = useUserProfile();
   const { logWater } = useAresEvents();
+  const { favorites, isFavorite, toggleFavorite } = useMealFavorites();
 
   // Chat context trigger from action cards
   const handleActionTrigger = useCallback((contextOrPrompt: string) => {
@@ -506,21 +508,69 @@ export default function AresHome() {
           />
 
           <div className="pt-4 space-y-4">
-            {/* Smart Chips for frequent meals */}
-            {getCurrentMealSuggestions().length > 0 && (
-              <div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar pb-1">
-                {getCurrentMealSuggestions().map((meal, index) => (
-                  <SmartChip
-                    key={index}
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => handleMealChipClick(meal)}
-                  >
-                    {meal}
-                  </SmartChip>
-                ))}
-              </div>
-            )}
+            {/* Smart Chips for meals - Favorites + Suggestions */}
+            <div className="relative overflow-visible space-y-2">
+              {/* Favorites Row (max 3, gold stars) */}
+              {favorites.length > 0 && (
+                <div className="flex gap-2 flex-wrap relative z-20 pb-1">
+                  {favorites.map((meal, index) => (
+                    <div key={`fav-${index}`} className="relative">
+                      <SmartChip
+                        variant="favorite"
+                        size="sm"
+                        onClick={() => handleMealChipClick(meal)}
+                        icon={<Star className="w-3 h-3 fill-amber-400 text-amber-500" />}
+                      >
+                        {meal}
+                      </SmartChip>
+                      {/* Remove button on long press simulation - click small X */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(meal);
+                        }}
+                        className="absolute -top-1.5 -right-1.5 z-30 h-4 w-4 rounded-full bg-background border border-border shadow-sm flex items-center justify-center hover:bg-muted transition"
+                        aria-label="Favorit entfernen"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Suggestions Row (scrollable, exclude favorites) */}
+              {getCurrentMealSuggestions().filter(m => !isFavorite(m)).length > 0 && (
+                <div className="flex gap-2 overflow-x-auto scroll-smooth flex-nowrap hide-scrollbar pb-2 relative z-10">
+                  {getCurrentMealSuggestions()
+                    .filter(m => !isFavorite(m))
+                    .map((meal, index) => (
+                      <div key={`sug-${index}`} className="relative group flex-shrink-0">
+                        <SmartChip
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleMealChipClick(meal)}
+                        >
+                          {meal}
+                        </SmartChip>
+                        {/* Star button to add as favorite */}
+                        {favorites.length < 3 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(meal);
+                            }}
+                            className="absolute -top-1.5 -right-1.5 z-30 h-4 w-4 rounded-full bg-background border border-border shadow-sm flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition"
+                            aria-label="Als Favorit markieren"
+                          >
+                            <Star className="h-2.5 w-2.5 text-amber-500" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
 
             {/* Image Previews */}
             {(optimisticImages.length > 0 || uploadedImages.length > 0) && (

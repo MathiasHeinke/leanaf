@@ -65,6 +65,12 @@ const smartChipVariants = cva(
           "border-yellow-300 hover:border-yellow-400",
           "dark:bg-yellow-900/50 dark:hover:bg-yellow-900/70",
           "dark:text-yellow-300 dark:border-yellow-700 dark:hover:border-yellow-600"
+        ],
+        favorite: [
+          "bg-amber-100 hover:bg-amber-200 text-amber-700",
+          "border-amber-300 hover:border-amber-400",
+          "dark:bg-amber-900/50 dark:hover:bg-amber-900/70",
+          "dark:text-amber-300 dark:border-amber-700 dark:hover:border-amber-600"
         ]
       }
     },

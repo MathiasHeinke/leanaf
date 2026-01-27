@@ -4034,6 +4034,30 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          meal_text: string
+          position: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meal_text: string
+          position?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meal_text?: string
+          position?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       meal_images: {
         Row: {
           created_at: string
