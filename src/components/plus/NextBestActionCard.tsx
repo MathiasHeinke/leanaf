@@ -8,7 +8,7 @@ import { UsePlusDataResult } from '@/hooks/usePlusData';
 import { Zap, ArrowRight, Check, Moon, Dumbbell, Droplets, Pill, Utensils } from 'lucide-react';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 import { Progress } from '@/components/ui/progress';
-import confetti from 'canvas-confetti';
+
 import { openMeal, openSleep, openSupplements, openWorkout } from '@/components/quick/quickAddBus';
 import { supabase } from '@/integrations/supabase/client';
 import { triggerDataRefresh } from '@/hooks/useDataRefresh';
@@ -122,19 +122,7 @@ export const NextBestActionCard: React.FC<NextBestActionCardProps> = ({ data }) 
   const totalMissions = missions.length;
   const progressPct = Math.round((completedCount / totalMissions) * 100);
 
-  // Celebrate at milestones (>=3 and then 100%)
-  const [celebrated3, setCelebrated3] = useState(false);
-  const [celebratedAll, setCelebratedAll] = useState(false);
-  useEffect(() => {
-    if (!celebrated3 && completedCount >= 3) {
-      setCelebrated3(true);
-      confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
-    }
-    if (!celebratedAll && completedCount === totalMissions) {
-      setCelebratedAll(true);
-      confetti({ particleCount: 150, spread: 70, scalar: 1.1, origin: { y: 0.7 } });
-    }
-  }, [completedCount, totalMissions, celebrated3, celebratedAll]);
+  // Milestone celebration removed
 
   // Local optimistic state to mark as done via CTA when no deep integration yet
   const [manualDone, setManualDone] = useState<Record<string, boolean>>({});

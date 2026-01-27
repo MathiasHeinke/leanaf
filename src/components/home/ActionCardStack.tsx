@@ -17,7 +17,7 @@ import { useDailyInsight } from '@/hooks/useDailyInsight';
 import { SmartFocusCard, SmartTask } from './SmartFocusCard';
 import { EpiphanyCard } from './EpiphanyCard';
 import { toast } from 'sonner';
-import { triggerSpartanConfetti } from '@/utils/confetti';
+
 
 interface ActionCardStackProps {
   onTriggerChat: (context: string) => void;
@@ -54,7 +54,6 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
   useEffect(() => {
     if (cards.length === 0 && initialCards.length > 0 && !hasShownConfetti) {
       setHasShownConfetti(true);
-      triggerSpartanConfetti();
       
       // Bonus XP Event für komplettierten Tag
       window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
