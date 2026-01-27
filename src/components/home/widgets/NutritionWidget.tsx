@@ -68,8 +68,13 @@ export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size, onOpenDa
   const caloriePercent = Math.min((calories / calorieGoal) * 100, 100);
   const isOver = calories > calorieGoal;
 
-  // FLAT: Horizontaler kompakter Streifen mit Kalorien-Progress
+  // FLAT: Horizontaler kompakter Streifen mit Kalorien + Makros
   if (size === 'flat') {
+    // Helper für Makro-Prozent
+    const proteinPercent = Math.min((protein / proteinGoal) * 100, 100);
+    const carbsPercent = Math.min((carbs / carbGoal) * 100, 100);
+    const fatsPercent = Math.min((fats / fatGoal) * 100, 100);
+    
     return (
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
@@ -96,11 +101,62 @@ export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size, onOpenDa
         </div>
         
         {/* Label */}
-        <span className="relative z-10 flex-1 text-sm font-medium text-foreground">Ernährung</span>
+        <span className="relative z-10 text-sm font-medium text-foreground shrink-0">Ernährung</span>
+        
+        {/* Mini Makro Bars */}
+        <div className="relative z-10 flex items-center gap-2 flex-1 justify-center">
+          {/* Protein */}
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">P</span>
+            <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${proteinPercent}%` }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className={cn(
+                  "h-full rounded-full",
+                  protein > proteinGoal ? "bg-destructive" : "bg-emerald-500"
+                )}
+              />
+            </div>
+          </div>
+          
+          {/* Carbs */}
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">C</span>
+            <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${carbsPercent}%` }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className={cn(
+                  "h-full rounded-full",
+                  carbs > carbGoal ? "bg-destructive" : "bg-blue-500"
+                )}
+              />
+            </div>
+          </div>
+          
+          {/* Fats */}
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">F</span>
+            <div className="w-8 h-1.5 bg-muted/50 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${fatsPercent}%` }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+                className={cn(
+                  "h-full rounded-full",
+                  fats > fatGoal ? "bg-destructive" : "bg-amber-500"
+                )}
+              />
+            </div>
+          </div>
+        </div>
         
         {/* Kalorien Counter */}
         <span className={cn(
-          "relative z-10 text-sm font-bold",
+          "relative z-10 text-sm font-bold shrink-0",
           isOver ? "text-destructive" : "text-purple-600 dark:text-violet-400"
         )}>
           {Math.round(calories)} / {calorieGoal} kcal
