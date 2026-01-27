@@ -29,6 +29,72 @@ export const BioAgeWidget: React.FC<BioAgeWidgetProps> = ({ size }) => {
     : isOlder 
       ? 'text-red-500' 
       : 'text-muted-foreground';
+  
+  const bgGradientFlat = isYounger 
+    ? 'from-emerald-500/20 to-emerald-400/10' 
+    : isOlder 
+      ? 'from-destructive/20 to-destructive/10' 
+      : 'from-muted/20 to-muted/10';
+
+  // FLAT: Horizontal compact strip
+  if (size === 'flat') {
+    return (
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={() => navigate('/bio-age')}
+        className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
+      >
+        {/* Background Fill */}
+        {bioAge && (
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: '100%' }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className={cn("absolute inset-0 bg-gradient-to-r", bgGradientFlat)}
+          />
+        )}
+        
+        {/* Icon */}
+        <div className={cn(
+          "relative z-10 p-2 rounded-xl",
+          isYounger 
+            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+            : isOlder
+              ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
+              : "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+        )}>
+          <Sparkles className="w-5 h-5" />
+        </div>
+        
+        {/* Label */}
+        <span className="relative z-10 text-sm font-medium text-foreground shrink-0">Bio-Alter</span>
+        
+        {/* Middle: Age Comparison */}
+        <div className="relative z-10 flex-1 flex items-center justify-center">
+          {bioAge ? (
+            <span className="text-sm text-muted-foreground">
+              Bio <span className="font-bold text-foreground">{bioAge}</span> vs <span className="font-bold text-muted-foreground">{chronoAge}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">Kein Test</span>
+          )}
+        </div>
+        
+        {/* Value: Trend */}
+        {bioAge && ageDiff !== null ? (
+          <div className={cn("relative z-10 flex items-center gap-1 shrink-0", trendColor)}>
+            <TrendIcon className="w-4 h-4" />
+            <span className="text-sm font-bold">
+              {Math.abs(ageDiff)} J. {isYounger ? 'jünger' : isOlder ? 'älter' : ''}
+            </span>
+          </div>
+        ) : (
+          <span className="relative z-10 text-sm font-bold text-muted-foreground/50 shrink-0">--</span>
+        )}
+      </motion.div>
+    );
+  }
 
   // LARGE / WIDE: Full details
   if (size === 'large' || size === 'wide') {

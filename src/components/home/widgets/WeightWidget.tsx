@@ -63,6 +63,63 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size, onOpenDaySheet
         ? 'text-emerald-500' 
         : 'text-muted-foreground';
 
+  // FLAT: Horizontal compact strip with trend sparkline
+  if (size === 'flat') {
+    const maxWeight = history.length > 0 ? Math.max(...history) : 80;
+    const minWeight = history.length > 0 ? Math.min(...history) : 70;
+    const range = maxWeight - minWeight || 1;
+
+    return (
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={() => onOpenDaySheet?.()}
+        className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3"
+      >
+        {/* Icon */}
+        <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
+          <Scale className="w-5 h-5" />
+        </div>
+        
+        {/* Label */}
+        <span className="text-sm font-medium text-foreground shrink-0">Gewicht</span>
+        
+        {/* Mini Sparkline */}
+        {history.length > 1 && (
+          <div className="flex-1 flex items-end justify-center gap-0.5 h-4">
+            {history.map((w, i) => {
+              const height = ((w - minWeight) / range) * 100;
+              return (
+                <motion.div 
+                  key={i}
+                  initial={{ height: 0 }}
+                  animate={{ height: `${Math.max(height, 10)}%` }}
+                  transition={{ delay: 0.2 + i * 0.05 }}
+                  className="w-2 rounded-sm bg-violet-500/40"
+                />
+              );
+            })}
+          </div>
+        )}
+        
+        {/* Trend */}
+        {trend !== null && (
+          <div className={cn("flex items-center gap-0.5 shrink-0", trendColor)}>
+            <TrendIcon className="w-3 h-3" />
+            <span className="text-xs font-medium">
+              {trend > 0 ? '+' : ''}{trend.toFixed(1)}
+            </span>
+          </div>
+        )}
+        
+        {/* Value */}
+        <span className="text-sm font-bold text-foreground shrink-0">
+          {currentWeight > 0 ? `${currentWeight.toFixed(1)} kg` : '-- kg'}
+        </span>
+      </motion.div>
+    );
+  }
+
   // LARGE: With mini sparkline
   if (size === 'large' || size === 'wide') {
     const maxWeight = Math.max(...history, currentWeight || 80);

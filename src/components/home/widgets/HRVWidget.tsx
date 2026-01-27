@@ -12,6 +12,35 @@ export const HRVWidget: React.FC<HRVWidgetProps> = ({ size }) => {
   // HRV data would come from Health Connect / Apple Health integration
   // For now, show a beautiful placeholder
   
+  // FLAT: Horizontal compact placeholder strip
+  if (size === 'flat') {
+    return (
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 flex items-center gap-3"
+      >
+        {/* Icon */}
+        <div className="p-2 rounded-xl bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400">
+          <Activity className="w-5 h-5" />
+        </div>
+        
+        {/* Label */}
+        <span className="text-sm font-medium text-foreground shrink-0">HRV</span>
+        
+        {/* Coming Soon Badge */}
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            Bald verfügbar
+          </span>
+        </div>
+        
+        {/* Value Placeholder */}
+        <span className="text-sm font-bold text-muted-foreground/50 shrink-0">-- ms</span>
+      </motion.div>
+    );
+  }
+
   // LARGE: More info placeholder
   if (size === 'large' || size === 'wide') {
     return (

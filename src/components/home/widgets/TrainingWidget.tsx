@@ -75,6 +75,71 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
   const colors = statusColors[workoutStatus];
   const dayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
+  const progressPercent = Math.min((weeklyWorkouts / workoutTarget) * 100, 100);
+
+  // FLAT: Horizontal compact strip with week dots
+  if (size === 'flat') {
+    return (
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={() => navigate('/training')}
+        className={cn(
+          "col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden",
+          workoutStatus === 'low' ? "border-destructive/30" : "border-border/50"
+        )}
+      >
+        {/* Background Fill */}
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${progressPercent}%` }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className={cn(
+            "absolute inset-0",
+            workoutStatus === 'good' 
+              ? "bg-gradient-to-r from-emerald-500/20 to-emerald-400/10"
+              : workoutStatus === 'ok'
+                ? "bg-gradient-to-r from-orange-500/20 to-orange-400/10"
+                : "bg-gradient-to-r from-destructive/20 to-destructive/10"
+          )}
+        />
+        
+        {/* Icon */}
+        <div className={cn("relative z-10 p-2 rounded-xl", colors.bg, colors.text)}>
+          <Dumbbell className="w-5 h-5" />
+        </div>
+        
+        {/* Label */}
+        <span className="relative z-10 text-sm font-medium text-foreground shrink-0">Training</span>
+        
+        {/* Week Days Dots */}
+        <div className="relative z-10 flex-1 flex items-center justify-center gap-1.5">
+          {weekDays.map((done, i) => (
+            <motion.div 
+              key={i}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2 + i * 0.05 }}
+              className={cn(
+                "w-4 h-4 rounded-full flex items-center justify-center text-[8px]",
+                done 
+                  ? "bg-emerald-500 text-white" 
+                  : "bg-muted/50 text-muted-foreground"
+              )}
+            >
+              {done && <Check className="w-2.5 h-2.5" />}
+            </motion.div>
+          ))}
+        </div>
+        
+        {/* Value */}
+        <span className={cn("relative z-10 text-sm font-bold shrink-0", colors.text)}>
+          {weeklyWorkouts}/{workoutTarget} Woche
+        </span>
+      </motion.div>
+    );
+  }
+
   // LARGE / WIDE: With week view
   if (size === 'large' || size === 'wide') {
     return (

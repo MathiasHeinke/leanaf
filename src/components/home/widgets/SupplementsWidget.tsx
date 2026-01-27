@@ -75,6 +75,81 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size }) =>
   const items = supplementsData?.items || [];
   const allTaken = total > 0 && taken === total;
   const hasSupplements = total > 0;
+  const progressPercent = total > 0 ? Math.min((taken / total) * 100, 100) : 0;
+
+  // FLAT: Horizontal compact strip with dots
+  if (size === 'flat') {
+    // Show up to 5 dots representing taken/total ratio
+    const dotsToShow = Math.min(total, 5);
+    const takenDots = Math.min(taken, dotsToShow);
+    
+    return (
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={() => navigate('/supplements')}
+        className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
+      >
+        {/* Background Fill */}
+        {hasSupplements && (
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPercent}%` }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+            className={cn(
+              "absolute inset-0",
+              allTaken 
+                ? "bg-gradient-to-r from-emerald-500/20 to-emerald-400/10"
+                : "bg-gradient-to-r from-cyan-500/20 to-cyan-400/10"
+            )}
+          />
+        )}
+        
+        {/* Icon */}
+        <div className={cn(
+          "relative z-10 p-2 rounded-xl",
+          allTaken 
+            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+            : "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400"
+        )}>
+          <Pill className="w-5 h-5" />
+        </div>
+        
+        {/* Label */}
+        <span className="relative z-10 text-sm font-medium text-foreground shrink-0">Supplements</span>
+        
+        {/* Supplement Dots */}
+        <div className="relative z-10 flex-1 flex items-center justify-center gap-1.5">
+          {hasSupplements ? (
+            Array.from({ length: dotsToShow }).map((_, i) => (
+              <motion.div 
+                key={i}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2 + i * 0.05 }}
+                className={cn(
+                  "w-3 h-3 rounded-full",
+                  i < takenDots
+                    ? "bg-emerald-500"
+                    : "bg-muted/50"
+                )}
+              />
+            ))
+          ) : (
+            <span className="text-xs text-muted-foreground">Keine konfiguriert</span>
+          )}
+        </div>
+        
+        {/* Value */}
+        <span className={cn(
+          "relative z-10 text-sm font-bold shrink-0",
+          allTaken ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
+        )}>
+          {hasSupplements ? `${taken}/${total} heute` : '--'}
+        </span>
+      </motion.div>
+    );
+  }
 
   // LARGE / WIDE: With supplement list
   if (size === 'large' || size === 'wide') {
