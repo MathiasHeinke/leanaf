@@ -172,6 +172,7 @@ export const useDailyMetrics = () => {
     },
     staleTime: 1000 * 60 * 5,  // 5 min fresh
     gcTime: 1000 * 60 * 30,    // 30 min cache
+    refetchOnMount: 'always', // Immer refetchen wenn gemountet (nach Profile-Save)
     retry: 1
   });
 };
