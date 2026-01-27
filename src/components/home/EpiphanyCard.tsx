@@ -5,9 +5,10 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ChevronRight, Lightbulb, X, MessageCircle, Clock } from 'lucide-react';
+import { Sparkles, ChevronRight, Lightbulb, MessageCircle, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFetchInsight } from '@/hooks/useDailyInsight';
+import { DismissButton } from './SmartFocusCard';
 
 interface EpiphanyCardProps {
   onOpenChat: (prompt: string) => void;
@@ -167,7 +168,7 @@ const MysteryState: React.FC<{ onReveal: () => void; onDismiss: () => void; onSn
 
     {/* Content */}
     <div className="relative h-full p-6 pb-10 flex flex-col text-white">
-      {/* Header Row: Badge + Dismiss Button */}
+    {/* Header Row: Badge + Morphing DismissButton */}
       <div className="flex justify-between items-start">
         <motion.span 
           className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold tracking-wider uppercase border border-white/20"
@@ -177,30 +178,9 @@ const MysteryState: React.FC<{ onReveal: () => void; onDismiss: () => void; onSn
           Neues Muster
         </motion.span>
         
-        {/* Dismiss Button (X) */}
-        <button 
-          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
-          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center 
-                     hover:bg-white/20 transition-colors z-10"
-        >
-          <X className="w-4 h-4 text-white/70" />
-        </button>
+        {/* Morphing DismissButton: Sparkles → X */}
+        <DismissButton icon={Sparkles} onDismiss={onDismiss} />
       </div>
-      
-      {/* Pulsing Icon - moved below header */}
-      <motion.div 
-        className="absolute top-16 right-6 w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20"
-        animate={{ 
-          boxShadow: [
-            '0 0 0 0 rgba(139, 92, 246, 0)',
-            '0 0 20px 10px rgba(139, 92, 246, 0.3)',
-            '0 0 0 0 rgba(139, 92, 246, 0)',
-          ]
-        }}
-        transition={{ duration: 2, repeat: Infinity }}
-      >
-        <Sparkles className="w-6 h-6 text-white" />
-      </motion.div>
 
       {/* Main Text */}
       <div className="mt-auto">
@@ -212,13 +192,12 @@ const MysteryState: React.FC<{ onReveal: () => void; onDismiss: () => void; onSn
         </p>
       </div>
 
-      {/* Reveal Button */}
+      {/* Compact Reveal Button - left side */}
       <motion.button
         onClick={onReveal}
-        className="mt-4 w-full py-3 px-4 bg-white/20 backdrop-blur-md rounded-xl border border-white/30 
-          flex items-center justify-center gap-2 font-semibold text-sm
+        className="mt-4 inline-flex py-2.5 px-5 bg-white/20 backdrop-blur-md rounded-xl border border-white/30 
+          items-center gap-2 font-semibold text-sm
           hover:bg-white/30 transition-all active:scale-[0.98]"
-        whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
         <span>Aufdecken</span>
@@ -318,14 +297,8 @@ const RevealedState: React.FC<{
           </span>
         </div>
         
-        {/* Dismiss Button */}
-        <button 
-          onClick={onDismiss}
-          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center 
-                     hover:bg-white/20 transition-colors"
-        >
-          <X className="w-4 h-4 text-white/70" />
-        </button>
+        {/* Dismiss Button - using DismissButton with Lightbulb icon */}
+        <DismissButton icon={Lightbulb} onDismiss={onDismiss} />
       </div>
 
       {/* Insight Quote */}
