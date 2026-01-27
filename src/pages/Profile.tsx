@@ -632,6 +632,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       setLastSaved(new Date());
       setSaveSuccess(true);
       
+      // Notify ActionCardStack that profile was completed
+      window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+        detail: { cardType: 'profile' }
+      }));
+      
       // Check if profile is complete and show success dialog for first-time users
       if (isProfileComplete && !profileExists) {
         setShowSuccessDialog(true);

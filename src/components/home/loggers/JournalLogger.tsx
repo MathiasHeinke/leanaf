@@ -128,6 +128,10 @@ export const JournalLogger: React.FC<JournalLoggerProps> = ({ onClose }) => {
       
       if (success) {
         toast.success('Tagebuch gespeichert ✨');
+        // Dispatch completion event for ActionCardStack
+        window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+          detail: { cardType: 'journal' }
+        }));
         onClose();
       }
     } finally {

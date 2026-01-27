@@ -98,6 +98,10 @@ export const WeightLogger: React.FC<WeightLoggerProps> = ({ onClose }) => {
       notes: finalNotes
     });
     if (success) {
+      // Dispatch completion event for ActionCardStack
+      window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+        detail: { cardType: 'weight' }
+      }));
       onClose();
     }
     setIsSaving(false);

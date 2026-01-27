@@ -63,6 +63,10 @@ export const EpiphanyCard: React.FC<EpiphanyCardProps> = ({
 
   const handleAskMore = () => {
     if (insight) {
+      // Dispatch completion event - card disappears after opening chat
+      window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+        detail: { cardType: 'epiphany' }
+      }));
       onOpenChat(`Du hast mir folgende Erkenntnis gezeigt: "${insight}". Erkläre mir das genauer und was ich konkret ändern sollte.`);
     }
   };

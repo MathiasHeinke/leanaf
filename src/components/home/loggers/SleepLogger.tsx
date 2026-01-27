@@ -100,6 +100,10 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
       motivation_level: motivation || undefined
     });
     if (success) {
+      // Dispatch completion event for ActionCardStack
+      window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+        detail: { cardType: 'sleep' }
+      }));
       onClose();
     }
     setIsSaving(false);
