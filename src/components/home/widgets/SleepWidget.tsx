@@ -89,6 +89,58 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
   };
 
   const colors = statusColors[sleepStatus];
+  const sleepPercent = Math.min((sleepHours / 8) * 100, 100);
+
+  // FLAT: Horizontal compact strip with sparkline
+  if (size === 'flat') {
+    return (
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={() => navigate('/sleep')}
+        className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
+      >
+        {/* Background Fill */}
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${sleepPercent}%` }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-indigo-400/10"
+        />
+        
+        {/* Icon */}
+        <div className={cn("relative z-10 p-2 rounded-xl", colors.bg, colors.text)}>
+          <Moon className="w-5 h-5" />
+        </div>
+        
+        {/* Label */}
+        <span className="relative z-10 text-sm font-medium text-foreground shrink-0">Schlaf</span>
+        
+        {/* Mini Sparkline */}
+        <div className="relative z-10 flex-1 flex items-end justify-center gap-0.5 h-4">
+          {sleepSparkline.map((h, i) => (
+            <motion.div 
+              key={i}
+              initial={{ height: 0 }}
+              animate={{ height: `${Math.max(h, 10)}%` }}
+              transition={{ delay: 0.3 + i * 0.05 }}
+              className={cn("w-2 rounded-sm", colors.bar)}
+            />
+          ))}
+        </div>
+        
+        {/* Value */}
+        <div className="relative z-10 flex items-center gap-2 shrink-0">
+          <span className="text-sm font-bold text-foreground">
+            {sleepHours > 0 ? `${sleepHours.toFixed(1)}h` : '--'}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {weeklyAvg > 0 ? `Ø ${weeklyAvg.toFixed(1)}h` : ''}
+          </span>
+        </div>
+      </motion.div>
+    );
+  }
 
   // LARGE: Volle Breite mit mehr Infos
   if (size === 'large') {

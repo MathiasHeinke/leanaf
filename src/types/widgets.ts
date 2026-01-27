@@ -61,7 +61,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'training', 
     label: 'Training', 
     description: 'Workouts pro Woche', 
-    availableSizes: ['small', 'medium', 'large', 'wide'], 
+    availableSizes: ['small', 'medium', 'large', 'wide', 'flat'], 
     defaultSize: 'medium', 
     icon: Dumbbell 
   },
@@ -69,7 +69,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'sleep', 
     label: 'Schlaf', 
     description: 'Schlafdauer & Qualität', 
-    availableSizes: ['small', 'medium', 'large'], 
+    availableSizes: ['small', 'medium', 'large', 'flat'], 
     defaultSize: 'medium', 
     icon: Moon 
   },
@@ -77,7 +77,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'weight', 
     label: 'Gewicht', 
     description: 'Aktuelles Gewicht', 
-    availableSizes: ['small', 'medium', 'large', 'wide'], 
+    availableSizes: ['small', 'medium', 'large', 'wide', 'flat'], 
     defaultSize: 'small', 
     icon: Scale 
   },
@@ -85,7 +85,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'hrv', 
     label: 'HRV', 
     description: 'Herzratenvariabilität', 
-    availableSizes: ['small', 'medium', 'large', 'wide'], 
+    availableSizes: ['small', 'medium', 'large', 'wide', 'flat'], 
     defaultSize: 'small', 
     icon: Activity 
   },
@@ -93,7 +93,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'supplements', 
     label: 'Supplements', 
     description: 'Einnahme heute', 
-    availableSizes: ['small', 'medium', 'large', 'wide'], 
+    availableSizes: ['small', 'medium', 'large', 'wide', 'flat'], 
     defaultSize: 'small', 
     icon: Pill 
   },
@@ -101,7 +101,7 @@ export const WIDGET_DEFINITIONS: WidgetDefinition[] = [
     type: 'bio_age', 
     label: 'Bio-Alter', 
     description: 'Biologisches Alter', 
-    availableSizes: ['small', 'medium', 'large', 'wide'], 
+    availableSizes: ['small', 'medium', 'large', 'wide', 'flat'], 
     defaultSize: 'small', 
     icon: Heart 
   },
