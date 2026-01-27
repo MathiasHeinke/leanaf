@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { useTodaysMeals } from '@/hooks/useTodaysMeals';
 import { Button } from '@/components/ui/button';
+import { MealAdvisorSection } from '@/components/nutrition/MealAdvisorSection';
+import type { MealSuggestion } from '@/hooks/useMealAdvisor';
 
 interface NutritionDaySheetProps {
   isOpen: boolean;
@@ -245,6 +247,15 @@ export const NutritionDaySheet: React.FC<NutritionDaySheetProps> = ({
                   gradient="bg-gradient-to-r from-amber-600 to-yellow-400"
                 />
               </div>
+              
+              {/* AI Meal Advisor */}
+              <MealAdvisorSection 
+                onLogMeal={(meal: MealSuggestion) => {
+                  // Pre-fill meal with suggestion data
+                  console.log('Log meal:', meal);
+                  onAddMeal();
+                }}
+              />
               
               {/* Timeline Section */}
               <div className="mt-6">

@@ -141,3 +141,6 @@ verify_jwt = true
 [functions.ares-insight-generator]
 verify_jwt = true
 
+[functions.ares-nutrition-advisor]
+verify_jwt = false
+
