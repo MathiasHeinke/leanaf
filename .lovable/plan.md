@@ -1,210 +1,145 @@
 
+# Profile Protocol Mode: Bugfixes + Multi-Select
 
-# Profile-Seite: Logische Reorganisation + Fehlende Features
+## Gefundene Probleme
 
-## Zusammenfassung
+### 1. Phase Progress wird falsch berechnet
+**Bug**: Die `loadProtocolStatus` Funktion zählt `Object.values(checklist).filter(Boolean).length`, aber die Werte sind Objekte `{completed: true/false, ...}`, nicht Booleans.
 
-Die Profile-Seite wird reorganisiert für besseren Informationsfluss und um kritische ARES-Protocol Features zu integrieren:
-- **Natural vs. Enhanced Modus** (beeinflusst alle Berechnungen)
-- **Aktuelle Protocol-Phase Anzeige**
-- **Longevity-Settings für Phase 3+**
+**Aktuell**: Zeigt "9/9 Kriterien erfüllt" (alle Objekte sind truthy)
+**Soll**: Zeigt "5/9 Kriterien erfüllt" (nur `.completed === true` zählen)
+
+### 2. Protocol Mode: Multi-Select statt Single-Select
+**Anforderung**: User möchte mehrere Modi kombinieren können:
+- Natural + TRT (Klinisch)
+- Reta (Enhanced) + TRT (Klinisch)
+- Nur Natural
+- etc.
+
+**Logik**:
+- "Natural" bedeutet "Keine Hilfsmittel" - kann nicht mit anderen kombiniert werden
+- "Enhanced" (Reta/Peptide) und "Klinisch" (TRT) können kombiniert werden
 
 ---
 
-## Neue Reihenfolge der Sektionen
+## Technische Änderungen
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ 1. PROFIL & IDENTITÄT                                       │
-│    Avatar + Anzeigename (wie soll ARES dich nennen)         │
-├─────────────────────────────────────────────────────────────┤
-│ 2. KÖRPER-BASICS                                            │
-│    Gewicht (Start/Aktuell), Größe, Alter, Geschlecht       │
-├─────────────────────────────────────────────────────────────┤
-│ 3. LIFESTYLE                                                │
-│    Aktivitätslevel + Training-Frequenz (NEU)                │
-├─────────────────────────────────────────────────────────────┤
-│ 4. ARES PROTOKOLL-MODUS (NEU)                              │
-│    Natural │ Enhanced (Reta/Peptide) │ Klinisch (TRT+)     │
-│    + Current Phase Badge (0-3) als read-only Info          │
-├─────────────────────────────────────────────────────────────┤
-│ 5. ZIELE                                                    │
-│    Weight Delta + Muscle Goal + Tempo (bestehend)           │
-├─────────────────────────────────────────────────────────────┤
-│ 6. KALORIEN & MAKROS                                        │
-│    BMR/TDEE/Ziel + Defizit + Makro-Verteilung (bestehend)   │
-├─────────────────────────────────────────────────────────────┤
-│ 7. PROTOKOLL-INTENSITÄT                                     │
-│    Rookie/Warrior/Elite Protein-Tier (bestehend)            │
-├─────────────────────────────────────────────────────────────┤
-│ 8. GESUNDHEIT                                               │
-│    Medical Screening (bestehend)                            │
-│    + Bloodwork Status Indicator (NEU, optional)             │
-├─────────────────────────────────────────────────────────────┤
-│ 9. LONGEVITY SETTINGS (NEU - nur Phase 3+)                 │
-│    Conditional: Nur anzeigen wenn user_protocol_status >= 3 │
-│    → Rapamycin-Protokoll (Wochentag)                        │
-│    → Fasten-Präferenz (16:8, 24h, Extended)                 │
-│    → DunedinPACE Tracking aktiviert?                        │
-├─────────────────────────────────────────────────────────────┤
-│ 10. COACH PERSONA                                           │
-│     Persönlichkeit des Coaches (bestehend)                  │
-└─────────────────────────────────────────────────────────────┘
+### Datei 1: `src/pages/Profile.tsx`
+
+**Zeile 381-388 - Phase Progress Fix:**
+```typescript
+// ALT (falsch):
+const items = Object.values(data.phase_0_checklist as Record<string, boolean>);
+const completed = items.filter(Boolean).length;
+
+// NEU (korrekt):
+const checklist = data.phase_0_checklist as Record<string, { completed?: boolean }>;
+const items = Object.values(checklist);
+const completed = items.filter(item => item?.completed === true).length;
 ```
 
+**State-Änderung für Multi-Select:**
+```typescript
+// ALT:
+const [protocolMode, setProtocolMode] = useState<ProtocolMode>('natural');
+
+// NEU:
+const [protocolModes, setProtocolModes] = useState<ProtocolMode[]>(['natural']);
+```
+
+**Save-Logik anpassen:**
+```typescript
+// Speichere als Array oder JSON-String
+protocol_mode: protocolModes.join(','), // z.B. "enhanced,clinical"
+```
+
+### Datei 2: `src/components/profile/ProtocolModeSelector.tsx`
+
+**Props erweitern:**
+```typescript
+interface ProtocolModeSelectorProps {
+  modes: ProtocolMode[];  // Array statt single value
+  onModesChange: (modes: ProtocolMode[]) => void;
+  currentPhase?: number;
+  phaseProgress?: { completed: number; total: number };
+}
+```
+
+**Multi-Select Logik:**
+```typescript
+const handleModeClick = (clickedMode: ProtocolMode) => {
+  if (clickedMode === 'natural') {
+    // Natural ist exklusiv - deselektiert alle anderen
+    onModesChange(['natural']);
+  } else {
+    // Enhanced/Clinical können kombiniert werden
+    let newModes = modes.filter(m => m !== 'natural');
+    
+    if (newModes.includes(clickedMode)) {
+      // Toggle off
+      newModes = newModes.filter(m => m !== clickedMode);
+      if (newModes.length === 0) newModes = ['natural']; // Fallback
+    } else {
+      // Toggle on
+      newModes.push(clickedMode);
+    }
+    onModesChange(newModes);
+  }
+};
+```
+
+**UI-Anpassung:**
+- Checkmarks bei allen ausgewählten Modi anzeigen
+- Visual Feedback für kombinierte Auswahl (z.B. Enhanced + Clinical beide highlighted)
+
 ---
 
-## Neue Komponenten
+## Datenbank-Kompatibilität
 
-### 1. Protocol Mode Selector (NEU)
+Das bestehende `protocol_mode` Feld ist `text`. Zwei Optionen:
 
-**Datei:** `src/components/profile/ProtocolModeSelector.tsx`
+**Option A: Comma-Separated (einfach)**
+```sql
+protocol_mode = 'enhanced,clinical'  -- String mit Komma
+```
 
-**Zweck:** Definiert ob User Natural arbeitet oder Enhanced-Support nutzt
+**Option B: Array-Feld (sauberer)**
+```sql
+ALTER TABLE profiles 
+ALTER COLUMN protocol_mode TYPE text[] USING string_to_array(protocol_mode, ',');
+```
 
-**UI-Struktur:**
+Empfehlung: **Option A** (keine Migration nötig, Parse beim Laden)
+
+---
+
+## Betroffene Dateien
+
+| Datei | Änderungen |
+|-------|------------|
+| `src/pages/Profile.tsx` | Phase Progress Fix, Multi-Select State, Laden/Speichern |
+| `src/components/profile/ProtocolModeSelector.tsx` | Multi-Select UI + Toggle-Logik |
+
+---
+
+## Kombinationslogik
+
+| Auswahl | Gespeicherter Wert | Defizit-Limit |
+|---------|-------------------|---------------|
+| Natural | `natural` | Max 500 kcal/Tag |
+| Enhanced only | `enhanced` | Max 750 kcal/Tag |
+| Clinical only | `clinical` | Individuell (Coach) |
+| Enhanced + Clinical | `enhanced,clinical` | Max 1000 kcal/Tag |
+
+---
+
+## UI-Preview nach Änderung
+
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│ 🧬 ARES Protokoll-Modus                                     │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  [ 🌱 Natural ]  [ 💊 Enhanced ]  [ 🔬 Klinisch ]          │
+│  [ 🌱 Natural ]  [✓💊 Enhanced ]  [✓🔬 Klinisch ]          │
 │     Diät only      Reta/Peptide      TRT+                  │
 │                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │  Aktuelle Phase: [2] Fine-Tuning                    │   │
-│  │  → 7/9 Kriterien erfüllt                            │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
+│  💡 Reta + TRT Kombination: Maximale Rekomposition möglich │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-**States:**
-- `protocolMode`: `'natural' | 'enhanced' | 'clinical'`
-- Current Phase: Geladen aus `user_protocol_status` (read-only)
-
-**Auswirkungen:**
-- Natural: Konservativere Defizit-Empfehlungen (max 500 kcal/Tag)
-- Enhanced: Aggressivere Defizite erlaubt (GLP-1 schützt Muskeln)
-- Clinical: Voller Zugang zu allen ARES-Interventionen
-
-### 2. Training Frequency Input (NEU)
-
-**Integration in Lifestyle-Sektion**
-
-```text
-Wie oft trainierst du pro Woche?
-[ 0 ] [ 1-2 ] [ 3-4 ] [ 5+ ]
-```
-
-- Beeinflusst TDEE-Berechnung
-- Wird mit `activityLevel` kombiniert für präzisere Kalorien
-
-### 3. Longevity Settings (NEU - Conditional)
-
-**Datei:** `src/components/profile/LongevitySettings.tsx`
-
-**Nur anzeigen wenn:** `user_protocol_status.current_phase >= 3`
-
-**UI-Struktur:**
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ 🧬 Longevity Protocol (Phase 3)                             │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Rapamycin-Tag: [ Sonntag ▼ ]                              │
-│                                                             │
-│  Fasten-Protokoll:                                          │
-│  [ 16:8 ] [ 24h Weekly ] [ Extended (3-5d) ]               │
-│                                                             │
-│  [ ] DunedinPACE Tracking aktivieren                       │
-│  [ ] Senolytic-Zyklen tracken                              │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 4. Bloodwork Status Indicator (NEU - Optional)
-
-**Kleine Badge unter Medical Screening:**
-
-```text
-🩸 Letzte Blutwerte: vor 45 Tagen
-   [Neue Werte eingeben]
-```
-
----
-
-## Änderungen in Profile.tsx
-
-### Neue States
-
-```typescript
-// Protocol Mode
-const [protocolMode, setProtocolMode] = useState<'natural' | 'enhanced' | 'clinical'>('natural');
-
-// Training Frequency  
-const [weeklyTrainingSessions, setWeeklyTrainingSessions] = useState<number>(3);
-
-// Longevity (Phase 3+)
-const [rapamycinDay, setRapamycinDay] = useState<string>('sunday');
-const [fastingProtocol, setFastingProtocol] = useState<'16:8' | '24h' | 'extended'>('16:8');
-const [trackDunedinPace, setTrackDunedinPace] = useState(false);
-```
-
-### Sektion-Reihenfolge ändern
-
-| Alt | Neu |
-|-----|-----|
-| 1. Persönliche Daten | 1. Profil & Identität (Avatar + Name) |
-| 2. Ziele | 2. Körper-Basics |
-| 3. Kalorien & Makros | 3. Lifestyle (+ Training) |
-| 4. Protokoll-Intensität | 4. Protocol Mode (NEU) |
-| 5. Medical Screening | 5. Ziele |
-| 6. Coach Persona | 6. Kalorien & Makros |
-| 7. Avatar & Name | 7. Protokoll-Intensität |
-| - | 8. Gesundheit |
-| - | 9. Longevity (conditional) |
-| - | 10. Coach Persona |
-
----
-
-## Dateien
-
-| Datei | Aktion |
-|-------|--------|
-| `src/components/profile/ProtocolModeSelector.tsx` | NEU erstellen |
-| `src/components/profile/LongevitySettings.tsx` | NEU erstellen |
-| `src/pages/Profile.tsx` | Reihenfolge ändern, neue States, neue Komponenten integrieren |
-| `src/utils/calorieCalculator.ts` | Protocol Mode berücksichtigen (Defizit-Limits) |
-
----
-
-## Database Integration
-
-### Neue Felder in `profiles` Tabelle (oder bestehende nutzen)
-
-```sql
-protocol_mode: text ('natural' | 'enhanced' | 'clinical')
-weekly_training_sessions: integer
-rapamycin_day: text
-fasting_protocol: text
-track_dunedin_pace: boolean
-```
-
-### Read-only Daten aus bestehenden Tabellen
-
-- `user_protocol_status.current_phase` → Phase-Badge
-- `user_bloodwork.created_at` → "Letzte Blutwerte vor X Tagen"
-
----
-
-## Vorteile der Reorganisation
-
-| Aspekt | Verbesserung |
-|--------|--------------|
-| **Logischer Flow** | Von "Wer bin ich" → "Was will ich" → "Wie erreiche ich es" |
-| **ARES-Integration** | Protocol Mode beeinflusst alle Empfehlungen |
-| **Progressive Disclosure** | Longevity nur für Phase 3+ User sichtbar |
-| **Vollständigkeit** | Alle relevanten Protocol-Daten an einem Ort |
-| **Personalisierung** | Training-Frequenz verbessert Kalorienschätzung |
-
