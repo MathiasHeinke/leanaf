@@ -25,6 +25,43 @@ export const ProtocolWidget: React.FC<ProtocolWidgetProps> = ({ size }) => {
     3: 'Longevity'
   };
 
+  // FLAT: Horizontaler kompakter Streifen (wie Hydration Widget)
+  if (size === 'flat') {
+    return (
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        onClick={() => navigate('/protocol')}
+        className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-primary/20 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
+      >
+        {/* Background Fill basierend auf Fortschritt */}
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${protocolPercent}%` }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="absolute inset-0 bg-gradient-to-r from-primary/20 to-primary/5"
+        />
+        
+        {/* Icon */}
+        <div className="relative z-10 p-2 rounded-xl bg-primary/20 text-primary">
+          <Brain className="w-5 h-5" />
+        </div>
+        
+        {/* Text */}
+        <div className="relative z-10 flex-1">
+          <span className="text-sm font-medium text-foreground">ARES Protokoll</span>
+          <span className="ml-2 text-xs text-muted-foreground">Phase {protocolPhase}</span>
+        </div>
+        
+        {/* Progress Counter + Chevron */}
+        <div className="relative z-10 flex items-center gap-2">
+          <span className="text-sm font-bold text-primary">{progress}/9</span>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+      </motion.div>
+    );
+  }
+
   // LARGE / WIDE: Full-width with step indicators
   if (size === 'large' || size === 'wide') {
     return (
