@@ -7,12 +7,18 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { X, Droplets, GlassWater, Check } from 'lucide-react';
+import { X, Droplets, GlassWater, Check, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { useTodaysFluids } from '@/hooks/useTodaysFluids';
 import { useAresEvents } from '@/hooks/useAresEvents';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { FluidGoalSlider } from '@/components/ui/fluid-goal-slider';
+import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 import { toast } from 'sonner';
 
 interface HydrationDaySheetProps {
@@ -20,10 +26,10 @@ interface HydrationDaySheetProps {
   onClose: () => void;
 }
 
-const springConfig = { type: "spring" as const, stiffness: 400, damping: 30 };
-
 // Import FluidModern type
 import type { FluidModern } from '@/ares/adapters/fluids';
+
+const springConfig = { type: "spring" as const, stiffness: 400, damping: 30 };
 
 // Fluid Timeline Item
 const FluidItem: React.FC<{
@@ -125,6 +131,13 @@ export const HydrationDaySheet: React.FC<HydrationDaySheetProps> = ({
   const { data: metrics } = useDailyMetrics();
   const { data: fluids, loading: isLoading } = useTodaysFluids();
   const { logWater } = useAresEvents();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  // Edit goal state
+  const [isEditingGoal, setIsEditingGoal] = React.useState(false);
+  const [editGoalValue, setEditGoalValue] = React.useState(2500);
+  const [isSavingGoal, setIsSavingGoal] = React.useState(false);
   
   // Hydration data from central cache
   const current = metrics?.water?.current || 0;
@@ -136,6 +149,45 @@ export const HydrationDaySheet: React.FC<HydrationDaySheetProps> = ({
   const currentL = (current / 1000).toFixed(1);
   const targetL = (target / 1000).toFixed(1);
   const remainingL = (remaining / 1000).toFixed(1);
+
+  // Sync edit value with target when popover opens
+  React.useEffect(() => {
+    if (isEditingGoal) {
+      setEditGoalValue(target);
+    }
+  }, [isEditingGoal, target]);
+
+  const handleSaveGoal = async () => {
+    if (!user) return;
+    
+    setIsSavingGoal(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      
+      const { error } = await supabase
+        .from('daily_goals')
+        .upsert({
+          user_id: user.id,
+          goal_date: today,
+          fluid_goal_ml: editGoalValue,
+        }, {
+          onConflict: 'user_id,goal_date'
+        });
+      
+      if (error) throw error;
+      
+      // Invalidate cache to refresh metrics
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
+      
+      toast.success(`Wasserziel auf ${(editGoalValue / 1000).toFixed(1)}L gesetzt 💧`);
+      setIsEditingGoal(false);
+    } catch (error) {
+      console.error('Error saving fluid goal:', error);
+      toast.error('Fehler beim Speichern');
+    } finally {
+      setIsSavingGoal(false);
+    }
+  };
 
   const handleDragEnd = (_: any, info: { offset: { y: number }; velocity: { y: number } }) => {
     if (info.offset.y > 100 || info.velocity.y > 500) {
@@ -206,13 +258,38 @@ export const HydrationDaySheet: React.FC<HydrationDaySheetProps> = ({
             <div className="flex-1 overflow-y-auto px-5 pb-4">
               {/* Hero Section - Progress */}
               <div className="text-center py-6 border-b border-border/30 mb-4">
-                <div className="relative inline-block">
+                <div className="relative inline-flex items-center justify-center gap-2">
                   <span className="text-5xl font-bold tabular-nums text-foreground">
                     {currentL}
                   </span>
-                  <span className="text-lg text-muted-foreground ml-1">
-                    / {targetL}L
-                  </span>
+                  <Popover open={isEditingGoal} onOpenChange={setIsEditingGoal}>
+                    <PopoverTrigger asChild>
+                      <button className="flex items-center gap-1 group cursor-pointer hover:opacity-80 transition-opacity">
+                        <span className="text-lg text-muted-foreground">
+                          / {targetL}L
+                        </span>
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-4" align="center">
+                      <div className="space-y-4">
+                        <h4 className="font-semibold text-sm">Wasserziel anpassen</h4>
+                        <FluidGoalSlider
+                          value={editGoalValue}
+                          onChange={setEditGoalValue}
+                          showIcon={false}
+                        />
+                        <Button 
+                          onClick={handleSaveGoal} 
+                          disabled={isSavingGoal}
+                          className="w-full"
+                          size="sm"
+                        >
+                          {isSavingGoal ? 'Speichern...' : 'Speichern'}
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">Liter getrunken</p>
                 

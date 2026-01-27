@@ -11,7 +11,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle, User, MessageSquare, PieChart, Calculator, Brain, TrendingDown, Info, AlertTriangle, CheckCircle2, CalendarIcon } from 'lucide-react';
+import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle, User, MessageSquare, PieChart, Calculator, Brain, TrendingDown, Info, AlertTriangle, CheckCircle2, CalendarIcon, Droplets } from 'lucide-react';
+import { FluidGoalSlider } from '@/components/ui/fluid-goal-slider';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -91,6 +92,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   // Avatar state
   const [profileAvatarUrl, setProfileAvatarUrl] = useState('');
   const [avatarType, setAvatarType] = useState<'preset' | 'uploaded'>('preset');
+  
+  // Water goal state
+  const [fluidGoalMl, setFluidGoalMl] = useState(2500);
   const [avatarPresetId, setAvatarPresetId] = useState('');
 
   // Check if profile is complete for validation
@@ -156,7 +160,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
     dailyGoals.fats, dailyGoals.calorieDeficit,
     coachPersonality, muscleMaintenancePriority, macroStrategy,
-    profileAvatarUrl, avatarType, avatarPresetId
+    profileAvatarUrl, avatarType, avatarPresetId,
+    fluidGoalMl
   ]);
 
   useEffect(() => {
@@ -276,6 +281,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           fats: data.fats_percentage || 30,
           calorieDeficit: data.calorie_deficit || 300
         });
+        // Load fluid goal
+        setFluidGoalMl(data.fluid_goal_ml || 2500);
       } else {
         // Set High Protein as fallback for new users
         setDailyGoals({
@@ -285,6 +292,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           fats: 30,
           calorieDeficit: 300
         });
+        setFluidGoalMl(2500);
       }
     } catch (error: any) {
       console.error('Error loading daily goals:', error);
@@ -564,7 +572,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         calories: targetCalories,
         protein: macroGrams.protein,
         carbs: macroGrams.carbs,
-        fluid_goal_ml: 2000,
+        fluid_goal_ml: fluidGoalMl,
         fats: macroGrams.fats,
         calorie_deficit: deficitData?.daily || dailyGoals.calorieDeficit,
         protein_percentage: dailyGoals.protein,
@@ -960,6 +968,17 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                   </div>
                 </div>
               )}
+
+              {/* Water Goal Slider */}
+              <div className="mt-6 pt-4 border-t border-border/50">
+                <FluidGoalSlider
+                  value={fluidGoalMl}
+                  onChange={setFluidGoalMl}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Empfohlen: 2.0 - 3.0 Liter pro Tag basierend auf Aktivitätslevel
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
