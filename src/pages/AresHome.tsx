@@ -37,6 +37,7 @@ import { BodyTrendSheet } from '@/components/home/sheets/BodyTrendSheet';
 import { PeptidesSheet } from '@/components/home/sheets/PeptidesSheet';
 import { TrainingDaySheet } from '@/components/home/sheets/TrainingDaySheet';
 import { SupplementsDaySheet } from '@/components/home/sheets/SupplementsDaySheet';
+import { SleepDaySheet } from '@/components/home/sheets/SleepDaySheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -65,6 +66,7 @@ export default function AresHome() {
   const [peptidesSheetOpen, setPeptidesSheetOpen] = useState(false);
   const [trainingSheetOpen, setTrainingSheetOpen] = useState(false);
   const [supplementsSheetOpen, setSupplementsSheetOpen] = useState(false);
+  const [sleepSheetOpen, setSleepSheetOpen] = useState(false);
 
   // Meal input hook (same as Dashboard)
   const {
@@ -183,7 +185,7 @@ export default function AresHome() {
       if (action.type === 'journal') {
         setQuickLogConfig({ open: true, tab: 'journal' });
       } else if (action.type === 'sleep') {
-        setQuickLogConfig({ open: true, tab: 'sleep' });
+        setSleepSheetOpen(true);
       } else if (action.type === 'weight' || action.type === 'body') {
         setQuickLogConfig({ open: true, tab: 'weight' });
       } else if (action.type === 'training') {
@@ -512,6 +514,7 @@ export default function AresHome() {
               onOpenPeptidesSheet={() => setPeptidesSheetOpen(true)}
               onOpenTrainingSheet={() => setTrainingSheetOpen(true)}
               onOpenSupplementsSheet={() => setSupplementsSheetOpen(true)}
+              onOpenSleepSheet={() => setSleepSheetOpen(true)}
             />
           </div>
         </main>
@@ -831,6 +834,16 @@ export default function AresHome() {
         onOpenLogger={() => {
           setSupplementsSheetOpen(false);
           setQuickLogConfig({ open: true, tab: 'supplements' });
+        }}
+      />
+
+      {/* Sleep Day Sheet - Layer 2 */}
+      <SleepDaySheet 
+        isOpen={sleepSheetOpen}
+        onClose={() => setSleepSheetOpen(false)}
+        onOpenLogger={() => {
+          setSleepSheetOpen(false);
+          setQuickLogConfig({ open: true, tab: 'sleep' });
         }}
       />
     </div>

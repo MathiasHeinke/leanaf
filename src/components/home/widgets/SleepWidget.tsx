@@ -9,10 +9,19 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface SleepWidgetProps {
   size: WidgetSize;
+  onOpenSheet?: () => void;
 }
 
-export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
+export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) => {
   const navigate = useNavigate();
+  
+  const handleClick = () => {
+    if (onOpenSheet) {
+      onOpenSheet();
+    } else {
+      navigate('/sleep');
+    }
+  };
 
   // Fetch sleep data for last 7 days
   const { data: sleepData } = useQuery({
@@ -97,7 +106,7 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/sleep')}
+        onClick={handleClick}
         className="col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden"
       >
         {/* Background Fill */}
@@ -148,7 +157,7 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/sleep')}
+        onClick={handleClick}
         className="col-span-2 bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors min-h-[180px]"
       >
         <div className="flex justify-between items-start mb-4">
@@ -206,7 +215,7 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/sleep')}
+        onClick={handleClick}
         className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors min-h-[140px] flex flex-col justify-between"
       >
         <div className="flex justify-between items-start">
@@ -249,8 +258,8 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size }) => {
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      onClick={() => navigate('/sleep')}
-      className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors min-h-[100px] flex flex-col justify-between"
+        onClick={handleClick}
+        className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors min-h-[100px] flex flex-col justify-between"
     >
       <div className="flex justify-between items-start">
         <div className={cn("p-2 rounded-xl", colors.bg, colors.text)}>
