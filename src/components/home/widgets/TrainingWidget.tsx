@@ -10,9 +10,10 @@ import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface TrainingWidgetProps {
   size: WidgetSize;
+  onOpenSheet?: () => void;
 }
 
-export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
+export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenSheet }) => {
   const navigate = useNavigate();
 
   // Fetch training sessions for last 7 days (FIXED: uses training_sessions table)
@@ -83,7 +84,7 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/training')}
+        onClick={() => onOpenSheet?.()}
         className={cn(
           "col-span-2 min-h-[60px] bg-card/80 backdrop-blur-sm border rounded-2xl p-3 cursor-pointer hover:bg-accent/50 transition-colors flex items-center gap-3 relative overflow-hidden",
           workoutStatus === 'low' ? "border-destructive/30" : "border-border/50"
@@ -146,7 +147,7 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/training')}
+        onClick={() => onOpenSheet?.()}
         className={cn(
           "h-full bg-card/80 backdrop-blur-sm border rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors",
           workoutStatus === 'low' ? "border-destructive/30" : "border-border/50"
@@ -207,7 +208,7 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        onClick={() => navigate('/training')}
+        onClick={() => onOpenSheet?.()}
         className={cn(
           "h-full bg-card/80 backdrop-blur-sm border rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors flex flex-col justify-between",
           workoutStatus === 'low' ? "border-destructive/30" : "border-border/50"
@@ -235,7 +236,7 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size }) => {
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      onClick={() => navigate('/training')}
+      onClick={() => onOpenSheet?.()}
       className={cn(
         "h-full bg-card/80 backdrop-blur-sm border rounded-2xl p-4 cursor-pointer hover:bg-accent/50 transition-colors flex flex-col justify-between",
         workoutStatus === 'low' ? "border-destructive/30" : "border-border/50"
