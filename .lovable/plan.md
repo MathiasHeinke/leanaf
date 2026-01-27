@@ -1,139 +1,264 @@
 
-# Fix: Wasserziel wird nicht korrekt geladen/gespeichert
+# Implementation: Event-Driven Card Completion System
 
-## Problem-Analyse
+## Uebersicht
 
-Der User hat das Wasserziel auf 4L gesetzt, aber das Dashboard zeigt weiterhin 2.5L. Die Ursachen:
-
-### 1. Profile.tsx - Falsches Laden der Goals
-
-```typescript
-// PROBLEM: Zeile 269-273
-const { data } = await supabase
-  .from('daily_goals')
-  .select('*')
-  .eq('user_id', user?.id)
-  .maybeSingle();  // ← Holt IRGENDEINEN Eintrag, nicht den aktuellsten!
-```
-
-Da mehrere `daily_goals`-Eintraege existieren (einer pro Tag), wird ein zufaelliger geladen - oft mit dem alten 2500ml-Wert.
-
-### 2. Profile.tsx - Ueberschreiben beim Speichern
-
-Wenn der User das Profil speichert (`handleSave`), wird der beim Laden gesetzte `fluidGoalMl` State (oft 2500) in die Datenbank geschrieben und ueberschreibt den 4L-Wert:
-
-```typescript
-// Zeile 578
-fluid_goal_ml: fluidGoalMl,  // ← Nimmt den alten/falschen State-Wert!
-```
-
-### 3. useDailyMetrics.ts - Gleicher Fehler
-
-```typescript
-// Zeile 67-73: Holt Goals ohne Datum-Filter
-supabase
-  .from('daily_goals')
-  .select('calories, protein, carbs, fats, fluid_goal_ml')
-  .eq('user_id', userId)
-  .order('updated_at', { ascending: false })
-  .limit(1)
-  .maybeSingle()
-```
-
-Das ist besser (nach `updated_at` sortiert), aber wenn das Profil mit dem falschen Wert gespeichert wird, ist der neueste Eintrag trotzdem falsch.
+Dieses System implementiert das `ares-card-completed` CustomEvent-Pattern, damit Karten automatisch aus dem ActionCardStack verschwinden, sobald der User die zugehoerige Aktion (Journal schreiben, Schlaf loggen, etc.) abschliesst.
 
 ---
 
-## Loesung
+## Architektur-Flow
 
-### Schritt 1: Profile.tsx - Korrektes Laden des aktuellsten Goals
-
-**Alt (falsch):**
-```typescript
-const { data } = await supabase
-  .from('daily_goals')
-  .select('*')
-  .eq('user_id', user?.id)
-  .maybeSingle();
+```text
+User klickt "Journal schreiben"
+           |
+           v
+   SmartFocusCard -> openJournal()
+           |
+           v
+   QuickLogSheet oeffnet mit Journal Tab
+           |
+           v
+   User speichert -> handleSave()
+           |
+           v
+   trackEvent() erfolgreich
+           |
+           v
+   dispatchEvent('ares-card-completed', { cardType: 'journal' })
+           |
+           v
+   ActionCardStack empfaengt Event
+           |
+           v
+   setCards(prev => prev.filter(c => c.type !== 'journal'))
+           |
+           v
+   Card Exit-Animation + XP Award
 ```
 
-**Neu (korrekt):**
-```typescript
-const { data } = await supabase
-  .from('daily_goals')
-  .select('*')
-  .eq('user_id', user?.id)
-  .order('updated_at', { ascending: false })
-  .limit(1)
-  .maybeSingle();
-```
+---
 
-### Schritt 2: Profile.tsx - Wasserziel separat laden (falls geaendert)
+## Aenderungen im Detail
 
-Um Race Conditions zu vermeiden, sollte das Wasserziel **direkt vor dem UI-Sync** nochmal geladen werden:
+### 1. ActionCardStack.tsx - Zentraler Event-Listener
+
+**Wo:** Nach Zeile 63 (nach dem confetti useEffect)
+
+**Was:** Neuer useEffect der auf `ares-card-completed` hoert und:
+- Die passende Card aus dem State filtert
+- `dismissCard()` aufruft fuer Session-Persistenz
+- XP via `ares-xp-awarded` vergibt
 
 ```typescript
-// In useEffect beim Mount: Lade aktuellsten fluid_goal_ml
+// Event-driven card completion listener
 useEffect(() => {
-  if (!user) return;
-  
-  const loadLatestFluidGoal = async () => {
-    const { data } = await supabase
-      .from('daily_goals')
-      .select('fluid_goal_ml')
-      .eq('user_id', user.id)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+  const handleCardCompletion = (e: CustomEvent<{ cardType: string; cardId?: string }>) => {
+    const { cardType, cardId } = e.detail;
     
-    if (data?.fluid_goal_ml) {
-      setFluidGoalMl(data.fluid_goal_ml);
-    }
+    // Find matching card
+    const matchingCard = cards.find(c => 
+      cardId ? c.id === cardId : c.type === cardType
+    );
+    
+    if (!matchingCard) return;
+    
+    // Remove card from stack
+    setCards(prev => prev.filter(c => c.id !== matchingCard.id));
+    
+    // Persist dismissal for session
+    dismissCard(matchingCard.id, false);
+    
+    // Award XP based on card type
+    const xpMap: Record<string, number> = {
+      journal: 40,
+      sleep: 30,
+      weight: 20,
+      training: 60,
+      profile: 50,
+      epiphany: 25,
+    };
+    
+    window.dispatchEvent(new CustomEvent('ares-xp-awarded', { 
+      detail: { amount: xpMap[cardType] || 20, reason: `${cardType} completed` }
+    }));
   };
   
-  loadLatestFluidGoal();
-}, [user]);
-```
-
-### Schritt 3: Settings.tsx - Gleicher Fix noetig
-
-In `loadFluidGoal` fehlt ebenfalls die Sortierung:
-
-**Alt:**
-```typescript
-const { data } = await supabase
-  .from('daily_goals')
-  .select('fluid_goal_ml')
-  .eq('user_id', user.id)
-  .maybeSingle();
-```
-
-**Neu:**
-```typescript
-const { data } = await supabase
-  .from('daily_goals')
-  .select('fluid_goal_ml')
-  .eq('user_id', user.id)
-  .order('updated_at', { ascending: false })
-  .limit(1)
-  .maybeSingle();
+  window.addEventListener('ares-card-completed', handleCardCompletion as EventListener);
+  return () => window.removeEventListener('ares-card-completed', handleCardCompletion as EventListener);
+}, [cards, dismissCard]);
 ```
 
 ---
 
-## Zusammenfassung der Aenderungen
+### 2. JournalLogger.tsx - Dispatch nach Save
 
-| Datei | Problem | Fix |
-|-------|---------|-----|
-| `src/pages/Profile.tsx` | `loadDailyGoals()` holt zufaelligen Eintrag | `.order('updated_at', { ascending: false }).limit(1)` |
-| `src/pages/Profile.tsx` | Neuer useEffect | Laedt aktuellsten `fluid_goal_ml` separat |
-| `src/components/Settings.tsx` | `loadFluidGoal()` holt zufaelligen Eintrag | `.order('updated_at', { ascending: false }).limit(1)` |
+**Datei:** `src/components/home/loggers/JournalLogger.tsx`
+**Zeile:** 129-131 (im `if (success)` Block)
+
+**Vorher:**
+```typescript
+if (success) {
+  toast.success('Tagebuch gespeichert ✨');
+  onClose();
+}
+```
+
+**Nachher:**
+```typescript
+if (success) {
+  toast.success('Tagebuch gespeichert ✨');
+  window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+    detail: { cardType: 'journal' }
+  }));
+  onClose();
+}
+```
 
 ---
 
-## Erwartetes Ergebnis
+### 3. SleepLogger.tsx - Dispatch nach Save
 
-1. User setzt Wasserziel auf 4L im HydrationDaySheet → Speichert korrekt
-2. User oeffnet Profile → Zeigt 4L (nicht 2.5L)
-3. User speichert Profile → Behaelt 4L (ueberschreibt nicht)
-4. Dashboard zeigt 4L als Ziel
+**Datei:** `src/components/home/loggers/SleepLogger.tsx`
+**Zeile:** 102-105 (im `if (success)` Block)
+
+**Vorher:**
+```typescript
+if (success) {
+  onClose();
+}
+```
+
+**Nachher:**
+```typescript
+if (success) {
+  window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+    detail: { cardType: 'sleep' }
+  }));
+  onClose();
+}
+```
+
+---
+
+### 4. WeightLogger.tsx - Dispatch nach Save
+
+**Datei:** `src/components/home/loggers/WeightLogger.tsx`
+**Zeile:** 100-103 (im `if (success)` Block)
+
+**Vorher:**
+```typescript
+if (success) {
+  onClose();
+}
+```
+
+**Nachher:**
+```typescript
+if (success) {
+  window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+    detail: { cardType: 'weight' }
+  }));
+  onClose();
+}
+```
+
+---
+
+### 5. TrainingLogger.tsx - Dispatch nach Save
+
+**Datei:** `src/components/home/loggers/TrainingLogger.tsx`
+**Zeile:** 224 (im `if (success)` Block)
+
+**Vorher:**
+```typescript
+if (success) onClose();
+```
+
+**Nachher:**
+```typescript
+if (success) {
+  window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+    detail: { cardType: 'training' }
+  }));
+  onClose();
+}
+```
+
+---
+
+### 6. EpiphanyCard.tsx - Dispatch bei Chat-Oeffnung
+
+**Datei:** `src/components/home/EpiphanyCard.tsx`
+**Zeile:** 64-68 (handleAskMore Funktion)
+
+**Vorher:**
+```typescript
+const handleAskMore = () => {
+  if (insight) {
+    onOpenChat(`Du hast mir folgende Erkenntnis gezeigt: "${insight}". ...`);
+  }
+};
+```
+
+**Nachher:**
+```typescript
+const handleAskMore = () => {
+  if (insight) {
+    window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+      detail: { cardType: 'epiphany' }
+    }));
+    onOpenChat(`Du hast mir folgende Erkenntnis gezeigt: "${insight}". ...`);
+  }
+};
+```
+
+---
+
+### 7. Profile.tsx - Dispatch nach Profil-Save
+
+**Datei:** `src/pages/Profile.tsx`
+**Zeile:** 631 (nach toast.success im handleSave)
+
+**Hinzufuegen nach Zeile 631:**
+```typescript
+// Notify ActionCardStack that profile was completed
+window.dispatchEvent(new CustomEvent('ares-card-completed', { 
+  detail: { cardType: 'profile' }
+}));
+```
+
+---
+
+## Zusammenfassung aller Aenderungen
+
+| Datei | Art | Beschreibung |
+|-------|-----|--------------|
+| `ActionCardStack.tsx` | Neuer useEffect | Event-Listener + XP Map + Dismiss-Logik |
+| `JournalLogger.tsx` | 3 Zeilen | dispatchEvent nach success |
+| `SleepLogger.tsx` | 3 Zeilen | dispatchEvent nach success |
+| `WeightLogger.tsx` | 3 Zeilen | dispatchEvent nach success |
+| `TrainingLogger.tsx` | 4 Zeilen | dispatchEvent nach success |
+| `EpiphanyCard.tsx` | 3 Zeilen | dispatchEvent in handleAskMore |
+| `Profile.tsx` | 3 Zeilen | dispatchEvent nach toast.success |
+
+---
+
+## Erwartetes Verhalten nach Implementation
+
+1. **Journal Card:** User klickt "Journal schreiben" -> Sheet oeffnet -> Eintrag speichern -> Card verschwindet sofort + 40 XP Toast
+
+2. **Epiphany Card:** User klickt "Was bedeutet das?" -> Chat oeffnet -> Card verschwindet sofort + 25 XP
+
+3. **Sleep/Weight/Training:** Logger speichern -> Card verschwindet + jeweilige XP
+
+4. **Profile Card:** User speichert vollstaendiges Profil -> Card verschwindet + 50 XP
+
+---
+
+## Naechster Schritt (Teil 2)
+
+Nach erfolgreicher Implementation dieses Frameworks:
+- Neue Card-Typen hinzufuegen (Training, Weight, Sleep_log, Nutrition)
+- Trigger-Bedingungen in `useActionCards.ts` erweitern
+- SmartActions fuer die neuen Typen definieren
