@@ -4,6 +4,8 @@ import { Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MacroProgressBarProps {
   label: string;
@@ -54,6 +56,31 @@ interface NutritionWidgetProps {
 
 export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size, onOpenDaySheet }) => {
   const { data: metrics } = useDailyMetrics();
+  
+  // Fetch macro strategy for badge display
+  const { data: profile } = useQuery({
+    queryKey: ['user-profile-strategy'],
+    queryFn: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return null;
+      const { data } = await supabase
+        .from('profiles')
+        .select('macro_strategy, weight')
+        .eq('user_id', auth.user.id)
+        .maybeSingle();
+      return data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Derive strategy badge info
+  const getStrategyBadge = () => {
+    const strategy = profile?.macro_strategy;
+    if (strategy === 'elite') return { emoji: '🏆', label: '2.5g/kg' };
+    if (strategy === 'rookie') return { emoji: '🌱', label: '1.2g/kg' };
+    return { emoji: '⚔️', label: '2.0g/kg' }; // Default: Warrior
+  };
+  const strategyBadge = getStrategyBadge();
   
   // UNIFIED: Now uses central useDailyMetrics cache
   const calories = metrics?.nutrition?.calories || 0;
@@ -179,7 +206,12 @@ export const NutritionWidget: React.FC<NutritionWidgetProps> = ({ size, onOpenDa
             <div className="p-2 rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
               <Utensils className="w-5 h-5" />
             </div>
-            <span className="font-semibold text-foreground">Ernährung</span>
+            <div className="flex flex-col">
+              <span className="font-semibold text-foreground">Ernährung</span>
+              <span className="text-[10px] text-amber-500 font-medium">
+                {strategyBadge.emoji} {strategyBadge.label} Protein
+              </span>
+            </div>
           </div>
           <div className="text-right">
             <span className="text-lg font-bold text-foreground">{Math.round(calories)}</span>

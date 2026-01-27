@@ -376,11 +376,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   };
 
   const calculateMacroGrams = () => {
-    const targetCalories = calculateTargetCalories();
+    // Nutze das Protein Anchor System (currentMacros) statt alte Prozent-Logik
     return {
-      protein: Math.round((targetCalories * dailyGoals.protein / 100) / 4),
-      carbs: Math.round((targetCalories * dailyGoals.carbs / 100) / 4),
-      fats: Math.round((targetCalories * dailyGoals.fats / 100) / 9),
+      protein: currentMacros.proteinGrams,
+      carbs: currentMacros.carbGrams,
+      fats: currentMacros.fatGrams,
     };
   };
 
