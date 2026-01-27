@@ -63,6 +63,19 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size, onOpenDaySheet
         ? 'text-emerald-500' 
         : 'text-muted-foreground';
 
+  // Generate SVG points for sparkline
+  const generatePoints = (data: number[], width: number, height: number) => {
+    if (data.length < 2) return '';
+    const max = Math.max(...data);
+    const min = Math.min(...data);
+    const range = max - min || 1;
+    return data.map((value, index) => {
+      const x = (index / (data.length - 1)) * width;
+      const y = height - ((value - min) / range) * (height - 4) - 2;
+      return `${x},${y}`;
+    }).join(' ');
+  };
+
   // FLAT: Horizontal compact strip with trend sparkline
   if (size === 'flat') {
     const maxWeight = history.length > 0 ? Math.max(...history) : 80;
@@ -84,21 +97,19 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size, onOpenDaySheet
         {/* Label */}
         <span className="text-sm font-medium text-foreground shrink-0">Gewicht</span>
         
-        {/* Mini Sparkline */}
+        {/* Mini Sparkline (Line) */}
         {history.length > 1 && (
-          <div className="flex-1 flex items-end justify-center gap-0.5 h-4">
-            {history.map((w, i) => {
-              const height = ((w - minWeight) / range) * 100;
-              return (
-                <motion.div 
-                  key={i}
-                  initial={{ height: 0 }}
-                  animate={{ height: `${Math.max(height, 10)}%` }}
-                  transition={{ delay: 0.2 + i * 0.05 }}
-                  className="w-2 rounded-sm bg-violet-500/40"
-                />
-              );
-            })}
+          <div className="flex-1 h-4">
+            <svg viewBox="0 0 100 16" className="w-full h-full" preserveAspectRatio="none">
+              <polyline
+                points={generatePoints(history, 100, 16)}
+                fill="none"
+                stroke="rgb(139, 92, 246)"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
         )}
         
@@ -153,21 +164,29 @@ export const WeightWidget: React.FC<WeightWidgetProps> = ({ size, onOpenDaySheet
           )}
         </div>
         
-        {/* Mini Sparkline */}
+        {/* Mini Sparkline (Line with gradient fill) */}
         {history.length > 1 && (
-          <div className="flex items-end justify-between gap-1 h-12 mt-2 mb-3">
-            {history.map((w, i) => {
-              const height = ((w - minWeight) / range) * 100;
-              return (
-                <motion.div 
-                  key={i}
-                  initial={{ height: 0 }}
-                  animate={{ height: `${Math.max(height, 10)}%` }}
-                  transition={{ delay: 0.2 + i * 0.05 }}
-                  className="flex-1 rounded-sm bg-violet-500/40"
-                />
-              );
-            })}
+          <div className="h-12 mt-2 mb-3">
+            <svg viewBox="0 0 100 40" className="w-full h-full" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="weightGradientLarge" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(139, 92, 246)" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="rgb(139, 92, 246)" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polygon 
+                points={`0,40 ${generatePoints(history, 100, 40)} 100,40`} 
+                fill="url(#weightGradientLarge)" 
+              />
+              <polyline
+                points={generatePoints(history, 100, 40)}
+                fill="none"
+                stroke="rgb(139, 92, 246)"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </div>
         )}
 
