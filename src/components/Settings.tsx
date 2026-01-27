@@ -12,8 +12,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings as SettingsIcon, Target, Save, Moon, Sun, Clock, Globe, EyeOff } from "lucide-react";
+import { Settings as SettingsIcon, Target, Save, Moon, Sun, Clock, Globe, EyeOff, Droplets } from "lucide-react";
 import { getUserTimezone, setUserTimezone, TIMEZONE_OPTIONS } from "@/utils/dateHelpers";
+import { FluidGoalSlider } from "@/components/ui/fluid-goal-slider";
 
 interface DailyGoal {
   calories: number;
@@ -32,17 +33,37 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
   const [goal, setGoal] = useState(dailyGoal.calories.toString());
   const [selectedTimezone, setSelectedTimezone] = useState(getUserTimezone());
   const [hidePremiumFeatures, setHidePremiumFeatures] = useState(false);
+  const [fluidGoalMl, setFluidGoalMl] = useState(2500);
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useTranslation();
   const { autoSettings, saveSettings, toggleTheme, getThemeStatus, isWithinDarkModeHours } = useAutoDarkMode();
 
-  // Load hide premium features preference
+  // Load preferences
   useEffect(() => {
     if (user) {
       loadHidePreference();
+      loadFluidGoal();
     }
   }, [user]);
+
+  const loadFluidGoal = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('daily_goals')
+        .select('fluid_goal_ml')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (data?.fluid_goal_ml) {
+        setFluidGoalMl(data.fluid_goal_ml);
+      }
+    } catch (error) {
+      console.error('Error loading fluid goal:', error);
+    }
+  };
 
   const loadHidePreference = async () => {
     if (!user) return;
@@ -88,7 +109,7 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
           protein: dailyGoal.protein,
           carbs: dailyGoal.carbs,
           fats: dailyGoal.fats,
-          fluid_goal_ml: 2000,
+          fluid_goal_ml: fluidGoalMl,
         });
 
       if (error) throw error;
@@ -157,6 +178,17 @@ const Settings = ({ dailyGoal, onGoalChange, onClose }: SettingsProps) => {
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             {t('settings.recommended')}
+          </p>
+        </div>
+
+        {/* Water Goal Settings */}
+        <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
+          <FluidGoalSlider
+            value={fluidGoalMl}
+            onChange={setFluidGoalMl}
+          />
+          <p className="text-xs text-muted-foreground">
+            Empfohlen: 2.0 - 3.0 Liter pro Tag
           </p>
         </div>
 
