@@ -1,212 +1,156 @@
 
+# Fix: Dashboard bleibt im Skeleton-Loading hängen
 
-# Wasserziel (fluid_goal_ml) Einstellungs-Feature
+## Das Problem
 
-## Uebersicht
+Nach den letzten Änderungen bleibt das Dashboard (AresHome) in einem endlosen Loading-State (leere Skeleton-Boxen) hängen, wenn der User nicht eingeloggt ist.
 
-Aktuell gibt es keine UI um das taegliche Wasserziel einzustellen. Der Wert `fluid_goal_ml` wird an zwei Stellen hardcoded auf `2000` gesetzt und ueberschreibt dadurch jede Aenderung in der Datenbank.
+**Screenshot zeigt:** Leere graue Boxen ohne Inhalt, keine Navigation zur Login-Seite.
 
-**Ziel:** User kann das Wasserziel sowohl im Profil als auch direkt im HydrationDaySheet (Layer 2) aendern.
+## Root Cause
 
----
-
-## Aktuelle Probleme
-
-| Datei | Zeile | Problem |
-|-------|-------|---------|
-| `src/pages/Profile.tsx` | 567 | `fluid_goal_ml: 2000` hardcoded beim Save |
-| `src/components/Settings.tsx` | 91 | `fluid_goal_ml: 2000` hardcoded beim Save |
-| Beide | - | Kein State fuer `fluidGoalMl`, keine Eingabe |
-
----
-
-## Aenderungen
-
-### 1. Profile.tsx - Neues Eingabefeld
-
-**State hinzufuegen (ca. Zeile 55):**
-```typescript
-const [fluidGoalMl, setFluidGoalMl] = useState(2500);
-```
-
-**Aus Datenbank laden (in loadProfile oder loadDailyGoals):**
-- `fluid_goal_ml` aus `daily_goals` oder `profiles` lesen
-- State setzen
-
-**UI im Ziele-Bereich (nach Zeile 870, nach dem Zieldatum):**
-```text
-┌─────────────────────────────────────────────┐
-│  Ziele                                      │
-│  ┌───────────────────────────────────────┐  │
-│  │ [Droplet Icon] Taegliches Wasserziel  │  │
-│  │                                       │  │
-│  │  ┌──────────────────────────────────┐ │  │
-│  │  │  ◄──────────●───────────────►    │ │  │
-│  │  │           2.5 L                  │ │  │
-│  │  └──────────────────────────────────┘ │  │
-│  │  1.5 L              4.0 L             │  │
-│  └───────────────────────────────────────┘  │
-└─────────────────────────────────────────────┘
-```
-
-**Komponente:** Slider mit Range 1500-5000ml (Schritte: 250ml)
-
-**Save-Logik anpassen (Zeile 567):**
-```typescript
-// VORHER
-fluid_goal_ml: 2000,
-
-// NACHHER  
-fluid_goal_ml: fluidGoalMl,
-```
-
-**Auto-Save Dependencies ergaenzen (Zeile 159):**
-```typescript
-useEffect(() => {
-  // ...
-}, [..., fluidGoalMl]);  // <- hinzufuegen
-```
-
----
-
-### 2. Settings.tsx - Eingabefeld hinzufuegen
-
-**State und Load (Zeile 32-63):**
-```typescript
-const [fluidGoalMl, setFluidGoalMl] = useState(2500);
-
-// In loadHidePreference oder separater Funktion:
-// fluid_goal_ml aus daily_goals laden
-```
-
-**UI hinzufuegen (nach Kalorien-Feld):**
-- Label: "Wasserziel"
-- Slider oder NumericInput (1.5L - 5.0L)
-- Anzeige in Litern
-
-**Save-Logik anpassen (Zeile 91):**
-```typescript
-fluid_goal_ml: fluidGoalMl,  // statt 2000
-```
-
----
-
-### 3. HydrationDaySheet.tsx - Layer 2 Quick-Edit
-
-**Neuer Edit-Button im Header (nach Zeile 202):**
-```text
-┌─────────────────────────────────────────────┐
-│  Wasserhaushalt                    [X]      │
-│  27. Januar 2026                            │
-├─────────────────────────────────────────────┤
-│                                             │
-│           2.5 / 3.0L    [Bearbeiten ✎]     │
-│         Liter getrunken                     │
-│                                             │
-│  ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░ 83%            │
-│                                             │
-│         Noch 0.5L bis zum Ziel              │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-**Inline-Edit Modal/Popover:**
-```text
-┌─────────────────────────────────────┐
-│  Wasserziel anpassen               │
-│                                     │
-│  ◄───────────●─────────────────►   │
-│            3.0 L                   │
-│  1.5 L                    5.0 L    │
-│                                     │
-│  [Speichern]                        │
-└─────────────────────────────────────┘
-```
-
-**Implementierung:**
-1. State: `const [isEditingGoal, setIsEditingGoal] = useState(false);`
-2. State: `const [editGoalValue, setEditGoalValue] = useState(target);`
-3. Save-Handler: Supabase `daily_goals.upsert({ fluid_goal_ml: ... })`
-4. Cache invalidieren: `queryClient.invalidateQueries(['daily-metrics'])`
-
-**Interaktion:**
-- Tap auf "3.0L" oder Pencil-Icon oeffnet Slider-Popover
-- Slider aendern -> sofortiges visuelles Feedback
-- "Speichern" -> Datenbank + Toast + Cache invalidieren
-- Progress Bar und "Noch XL bis zum Ziel" aktualisieren sich sofort
-
----
-
-## Technische Details
-
-### Slider-Komponente (Wiederverwendbar)
-
-Neue Komponente `src/components/ui/fluid-goal-slider.tsx`:
+Die Loading-Logik in `AresHome.tsx` (Zeile 220) hat einen logischen Fehler:
 
 ```typescript
-interface FluidGoalSliderProps {
-  value: number;           // in ml
-  onChange: (ml: number) => void;
-  min?: number;            // default 1500
-  max?: number;            // default 5000
-  step?: number;           // default 250
-  disabled?: boolean;
+const hasProfileCache = !!profileData;
+const isInitialLoading = authLoading || (!hasProfileCache && !user);
+```
+
+**Problem-Ablauf bei nicht-eingeloggtem User:**
+1. `authLoading = false` (Auth ist fertig)
+2. `hasProfileCache = false` (kein Cache ohne User)
+3. `!user = true` (kein User eingeloggt)
+4. `isInitialLoading = false || (true && true) = true`
+5. Skeleton wird ewig angezeigt
+6. Der Redirect zu `/auth` (Zeile 233-235) wird nie erreicht
+
+## Die Lösung
+
+Die Loading-Logik muss so geändert werden, dass sie zwischen diesen Fällen unterscheidet:
+
+| Zustand | Erwartetes Verhalten |
+|---------|---------------------|
+| Auth lädt noch | Skeleton anzeigen |
+| Auth fertig, kein User | Redirect zu `/auth` |
+| Auth fertig, User da, Profil lädt ohne Cache | Skeleton anzeigen |
+| Auth fertig, User da, Profil gecached/geladen | Dashboard anzeigen |
+
+## Änderungen
+
+### Datei: `src/pages/AresHome.tsx`
+
+**Zeilen 218-235 ersetzen:**
+
+Aktuelle (fehlerhafte) Logik:
+```typescript
+// Smart Loading: Only show skeleton if auth loading OR (profile loading AND no cache)
+const hasProfileCache = !!profileData;
+const isInitialLoading = authLoading || (!hasProfileCache && !user);
+
+if (isInitialLoading) {
+  return (
+    <div className="min-h-screen bg-background p-6 space-y-6">
+      <Skeleton ... />
+    </div>
+  );
 }
 
-// Anzeige in Litern: (value / 1000).toFixed(1) + "L"
-// Interne Werte in ml fuer Konsistenz
+if (!user) {
+  return <Navigate to="/auth" replace />;
+}
 ```
 
-### Datenbank-Schema (bereits vorhanden)
+Korrigierte Logik:
+```typescript
+// 1. Auth noch nicht fertig -> Skeleton
+if (authLoading) {
+  return (
+    <div className="min-h-screen bg-background p-6 space-y-6">
+      <Skeleton className="h-[3px] w-full" />
+      <Skeleton className="h-20 w-full" />
+      <Skeleton className="h-40 w-full rounded-3xl" />
+      <Skeleton className="h-60 w-full rounded-2xl" />
+    </div>
+  );
+}
 
-Die Spalte `fluid_goal_ml` existiert bereits in:
-- `daily_goals.fluid_goal_ml` (INTEGER, default 2500)
-- Wird von `useDailyMetrics` gelesen
+// 2. Auth fertig, kein User -> Redirect zu Login
+if (!user) {
+  return <Navigate to="/auth" replace />;
+}
 
-### Cache-Synchronisation
+// 3. User da, aber Profil lädt noch und kein Cache -> Skeleton
+const hasProfileCache = !!profileData;
+if (!hasProfileCache) {
+  // Kurzes Skeleton während Profil aus DB geladen wird
+  // (Normalerweise <100ms dank localStorage-Cache)
+  return (
+    <div className="min-h-screen bg-background p-6 space-y-6">
+      <Skeleton className="h-[3px] w-full" />
+      <Skeleton className="h-20 w-full" />
+      <Skeleton className="h-40 w-full rounded-3xl" />
+      <Skeleton className="h-60 w-full rounded-2xl" />
+    </div>
+  );
+}
 
-Nach Aenderung des Ziels:
-1. `supabase.from('daily_goals').upsert({ fluid_goal_ml: newValue })`
-2. `queryClient.setQueryData(['daily-metrics'], ...)` fuer Optimistic Update
-3. ODER `queryClient.invalidateQueries(['daily-metrics'])`
+// 4. Ab hier: User authentifiziert UND profileData vorhanden
+```
 
----
+## Logik-Erklärung
 
-## Dateien die geaendert werden
+Die neue Reihenfolge ist entscheidend:
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/ui/fluid-goal-slider.tsx` | **NEU** - Wiederverwendbare Slider-Komponente |
-| `src/pages/Profile.tsx` | State + UI + Save-Logik |
-| `src/components/Settings.tsx` | State + UI + Save-Logik |
-| `src/components/home/sheets/HydrationDaySheet.tsx` | Inline-Edit mit Slider-Popover |
-
----
-
-## Benutzer-Flow
-
-### Flow 1: Im Profil einstellen
 ```text
-User oeffnet Profil -> scrollt zu "Ziele" -> sieht Wasserziel-Slider
--> zieht Slider auf 3.0L -> Auto-Save nach 1 Sekunde
--> Dashboard zeigt neues Ziel
+┌─────────────────────────────┐
+│    authLoading = true?      │
+│            │                │
+│    Ja ─────┴───── Nein      │
+│    │               │        │
+│ Skeleton       user = null? │
+│                    │        │
+│            Ja ─────┴─── Nein│
+│            │            │   │
+│      Redirect       profileData?
+│      /auth              │   │
+│                  Nein ──┴── Ja
+│                   │         │
+│               Skeleton   Dashboard
+└─────────────────────────────┘
 ```
 
-### Flow 2: Quick-Edit im Layer 2
-```text
-User ist auf Dashboard -> tippt Wasser-Widget -> HydrationDaySheet oeffnet
--> tippt auf "3.0L" -> Slider-Popover erscheint
--> aendert zu 2.5L -> tippt "Speichern"
--> Sheet zeigt sofort neues Ziel, Progress Bar aktualisiert
+## Ergebnis nach Fix
+
+| Szenario | Vorher | Nachher |
+|----------|--------|---------|
+| User nicht eingeloggt | Ewiges Skeleton | Sofort Redirect zu `/auth` |
+| User eingeloggt, Cache vorhanden | Dashboard sofort | Dashboard sofort |
+| User eingeloggt, kein Cache | Kurzes Skeleton | Kurzes Skeleton |
+| Auth noch am laden | Skeleton | Skeleton |
+
+## Zusätzliche Empfehlung
+
+Optional können wir auch einen Timeout hinzufügen, falls das Profil-Loading zu lange dauert (z.B. 3 Sekunden), um nie ewig im Skeleton zu bleiben:
+
+```typescript
+// Optional: Timeout nach 3s -> Dashboard trotzdem rendern mit Fallbacks
+const [forceRender, setForceRender] = useState(false);
+useEffect(() => {
+  const timeout = setTimeout(() => setForceRender(true), 3000);
+  return () => clearTimeout(timeout);
+}, []);
+
+if (!hasProfileCache && !forceRender) {
+  return <Skeleton ... />;
+}
 ```
 
----
+## Zusammenfassung
 
-## Erfolgskriterien
+Eine einzige Datei wird geändert:
 
-1. Wasserziel kann im Profil eingestellt werden (1.5L - 5.0L)
-2. Wasserziel kann im HydrationDaySheet geaendert werden
-3. Hardcoded `2000` in Profile.tsx und Settings.tsx entfernt
-4. Aenderungen werden sofort im Dashboard reflektiert
-5. Wert bleibt nach App-Neustart erhalten
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/AresHome.tsx` | Loading-Logik Reihenfolge korrigieren |
 
+Der Fix ist minimal aber kritisch: Die Reihenfolge der Checks wird geändert, sodass der `!user` Redirect **vor** dem Profil-Cache-Check kommt.
