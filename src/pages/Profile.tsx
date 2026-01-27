@@ -648,6 +648,11 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       
       // Invalidate cache for immediate UI update across all widgets
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+      
+      // Trigger legacy event system for usePlusData to ensure homescreen updates
+      const { triggerDataRefresh } = await import('@/hooks/useDataRefresh');
+      triggerDataRefresh();
       
       toast.success('Profil erfolgreich gespeichert');
       setLastSaved(new Date());
