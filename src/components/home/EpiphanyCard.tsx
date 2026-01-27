@@ -80,7 +80,7 @@ export const EpiphanyCard: React.FC<EpiphanyCardProps> = ({
     >
       <AnimatePresence mode="wait">
         {phase === 'mystery' && (
-          <MysteryState key="mystery" onReveal={handleReveal} />
+          <MysteryState key="mystery" onReveal={handleReveal} onDismiss={onDismiss} onSnooze={onSnooze} />
         )}
         {phase === 'loading' && (
           <LoadingState key="loading" />
@@ -119,7 +119,7 @@ const SnoozeHint: React.FC<{ onSnooze: () => void }> = ({ onSnooze }) => (
 );
 
 // --- MYSTERY STATE ---
-const MysteryState: React.FC<{ onReveal: () => void; onSnooze?: () => void }> = ({ onReveal, onSnooze }) => (
+const MysteryState: React.FC<{ onReveal: () => void; onDismiss: () => void; onSnooze?: () => void }> = ({ onReveal, onDismiss, onSnooze }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
@@ -167,7 +167,7 @@ const MysteryState: React.FC<{ onReveal: () => void; onSnooze?: () => void }> = 
 
     {/* Content */}
     <div className="relative h-full p-6 pb-10 flex flex-col text-white">
-      {/* Badge */}
+      {/* Header Row: Badge + Dismiss Button */}
       <div className="flex justify-between items-start">
         <motion.span 
           className="px-3 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-[10px] font-bold tracking-wider uppercase border border-white/20"
@@ -177,21 +177,30 @@ const MysteryState: React.FC<{ onReveal: () => void; onSnooze?: () => void }> = 
           Neues Muster
         </motion.span>
         
-        {/* Pulsing Icon */}
-        <motion.div 
-          className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20"
-          animate={{ 
-            boxShadow: [
-              '0 0 0 0 rgba(139, 92, 246, 0)',
-              '0 0 20px 10px rgba(139, 92, 246, 0.3)',
-              '0 0 0 0 rgba(139, 92, 246, 0)',
-            ]
-          }}
-          transition={{ duration: 2, repeat: Infinity }}
+        {/* Dismiss Button (X) */}
+        <button 
+          onClick={(e) => { e.stopPropagation(); onDismiss(); }}
+          className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center 
+                     hover:bg-white/20 transition-colors z-10"
         >
-          <Sparkles className="w-6 h-6 text-white" />
-        </motion.div>
+          <X className="w-4 h-4 text-white/70" />
+        </button>
       </div>
+      
+      {/* Pulsing Icon - moved below header */}
+      <motion.div 
+        className="absolute top-16 right-6 w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20"
+        animate={{ 
+          boxShadow: [
+            '0 0 0 0 rgba(139, 92, 246, 0)',
+            '0 0 20px 10px rgba(139, 92, 246, 0.3)',
+            '0 0 0 0 rgba(139, 92, 246, 0)',
+          ]
+        }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        <Sparkles className="w-6 h-6 text-white" />
+      </motion.div>
 
       {/* Main Text */}
       <div className="mt-auto">
