@@ -8476,7 +8476,10 @@ export type Database = {
         Args: { p_identifier: string; p_time_window_minutes?: number }
         Returns: Json
       }
-      ensure_daily_goals: { Args: { user_id_param: string }; Returns: Json }
+      ensure_daily_goals: {
+        Args: { user_id_param?: string }
+        Returns: undefined
+      }
       fast_fluid_totals: {
         Args: { p_d: string; p_user: string }
         Returns: number
