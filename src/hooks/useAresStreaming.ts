@@ -62,7 +62,7 @@ export interface UseAresStreamingOptions {
 }
 
 export interface UseAresStreamingReturn {
-  sendMessage: (message: string, coachId?: string, researchPlus?: boolean) => Promise<void>;
+  sendMessage: (message: string, coachId?: string, researchPlus?: boolean, imageUrls?: string[]) => Promise<void>;
   streamingContent: string;
   isStreaming: boolean;
   streamState: StreamState;
@@ -249,7 +249,7 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
   // ═══════════════════════════════════════════════════════════════════════════
   // SEND MESSAGE
   // ═══════════════════════════════════════════════════════════════════════════
-  const sendMessage = useCallback(async (message: string, coachId: string = 'ares', researchPlus: boolean = false) => {
+  const sendMessage = useCallback(async (message: string, coachId: string = 'ares', researchPlus: boolean = false, imageUrls?: string[]) => {
     // Prevent concurrent streams
     if (isStreamingRef.current) {
       console.warn('[useAresStreaming] Already streaming, ignoring request');
@@ -295,7 +295,7 @@ export function useAresStreaming(options: UseAresStreamingOptions = {}): UseAres
             'Content-Type': 'application/json',
             'Accept': 'text/event-stream'
           },
-          body: JSON.stringify({ message, coachId, researchPlus }),
+          body: JSON.stringify({ message, coachId, researchPlus, images: imageUrls || [] }),
           signal: abortControllerRef.current.signal
         }
       );
