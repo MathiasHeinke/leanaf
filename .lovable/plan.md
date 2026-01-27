@@ -1,218 +1,221 @@
 
 
-# Fix: Quick-Input Buttons & Create Supplements Layer 2 Sheet
+# Sleep Day Sheet: Layer 2 Analyse-Overlay
 
-## Problem-Zusammenfassung
+## Zusammenfassung
 
-1. **Bug**: Klick auf "Supplements", "Peptides" oder "Hydration" im QuickAddFAB tut auf der AresHome-Seite nichts, weil die Event-Handler im `quickAddBus.subscribe()` fehlen
-2. **Fehlende Layer 2**: Das Supplements-Widget navigiert direkt zur `/supplements` Seite statt ein schnelles Dashboard-Overlay zu öffnen
+Das SleepDaySheet komplettiert die Layer 2 Architektur und verwandelt die erfassten Schlaf-Daten (Qualität, Zeiten, Faktoren) in **actionable Insights** direkt auf dem Dashboard.
 
 ---
 
-## Analyse
+## Aktueller Stand
 
-### Fehlende Handler in AresHome.tsx (Zeile 178-194)
+| Komponente | Status | Problem |
+|------------|--------|---------|
+| `SleepWidget` | ❌ | Navigiert zu `/sleep` statt Sheet zu öffnen |
+| `WidgetRenderer` | ❌ | Kein `onOpenSleepSheet` Prop |
+| `MetricWidgetGrid` | ❌ | Kein `onOpenSleepSheet` Prop |
+| `AresHome` | ❌ | Kein `sleepSheetOpen` State |
+| `SleepDaySheet` | ❌ | Existiert nicht |
 
-```typescript
-// AKTUELL - Nur diese Handler existieren:
-if (action.type === 'journal') → ✅ funktioniert
-if (action.type === 'sleep') → ✅ funktioniert  
-if (action.type === 'weight' || action.type === 'body') → ✅ funktioniert
-if (action.type === 'training') → ✅ funktioniert
-if (action.type === 'tape') → ✅ funktioniert
+---
 
-// FEHLEN:
-if (action.type === 'supplements' || action.type === 'chemistry') → ❌ FEHLT
-if (action.type === 'peptide') → ❌ FEHLT
-if (action.type === 'hydration') → ❌ FEHLT
-if (action.type === 'meal') → ❌ FEHLT
-```
+## Datenbank-Felder (sleep_tracking)
 
-### Layer 2 Sheet Status
+Der SleepLogger erfasst diese Daten, die das Sheet visualisieren soll:
 
-| Widget | Sheet | Status |
-|--------|-------|--------|
-| Nutrition | NutritionDaySheet | ✅ |
-| Hydration | HydrationDaySheet | ✅ |
-| Training | TrainingDaySheet | ✅ |
-| Weight | BodyTrendSheet | ✅ |
-| Peptides | PeptidesSheet | ✅ |
-| **Supplements** | **Fehlt** | ❌ Navigiert zu /supplements |
-| Sleep | Fehlt | Navigiert zu /sleep |
+| Feld | Typ | UI-Darstellung |
+|------|-----|----------------|
+| `sleep_hours` | numeric | Hero: "7.5h" |
+| `sleep_quality` | int (1-5) | Score Badge mit Emoji |
+| `bedtime` | time | Timing-Grid: "23:30" |
+| `wake_time` | time | Timing-Grid: "06:45" |
+| `sleep_interruptions` | int | Factor Pill: "2x Aufgewacht" |
+| `screen_time_evening` | int | Factor Pill: "45min Screen" |
+| `morning_libido` | int (1-5) | Morning Check Badge |
+| `motivation_level` | int (1-5) | Morning Check Badge |
 
 ---
 
 ## Lösung
 
-### Teil 1: Fehlende Handler in AresHome.tsx ergänzen
+### Teil 1: SleepDaySheet erstellen
 
-**Datei:** `src/pages/AresHome.tsx` (Zeile 178-194)
+**Neue Datei:** `src/components/home/sheets/SleepDaySheet.tsx`
 
-```typescript
-// Subscribe to quickAddBus for events from SmartFocusCard & LiquidDock
-useEffect(() => {
-  const unsub = quickAddBus.subscribe((action) => {
-    // Existing handlers
-    if (action.type === 'journal') {
-      setQuickLogConfig({ open: true, tab: 'journal' });
-    } else if (action.type === 'sleep') {
-      setQuickLogConfig({ open: true, tab: 'sleep' });
-    } else if (action.type === 'weight' || action.type === 'body') {
-      setQuickLogConfig({ open: true, tab: 'weight' });
-    } else if (action.type === 'training') {
-      setQuickLogConfig({ open: true, tab: 'training' });
-    } else if (action.type === 'tape') {
-      setQuickLogConfig({ open: true, tab: 'tape' });
-    }
-    // NEU: Fehlende Handler
-    else if (action.type === 'supplements' || action.type === 'chemistry') {
-      setSupplementsSheetOpen(true);  // Öffnet Layer 2 Sheet
-    }
-    else if (action.type === 'peptide') {
-      setPeptidesSheetOpen(true);  // Bereits vorhanden als State
-    }
-    else if (action.type === 'hydration') {
-      setHydrationSheetOpen(true);  // Bereits vorhanden
-    }
-    else if (action.type === 'meal') {
-      setMealOpen(true);  // Meal Input Sheet
-    }
-  });
-  return unsub;
-}, []);
-```
-
-### Teil 2: SupplementsDaySheet erstellen
-
-**Neue Datei:** `src/components/home/sheets/SupplementsDaySheet.tsx`
-
-Folgt dem Muster von TrainingDaySheet mit:
-
-**Structure:**
+**Struktur:**
 ```text
-┌─────────────────────────────────────┐
-│ [Handle Bar]                        │
-├─────────────────────────────────────┤
-│ Supplemente heute         [X]       │
-│ Dienstag, 28. Januar 2026           │
-├─────────────────────────────────────┤
-│ ╔═══════════════════════════════╗   │
-│ ║  Morning Stack (3/5)       ●  ║   │
-│ ║  ☀️ Aktueller Zeitraum        ║   │
-│ ╚═══════════════════════════════╝   │
-│                                     │
-│ ┌───────────────────────────────┐   │
-│ │ ☐ Vitamin D3      5000 IU    │   │
-│ │ ☐ Omega-3         2g          │   │
-│ │ ☑ Magnesium       400mg       │   │
-│ │ ☑ Kreatin         5g          │   │
-│ │ ☐ Multivitamin    1 Tab       │   │
-│ └───────────────────────────────┘   │
-│                                     │
-│ ── Weitere Zeiträume ──             │
-│ [Mittag 0/2] [Abend 1/3]           │
-├─────────────────────────────────────┤
-│ [    Quick Log    ]  [⚙️]          │
-└─────────────────────────────────────┘
++------------------------------------+
+| [Handle Bar]                       |
++------------------------------------+
+| Schlaf-Analyse             [X]     |
+| Montag, 27. Januar 2026            |
++------------------------------------+
+|                                    |
+|  ╔═══════════════════════════════╗ |
+|  ║       😊 GUT                  ║ |
+|  ║        7.5h                   ║ |
+|  ║    "Recovery Mode"            ║ |
+|  ╚═══════════════════════════════╝ |
+|                                    |
+| ┌──────────┬──────────┬──────────┐ |
+| │ Bett     │ Dauer    │ Aufwach  │ |
+| │ 23:30    │ 7h 15m   │ 06:45    │ |
+| └──────────┴──────────┴──────────┘ |
+|                                    |
+| ── Einflussfaktoren ──             |
+| [🚫 2x Unterbrechung]              |
+| [📱 45min Bildschirm]              |
+| [💪 Motivation: 4/5]               |
+|                                    |
+| ── Woche (Ø 6.8h) ──               |
+| [▁▃▅▇▅▃▇] Mo-So Sparkline          |
+|                                    |
++------------------------------------+
+| [Schlaf erfassen/bearbeiten] [⚙️] |
++------------------------------------+
 ```
 
 **Features:**
-- **Hero Section**: Aktuelle Timing-Phase mit Progress (basierend auf Uhrzeit)
-- **Supplement Liste**: Checkboxen mit Optimistic UI (wie im SupplementsLogger)
-- **Weitere Phasen**: Collapsed anzeigen, expandierbar
-- **Footer Actions**: 
-  - "Quick Log" → Öffnet QuickLogSheet mit Tab 'supplements'
-  - Settings-Icon → Navigiert zu /supplements
+- **Hero Score Section**: Großer Qualitäts-Badge (1-5 → Emoji + Label + Color)
+- **Timing Grid**: 3-Spalten mit Bedtime | Duration | Wake Time
+- **Context Factors**: Pills für alle geloggten Faktoren (Unterbrechungen, Screentime, etc.)
+- **Weekly Sparkline**: Letzte 7 Tage als Mini-Balkendiagramm
+- **Conditional Footer**: "Schlaf erfassen" wenn noch nicht geloggt, sonst "Log bearbeiten"
 
-**Datenquelle:** `useSupplementData()` Hook (bereits vorhanden)
-- `groupedSupplements`: Supplements nach Timing gruppiert
-- `markSupplementTaken()`: Toggle für einzelne Supplements
-- `markTimingGroupTaken()`: "Alle nehmen" für eine Gruppe
+**Score-Mapping (1-5 Skala):**
+| Score | Emoji | Label | Color |
+|-------|-------|-------|-------|
+| 1 | 😫 | Miserabel | Red |
+| 2 | 😕 | Schlecht | Orange |
+| 3 | 😐 | Okay | Yellow |
+| 4 | 💪 | Gut | Green |
+| 5 | 🚀 | Elite | Purple/Indigo |
 
-### Teil 3: SupplementsWidget anpassen
-
-**Datei:** `src/components/home/widgets/SupplementsWidget.tsx`
-
+**Daten-Query:**
 ```typescript
-interface SupplementsWidgetProps {
+// Fetch today's sleep + last 7 days
+const { data: sleepData } = useQuery({
+  queryKey: ['sleep-day-sheet', todayStr],
+  queryFn: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    
+    // Today's detailed entry
+    const { data: today } = await supabase
+      .from('sleep_tracking')
+      .select('*')  // All fields including factors
+      .eq('user_id', user.id)
+      .eq('date', todayStr)
+      .maybeSingle();
+    
+    // Weekly sparkline
+    const dates = getLast7Days();
+    const { data: week } = await supabase
+      .from('sleep_tracking')
+      .select('date, sleep_hours')
+      .eq('user_id', user.id)
+      .in('date', dates);
+    
+    return { today, week };
+  }
+});
+```
+
+### Teil 2: SleepWidget anpassen
+
+**Datei:** `src/components/home/widgets/SleepWidget.tsx`
+
+**Änderungen:**
+```typescript
+interface SleepWidgetProps {
   size: WidgetSize;
   onOpenSheet?: () => void;  // NEU
 }
 
-// onClick ändern von:
-onClick={() => navigate('/supplements')}
-
-// zu:
-onClick={() => onOpenSheet ? onOpenSheet() : navigate('/supplements')}
+// onClick ändern in allen Varianten (flat, large, medium, small):
+onClick={() => onOpenSheet ? onOpenSheet() : navigate('/sleep')}
 ```
 
-### Teil 4: WidgetRenderer anpassen
+### Teil 3: WidgetRenderer erweitern
 
 **Datei:** `src/components/home/widgets/WidgetRenderer.tsx`
 
+**Änderungen:**
 ```typescript
 interface WidgetRendererProps {
   config: WidgetConfig;
-  onOpenNutritionSheet?: () => void;
-  onOpenHydrationSheet?: () => void;
-  onOpenBodySheet?: () => void;
-  onOpenPeptidesSheet?: () => void;
-  onOpenTrainingSheet?: () => void;
-  onOpenSupplementsSheet?: () => void;  // NEU
+  // ... bestehende props ...
+  onOpenSleepSheet?: () => void;  // NEU
 }
 
-// Im switch case 'supplements':
-case 'supplements':
-  return <SupplementsWidget size={size} onOpenSheet={onOpenSupplementsSheet} />;
+// Im switch case:
+case 'sleep':
+  return <SleepWidget size={size} onOpenSheet={onOpenSleepSheet} />;
 ```
 
-### Teil 5: MetricWidgetGrid anpassen
+### Teil 4: MetricWidgetGrid erweitern
 
 **Datei:** `src/components/home/MetricWidgetGrid.tsx`
 
+**Änderungen:**
 ```typescript
 interface MetricWidgetGridProps {
-  // ... bestehende props
-  onOpenSupplementsSheet?: () => void;  // NEU
+  // ... bestehende props ...
+  onOpenSleepSheet?: () => void;  // NEU
 }
 
 // In WidgetRenderer weitergeben:
 <WidgetRenderer 
   config={widget} 
-  onOpenNutritionSheet={onOpenNutritionSheet}
-  onOpenHydrationSheet={onOpenHydrationSheet}
-  onOpenBodySheet={onOpenBodySheet}
-  onOpenPeptidesSheet={onOpenPeptidesSheet}
-  onOpenTrainingSheet={onOpenTrainingSheet}
-  onOpenSupplementsSheet={onOpenSupplementsSheet}  // NEU
+  // ... bestehende props ...
+  onOpenSleepSheet={onOpenSleepSheet}
 />
 ```
 
-### Teil 6: AresHome Integration
+### Teil 5: AresHome Integration
 
 **Datei:** `src/pages/AresHome.tsx`
 
+**Änderungen:**
+
+1. **Import hinzufügen:**
 ```typescript
-// Neuer State
-const [supplementsSheetOpen, setSupplementsSheetOpen] = useState(false);
+import { SleepDaySheet } from '@/components/home/sheets/SleepDaySheet';
+```
 
-// MetricWidgetGrid Props erweitern
+2. **State hinzufügen:**
+```typescript
+const [sleepSheetOpen, setSleepSheetOpen] = useState(false);
+```
+
+3. **quickAddBus Handler aktualisieren:**
+```typescript
+// VORHER:
+} else if (action.type === 'sleep') {
+  setQuickLogConfig({ open: true, tab: 'sleep' });
+
+// NACHHER:
+} else if (action.type === 'sleep') {
+  setSleepSheetOpen(true);  // Öffnet Layer 2 Sheet statt Logger
+```
+
+4. **MetricWidgetGrid Props erweitern:**
+```typescript
 <MetricWidgetGrid
-  onOpenNutritionSheet={() => setNutritionSheetOpen(true)}
-  onOpenHydrationSheet={() => setHydrationSheetOpen(true)}
-  onOpenBodySheet={() => setBodySheetOpen(true)}
-  onOpenPeptidesSheet={() => setPeptidesSheetOpen(true)}
-  onOpenTrainingSheet={() => setTrainingSheetOpen(true)}
-  onOpenSupplementsSheet={() => setSupplementsSheetOpen(true)}  // NEU
+  // ... bestehende props ...
+  onOpenSleepSheet={() => setSleepSheetOpen(true)}
 />
+```
 
-// Sheet rendern
-<SupplementsDaySheet
-  isOpen={supplementsSheetOpen}
-  onClose={() => setSupplementsSheetOpen(false)}
+5. **Sheet rendern:**
+```typescript
+<SleepDaySheet
+  isOpen={sleepSheetOpen}
+  onClose={() => setSleepSheetOpen(false)}
   onOpenLogger={() => {
-    setSupplementsSheetOpen(false);
-    setQuickLogConfig({ open: true, tab: 'supplements' });
+    setSleepSheetOpen(false);
+    setQuickLogConfig({ open: true, tab: 'sleep' });
   }}
 />
 ```
@@ -223,28 +226,64 @@ const [supplementsSheetOpen, setSupplementsSheetOpen] = useState(false);
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `src/pages/AresHome.tsx` | EDIT | Handler für supplements/peptide/hydration/meal hinzufügen, State + Sheet |
-| `src/components/home/sheets/SupplementsDaySheet.tsx` | NEU | Layer 2 Sheet mit Timing-Gruppen |
-| `src/components/home/widgets/SupplementsWidget.tsx` | EDIT | onOpenSheet prop hinzufügen |
-| `src/components/home/widgets/WidgetRenderer.tsx` | EDIT | onOpenSupplementsSheet prop durchreichen |
-| `src/components/home/MetricWidgetGrid.tsx` | EDIT | onOpenSupplementsSheet prop hinzufügen |
+| `src/components/home/sheets/SleepDaySheet.tsx` | **NEU** | Layer 2 Sheet mit Score, Timing, Faktoren |
+| `src/components/home/widgets/SleepWidget.tsx` | EDIT | `onOpenSheet` prop hinzufügen |
+| `src/components/home/widgets/WidgetRenderer.tsx` | EDIT | `onOpenSleepSheet` prop durchreichen |
+| `src/components/home/MetricWidgetGrid.tsx` | EDIT | `onOpenSleepSheet` prop hinzufügen |
+| `src/pages/AresHome.tsx` | EDIT | State, Handler, Sheet-Integration |
 
 ---
 
 ## Erwartetes Ergebnis
 
-1. **Quick-Input Buttons funktionieren:**
-   - Klick auf "Supplements" → Öffnet SupplementsDaySheet (Layer 2)
-   - Klick auf "Peptide" → Öffnet PeptidesSheet (bereits vorhanden)
-   - Klick auf "Hydration" → Öffnet HydrationDaySheet (bereits vorhanden)
+1. **Klick auf Sleep Widget** → Öffnet SleepDaySheet (statt Navigation zu /sleep)
 
-2. **Supplements Widget:**
-   - Klick auf Widget → Öffnet SupplementsDaySheet (statt /supplements Navigation)
-   - Schnelles Abhaken des Morning/Noon/Evening Stacks
-   - "Manage Stack" Button für Deep-Dive zu /supplements
+2. **SleepDaySheet zeigt:**
+   - Hero mit Score-Emoji und Stunden
+   - Timing-Grid (Einschlaf-/Aufwachzeit)
+   - Erfasste Faktoren als Pills
+   - Wochenverlauf als Sparkline
 
-3. **UX-Konsistenz:**
-   - Alle Widgets folgen dem Three-Layer-Design
-   - Schnelle Interaktion ohne Seitenwechsel
-   - Optimistic UI für sofortiges Feedback
+3. **Footer-Aktionen:**
+   - "Schlaf erfassen" → Öffnet QuickLogSheet mit Tab 'sleep'
+   - Settings-Icon → Navigiert zu /sleep für Deep-Dive
+
+4. **Quick-Input Buttons:**
+   - "Sleep" Button öffnet jetzt Layer 2 Sheet (konsistent mit anderen Widgets)
+
+---
+
+## Technische Details
+
+**Score-Label-Mapping:**
+```typescript
+const QUALITY_LABELS = {
+  1: { emoji: '😫', label: 'Miserabel', color: 'text-red-500 bg-red-500/10' },
+  2: { emoji: '😕', label: 'Schlecht', color: 'text-orange-500 bg-orange-500/10' },
+  3: { emoji: '😐', label: 'Okay', color: 'text-yellow-500 bg-yellow-500/10' },
+  4: { emoji: '💪', label: 'Gut', color: 'text-green-500 bg-green-500/10' },
+  5: { emoji: '🚀', label: 'Elite Recovery', color: 'text-indigo-500 bg-indigo-500/10' },
+};
+```
+
+**Duration Calculation:**
+```typescript
+const calculateDuration = (bedtime: string, wakeTime: string) => {
+  if (!bedtime || !wakeTime) return null;
+  
+  const bed = parse(bedtime, 'HH:mm', new Date());
+  let wake = parse(wakeTime, 'HH:mm', new Date());
+  
+  // Handle overnight (bedtime > wakeTime)
+  if (wake < bed) {
+    wake = addDays(wake, 1);
+  }
+  
+  const diffMinutes = differenceInMinutes(wake, bed);
+  const hours = Math.floor(diffMinutes / 60);
+  const minutes = diffMinutes % 60;
+  
+  return `${hours}h ${minutes > 0 ? `${minutes}m` : ''}`.trim();
+};
+```
 
