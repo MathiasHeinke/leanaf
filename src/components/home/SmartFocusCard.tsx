@@ -328,7 +328,7 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
               </div>
 
               {/* SMART ACTION AREA - More padding for touch targets */}
-              <div className="relative z-10 mt-auto pt-5">
+              <div className="relative z-10 mt-auto pt-5 pb-4">
                 <SmartActions 
                   task={task} 
                   onAction={handleComplete}
