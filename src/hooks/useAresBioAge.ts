@@ -367,7 +367,7 @@ export function useAresBioAge(): AresBioAgeResult {
         supabase
           .from('profiles')
           .select('age, gender, weight, height')
-          .eq('id', user.id)
+          .eq('user_id', user.id)
           .maybeSingle(),
         supabase
           .from('weight_history')
