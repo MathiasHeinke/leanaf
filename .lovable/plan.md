@@ -1,177 +1,154 @@
 
+# Pull-to-Refresh & Sync-Fix für Homescreen
 
-# Cleanup: Protein Anchor System Vollintegration
+## Problem-Analyse
 
-## Zusammenfassung
+Der Homescreen aktualisiert sich nicht automatisch nach Änderungen im Profil (Makrostrategie, Kalorien etc.) weil:
 
-Die Protein-Anchor Logik ist implementiert, aber es gibt **Legacy-Code der parallel läuft** und potentiell die neuen Berechnungen überschreibt oder ignoriert.
-
-## Gefundene Probleme
-
-### Problem 1: Doppelte State-Logik in Profile.tsx
-
-**Zeile 92-94:** Alte Percentage-States existieren noch:
-```typescript
-const [proteinPercentage, setProteinPercentage] = useState(30);
-const [carbsPercentage, setCarbsPercentage] = useState(40);
-const [fatsPercentage, setFatsPercentage] = useState(30);
-```
-
-**Zeile 121-135:** Alter `useEffect` überschreibt Werte bei `high_protein/balanced/low_carb`:
-```typescript
-useEffect(() => {
-  if (macroStrategy === 'high_protein') {
-    setProteinPercentage(40); // ← ÜBERSCHREIBT!
-    // ...
-  }
-}, [macroStrategy]);
-```
-
-**Zeile 699-701:** Zeigt alte Percentage-Berechnung statt `currentMacros`:
-```typescript
-const proteinGrams = targetCalories ? (targetCalories * proteinPercentage / 100) / 4 : 0;
-```
-
-### Problem 2: Backend ignoriert neue Strategien
-
-**`supabase/functions/evaluate-meal/index.ts` Zeile 175-185:**
-```typescript
-if (profile.macro_strategy === 'high_protein') { ... }
-else if (profile.macro_strategy === 'low_carb') { ... }
-// 'rookie', 'warrior', 'elite' → NICHT ERKANNT!
-```
-
-**`getGoalContext()` Zeile 479-482:**
-```typescript
-const strategyText = macroStrategy === 'high_protein' ? 'High-Protein' 
-  : macroStrategy === 'low_carb' ? 'Low-Carb' : 'Standard';
-// → 'warrior' wird als 'Standard' angezeigt!
-```
-
-### Problem 3: Alte applyMacroStrategy() Funktion noch vorhanden
-
-**Zeile 484-505:** Diese Funktion nutzt feste Prozentsätze und ist veraltet.
+1. **Kein Pull-to-Refresh**: Es gibt keine Möglichkeit für User, manuell Daten zu aktualisieren
+2. **Zwei parallele Daten-Systeme**: 
+   - `useDailyMetrics` (React Query, für Widgets)
+   - `usePlusData` (Legacy useState/useEffect, für ActionCards)
+3. **Keine Cross-Invalidierung**: Profil-Änderungen invalidieren `daily-metrics`, aber `usePlusData` nutzt das alte Event-System
 
 ---
 
-## Lösungsplan
+## Lösung
 
-### Phase 1: Profile.tsx Cleanup
+### Phase 1: Pull-to-Refresh Komponente erstellen
 
-**1.1 Alte Percentage-States entfernen:**
-```typescript
-// LÖSCHEN (Zeile 92-94):
-// const [proteinPercentage, setProteinPercentage] = useState(30);
-// const [carbsPercentage, setCarbsPercentage] = useState(40);
-// const [fatsPercentage, setFatsPercentage] = useState(30);
+**Neue Datei: `src/components/ui/pull-to-refresh.tsx`**
+
+Erstelle eine mobile-native Pull-to-Refresh Geste:
+
+```text
++---------------------------+
+|  ↓ Ziehe zum Aktualisieren |
+|           ⟳               |
+|  (Spinner während Refresh) |
++---------------------------+
 ```
 
-**1.2 Alten useEffect entfernen (Zeile 121-135):**
+**Features:**
+- Touch-basiert mit `touchstart`, `touchmove`, `touchend`
+- Threshold: 80px ziehen für Trigger
+- Haptic Feedback (vibration) wenn verfügbar
+- Smooth Animation beim Release
+- Loading-Spinner während Refresh
+
+### Phase 2: AresHome.tsx mit Pull-to-Refresh wrappen
+
+**Datei: `src/pages/AresHome.tsx`**
+
+Wrapper um den Hauptinhalt:
+
 ```typescript
-// LÖSCHEN: Der alte useEffect der high_protein/balanced/low_carb mappt
-```
+// Neuer Import
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
-**1.3 applyMacroStrategy() entfernen (Zeile 484-505):**
-```typescript
-// LÖSCHEN: Wird nicht mehr benötigt
-```
+// In der Komponente
+const queryClient = useQueryClient();
 
-**1.4 Gram-Berechnung auf currentMacros umstellen (Zeile 699-701):**
-```typescript
-// VORHER:
-const proteinGrams = targetCalories ? (targetCalories * proteinPercentage / 100) / 4 : 0;
-const carbsGrams = targetCalories ? (targetCalories * carbsPercentage / 100) / 4 : 0;
-const fatsGrams = targetCalories ? (targetCalories * fatsPercentage / 100) / 9 : 0;
-
-// NACHHER: Nutze die bereits berechneten Werte aus dem Protein Anchor System
-// (currentMacros ist bereits via useMemo definiert - Zeile 456-461)
-```
-
-**1.5 Default-Strategie auf 'warrior' setzen:**
-```typescript
-// Zeile 73: Ändere von 'high_protein' zu 'warrior'
-const [macroStrategy, setMacroStrategy] = useState('warrior');
-
-// Zeile 258: Ändere Fallback ebenfalls
-setMacroStrategy('warrior');
-```
-
-### Phase 2: Backend Update (evaluate-meal)
-
-**2.1 Protein-Anchor Mapping hinzufügen:**
-
-Neue Helper-Funktion am Anfang der Datei:
-```typescript
-function mapToProteinAnchorIntensity(strategy: string): 'rookie' | 'warrior' | 'elite' {
-  if (['rookie', 'warrior', 'elite'].includes(strategy)) {
-    return strategy as 'rookie' | 'warrior' | 'elite';
-  }
-  // Legacy mapping
-  if (strategy === 'high_protein' || strategy === 'zone_balanced') return 'warrior';
-  if (strategy === 'low_carb' || strategy === 'keto') return 'elite';
-  return 'warrior'; // Safe default
-}
-```
-
-**2.2 Macro-Evaluation Logik updaten (Zeile 174-185):**
-```typescript
-// NACHHER:
-const intensity = mapToProteinAnchorIntensity(profile.macro_strategy);
-// Protein check based on intensity level
-const minProteinRatio = intensity === 'elite' ? 0.9 : intensity === 'warrior' ? 0.85 : 0.7;
-if (proteinRatio < minProteinRatio) {
-  score -= 3;
-  feedback = `Mehr Protein für deine ${intensity.toUpperCase()}-Intensität.`;
-}
-```
-
-**2.3 getGoalContext() updaten (Zeile 479-482):**
-```typescript
-function getGoalContext(goal: string, macroStrategy: string): string {
-  const goalText = goal === 'lose' ? 'Abnehmen' : goal === 'gain' ? 'Zunehmen/Muskelaufbau' : 'Gewicht halten';
+const handleRefresh = useCallback(async () => {
+  // Alle relevanten Queries invalidieren
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS }),
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE }),
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY }),
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TRAINING_WEEKLY }),
+  ]);
   
-  // Map to Protein Anchor System
-  const intensity = mapToProteinAnchorIntensity(macroStrategy);
-  const intensityLabels = {
-    rookie: 'ROOKIE (1.2g/kg Protein)',
-    warrior: 'WARRIOR (2.0g/kg Protein)', 
-    elite: 'ELITE (2.5g/kg Protein)'
-  };
+  // Plus-Data Legacy-System auch triggern
+  triggerDataRefresh();
   
-  return `User-Ziel: ${goalText}, Protokoll-Intensität: ${intensityLabels[intensity]}.`;
-}
+  toast.success('Daten aktualisiert', { duration: 1500 });
+}, [queryClient]);
+
+// Im Return
+<PullToRefresh onRefresh={handleRefresh}>
+  {/* Bestehender Inhalt */}
+</PullToRefresh>
+```
+
+### Phase 3: usePlusData auf React Query migrieren (optional aber empfohlen)
+
+**Datei: `src/hooks/usePlusData.tsx`**
+
+Alternative: Statt komplett zu migrieren, füge Query-Invalidierung hinzu:
+
+```typescript
+// Am Ende von fetchData() 
+// Synchronisiere mit React Query Cache
+queryClient.setQueryData(QUERY_KEYS.DAILY_METRICS, (old) => ({
+  ...old,
+  goals: { ...goals }
+}));
+```
+
+Oder: Nach Profile Save auch `usePlusData` manuell triggern:
+
+**Datei: `src/pages/Profile.tsx` (Zeile ~650)**
+
+```typescript
+// Nach DAILY_METRICS invalidation
+queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
+queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+
+// Legacy-System triggern für usePlusData
+triggerDataRefresh();
 ```
 
 ---
 
 ## Technische Details
 
-### Dateien und Änderungen
+### Pull-to-Refresh Komponente Architektur
 
-| Datei | Aktion | Details |
-|-------|--------|---------|
-| `src/pages/Profile.tsx` | CLEANUP | Alte percentage states + useEffect + applyMacroStrategy entfernen |
-| `src/pages/Profile.tsx` | UPDATE | Default 'warrior', Gramm-Berechnung via currentMacros |
-| `supabase/functions/evaluate-meal/index.ts` | UPDATE | mapToProteinAnchorIntensity() + Logik-Anpassung |
+```text
+┌─────────────────────────────────────────┐
+│ PullToRefresh                           │
+│  ├── Pull Indicator (↓ / Spinner)       │
+│  └── children (scrollable content)      │
+│       └── touch events tracked          │
+└─────────────────────────────────────────┘
 
-### Risiko-Check
+State Machine:
+  IDLE → PULLING → REFRESHING → IDLE
+          ↑                      │
+          └──────────────────────┘
+```
 
-**Gering:** Alle Änderungen sind rückwärtskompatibel durch `mapLegacyStrategy()` und `mapToProteinAnchorIntensity()`. Bestehende User mit 'high_protein' werden automatisch auf 'warrior' gemappt.
+### Datei-Übersicht
 
-### Migration bestehender User
-
-Keine DB-Migration nötig. Das Mapping passiert zur Laufzeit:
-- `high_protein` → `warrior`
-- `low_carb`, `keto` → `elite`
-- Alles andere → `warrior` (sicherer Default)
+| Datei | Aktion | Beschreibung |
+|-------|--------|--------------|
+| `src/components/ui/pull-to-refresh.tsx` | NEU | Pull-to-Refresh UI Komponente |
+| `src/pages/AresHome.tsx` | EDIT | Wrapper + handleRefresh Callback |
+| `src/pages/Profile.tsx` | EDIT | `triggerDataRefresh()` nach Save hinzufügen |
+| `src/constants/queryKeys.ts` | EDIT | (optional) Neue Keys für vollständiges Refresh |
 
 ---
 
 ## Erwartetes Ergebnis
 
-Nach dem Cleanup:
-1. **Profile.tsx:** Nur noch EIN System (Protein Anchor) aktiv
-2. **evaluate-meal:** Versteht 'rookie', 'warrior', 'elite' korrekt
-3. **Keine Konflikte** zwischen altem und neuem Code
-4. **Konsistente Makro-Berechnung** überall basierend auf g/kg
+### Vorher
+- User ändert Makrostrategie auf WARRIOR (2.0g/kg)
+- User geht zurück zum Homescreen
+- Widgets zeigen noch alte Werte (2500 kcal statt 2200 kcal)
+- Einzige Lösung: App schließen und neu öffnen
 
+### Nachher
+- User ändert Makrostrategie auf WARRIOR
+- User geht zurück zum Homescreen
+- Widgets aktualisieren sich automatisch (Profile.tsx invalidiert alle Keys)
+- ODER: User zieht von oben nach unten (Pull-to-Refresh)
+- Kurzer Spinner, dann alle Widgets zeigen neue Werte
+- Toast: "Daten aktualisiert"
+
+### UX Details
+- Pull-Geste zeigt sanften Bounce-Effekt
+- Loading-Spinner während Daten geladen werden
+- Haptic Feedback auf unterstützten Geräten
+- Funktioniert nur wenn bereits ganz oben gescrollt
