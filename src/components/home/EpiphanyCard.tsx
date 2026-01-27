@@ -1,14 +1,15 @@
 /**
  * EpiphanyCard - AI-powered insight reveal with 3D flip animation
  * Mystery -> Loading -> Revelation (with prefetch support)
+ * Refactored: Uses shared components (DismissButton, SnoozeHint)
  */
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, ChevronRight, Lightbulb, MessageCircle, Clock } from 'lucide-react';
+import { Sparkles, ChevronRight, Lightbulb, MessageCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFetchInsight } from '@/hooks/useDailyInsight';
-import { DismissButton } from './SmartFocusCard';
+import { DismissButton, SnoozeHint } from './cards/shared';
 
 interface EpiphanyCardProps {
   onOpenChat: (prompt: string) => void;
@@ -100,25 +101,6 @@ export const EpiphanyCard: React.FC<EpiphanyCardProps> = ({
   );
 };
 
-// --- SNOOZE HINT (Bottom Right) ---
-const SnoozeHint: React.FC<{ onSnooze: () => void }> = ({ onSnooze }) => (
-  <motion.button
-    onClick={(e) => { 
-      e.stopPropagation(); 
-      onSnooze(); 
-    }}
-    whileTap={{ scale: 0.9 }}
-    className="absolute bottom-3 right-3 z-20 flex items-center gap-1 px-2 py-1 
-               rounded-full bg-white/10 backdrop-blur-sm border border-white/10
-               text-white/40 text-[10px] font-medium hover:bg-white/20 hover:text-white/60 
-               transition-all"
-  >
-    <Clock size={10} />
-    <span>2h</span>
-    <ChevronRight size={10} className="opacity-60" />
-  </motion.button>
-);
-
 // --- MYSTERY STATE ---
 const MysteryState: React.FC<{ onReveal: () => void; onDismiss: () => void; onSnooze?: () => void }> = ({ onReveal, onDismiss, onSnooze }) => (
   <motion.div
@@ -205,7 +187,7 @@ const MysteryState: React.FC<{ onReveal: () => void; onDismiss: () => void; onSn
       </motion.button>
     </div>
     
-    {/* Snooze Hint */}
+    {/* Snooze Hint - Using shared component */}
     {onSnooze && <SnoozeHint onSnooze={onSnooze} />}
   </motion.div>
 );
@@ -297,7 +279,7 @@ const RevealedState: React.FC<{
           </span>
         </div>
         
-        {/* Dismiss Button - using DismissButton with Lightbulb icon */}
+        {/* Dismiss Button - using shared DismissButton with Lightbulb icon */}
         <DismissButton icon={Lightbulb} onDismiss={onDismiss} />
       </div>
 
@@ -331,7 +313,7 @@ const RevealedState: React.FC<{
       </motion.button>
     </div>
     
-    {/* Snooze Hint */}
+    {/* Snooze Hint - Using shared component */}
     {onSnooze && <SnoozeHint onSnooze={onSnooze} />}
   </motion.div>
 );
