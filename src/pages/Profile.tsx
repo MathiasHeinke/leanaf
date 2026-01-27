@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { calculateRealismScore as calculateRealismScoreFromUtils, getRealismLabel, getRealismVariant } from '@/utils/realismCalculator';
+import { addMonths, differenceInWeeks, format } from 'date-fns';
+import { calculateRealismScore as calculateRealismScoreFromUtils, getRealismLabel, getRealismVariant, type ProtocolTempo } from '@/utils/realismCalculator';
 import { calculateProteinAnchorMacros, isProtocolIntensity, mapLegacyStrategy, type ProtocolIntensity } from '@/utils/proteinAnchorCalculator';
 import { Button } from '@/components/ui/button';
 import { NumericInput } from '@/components/ui/numeric-input';
@@ -14,12 +15,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Target, Save, Check, Bot, Settings, Zap, Activity, Dumbbell, Heart, TrendingUp, AlertCircle, CheckCircle, User, MessageSquare, PieChart, Calculator, Brain, TrendingDown, Info, AlertTriangle, CheckCircle2, CalendarIcon, Droplets } from 'lucide-react';
 import { FluidGoalSlider } from '@/components/ui/fluid-goal-slider';
+import { GoalConfigurator, type MuscleGoal } from '@/components/profile/GoalConfigurator';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
 import { intelligentCalorieCalculator, type CalorieCalculationResult } from '@/utils/intelligentCalorieCalculator';
 import { TrackingPreferences } from '@/components/TrackingPreferences';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
@@ -48,10 +49,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [gender, setGender] = useState('');
   const [activityLevel, setActivityLevel] = useState('moderate');
   const [goal, setGoal] = useState('maintain');
-  const [targetWeight, setTargetWeight] = useState('');
-  const [targetDate, setTargetDate] = useState('');
-  const [goalType, setGoalType] = useState<'weight' | 'body_fat' | 'both'>('weight');
-  const [targetBodyFat, setTargetBodyFat] = useState('');
+  // NEW: Protocol-driven goal states (replacing targetWeight, targetDate, goalType, targetBodyFat)
+  const [weightDelta, setWeightDelta] = useState(0);
+  const [muscleGoal, setMuscleGoal] = useState<MuscleGoal>('maintain');
+  const [protocolTempo, setProtocolTempo] = useState<ProtocolTempo>('standard');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [autoSaving, setAutoSaving] = useState(false);
@@ -98,6 +99,26 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [fluidGoalMl, setFluidGoalMl] = useState(2500);
   const [avatarPresetId, setAvatarPresetId] = useState('');
 
+  // ============= Computed Values from Protocol States =============
+  const computedTargetWeight = useMemo(() => {
+    const currentW = parseFloat(weight) || 80;
+    return currentW + weightDelta;
+  }, [weight, weightDelta]);
+
+  const computedTargetDate = useMemo(() => {
+    const months = { sustainable: 12, standard: 6, aggressive: 4 };
+    return addMonths(new Date(), months[protocolTempo]);
+  }, [protocolTempo]);
+
+  const computedGoal = useMemo(() => {
+    if (weightDelta < -1) return 'lose';
+    if (weightDelta > 1) return 'gain';
+    return 'maintain';
+  }, [weightDelta]);
+
+  // Formatted target date string for DB
+  const targetDateStr = useMemo(() => format(computedTargetDate, 'yyyy-MM-dd'), [computedTargetDate]);
+
   // Check if profile is complete for validation
   const isProfileComplete = weight && height && age && gender && activityLevel && goal;
 
@@ -142,7 +163,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     return () => clearTimeout(timeoutId);
   }, [
     preferredName, weight, startWeight, height, age, gender, 
-    activityLevel, goal, targetWeight, targetDate, goalType, targetBodyFat, language,
+    activityLevel, goal, weightDelta, protocolTempo, muscleGoal, language,
     dailyGoals.calories, dailyGoals.protein, dailyGoals.carbs, 
     dailyGoals.fats, dailyGoals.calorieDeficit,
     coachPersonality, muscleMaintenancePriority, macroStrategy,
@@ -218,10 +239,18 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setGender(data.gender || '');
         setActivityLevel(data.activity_level || 'moderate');
         setGoal(data.goal || 'maintain');
-        setTargetWeight(data.target_weight ? data.target_weight.toString() : '');
-        setTargetDate(data.target_date || '');
-        setGoalType((data.goal_type as 'weight' | 'body_fat' | 'both') || 'weight');
-        setTargetBodyFat(data.target_body_fat_percentage ? data.target_body_fat_percentage.toString() : '');
+        // Migrate from legacy targetWeight/targetDate to new protocol system
+        if (data.target_weight && data.weight) {
+          setWeightDelta(data.target_weight - data.weight);
+        }
+        if (data.target_date) {
+          const weeksToTarget = differenceInWeeks(new Date(data.target_date), new Date());
+          if (weeksToTarget >= 48) setProtocolTempo('sustainable');
+          else if (weeksToTarget >= 20) setProtocolTempo('standard');
+          else setProtocolTempo('aggressive');
+        }
+        // Set muscle goal from legacy field
+        setMuscleGoal(data.muscle_maintenance_priority ? 'maintain' : 'build');
         setCoachPersonality(data.coach_personality || 'motivierend');
         setMuscleMaintenancePriority(data.muscle_maintenance_priority || false);
         setMacroStrategy(data.macro_strategy || 'warrior');
@@ -385,22 +414,21 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   };
 
   const calculateRequiredCalorieDeficit = () => {
-    if (!weight || !targetWeight || !targetDate) return null;
+    if (!weight || weightDelta === 0) return null;
     
     const currentWeight = parseFloat(weight);
-    const goalWeight = parseFloat(targetWeight);
+    const goalWeight = computedTargetWeight;
     const weightDiff = Math.abs(currentWeight - goalWeight);
-    const targetDateObj = new Date(targetDate);
     const today = new Date();
-    const timeDiff = Math.max(0, (targetDateObj.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const timeDiff = Math.max(0, (computedTargetDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     
     if (timeDiff <= 0) return null;
     
     const totalCalorieDeficit = weightDiff * 7700;
     const dailyCalorieDeficit = Math.round(totalCalorieDeficit / timeDiff);
     
-    // Check if user wants to gain weight (goal === 'gain' or goalWeight > currentWeight)
-    const isGaining = goal === 'gain' || goalWeight > currentWeight;
+    // Check if user wants to gain weight
+    const isGaining = weightDelta > 0;
     
     return {
       daily: dailyCalorieDeficit,
@@ -412,14 +440,15 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
   // Calculate realism score using unified calculator
   const calculateRealismScore = () => {
-    if (!weight || !targetWeight || !targetDate) return 0;
+    if (!weight || weightDelta === 0) return 100;
     
     return calculateRealismScoreFromUtils({
       currentWeight: parseFloat(weight),
-      targetWeight: parseFloat(targetWeight),
-      currentBodyFat: undefined, // Let util use default
-      targetBodyFat: targetBodyFat ? parseFloat(targetBodyFat) : undefined,
-      targetDate: new Date(targetDate)
+      targetWeight: computedTargetWeight,
+      currentBodyFat: undefined,
+      targetBodyFat: undefined,
+      targetDate: computedTargetDate,
+      protocolTempo,
     });
   };
 
@@ -534,14 +563,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       age: age ? parseInt(age) : null,
       gender: gender || null,
       activity_level: activityLevel,
-      goal: goal,
-      target_weight: targetWeight ? parseFloat(targetWeight) : null,
-      target_date: targetDate || null,
-      goal_type: goalType,
-      target_body_fat_percentage: targetBodyFat ? parseFloat(targetBodyFat) : null,
+      goal: computedGoal,
+      target_weight: computedTargetWeight,
+      target_date: targetDateStr,
+      goal_type: 'weight',
+      target_body_fat_percentage: null,
       preferred_language: language,
       coach_personality: coachPersonality,
-      muscle_maintenance_priority: muscleMaintenancePriority,
+      muscle_maintenance_priority: muscleGoal === 'maintain',
       macro_strategy: macroStrategy,
       profile_avatar_url: profileAvatarUrl || null,
       avatar_type: avatarType,
@@ -558,6 +587,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       protein_percentage: dailyGoals.protein,
       carbs_percentage: dailyGoals.carbs,
       fats_percentage: dailyGoals.fats,
+      // NEW: Protocol tempo
+      protocol_tempo: protocolTempo,
     };
 
     if (profileExists) {
@@ -578,15 +609,12 @@ const Profile = ({ onClose }: ProfilePageProps) => {
 
     // Calculate additional values for daily goals
     const deficitData = calculateRequiredCalorieDeficit();
-    const weightDifference = targetWeight && weight 
-      ? Number(targetWeight) - Number(weight) 
-      : null;
-    const isGainingWeight = weightDifference ? weightDifference > 0 : false;
-    const currentGoalType = !weightDifference ? 'maintain' : (isGainingWeight ? 'gain' : 'lose');
+    const isGainingWeight = weightDelta > 0;
+    const currentGoalType = weightDelta === 0 ? 'maintain' : (isGainingWeight ? 'gain' : 'lose');
     
     // Calculate additional metrics
-    const daysToGoal = targetDate && deficitData ? 
-      Math.max(0, Math.ceil((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : null;
+    const daysToGoal = deficitData ? 
+      Math.max(0, Math.ceil((computedTargetDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : null;
     const weeksToGoal = daysToGoal ? Math.ceil(daysToGoal / 7) : null;
     const weeklyFatLossGrams = deficitData?.weekly ? Math.round(deficitData.weekly / 7700 * 1000) : null;
     
@@ -607,17 +635,17 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         bmr: bmr ? Math.round(bmr) : null,
         tdee: tdee,
         // Add all calculated tracking values
-        weight_difference_kg: weightDifference,
+        weight_difference_kg: weightDelta,
         weeks_to_goal: weeksToGoal,
         days_to_goal: daysToGoal,
         weekly_calorie_deficit: deficitData?.weekly || null,
         total_calories_needed: deficitData?.total || null,
         weekly_fat_loss_g: weeklyFatLossGrams,
-        target_date: targetDate || null,
+        target_date: targetDateStr,
         is_gaining_weight: isGainingWeight,
         goal_type: currentGoalType,
-        is_realistic_goal: realismScore >= 6,
-        warning_message: realismScore < 6 ? getRealismLabel(realismScore) : null,
+        is_realistic_goal: realismScore >= 60,
+        warning_message: realismScore < 60 ? getRealismLabel(realismScore, protocolTempo) : null,
       }, {
         onConflict: 'user_id,goal_date'
       });
@@ -842,188 +870,36 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
-        {/* 2. Goals */}
+        {/* 2. Goals - Protocol-Driven Configurator */}
         <div className="space-y-4">
           <div className="flex items-center gap-3 mb-4">
             <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center">
-              <Target className="h-5 w-5 text-white" />
+              <Target className="h-5 w-5 text-primary-foreground" />
             </div>
             <h2 className="text-lg md:text-xl font-bold">Ziele</h2>
           </div>
 
+          <GoalConfigurator
+            currentWeight={parseFloat(weight) || 80}
+            weightDelta={weightDelta}
+            setWeightDelta={setWeightDelta}
+            muscleGoal={muscleGoal}
+            setMuscleGoal={setMuscleGoal}
+            protocolTempo={protocolTempo}
+            setProtocolTempo={setProtocolTempo}
+            tdee={tdee || 2000}
+          />
+
+          {/* Water Goal - Separate Card */}
           <Card>
-            <CardContent className="space-y-4 pt-5">
-              <div className="relative">
-                <Label className="text-sm">Ziel</Label>
-                <Select value={goal} onValueChange={setGoal}>
-                  <SelectTrigger className={cn("mt-1", validationErrors.goal && "border-red-500")}>
-                    <SelectValue placeholder="Wählen..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="lose">Gewicht reduzieren</SelectItem>
-                    <SelectItem value="maintain">Gewicht halten</SelectItem>
-                    <SelectItem value="gain">Gewicht aufbauen</SelectItem>
-                  </SelectContent>
-                </Select>
-                <ProfileFieldIndicator isComplete={completionStatus.goal} />
-              </div>
-
-              <div className="relative">
-                <Label className="text-sm">Ziel-Typ</Label>
-                <Select value={goalType} onValueChange={(value: 'weight' | 'body_fat' | 'both') => setGoalType(value)}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Wählen..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weight">Gewichtsziel</SelectItem>
-                    <SelectItem value="body_fat">Körperfett-Ziel (%)</SelectItem>
-                    <SelectItem value="both">Beides</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {(goalType === 'weight' || goalType === 'both') && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="relative">
-                    <Label className="text-sm">Zielgewicht</Label>
-                    <NumericInput
-                      value={targetWeight}
-                      onChange={setTargetWeight}
-                      placeholder="70"
-                      className="mt-1"
-                    />
-                    <ProfileFieldIndicator isComplete={completionStatus.targetWeight} />
-                  </div>
-                  <div>
-                    <Label className="text-sm">Zieldatum</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal mt-1",
-                            !targetDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {targetDate ? format(new Date(targetDate), "dd.MM.yyyy") : <span>Datum wählen</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={targetDate ? new Date(targetDate) : undefined}
-                          onSelect={(date) => setTargetDate(date ? format(date, "yyyy-MM-dd") : "")}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              )}
-
-              {(goalType === 'body_fat' || goalType === 'both') && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="relative">
-                    <Label className="text-sm">Ziel Körperfett (%)</Label>
-                    <Select 
-                      value={targetBodyFat?.toString() || ''} 
-                      onValueChange={(value) => setTargetBodyFat(value)}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue 
-                          placeholder={`${gender === 'male' ? '5-35%' : '10-40%'} wählen`}
-                        />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[200px]">
-                        {(() => {
-                          const isMale = gender === 'male';
-                          const minValue = isMale ? 5 : 10;
-                          const maxValue = isMale ? 35 : 40;
-                          const options = [];
-                          
-                          for (let i = minValue; i <= maxValue; i += 0.5) {
-                            let category = '';
-                            if (isMale) {
-                              if (i <= 13) category = ' (Athletic)';
-                              else if (i <= 17) category = ' (Fit)';
-                              else if (i <= 24) category = ' (Average)';
-                              else category = ' (Above Average)';
-                            } else {
-                              if (i <= 20) category = ' (Athletic)';
-                              else if (i <= 24) category = ' (Fit)';
-                              else if (i <= 31) category = ' (Average)';
-                              else category = ' (Above Average)';
-                            }
-                            options.push(
-                              <SelectItem key={i} value={i.toString()}>
-                                {i.toFixed(1)}%{category}
-                              </SelectItem>
-                            );
-                          }
-                          return options;
-                        })()}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label className="text-sm">Zieldatum</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal mt-1",
-                            !targetDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {targetDate ? format(new Date(targetDate), "dd.MM.yyyy") : <span>Datum wählen</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={targetDate ? new Date(targetDate) : undefined}
-                          onSelect={(date) => setTargetDate(date ? format(date, "yyyy-MM-dd") : "")}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-              )}
-
-              {/* Realism Assessment */}
-              {targetWeight && targetDate && (
-                <div className="mt-4 pt-4 border-t border-border/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-foreground">Realismus-Bewertung</span>
-                    <Badge variant={getRealismVariant(realismScore)} className="text-xs">
-                      {realismScore.toFixed(0)}%
-                    </Badge>
-                  </div>
-                  <Progress value={realismScore} className="w-full h-2 mb-2" />
-                  <div className="text-xs text-muted-foreground">
-                    {getRealismLabel(realismScore)}
-                  </div>
-                </div>
-              )}
-
-              {/* Water Goal Slider */}
-              <div className="mt-6 pt-4 border-t border-border/50">
-                <FluidGoalSlider
-                  value={fluidGoalMl}
-                  onChange={setFluidGoalMl}
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Empfohlen: 2.0 - 3.0 Liter pro Tag basierend auf Aktivitätslevel
-                </p>
-              </div>
+            <CardContent className="pt-5">
+              <FluidGoalSlider
+                value={fluidGoalMl}
+                onChange={setFluidGoalMl}
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                Empfohlen: 2.0 - 3.0 Liter pro Tag basierend auf Aktivitätslevel
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -1059,15 +935,15 @@ const Profile = ({ onClose }: ProfilePageProps) => {
               </div>
 
               {/* Goal Deficit/Surplus Section - Only if target set */}
-              {targetWeight && targetDate && calculateRequiredCalorieDeficit() && (
+              {weightDelta !== 0 && calculateRequiredCalorieDeficit() && (
                 <div className="pt-3 border-t border-border">
                   <div className="grid grid-cols-4 gap-2 text-center">
                     <div className="bg-muted/50 rounded-lg p-2">
                       <div className="text-sm font-bold text-primary">
-                        {Math.abs(parseFloat(targetWeight || '0') - parseFloat(weight || '0')).toFixed(1)} kg
+                        {Math.abs(weightDelta).toFixed(1)} kg
                       </div>
                       <div className="text-[10px] text-muted-foreground">
-                        {parseFloat(targetWeight || '0') > parseFloat(weight || '0') ? '↑' : '↓'} Differenz
+                        {weightDelta > 0 ? '↑' : '↓'} Differenz
                       </div>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-2">
@@ -1088,7 +964,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
                     </div>
                     <div className="bg-muted/50 rounded-lg p-2">
                       <div className="text-sm font-bold text-indigo-500">
-                        {Math.max(1, Math.round((new Date(targetDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))}w
+                        {Math.max(1, Math.round((computedTargetDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 7)))}w
                       </div>
                       <div className="text-[10px] text-muted-foreground">
                         verbleibend

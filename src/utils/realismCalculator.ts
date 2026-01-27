@@ -1,10 +1,13 @@
 // Unified realism calculator for transformation goals
+export type ProtocolTempo = 'sustainable' | 'standard' | 'aggressive';
+
 export interface TransformationGoals {
   currentWeight: number;
   targetWeight: number;
   currentBodyFat?: number;
   targetBodyFat?: number;
   targetDate: Date;
+  protocolTempo?: ProtocolTempo;
 }
 
 export function calculateRealismScore(goals: TransformationGoals): number {
@@ -85,7 +88,15 @@ export function calculateRealismScore(goals: TransformationGoals): number {
   return Math.round(finalScore);
 }
 
-export function getRealismLabel(score: number): string {
+export function getRealismLabel(score: number, tempo?: ProtocolTempo): string {
+  // Tempo-aware messaging
+  if (tempo === 'aggressive' && score < 60) {
+    return "Aggressives Tempo - hohes Risiko, erfordert strikte Disziplin";
+  }
+  if (tempo === 'aggressive' && score >= 60) {
+    return "Aggressiv aber machbar - maximale Fokussierung nötig";
+  }
+  
   if (score >= 81) return "Realistisch erreichbar - mit konstanter Disziplin";
   if (score >= 61) return "Ambitioniert aber machbar - mit viel Disziplin";
   if (score >= 31) return "Sehr schwer erreichbar - extremer Aufwand nötig";
