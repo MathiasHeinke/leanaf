@@ -7,7 +7,7 @@
 
 import React, { useState } from 'react';
 import { motion, useMotionValue, useTransform, PanInfo, AnimatePresence } from 'framer-motion';
-import { Check, X, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe, PenTool, Scale, Utensils } from 'lucide-react';
+import { Check, X, ChevronRight, ChevronLeft, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Sunrise, Clock, Dumbbell, LucideIcon, GlassWater, Milk, Syringe, PenTool, Scale, Utensils } from 'lucide-react';
 import { openJournal, openSleep, openTraining, openWeight, openMeal } from '@/components/quick/quickAddBus';
 import { cn } from '@/lib/utils';
 import { EpiphanyCard } from './EpiphanyCard';
@@ -38,6 +38,7 @@ interface SmartFocusCardProps {
   task: SmartTask;
   onComplete: (action?: string) => void;
   onDismiss: () => void;
+  onSnooze: () => void;           // 2h Snooze (Swipe Right)
   onOpenChat?: (prompt: string) => void;
   onSupplementAction?: (timing: string) => void;
   onHydrationAction?: (action: string) => void;
@@ -187,10 +188,34 @@ const HydrationMicroActions: React.FC<HydrationMicroActionsProps> = ({ onAction 
   );
 };
 
+// --- SNOOZE HINT (Bottom Right) ---
+interface SnoozeHintProps {
+  onSnooze: () => void;
+}
+
+const SnoozeHint: React.FC<SnoozeHintProps> = ({ onSnooze }) => (
+  <motion.button
+    onClick={(e) => { 
+      e.stopPropagation(); 
+      onSnooze(); 
+    }}
+    whileTap={{ scale: 0.9 }}
+    className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 px-2.5 py-1.5 
+               rounded-full bg-white/10 backdrop-blur-sm border border-white/10
+               text-white/50 text-[10px] font-medium hover:bg-white/20 hover:text-white/70 
+               transition-all group"
+  >
+    <ChevronLeft size={10} className="opacity-50 group-hover:opacity-100" />
+    <span>2h</span>
+    <Clock size={11} className="opacity-50 group-hover:opacity-100" />
+  </motion.button>
+);
+
 export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({ 
   task, 
   onComplete, 
   onDismiss,
+  onSnooze,
   onOpenChat,
   onSupplementAction,
   onHydrationAction,
@@ -204,20 +229,18 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 0.5, 1, 0.5, 0]);
   const rotate = useTransform(x, [-200, 200], [-10, 10]);
 
-  // Color feedback when swiping: Green right, Red left
-  const bgOverlayOpacity = useTransform(x, [-150, 0, 150], [0.5, 0, 0.5]);
-  const bgOverlayColor = useTransform(x, [-150, 0, 150], ["#ef4444", "transparent", "#22c55e"]);
+  // Color feedback when swiping: Orange/Amber for snooze (right only)
+  const bgOverlayOpacity = useTransform(x, [0, 80, 150], [0, 0.3, 0.5]);
+  const bgOverlayColor = useTransform(x, [0, 80, 150], ["transparent", "#f59e0b", "#f59e0b"]);
 
   const Icon = task.icon;
 
   const handleDragEnd = (_: any, info: PanInfo) => {
-    if (info.offset.x > 100 && task.canSwipeComplete !== false) {
-      // SWIPE RIGHT -> COMPLETE (default action)
-      handleComplete();
-    } else if (info.offset.x < -100) {
-      // SWIPE LEFT -> DISMISS
-      onDismiss();
+    if (info.offset.x > 100) {
+      // SWIPE RIGHT -> 2H SNOOZE (Standby)
+      onSnooze();
     }
+    // Swipe links deaktiviert - Card snappt zurück
   };
 
   const handleComplete = (specificAction?: string) => {
@@ -250,16 +273,16 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
           <motion.div
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.7}
+            dragElastic={{ left: 0.1, right: 0.7 }}
             style={{ x, rotate, opacity }}
             onDragEnd={handleDragEnd}
             whileTap={{ cursor: "grabbing" }}
             onClick={handleCardClick}
             className="absolute inset-0 z-20 touch-pan-x"
           >
-            {/* CARD CONTAINER - Increased padding for button breathing room */}
+            {/* CARD CONTAINER - Increased padding for snooze hint */}
             <div className={cn(
-              "relative h-full w-full overflow-hidden rounded-3xl p-6 pb-7 text-white shadow-2xl flex flex-col justify-between bg-gradient-to-br",
+              "relative h-full w-full overflow-hidden rounded-3xl p-6 pb-10 text-white shadow-2xl flex flex-col justify-between bg-gradient-to-br",
               task.gradient
             )}>
               
@@ -314,6 +337,9 @@ export const SmartFocusCard: React.FC<SmartFocusCardProps> = ({
                   onHydrationAction={onHydrationAction}
                 />
               </div>
+
+              {/* SNOOZE HINT - Bottom Right */}
+              <SnoozeHint onSnooze={onSnooze} />
             </div>
           </motion.div>
         ) : (

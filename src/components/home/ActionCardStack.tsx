@@ -247,11 +247,20 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
     }
   }, [trackEvent, dismissCard, onTriggerChat]);
 
-  // Handle card dismissal (snooze)
-  const handleCardDismiss = useCallback((card: ActionCard) => {
-    dismissCard(card.id, true); // Snooze for 2 hours
+  // Handle card snooze (2h) - triggered by swipe right
+  const handleCardSnooze = useCallback((card: ActionCard) => {
+    dismissCard(card.id, true); // true = Snooze for 2 hours
     setCards(prev => prev.filter(c => c.id !== card.id));
-    toast.info(`"${card.title}" ausgeblendet`, { description: 'Erscheint in 2h wieder' });
+    toast('Auf Standby', { 
+      description: 'Kommt in 2h wieder',
+      icon: '⏸️'
+    });
+  }, [dismissCard]);
+
+  // Handle card permanent dismiss (X button) - gone for today
+  const handleCardDismiss = useCallback((card: ActionCard) => {
+    dismissCard(card.id, false); // false = permanent for today
+    setCards(prev => prev.filter(c => c.id !== card.id));
   }, [dismissCard]);
 
   // Convert ActionCard to SmartTask for the component
@@ -388,6 +397,7 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
                     task={toSmartTask(card)}
                     onComplete={(action) => handleCardComplete(card, action)}
                     onDismiss={() => handleCardDismiss(card)}
+                    onSnooze={() => handleCardSnooze(card)}
                     onOpenChat={onTriggerChat}
                     onSupplementAction={(timing) => handleSupplementAction(card, timing)}
                     onHydrationAction={(action) => handleHydrationAction(card, action)}
