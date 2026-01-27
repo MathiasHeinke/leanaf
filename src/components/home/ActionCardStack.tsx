@@ -366,6 +366,7 @@ export const ActionCardStack: React.FC<ActionCardStackProps> = ({ onTriggerChat 
                     <EpiphanyCard
                       onOpenChat={onTriggerChat}
                       onDismiss={() => handleCardDismiss(card)}
+                      onSnooze={() => handleCardSnooze(card)}
                       prefetchedInsight={dailyInsight?.insight ?? null}
                     />
                   </motion.div>
