@@ -24,6 +24,7 @@ const TIMING_ICONS: Record<string, React.ElementType> = {
   morning: Sunrise,
   noon: Sun,
   evening: Moon,
+  bedtime: Moon,
   pre_workout: Dumbbell,
   post_workout: Dumbbell,
 };
@@ -32,6 +33,7 @@ const TIMING_LABELS: Record<string, string> = {
   morning: 'Morgens',
   noon: 'Mittags',
   evening: 'Abends',
+  bedtime: 'Vor dem Schlafen',
   pre_workout: 'Pre-Workout',
   post_workout: 'Post-Workout',
 };
