@@ -1,116 +1,95 @@
 
-# Bug Fix: Layer 2 zeigt falsche Timing-Gruppen
+# Supplement Layer 2: Chronologische Sortierung mit Hervorhebung
 
-## Problem-Analyse
+## Problem
 
-### Symptom
-- "Abends" (evening) fehlt komplett in Layer 2
-- Alle Supplements landen faelschlicherweise in "Morgens"
-
-### Ursache: Inkompatible Timing-Systeme
-
-Es existieren **zwei verschiedene Timing-Konstanten** im Projekt:
-
-**Layer 3 verwendet `PreferredTiming`** (aus `supplementLibrary.ts`):
-```
-morning, noon, afternoon, evening, bedtime, pre_workout, post_workout
-```
-
-**Layer 2 verwendet `TIMING_OPTIONS`** (aus `useSupplementData.tsx`):
-```
-morning, noon, evening, pre_workout, post_workout, before_bed
-```
-
-**Kritischer Unterschied:**
-- Layer 3: `bedtime`
-- Layer 2: `before_bed` (NICHT bedtime!)
-
-### Ablauf des Bugs
-
-1. User aktiviert z.B. "Magnesium" in Layer 3
-2. Layer 3 speichert `preferred_timing: 'bedtime'` in die DB
-3. Layer 2 liest die Daten und ruft `normalizeTimingArray(['bedtime'])` auf
-4. `normalizeTimingArray` prueft: "Ist 'bedtime' in TIMING_OPTIONS?" → **NEIN**
-5. 'bedtime' wird als ungueltig verworfen (return null)
-6. Array ist leer → Fallback auf `['morning']`
-7. **Resultat:** Magnesium erscheint unter "Morgens" statt "Abends/Vor dem Schlafen"
+1. **Keine Sortierung**: Timing-Gruppen werden in zufaelliger Object-Key-Reihenfolge angezeigt
+2. **Unvollstaendige Zeiterkennung**: `getCurrentTiming()` kennt nur morning/noon/evening, aber nicht `bedtime`
+3. **Keine visuelle Hervorhebung** des aktuellen Zeitslots
 
 ---
 
 ## Loesung
 
-### Option A: TIMING_OPTIONS erweitern (empfohlen)
-
-`bedtime` zu den gueltigen Optionen hinzufuegen und `LEGACY_TIMING_MAP` erweitern:
+### 1. Chronologische Sortier-Reihenfolge definieren
 
 ```typescript
-// src/hooks/useSupplementData.tsx
-
-export const TIMING_OPTIONS = [
-  { value: 'morning', label: 'Morgens', icon: '☀️', tip: 'Auf leeren Magen' },
-  { value: 'noon', label: 'Mittags', icon: '🌅', tip: 'Zwischen den Mahlzeiten' },
-  { value: 'evening', label: 'Abends', icon: '🌙', tip: 'Mit dem Abendessen' },
-  { value: 'bedtime', label: 'Vor dem Schlafen', icon: '🛏️', tip: 'Vor dem Einschlafen' },  // NEU
-  { value: 'pre_workout', label: 'Vor dem Training', icon: '💪', tip: '30-60 Min vor Training' },
-  { value: 'post_workout', label: 'Nach dem Training', icon: '🏃', tip: 'Innerhalb 30 Min' },
+const TIMING_ORDER: string[] = [
+  'morning',      // 05:00 - 11:59
+  'noon',         // 12:00 - 16:59  
+  'evening',      // 17:00 - 20:59
+  'bedtime',      // 21:00 - 04:59
+  'pre_workout',  // Dynamisch
+  'post_workout', // Dynamisch
 ];
-
-export const LEGACY_TIMING_MAP: Record<string, string> = {
-  'empty_stomach': 'morning',
-  'between_meals': 'noon', 
-  'with_food': 'evening',
-  'before_bed': 'bedtime',     // ← Mapping hinzufuegen
-  'before_sleep': 'bedtime',   // ← Mapping hinzufuegen
-  'workout': 'pre_workout',
-  'after_workout': 'post_workout'
-};
 ```
 
-### Aenderungen in SupplementsLogger.tsx
-
-Die Icons/Labels sind bereits korrekt (aus dem letzten Fix), aber zur Sicherheit nochmal pruefen:
+### 2. getCurrentTiming() erweitern
 
 ```typescript
-const TIMING_ICONS: Record<string, React.ElementType> = {
-  morning: Sunrise,
-  noon: Sun,
-  evening: Moon,
-  bedtime: Moon,  // ✓ Bereits vorhanden
-  pre_workout: Dumbbell,
-  post_workout: Dumbbell,
+const getCurrentTiming = (): string => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'noon';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'bedtime'; // 21:00 - 04:59
 };
+```
 
-const TIMING_LABELS: Record<string, string> = {
-  morning: 'Morgens',
-  noon: 'Mittags',
-  evening: 'Abends',
-  bedtime: 'Vor dem Schlafen',  // ✓ Bereits vorhanden
-  pre_workout: 'Pre-Workout',
-  post_workout: 'Post-Workout',
-};
+### 3. Timings sortieren vor Anzeige
+
+```typescript
+const sortedTimings = Object.keys(groupedSupplements).sort(
+  (a, b) => TIMING_ORDER.indexOf(a) - TIMING_ORDER.indexOf(b)
+);
+```
+
+### 4. Aktuelle Zeit visuell hervorheben
+
+Der aktuelle Zeitslot bekommt einen farbigen Rand und "Jetzt"-Badge:
+
+```typescript
+const isCurrent = timing === currentTiming;
+
+// Im JSX:
+<div className={cn(
+  "...",
+  isCurrent && !isComplete && "ring-2 ring-primary/50"
+)}>
+  {isCurrent && !isComplete && (
+    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+      Jetzt
+    </span>
+  )}
+</div>
 ```
 
 ---
 
-## Technischer Ablauf nach Fix
-
-1. User aktiviert "Magnesium" in Layer 3
-2. Layer 3 speichert `preferred_timing: 'bedtime'`
-3. Layer 2 liest → `normalizeTimingArray(['bedtime'])`
-4. `normalizeTimingArray` prueft: "Ist 'bedtime' in TIMING_OPTIONS?" → **JA** (neu!)
-5. Rueckgabe: `['bedtime']`
-6. **Resultat:** Magnesium erscheint korrekt unter "Vor dem Schlafen"
-
----
-
-## Dateien
+## Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/hooks/useSupplementData.tsx` | `bedtime` zu TIMING_OPTIONS hinzufuegen, LEGACY_TIMING_MAP erweitern |
+| `src/components/home/loggers/SupplementsLogger.tsx` | TIMING_ORDER hinzufuegen, getCurrentTiming() erweitern, sortedTimings verwenden, "Jetzt"-Badge hinzufuegen |
 
 ---
 
-## Hinweis: Bestehende Daten
+## Resultat
 
-Fuer bereits aktivierte Supplements sind keine Datenbankmigrationen noetig. Die DB speichert bereits `preferred_timing: 'bedtime'` korrekt - nur die Validierung in Layer 2 hat diese Werte faelschlicherweise verworfen. Nach dem Fix werden sie sofort korrekt angezeigt.
+```text
++----------------------------------+
+| [ring] Morgens ← "Jetzt" Badge   |  (wenn 06:00-11:59)
+|        2/3                       |
++----------------------------------+
+| Mittags                          |
+|        0/4                       |
++----------------------------------+
+| Abends                           |
+|        0/2                       |
++----------------------------------+
+| Vor dem Schlafen                 |
+|        0/1                       |
++----------------------------------+
+```
+
+Die Reihenfolge ist immer chronologisch. Der aktuelle Zeitslot ist visuell hervorgehoben mit einem Ring und "Jetzt"-Badge, sofern er noch nicht komplett erledigt ist.
