@@ -1,5 +1,5 @@
-// ARES Complete Supplement Seed Index v3.5
-// Kombiniert alle Seed-Dateien: ~520+ Produkte
+// ARES Complete Supplement Seed Index v3.6
+// Kombiniert alle Seed-Dateien: ~580+ Produkte (inkl. TMG, GlyNAC, Colostrum, Alpha-GPC, etc.)
 // Budget, Premium, Sport, Pharmacy Kategorien
 
 import { ProductSeed } from '../supplementProductsSeed';
