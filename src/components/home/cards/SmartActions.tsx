@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Dumbbell, LucideIcon, GlassWater, Milk, PenTool, Scale, Utensils } from 'lucide-react';
+import { Check, ChevronRight, Droplets, Coffee, Pill, Camera, BrainCircuit, Moon, Dumbbell, LucideIcon, GlassWater, Milk, PenTool, Scale, Utensils, Target, Footprints } from 'lucide-react';
 import { openJournal, openSleep, openTraining, openWeight, openMeal } from '@/components/quick/quickAddBus';
 import { cn } from '@/lib/utils';
 import { SupplementTimingCircles } from './SupplementTimingCircles';
@@ -14,7 +14,7 @@ import { PeptideTimingCircles } from './PeptideFocusCard';
 // --- TYPES ---
 export interface SmartTask {
   id: string;
-  type: 'hydration' | 'supplement' | 'supplements' | 'peptide' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix' | 'training' | 'weight' | 'sleep_log' | 'nutrition';
+  type: 'hydration' | 'supplement' | 'supplements' | 'peptide' | 'food' | 'workout' | 'sleep' | 'protein' | 'insight' | 'epiphany' | 'profile' | 'journal' | 'sleep_fix' | 'training' | 'weight' | 'sleep_log' | 'nutrition' | 'morning_journal' | 'morning_hydration' | 'movement';
   title: string;
   subtitle: string;
   xp: number;
@@ -190,10 +190,18 @@ export const SmartActions: React.FC<SmartActionsProps> = ({
   }
 
   // HYDRATION: Icon-based micro-actions with bounce & reset
-  if (task.type === 'hydration') {
+  if (task.type === 'hydration' || task.type === 'morning_hydration') {
     // If dedicated hydration handler exists -> multi-tap without closing card
     if (onHydrationAction) {
       return <HydrationMicroActions onAction={onHydrationAction} />;
+    }
+    // Morning hydration: Single 500ml button
+    if (task.type === 'morning_hydration') {
+      return (
+        <div className="flex gap-2">
+          <MicroActionButton action={{ id: '500ml_water', label: '+500ml', icon: Droplets }} onTrigger={onAction} />
+        </div>
+      );
     }
     // Fallback: use MicroActionButtons but trigger card close via onAction
     return (
@@ -261,7 +269,7 @@ export const SmartActions: React.FC<SmartActionsProps> = ({
   }
 
   // JOURNAL: Open Quick Log Sheet (stay on homescreen)
-  if (task.type === 'journal') {
+  if (task.type === 'journal' || task.type === 'morning_journal') {
     return (
       <button 
         onClick={(e) => {
@@ -270,8 +278,17 @@ export const SmartActions: React.FC<SmartActionsProps> = ({
         }}
         className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
       >
-        <PenTool size={16} />
-        <span>Journal schreiben</span>
+        {task.type === 'morning_journal' ? (
+          <>
+            <Target size={16} />
+            <span>Intention setzen</span>
+          </>
+        ) : (
+          <>
+            <PenTool size={16} />
+            <span>Journal schreiben</span>
+          </>
+        )}
         <ChevronRight size={14} className="opacity-60" />
       </button>
     );
@@ -306,6 +323,23 @@ export const SmartActions: React.FC<SmartActionsProps> = ({
       >
         <Dumbbell size={16} />
         <span>Workout starten</span>
+        <ChevronRight size={14} className="opacity-60" />
+      </button>
+    );
+  }
+
+  // MOVEMENT: Open Training Logger with movement focus
+  if (task.type === 'movement') {
+    return (
+      <button 
+        onClick={(e) => {
+          e.stopPropagation();
+          openTraining();
+        }}
+        className="w-full py-3 bg-white/20 hover:bg-white/30 active:bg-white/40 backdrop-blur-md rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-colors border border-white/10"
+      >
+        <Footprints size={16} />
+        <span>Bewegung loggen</span>
         <ChevronRight size={14} className="opacity-60" />
       </button>
     );
