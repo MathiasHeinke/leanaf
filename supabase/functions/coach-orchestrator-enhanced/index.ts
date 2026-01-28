@@ -25,9 +25,15 @@ import {
   loadTopicHistory,
   updateTopicStats,
   findPrimaryTopic,
+  // ARES "Elefantengedächtnis 2.0" - Token-Based Conversation Window
+  buildTokenBudgetedHistory,
+  formatConversationContext,
+  shouldGenerateSummary,
   type UserHealthContext,
   type ConversationMessage,
   type TopicContext,
+  type ConversationPair,
+  type WindowResult,
 } from '../_shared/context/index.ts';
 
 // ARES 3.0 Response Budget Calculator
@@ -1025,7 +1031,7 @@ async function buildUserContext({ userId, supaClient }: { userId: string; supaCl
     .eq('user_id', userId)
     .eq('coach_personality', 'ares')
     .order('created_at', { ascending: false })
-    .limit(30); // Load more raw messages for better context pairing
+    .limit(50); // Elefantengedächtnis 2.0: Load more raw messages for token-budgeted window
 
   if (convError) {
     console.warn('[ARES-CONTEXT] Conversations load error:', convError.message);
@@ -1394,7 +1400,7 @@ function formatConversationHistory(conversations: any[]): string {
   return formatted;
 }
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext, userInsights, userPatterns, knowledgeContext, bloodworkContext, topicState, topicHistory, responseBudget }: {
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, formattedConversationContext, personaPrompt, healthContext, userInsights, userPatterns, knowledgeContext, bloodworkContext, topicState, topicHistory, responseBudget }: {
   persona: any;
   context: any;
   ragSources: any;
@@ -1402,6 +1408,7 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   images: any;
   userMoodContext?: UserMoodContext;
   conversationHistory?: any[];
+  formattedConversationContext?: string; // Elefantengedächtnis 2.0: Pre-formatted token-budgeted context
   personaPrompt?: string; // Phase 2: Persona-specific prompt section
   healthContext?: UserHealthContext | null; // Phase 3: Extended health context
   userInsights?: UserInsight[]; // Phase 4: Memory insights
@@ -1519,10 +1526,13 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   };
   
   // Build conversation history section
-  const historySection = conversationHistory && conversationHistory.length > 0 
-    ? `\n## LETZTE GESPRÄCHE (Kontext)
+  // Elefantengedächtnis 2.0: Use pre-formatted token-budgeted context if available
+  const historySection = formattedConversationContext 
+    ? `\n${formattedConversationContext}`
+    : (conversationHistory && conversationHistory.length > 0 
+      ? `\n## LETZTE GESPRÄCHE (Kontext)
 ${formatConversationHistory(conversationHistory)}`
-    : '';
+      : '');
 
   // Build relationship/memory context section
   const memory = context.memory;
@@ -2627,7 +2637,7 @@ Deno.serve(async (req) => {
       .eq('user_id', user.id)
       .eq('coach_personality', coachId)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);  // Elefantengedächtnis 2.0: Load more for token-budgeted window
     
     if (convLoadError) {
       console.warn('[ARES] Failed to load conversations:', convLoadError.message);
@@ -2636,6 +2646,35 @@ Deno.serve(async (req) => {
     // Convert raw user/assistant rows to paired {message, response} format
     const conversationHistory = pairConversationMessages(rawConversations || []);
     console.log('[ARES] Loaded ' + (rawConversations?.length || 0) + ' raw messages -> ' + conversationHistory.length + ' conversation pairs');
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ELEFANTENGEDÄCHTNIS 2.0: Load Rolling Summary + Apply Token-Budgeted Window
+    // ═══════════════════════════════════════════════════════════════════════════════
+    
+    // Import generateRollingSummary for post-response trigger
+    const { loadRollingSummary, generateRollingSummary } = await import('./memory.ts');
+    
+    // Load existing rolling summary (compressed older conversations)
+    const rollingSummary = await loadRollingSummary(supaSvc, user.id, coachId).catch((e: any) => {
+      console.warn('[ARES-MEMORY] Failed to load rolling summary:', e?.message || e);
+      return '';
+    });
+    
+    if (rollingSummary) {
+      console.log('[ARES-MEMORY] Rolling Summary loaded:', rollingSummary.length, 'chars');
+    }
+    
+    // Apply token-budgeted window to conversation history
+    const memoryWindow: WindowResult = buildTokenBudgetedHistory(
+      conversationHistory,
+      rollingSummary || null,
+      2500  // Total token budget for conversation context
+    );
+    
+    console.log(`[ARES-MEMORY] Window result: ${memoryWindow.pairs.length} pairs, ${memoryWindow.totalTokens} tokens, ${memoryWindow.trimmedCount} trimmed`);
+    
+    // Format for prompt injection (replaces old formatConversationHistory)
+    const conversationContextForPrompt = formatConversationContext(memoryWindow);
 
     // Phase 3: Load user's selected persona with context resolution
     // Extract last bot message for Semantic Router context
@@ -2800,6 +2839,7 @@ Deno.serve(async (req) => {
     // Phase 4: Pass userInsights and userPatterns for memory context
     // Phase 7: Pass topicState for conversation flow management
     // ARES 3.0: Pass topicHistory and responseBudget for Response Intelligence
+    // Elefantengedächtnis 2.0: Pass pre-formatted token-budgeted conversation context
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
       persona: userPersona || persona, 
       context, 
@@ -2808,6 +2848,7 @@ Deno.serve(async (req) => {
       images, 
       userMoodContext, 
       conversationHistory: conversationHistory ?? undefined,
+      formattedConversationContext: conversationContextForPrompt || undefined, // Elefantengedächtnis 2.0
       personaPrompt: personaPrompt || undefined, // Phase 2: Include persona-specific prompt
       healthContext: healthContext || undefined, // Phase 3: Include health context
       userInsights: userInsights.length > 0 ? userInsights : undefined, // Phase 4: Memory insights
@@ -3061,6 +3102,26 @@ Deno.serve(async (req) => {
       updateTopicStats(supaSvc, user.id, detectedTopics, finalOutput.length)
         .then(() => console.log(`[ARES-TOPIC] Updated stats for ${detectedTopics.length} topics`))
         .catch(err => console.warn('[ARES-TOPIC] Failed to update stats:', err));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ELEFANTENGEDÄCHTNIS 2.0: Trigger Rolling Summary Generation if needed
+    // Fire-and-forget to avoid blocking the response
+    // ═══════════════════════════════════════════════════════════════════════════════
+    const rawMessageCount = rawConversations?.length || 0;
+    
+    if (shouldGenerateSummary(rawMessageCount, rollingSummary || null, 40)) {
+      console.log(`[ARES-MEMORY] Triggering summary generation (${rawMessageCount} raw messages, no existing summary)`);
+      
+      // Fire & Forget - don't block response
+      generateRollingSummary(
+        supaSvc,
+        user.id,
+        coachId,
+        conversationHistory.slice(0, 20)  // Oldest 20 pairs for summary
+      )
+        .then(() => console.log('[ARES-MEMORY] Rolling Summary generated successfully'))
+        .catch((err: any) => console.warn('[ARES-MEMORY] Summary generation failed:', err?.message || err));
     }
 
     // Phase 8: Award XP for this interaction (non-blocking but awaited)

@@ -1,16 +1,16 @@
 
-# ARES Elefantengedächtnis 2.0 - Finaler Implementierungsplan
+# ARES Elefantengedächtnis 2.0 - ✅ IMPLEMENTIERT
 
-## Executive Summary
+**Status:** Vollständig implementiert und deployed (2026-01-28)
 
-Das aktuelle Memory-System hat kritische Schwächen:
+## Implementierte Änderungen
 
-| Problem | Ist-Zustand | Soll-Zustand |
-|---------|-------------|--------------|
-| **History-Limit** | 2 Stellen: `.limit(20)` und `.limit(30)` | Einheitlich `.limit(50)` + Token-Budget |
-| **Rolling Summary** | Existiert in DB, wird IGNORIERT | Aktiv geladen + in Prompt injiziert |
-| **Summary Generation** | Keine automatische Generierung | Trigger bei >40 Nachrichten |
-| **formatConversationHistory** | Schneidet Responses auf 200 Zeichen | Volle Responses, token-budgetiert |
+| Datei | Änderung |
+|-------|----------|
+| `_shared/context/conversationWindow.ts` | ✅ NEU - Token-Budget-Logik |
+| `_shared/context/index.ts` | ✅ Exports aktualisiert |
+| `coach-orchestrator-enhanced/memory.ts` | ✅ generateRollingSummary hinzugefügt |
+| `coach-orchestrator-enhanced/index.ts` | ✅ Integration vollständig |
 
 ---
 

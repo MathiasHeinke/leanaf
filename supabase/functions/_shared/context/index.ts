@@ -31,3 +31,14 @@ export {
   type TopicContext,
   type TopicLevel,
 } from './topicTracker.ts';
+
+// ARES "Elefantengedächtnis 2.0" - Token-Based Conversation Window
+export {
+  buildTokenBudgetedHistory,
+  formatConversationContext,
+  estimateTokens,
+  shouldGenerateSummary,
+  CONVERSATION_WINDOW_CONFIG,
+  type ConversationPair,
+  type WindowResult,
+} from './conversationWindow.ts';
