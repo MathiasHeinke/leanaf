@@ -382,12 +382,15 @@ export const useMissingEssentials = (userPhase: number) => {
   const { data: stack } = useUserStack();
   const { data: phaseSupplements } = useSupplementsByPhase(userPhase);
 
-  const userSupplementNames = new Set(
-    (stack || []).map(s => s.name.toLowerCase().trim())
+  // Compare by supplement_id instead of name for accurate matching
+  const userSupplementIds = new Set(
+    (stack || [])
+      .filter(s => s.is_active && s.supplement_id)
+      .map(s => s.supplement_id)
   );
 
   const missingEssentials = (phaseSupplements?.essentials || []).filter(
-    s => !userSupplementNames.has(s.name.toLowerCase().trim())
+    s => !userSupplementIds.has(s.id)
   );
 
   return {
@@ -467,7 +470,7 @@ export const useSupplementToggle = () => {
             dosage: item.default_dosage || '',
             unit: item.default_unit || 'mg',
             preferred_timing: timing,
-            timing: item.common_timing || [],
+            timing: (item.common_timing?.length) ? item.common_timing : ['morning'],
             schedule: schedule as any,
             is_active: true,
           },
@@ -524,7 +527,7 @@ export const useAutoActivateEssentials = () => {
         dosage: item.default_dosage || '',
         unit: item.default_unit || 'mg',
         preferred_timing: mapCommonTimingToPreferred(item.common_timing || []),
-        timing: item.common_timing || [],
+        timing: (item.common_timing?.length) ? item.common_timing : ['morning'],
         schedule: { type: 'daily' as const } as any,
         is_active: true,
       }));
