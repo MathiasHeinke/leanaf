@@ -1,160 +1,133 @@
 
-# Plan: Seed-Files auf 520+ Produkte erweitern
+# Plan: Journal-Speicherung Debuggen & Verbessern
 
-## Übersicht
+## Problem-Zusammenfassung
 
-Das Markdown `ARES_SUPPLEMENT_DATABASE_v3.4_COMPLETE` enthält **520+ konkrete Produkte** von 8 Herstellern. Aktuell sind nur ~168 Produkte in der Datenbank (+ ~100 in lokalen Seed-Dateien = ~270 total). Es fehlen ca. **250 Produkte**.
+Der Benutzer kann Journal-Einträge nicht speichern. Nach Analyse des Codes und der Datenbank zeigt sich:
 
-## Aktuelle Lückenanalyse
+- Datenbank-Schema ist korrekt (alle Spalten vorhanden)
+- RLS-Policy erlaubt Schreibzugriff für authentifizierte Benutzer
+- Es gibt einen erfolgreichen Eintrag von vor wenigen Minuten
 
-| Hersteller | Im Markdown | Aktuell in Seed | Lücke |
-|------------|-------------|-----------------|-------|
-| Nature Love | ~60 | ~18 | **+42** |
-| Naturtreu | ~65 | ~15 | **+50** |
-| MoleQlar | ~50 | ~28 | **+22** |
-| Sunday Natural | ~45 | ~24 | **+21** |
-| ESN | ~25 | ~10 | **+15** |
-| More Nutrition | ~20 | ~7 | **+13** |
-| Biogena | ~60 | 0 | **+60** NEU |
-| Orthomol | ~30 | 0 | **+30** NEU |
-| Doppelherz | ~10 | 0 | **+10** NEU |
+## Identifizierte Schwachstellen
 
-**Gesamt: ~520 Produkte Ziel, ~250 zu ergänzen**
+| Problem | Datei | Beschreibung |
+|---------|-------|--------------|
+| Fehlendes Fehler-Feedback | JournalLogger.tsx | Wenn `trackEvent` false zurückgibt, gibt es keine spezifische Fehlermeldung |
+| Generischer Error-Toast | useAresEvents.ts | "Speichern fehlgeschlagen" ohne Details zur Ursache |
+| Platzhalter-Button verwirrt | JournalLogger.tsx | "Foto hinzufügen" ist nicht implementiert |
 
----
+## Lösungsplan
 
-## Implementierungsplan
+### Phase 1: Besseres Fehler-Feedback
 
-### Phase 1: Neue Hersteller-Dateien erstellen
+**Datei: `src/components/home/loggers/JournalLogger.tsx`**
 
-**Datei 1: `src/data/seeds/pharmacyBrandsSeed.ts`**
-- Biogena (~60 Produkte): Longevity, Mikronährstoffe, Aminosäuren, Omnibiotic
-- Orthomol (~30 Produkte): Immun, Sport, Mental, Gelenke
-- Doppelherz (~10 Produkte): Klassiker-Basics
-
-**Neue Marken in `supplement_brands` einfügen:**
-```text
-biogena → Biogena (AT, Premium)
-orthomol → Orthomol (DE, Apotheke-Luxury)
+Aktuell:
+```typescript
+const success = await trackEvent('journal', {...});
+if (success) {
+  toast.success('Tagebuch gespeichert ✨');
+  onClose();
+}
+// PROBLEM: Kein else-Block für Fehlerfall
 ```
 
-### Phase 2: Bestehende Seed-Dateien erweitern
+Neu:
+```typescript
+const success = await trackEvent('journal', {...});
+if (success) {
+  toast.success('Tagebuch gespeichert ✨');
+  onClose();
+} else {
+  // Expliziter Hinweis (useAresEvents zeigt bereits generischen Toast)
+  console.error('[JournalLogger] Speichern fehlgeschlagen');
+}
+```
 
-**`budgetBrandsSeed.ts` erweitern:**
-- Nature Love: +42 Produkte (Aminosäuren, Probiotika, Spezial-Komplexe)
-- Naturtreu: +50 Produkte (Adaptogene, Mineralien, Fitness)
+### Phase 2: Console Logging für Debugging
 
-**`premiumBrandsSeed.ts` erweitern:**
-- MoleQlar: +22 Produkte (Senolytika, Bundles, Essentials)
-- Sunday Natural: +21 Produkte (Vitalpilze, Aminosäuren erweitert)
+**Datei: `src/hooks/useAresEvents.ts`**
 
-**`sportBrandsSeed.ts` erweitern:**
-- ESN: +15 Produkte (Proteine, Pre-Workouts)
-- More Nutrition: +13 Produkte (Snacks, O3-D3-K2 Varianten)
+Erweitere das Journal-Insert mit mehr Logging:
+```typescript
+if (category === 'journal' && payload.content) {
+  console.log('[AresEvents] Attempting journal insert:', { 
+    userId: auth.user.id, 
+    contentLength: payload.content.length,
+    mood: payload.mood 
+  });
+  
+  const { error } = await supabase.from('diary_entries').insert({...});
+  
+  if (error) {
+    console.error('[AresEvents] Journal insert failed:', error.message, error.code);
+    throw error;
+  }
+}
+```
 
-### Phase 3: Index-Datei aktualisieren
+### Phase 3: Foto-Placeholder deaktivieren/verstecken
 
-**`src/data/seeds/index.ts` erweitern:**
-- Import der neuen `pharmacyBrandsSeed.ts`
-- Statistik-Update auf 520+ Produkte
+**Datei: `src/components/home/loggers/JournalLogger.tsx`**
 
-### Phase 4: Datenbank-Seeding
+Option A: Button ausblenden (empfohlen)
+```typescript
+{/* PHOTO - Coming Soon */}
+{false && (
+  <motion.button ...>
+    <Camera />
+    <span>Foto hinzufügen</span>
+  </motion.button>
+)}
+```
 
-1. Neue Marken (Biogena, Orthomol) in `supplement_brands` einfügen
-2. Edge Function mit allen Produkten aufrufen
-3. Verifizieren: 520+ Produkte in `supplement_products`
+Option B: Als "Coming Soon" markieren
+```typescript
+<motion.button disabled className="opacity-50 cursor-not-allowed">
+  <Camera />
+  <span>Foto hinzufügen (bald verfügbar)</span>
+</motion.button>
+```
 
----
+### Phase 4: Auth-Check verbessern
 
-## Produkt-Kategorien aus dem Markdown
+Füge einen expliziten Auth-Check vor dem Speichern hinzu:
 
-### Biogena (60 Produkte)
-| Kategorie | Anzahl | Beispiele |
-|-----------|--------|-----------|
-| Longevity & Anti-Aging | 8 | Zell Aktiv Gold, NAD+ Activator, Spermidin |
-| Mikronährstoffe Basis | 9 | Omnibiotic, Magnesium 7 Salze, D3+K2 |
-| Spezial & Systeme | 8 | Ashwagandha KSM-66, Glutathion, NAC |
-| Aminosäuren & Proteine | 6 | Amino Komplett Gold, Glycin, Taurin |
-| Hormone & Männer | 5 | Testo Gold, DHEA 25, Bor, Mucuna |
-| Schlaf & Regeneration | 5 | Sleep Gold, Melatonin Spray, GABA |
-| Omnibiotic Probiotika | 8 | Active, Stress Repair, 6, 10, Metabolic |
-
-### Orthomol (30 Produkte)
-| Kategorie | Anzahl | Beispiele |
-|-----------|--------|-----------|
-| Immunsystem | 5 | Immun, Immun pro, Vital m/f |
-| Sport & Fitness | 5 | Sport, protein, perform, recover |
-| Gelenke & Knochen | 4 | Arthroplus, chondroplus, Tendo, Osteo |
-| Nervensystem | 4 | Mental, Nemuri, AMD extra, Femin |
-| Haut/Haare/Nägel | 3 | Beauty, Hair Intense, Skin |
-| Verdauung | 4 | Pro Basic, Pro 6, Digest, Pro Cran |
-
-### Nature Love Erweiterung (+42 Produkte)
-- Vitamin C gepuffert, Vitamin E, Multi-Vitamin
-- L-Carnitin, L-Tryptophan, BCAA
-- Alpha-Liponsäure, Chrom, MSM, Glucosamin
-- Haar/Haut/Augen Komplexe
-- Detox, Immun, Schlaf Komplexe
-
-### Naturtreu Erweiterung (+50 Produkte)
-- KRAFTMINERALGOLD, ENTSPANNUNGSWUNDER, SILICIUMQUELLE
-- HIRNFUTTER (Ginkgo+Brahmi), LÖWENMÄHNE (Lion's Mane)
-- KRAFTPAKET (Kreatin), AUSDAUERHELD (L-Carnitin)
-- HAARWUNDER, HAUTZAUBER, GELENKGOLD
-- STRESSLESS, FRAUENGLÜCK, MÄNNERKRAFT
+```typescript
+const handleSave = useCallback(async () => {
+  if (!content.trim()) {
+    toast.error('Bitte schreibe oder sprich deinen Gedanken');
+    return;
+  }
+  
+  // NEU: Auth-Check
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) {
+    toast.error('Bitte melde dich an');
+    return;
+  }
+  
+  setIsSaving(true);
+  // ... rest
+}, [...]);
+```
 
 ---
 
 ## Technische Details
 
-### Neue Marken für supplement_brands
+### Dateien die geändert werden
 
-```typescript
-// Biogena (Österreich)
-{
-  name: 'Biogena',
-  slug: 'biogena',
-  country: 'EU', // Österreich
-  website: 'biogena.com',
-  price_tier: 'luxury',
-  specialization: ['longevity', 'premium', 'reinsubstanzen'],
-  quality_certifications: ['GMP', 'ISO22000', 'HACCP'],
-  description: 'Salzburger Premium-Hersteller. Reinsubstanzen ohne Zusätze.'
-}
+| Datei | Änderung |
+|-------|----------|
+| `src/components/home/loggers/JournalLogger.tsx` | Besseres Fehler-Handling, Foto-Button verstecken |
+| `src/hooks/useAresEvents.ts` | Erweitertes Console-Logging für Debugging |
 
-// Orthomol (Deutschland)
-{
-  name: 'Orthomol',
-  slug: 'orthomol',
-  country: 'DE',
-  website: 'orthomol.de',
-  price_tier: 'luxury',
-  specialization: ['pharmacy', 'medical', 'systems'],
-  quality_certifications: ['pharma-grade', 'apotheken-exklusiv'],
-  description: 'Apotheken-exklusiv. Orthomolekulare Komplettlösungen.'
-}
-```
-
-### Dateien die erstellt/geändert werden
-
-| Datei | Aktion | Inhalt |
-|-------|--------|--------|
-| `src/data/seeds/pharmacyBrandsSeed.ts` | NEU | Biogena + Orthomol + Doppelherz (~100 Produkte) |
-| `src/data/seeds/budgetBrandsSeed.ts` | ERWEITERN | +92 Produkte (Nature Love, Naturtreu) |
-| `src/data/seeds/premiumBrandsSeed.ts` | ERWEITERN | +43 Produkte (MoleQlar, Sunday Natural) |
-| `src/data/seeds/sportBrandsSeed.ts` | ERWEITERN | +28 Produkte (ESN, More Nutrition) |
-| `src/data/seeds/index.ts` | ERWEITERN | pharmacyBrandsSeed importieren |
-| `src/data/supplementBrands.ts` | ERWEITERN | Biogena, Orthomol hinzufügen |
-
----
-
-## Erwartetes Ergebnis
+### Erwartetes Ergebnis
 
 Nach Implementierung:
-- **520+ Produkte** in lokalen Seed-Dateien
-- **8 Hersteller-Kategorien** vollständig abgedeckt
-- Seeding-ready für Round 2 via Edge Function
-
-## Zeitaufwand
-
-Geschätzte Änderungen: ~2500 neue Zeilen Code (Produktdaten)
+- Klares Feedback wenn Speichern fehlschlägt
+- Detaillierte Console-Logs zur Fehleranalyse
+- Kein verwirrender "Foto hinzufügen" Platzhalter
+- Auth-Zustand wird vor dem Speichern geprüft
