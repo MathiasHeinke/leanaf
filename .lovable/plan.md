@@ -1,57 +1,63 @@
 
 
-# Plan: Vollständiges Seeding der Supplement-Datenbank
+# Plan: Vollständiges Seeding der verbleibenden ~150 Produkte
 
-## Aktuelle Situation
+## Aktuelle Datenbank-Statistik
 
-| Metrik | Wert |
-|--------|------|
-| Produkte in DB | 244 |
-| Marken in DB | 17 |
-| Produkte in Seed-Dateien | ~450-500 (geschätzt) |
-| **Fehlende Produkte** | ~200-250+ |
-
-## Seed-Dateien Größe
-
-| Datei | Zeilen | Geschätzte Produkte |
-|-------|--------|---------------------|
-| `premiumBrandsSeed.ts` | 1169 | ~85-100 |
-| `budgetBrandsSeed.ts` | 1661 | ~120-140 |
-| `sportBrandsSeed.ts` | 844 | ~60-80 |
-| `pharmacyBrandsSeed.ts` | 1489 | ~100-120 |
-| **Total** | ~5163 | **~400-450** |
+| Marke | In DB | In Seed (geschätzt) | Delta |
+|-------|-------|---------------------|-------|
+| Biogena | 47 | ~60 | ~13 |
+| MoleQlar | 45 | ~50+ | ~5 |
+| Sunday Natural | 34 | ~50+ | ~16 |
+| Now Foods | 21 | ~40+ | ~19 |
+| Orthomol | 20 | ~25 | ~5 |
+| Nature Love | 18 | ~30+ | ~12 |
+| ESN | 16 | ~25 | ~9 |
+| Naturtreu | 15 | ~25+ | ~10 |
+| Doppelherz | 13 | ~15 | ~2 |
+| Bulk | 13 | ~20 | ~7 |
+| Doctor's Best | 12 | ~25+ | ~13 |
+| More Nutrition | 11 | ~18 | ~7 |
+| ProFuel | 10 | ~18 | ~8 |
+| Thorne | 8 | ~20+ | ~12 |
+| Life Extension | 7 | ~25+ | ~18 |
+| **Total** | **291** | **~450** | **~160** |
 
 ## Seeding-Strategie
 
-Da die Edge Function `seed-products` die Produkte per POST-Body empfängt und Duplikate automatisch überspringt (via `(brand_id, product_name)` Check), werde ich:
+Die Edge Function `seed-products` empfängt Produkte per POST-Body und überspringt Duplikate automatisch (via `brand_id + product_name` Check).
 
-### Schritt 1: Premium-Produkte seeden
-- Alle MoleQlar, Sunday Natural, Life Extension, Thorne Produkte
-- Inkl. neue: TMG, GlyNAC, TUDCA, Apigenin, Carnosin, etc.
+### Ausführungsschritte
 
-### Schritt 2: Budget-Produkte seeden
-- Alle Nature Love, Naturtreu, Now Foods, Doctor's Best Produkte
-- Inkl. neue: Huperzine A, Tongkat Ali, 5-HTP, etc.
+1. **Budget-Kategorie seeden** (Nature Love, Naturtreu, Now Foods, Doctor's Best)
+   - ~60 neue Produkte erwartet
+   - Batch-Größe: 30 Produkte pro Request
 
-### Schritt 3: Sport-Produkte seeden
-- Alle ESN, More Nutrition, Bulk, ProFuel Produkte
-- Inkl. neue: Glutamine, TMG Sport-Varianten
+2. **Premium-Kategorie seeden** (MoleQlar, Sunday Natural, Life Extension, Thorne)  
+   - ~50 neue Produkte erwartet
+   - Batch-Größe: 30 Produkte pro Request
 
-### Schritt 4: Pharmacy-Produkte seeden
-- Alle Biogena, Orthomol, Doppelherz Produkte
-- Inkl. neue: Colostrum, Fadogia, Myo-Inositol
+3. **Sport-Kategorie seeden** (ESN, More Nutrition, Bulk, ProFuel)
+   - ~30 neue Produkte erwartet
+   - Batch-Größe: 30 Produkte pro Request
+
+4. **Pharmacy-Kategorie seeden** (Biogena, Orthomol, Doppelherz)
+   - ~20 neue Produkte erwartet
+   - Batch-Größe: 30 Produkte pro Request
+
+## Erwartetes Endergebnis
+
+| Metrik | Vorher | Nachher |
+|--------|--------|---------|
+| Produkte | 291 | ~450 |
+| Marken | 17 | 17 |
+| Wirkstoffe | 111 | 120+ |
 
 ## Technische Umsetzung
 
-1. **Edge Function aufrufen** mit jedem Seed-Array als POST-Body
-2. Die Funktion prüft automatisch auf Duplikate
-3. Neue Produkte werden eingefügt, existierende übersprungen
-4. Response zeigt: `products_added`, `products_skipped`
-
-## Erwartetes Ergebnis
-
-Nach vollständigem Seeding:
-- **~450-500 Produkte** in der Datenbank
-- Alle 16+ Marken vollständig katalogisiert
-- Komplette Abdeckung aller Kategorien (Longevity, Nootropics, Hormonal, Sport)
+Ich werde die Edge Function `seed-products` mit dem vollständigen `COMPLETE_PRODUCT_SEED` Array aufrufen. Die Funktion:
+- Akzeptiert alle ~450 Produkte
+- Prüft jedes Produkt auf Duplikate
+- Fügt nur neue Produkte ein
+- Gibt detaillierte Statistiken zurück
 
