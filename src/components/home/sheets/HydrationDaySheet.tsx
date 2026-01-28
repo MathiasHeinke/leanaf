@@ -7,7 +7,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { X, Droplets, GlassWater, Check, Pencil } from 'lucide-react';
+import { X, Droplets, GlassWater, Check, Pencil, Coffee } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { useTodaysFluids } from '@/hooks/useTodaysFluids';
@@ -40,6 +40,8 @@ const FluidItem: React.FC<{
     ? format(new Date(fluid.timestamp), 'HH:mm')
     : '--:--';
   
+  const isCoffee = fluid.fluid_type === 'coffee';
+  
   return (
     <motion.div 
       layout
@@ -53,19 +55,33 @@ const FluidItem: React.FC<{
       </span>
       
       {/* Icon */}
-      <div className="w-8 h-8 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center flex-shrink-0">
-        <Droplets className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+      <div className={cn(
+        "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+        isCoffee 
+          ? "bg-amber-100 dark:bg-amber-900/30"
+          : "bg-cyan-100 dark:bg-cyan-900/30"
+      )}>
+        {isCoffee ? (
+          <Coffee className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+        ) : (
+          <Droplets className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+        )}
       </div>
       
       {/* Content */}
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm text-foreground">
-          {fluid.fluid_type === 'coffee' ? 'Kaffee' : 'Wasser'}
+          {isCoffee ? 'Kaffee' : 'Wasser'}
         </p>
       </div>
       
       {/* Amount */}
-      <span className="text-sm font-semibold text-cyan-600 dark:text-cyan-400 tabular-nums">
+      <span className={cn(
+        "text-sm font-semibold tabular-nums",
+        isCoffee 
+          ? "text-amber-600 dark:text-amber-400"
+          : "text-cyan-600 dark:text-cyan-400"
+      )}>
         {fluid.volume_ml} ml
       </span>
     </motion.div>
@@ -75,9 +91,10 @@ const FluidItem: React.FC<{
 // Quick Add Button with feedback animation
 const QuickAddButton: React.FC<{
   amount: number;
-  variant: 'outline' | 'solid';
+  variant: 'outline' | 'solid' | 'coffee';
+  type?: 'water' | 'coffee';
   onAdd: (amount: number) => Promise<boolean>;
-}> = ({ amount, variant, onAdd }) => {
+}> = ({ amount, variant, type = 'water', onAdd }) => {
   const [isSuccess, setIsSuccess] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   
@@ -89,12 +106,16 @@ const QuickAddButton: React.FC<{
     
     if (success) {
       setIsSuccess(true);
-      toast.success(`+${amount}ml Wasser 💧`, { duration: 1500 });
+      const emoji = type === 'coffee' ? '☕' : '💧';
+      const label = type === 'coffee' ? 'Kaffee' : 'Wasser';
+      toast.success(`+${amount}ml ${label} ${emoji}`, { duration: 1500 });
       setTimeout(() => setIsSuccess(false), 1500);
     }
     
     setIsLoading(false);
   };
+
+  const isCoffee = variant === 'coffee';
   
   return (
     <motion.button
@@ -103,10 +124,11 @@ const QuickAddButton: React.FC<{
       disabled={isLoading}
       className={cn(
         "flex-1 h-14 rounded-xl font-semibold text-base transition-all flex items-center justify-center gap-2",
-        variant === 'outline' 
-          ? "border-2 border-cyan-500 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20"
-          : "bg-gradient-to-r from-cyan-500 to-teal-400 text-white shadow-lg hover:shadow-xl",
-        isSuccess && "bg-emerald-500 border-emerald-500"
+        variant === 'outline' && "border-2 border-cyan-500 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-900/20",
+        variant === 'solid' && "bg-gradient-to-r from-cyan-500 to-teal-400 text-white shadow-lg hover:shadow-xl",
+        variant === 'coffee' && "border-2 border-amber-500 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20",
+        isSuccess && variant === 'coffee' && "bg-emerald-500 border-emerald-500 text-white",
+        isSuccess && variant !== 'coffee' && "bg-emerald-500 border-emerald-500"
       )}
     >
       {isSuccess ? (
@@ -116,8 +138,8 @@ const QuickAddButton: React.FC<{
         </>
       ) : (
         <>
-          <GlassWater className="w-5 h-5" />
-          <span>+{amount}ml</span>
+          {isCoffee ? <Coffee className="w-5 h-5" /> : <GlassWater className="w-5 h-5" />}
+          <span>{isCoffee ? 'Kaffee' : `+${amount}ml`}</span>
         </>
       )}
     </motion.button>
@@ -130,7 +152,7 @@ export const HydrationDaySheet: React.FC<HydrationDaySheetProps> = ({
 }) => {
   const { data: metrics } = useDailyMetrics();
   const { data: fluids, loading: isLoading } = useTodaysFluids();
-  const { logWater } = useAresEvents();
+  const { logWater, logCoffee } = useAresEvents();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
@@ -354,6 +376,12 @@ export const HydrationDaySheet: React.FC<HydrationDaySheetProps> = ({
                   amount={500} 
                   variant="solid" 
                   onAdd={logWater}
+                />
+                <QuickAddButton 
+                  amount={150} 
+                  variant="coffee"
+                  type="coffee"
+                  onAdd={logCoffee}
                 />
               </div>
             </div>
