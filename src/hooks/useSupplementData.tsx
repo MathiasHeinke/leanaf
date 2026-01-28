@@ -190,6 +190,7 @@ export const useSupplementData = (currentDate?: Date) => {
             dosage,
             unit,
             timing,
+            preferred_timing,
             goal,
             rating,
             notes,
@@ -205,7 +206,9 @@ export const useSupplementData = (currentDate?: Date) => {
 
         const formattedSupplements: UserSupplement[] = (supplements || []).map((s: any) => ({
           ...s,
-          timing: normalizeTimingArray(s.timing),
+          // Use preferred_timing as the primary timing source for grouping
+          // This ensures consistency with Layer 3's mapTimingToPreferred logic
+          timing: s.preferred_timing ? [s.preferred_timing] : normalizeTimingArray(s.timing),
           supplement_name: s.custom_name || s.name || s.supplement_database?.name || 'Supplement',
           supplement_category: s.supplement_database?.category || 'Sonstige',
         }));
