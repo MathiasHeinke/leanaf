@@ -53,9 +53,11 @@ import { BugReportDialog } from "./BugReportDialog";
 
 const navigationItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "ARES Protokoll", url: "/protocol", icon: FlaskConical },
+  // UNTER BEOBACHTUNG: ARES Protokoll temporär ausgeblendet
+  // { title: "ARES Protokoll", url: "/protocol", icon: FlaskConical },
   { title: "Workout", url: "/training", icon: Dumbbell },
-  { title: "Transformation", url: "/transformation", icon: TrendingUp },
+  // UNTER BEOBACHTUNG: Transformation temporär ausgeblendet - später in Analyse/History integrieren
+  // { title: "Transformation", url: "/transformation", icon: TrendingUp },
   { title: "Blutwerte", url: "/bloodwork", icon: TestTube },
   { title: "History", url: "/history", icon: HistoryIcon },
   { title: "Analyse", url: "/analyse", icon: BarChart3 },
