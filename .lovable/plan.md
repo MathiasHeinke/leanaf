@@ -1,71 +1,19 @@
 
+# ARES Response Intelligence System - Vollständige Implementierung
 
-# ARES Response Intelligence System - Finaler Plan
+## Übersicht
 
-## Ziel
-
-ARES stoppt "Groundhog Day"-Erklärungen. Wenn du Retatrutide zum 50. Mal erwähnst, bekommst du eine Pro-Level Kurzantwort statt Wikipedia.
-
----
-
-## Architektur-Übersicht
-
-```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         USER MESSAGE                                         │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  SEMANTIC ROUTER (bestehend)                                                │
-│  - Fast-Path Detection (ok, ja, danke)                                      │
-│  - LLM Intent Classification                                                │
-│  - Output: intent, detail_level, sentiment                                  │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  TOPIC TRACKER (NEU)                                                        │
-│  - Extrahiert Topics aus Nachricht (Regex-Patterns)                         │
-│  - Lädt user_topic_history aus DB                                           │
-│  - Bestimmt expert_level pro Topic                                          │
-│  - Output: TopicContext { topic, level, lastDeepDive, mentionCount }        │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  RESPONSE BUDGET CALCULATOR (NEU)                                           │
-│  - Inputs: userMsgLength, topicLevel, lastDeepDive, intent                  │
-│  - Logic: Base 1500 * expert_modifier * recency_modifier                    │
-│  - Output: max_chars, budget_reason                                         │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  INTELLIGENT PROMPT BUILDER (erweitert)                                     │
-│  - Bestehende Sections (Persona, Context, Memory, Mood)                     │
-│  + NEU: == USER TOPIC EXPERTISE == Section                                  │
-│  + NEU: == RESPONSE BUDGET == Section                                       │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  LLM (Gemini Flash/Pro)                                                     │
-│  - Respektiert Budget-Constraints                                           │
-│  - Nutzt Topic-Expertise für Tiefe                                          │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  POST-RESPONSE: Topic Stats Update                                          │
-│  - Aktualisiert user_topic_history via RPC                                  │
-│  - Upgraded expert_level wenn Schwellen erreicht                            │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+Implementierung eines 6-Komponenten-Systems zur intelligenten Antwortsteuerung:
+1. **Database Migration** - `user_topic_history` Tabelle + RPC
+2. **Topic Tracker** - Erkennung und Tracking von Themen
+3. **Response Budget Calculator** - Dynamische Längensteuerung
+4. **Prompt Builder Integration** - Neue Sections im System Prompt
+5. **Orchestrator Integration** - Zusammenführung aller Komponenten
+6. **Admin Analytics Dashboard** - Visualisierung der Daten
 
 ---
 
-## Phase 1: Database Schema
+## Phase 1: Database Migration
 
 ### Neue Tabelle: `user_topic_history`
 
@@ -85,24 +33,30 @@ CREATE TABLE public.user_topic_history (
   UNIQUE(user_id, topic)
 );
 
--- Schneller Lookup
 CREATE INDEX idx_user_topic_lookup ON user_topic_history(user_id, topic);
 
--- RLS Policy
 ALTER TABLE user_topic_history ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can manage own topic history" ON user_topic_history
-  FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can view own topic history" ON user_topic_history
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Service role full access" ON user_topic_history
+  FOR ALL USING (auth.role() = 'service_role');
 ```
 
 ### RPC Funktion: `increment_topic_stats`
 
 ```sql
-CREATE OR REPLACE FUNCTION increment_topic_stats(
+CREATE OR REPLACE FUNCTION public.increment_topic_stats(
   p_user_id UUID,
   p_topic TEXT,
   p_chars INTEGER,
   p_is_deep_dive BOOLEAN DEFAULT FALSE
-) RETURNS void AS $$
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   v_current_count INTEGER;
   v_new_level TEXT;
@@ -124,7 +78,6 @@ BEGIN
     END,
     updated_at = now();
   
-  -- Level Upgrade Logic
   SELECT mention_count INTO v_current_count 
   FROM user_topic_history 
   WHERE user_id = p_user_id AND topic = p_topic;
@@ -139,7 +92,10 @@ BEGIN
   SET expert_level = v_new_level 
   WHERE user_id = p_user_id AND topic = p_topic;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.increment_topic_stats TO authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_topic_stats TO service_role;
 ```
 
 ---
@@ -150,7 +106,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 ```typescript
 /**
- * Topic Tracker - Erkennt und trackt User-Expertise pro Thema
+ * Topic Tracker - ARES 3.0 Response Intelligence
+ * Erkennt und trackt User-Expertise pro Thema
  */
 
 export type TopicLevel = 'novice' | 'intermediate' | 'expert';
@@ -164,7 +121,6 @@ export interface TopicContext {
   hoursSinceDeepDive: number | null;
 }
 
-// Topic Pattern Definitions
 export const TOPIC_PATTERNS: Record<string, RegExp> = {
   retatrutide: /retatrutide|reta|glp-?1|tirzepatide|semaglutide|ozempic|wegovy/i,
   sleep: /schlaf|sleep|rem|tiefschlaf|einschlafen|aufwachen|insomnia/i,
@@ -178,24 +134,16 @@ export const TOPIC_PATTERNS: Record<string, RegExp> = {
   bloodwork: /blutbild|blutwerte|labor|ferritin|hba1c|leberwerte/i,
 };
 
-/**
- * Extrahiert alle erkannten Topics aus einer Nachricht
- */
 export function extractTopics(message: string): string[] {
   const detected: string[] = [];
-  
   for (const [topic, pattern] of Object.entries(TOPIC_PATTERNS)) {
     if (pattern.test(message)) {
       detected.push(topic);
     }
   }
-  
   return detected;
 }
 
-/**
- * Lädt Topic-History für einen User aus der Datenbank
- */
 export async function loadTopicHistory(
   supaClient: any,
   userId: string,
@@ -237,9 +185,6 @@ export async function loadTopicHistory(
   return result;
 }
 
-/**
- * Aktualisiert Topic-Stats nach einer Konversation
- */
 export async function updateTopicStats(
   supaClient: any,
   userId: string,
@@ -272,7 +217,7 @@ export async function updateTopicStats(
 
 ```typescript
 /**
- * Response Budget Calculator
+ * Response Budget Calculator - ARES 3.0
  * Berechnet dynamisches Zeichenbudget basierend auf Kontext
  */
 
@@ -291,27 +236,24 @@ export interface BudgetResult {
   maxChars: number;
   maxTokens: number;
   reason: string;
-  constraints: string[];  // Für Prompt-Injection
+  constraints: string[];
 }
 
-// Expertise Multipliers (Gemini's Idea)
 const LEVEL_MULTIPLIERS: Record<TopicLevel, number> = {
-  novice: 1.0,       // Volle Erklärung
-  intermediate: 0.7, // Basics überspringen
-  expert: 0.5,       // Nur Updates, keine Grundlagen
+  novice: 1.0,
+  intermediate: 0.7,
+  expert: 0.5,
 };
 
-// Recency Multipliers
 function getRecencyMultiplier(hoursSinceDeepDive: number | null): number {
-  if (hoursSinceDeepDive === null) return 1.0;  // Noch nie deep dive
-  if (hoursSinceDeepDive < 24) return 0.4;       // < 24h → stark kürzen
-  if (hoursSinceDeepDive < 72) return 0.6;       // < 3 Tage → kürzen
-  if (hoursSinceDeepDive < 168) return 0.8;      // < 1 Woche → leicht kürzen
-  return 1.0;                                     // > 1 Woche → normal
+  if (hoursSinceDeepDive === null) return 1.0;
+  if (hoursSinceDeepDive < 24) return 0.4;
+  if (hoursSinceDeepDive < 72) return 0.6;
+  if (hoursSinceDeepDive < 168) return 0.8;
+  return 1.0;
 }
 
 export function calculateResponseBudget(factors: BudgetFactors): BudgetResult {
-  // Base Budget nach Detail Level
   const BASE_BUDGETS: Record<DetailLevel, number> = {
     ultra_short: 400,
     concise: 800,
@@ -319,20 +261,20 @@ export function calculateResponseBudget(factors: BudgetFactors): BudgetResult {
     extensive: 2500,
   };
   
-  let budget = BASE_BUDGETS[factors.detailLevel];
+  let budget = BASE_BUDGETS[factors.detailLevel] || 1500;
   const constraints: string[] = [];
   const reasons: string[] = [];
   
-  // 1. Expertise Modifier
   if (factors.primaryTopic) {
     const levelMult = LEVEL_MULTIPLIERS[factors.primaryTopic.level];
     if (levelMult < 1.0) {
       budget *= levelMult;
-      constraints.push(`User ist ${factors.primaryTopic.level.toUpperCase()} bei ${factors.primaryTopic.topic} - KEINE Grundlagen erklaeren`);
+      constraints.push(
+        `User ist ${factors.primaryTopic.level.toUpperCase()} bei ${factors.primaryTopic.topic} - KEINE Grundlagen erklaeren`
+      );
       reasons.push(`Expert-Level: ${factors.primaryTopic.level}`);
     }
     
-    // 2. Recency Modifier
     const recencyMult = getRecencyMultiplier(factors.primaryTopic.hoursSinceDeepDive);
     if (recencyMult < 1.0) {
       budget *= recencyMult;
@@ -342,33 +284,27 @@ export function calculateResponseBudget(factors: BudgetFactors): BudgetResult {
     }
   }
   
-  // 3. Short Message + Confirmation = Hard Cap (Gemini's Idea)
   if (factors.userMessageLength < 50 && factors.intent === 'confirmation') {
     budget = Math.min(budget, 300);
     constraints.push('Kurze Bestaetigung - max 2-3 Saetze');
     reasons.push('Short confirmation');
   }
   
-  // 4. Evening = Shorter
   if (factors.timeOfDay === 'evening') {
     budget *= 0.85;
     reasons.push('Evening mode');
   }
   
-  // Floor & Ceiling
   budget = Math.max(200, Math.min(budget, 3000));
   
   return {
     maxChars: Math.round(budget),
-    maxTokens: Math.round(budget / 4),  // ~4 chars per token
+    maxTokens: Math.round(budget / 4),
     reason: reasons.join(', ') || 'Standard budget',
     constraints,
   };
 }
 
-/**
- * Generiert den Budget-Prompt-Abschnitt für die System Message
- */
 export function buildBudgetPromptSection(budget: BudgetResult): string {
   const lines = [
     '== RESPONSE BUDGET ==',
@@ -390,23 +326,25 @@ export function buildBudgetPromptSection(budget: BudgetResult): string {
 
 ## Phase 4: Prompt Builder Integration
 
-### Erweiterte Section in `intelligentPromptBuilder.ts`
+### Änderungen in `intelligentPromptBuilder.ts`
 
+**Neue Imports am Anfang der Datei:**
 ```typescript
-// NEU: Import TopicTracker & Budget
-import { 
-  extractTopics, 
-  loadTopicHistory,
-  type TopicContext 
-} from './topicTracker.ts';
-import { 
-  calculateResponseBudget, 
-  buildBudgetPromptSection,
-  type BudgetResult 
-} from '../ai/responseBudget.ts';
+import type { TopicContext } from './topicTracker.ts';
+import type { BudgetResult } from '../ai/responseBudget.ts';
+```
 
-// Neue Prompt-Section (nach COACHING-REGELN, vor RAG WISSEN)
+**Erweitertes Interface `IntelligentPromptConfig`:**
+```typescript
+export interface IntelligentPromptConfig {
+  // ... bestehende Felder ...
+  topicContexts?: Map<string, TopicContext>;
+  responseBudget?: BudgetResult;
+}
+```
 
+**Neue Funktion `buildTopicExpertiseSection`:**
+```typescript
 function buildTopicExpertiseSection(
   topicContexts: Map<string, TopicContext>
 ): string {
@@ -435,89 +373,299 @@ function buildTopicExpertiseSection(
 }
 ```
 
+**Integration in `buildIntelligentSystemPrompt`:**
+Nach Abschnitt 6 (MOOD DETECTION), vor Abschnitt 7 (Situational Instructions):
+```typescript
+// ABSCHNITT 6B: Topic Expertise (NEU)
+if (topicContexts && topicContexts.size > 0) {
+  sections.push('');
+  sections.push(buildTopicExpertiseSection(topicContexts));
+}
+
+// ABSCHNITT 6C: Response Budget (NEU)
+if (responseBudget) {
+  sections.push('');
+  sections.push(buildBudgetPromptSection(responseBudget));
+}
+```
+
+### Änderungen in `context/index.ts`
+
+**Neue Exports:**
+```typescript
+export {
+  extractTopics,
+  loadTopicHistory,
+  updateTopicStats,
+  TOPIC_PATTERNS,
+  type TopicContext,
+  type TopicLevel,
+} from './topicTracker.ts';
+```
+
 ---
 
 ## Phase 5: Orchestrator Integration
 
 ### Änderungen in `coach-orchestrator-enhanced/index.ts`
 
+**Neue Imports (am Anfang):**
 ```typescript
-// Nach Semantic Router, vor Prompt Building:
+import {
+  extractTopics,
+  loadTopicHistory,
+  updateTopicStats,
+  type TopicContext,
+} from '../_shared/context/topicTracker.ts';
 
-// 1. Extract Topics
-const detectedTopics = extractTopics(message);
-console.log('[ARES] Detected topics:', detectedTopics);
+import {
+  calculateResponseBudget,
+  buildBudgetPromptSection,
+  type BudgetResult,
+} from '../_shared/ai/responseBudget.ts';
+```
 
-// 2. Load Topic History
-const topicHistory = await loadTopicHistory(svcClient, userId, detectedTopics);
+**Integration nach Semantic Router (ca. Zeile 1125-1140):**
+```typescript
+// TOPIC INTELLIGENCE: Extract and load topic history
+const detectedTopics = extractTopics(text);
+console.log('[ARES-TOPIC] Detected topics:', detectedTopics);
 
-// 3. Find Primary Topic (most mentioned)
+let topicHistory = new Map<string, TopicContext>();
 let primaryTopic: TopicContext | null = null;
-let maxMentions = 0;
-for (const ctx of topicHistory.values()) {
-  if (ctx.mentionCount > maxMentions) {
-    maxMentions = ctx.mentionCount;
-    primaryTopic = ctx;
+
+if (detectedTopics.length > 0) {
+  topicHistory = await loadTopicHistory(svcClient, userId, detectedTopics);
+  
+  // Find primary topic (most mentioned)
+  let maxMentions = 0;
+  for (const ctx of topicHistory.values()) {
+    if (ctx.mentionCount > maxMentions) {
+      maxMentions = ctx.mentionCount;
+      primaryTopic = ctx;
+    }
+  }
+  
+  if (primaryTopic) {
+    console.log('[ARES-TOPIC] Primary topic:', primaryTopic.topic, 
+                'level:', primaryTopic.level, 
+                'mentions:', primaryTopic.mentionCount);
   }
 }
 
-// 4. Calculate Budget
-const budget = calculateResponseBudget({
-  userMessageLength: message.length,
+// RESPONSE BUDGET: Calculate based on topic + semantic analysis
+const responseBudget = calculateResponseBudget({
+  userMessageLength: text.length,
   primaryTopic,
-  intent: conversationAnalysis.intent,
-  detailLevel: conversationAnalysis.required_detail_level,
-  timeOfDay: getCurrentTimeOfDay(),
+  intent: semanticAnalysis?.intent || 'question',
+  detailLevel: semanticAnalysis?.required_detail_level || 'moderate',
+  timeOfDay: getTimeOfDay() as 'morning' | 'day' | 'evening',
 });
 
-console.log('[ARES] Response budget:', budget);
+console.log('[ARES-BUDGET] Calculated:', responseBudget.maxChars, 'chars,', 
+            responseBudget.reason);
+```
 
-// 5. Inject into Prompt Builder Config
+**Übergabe an buildIntelligentSystemPrompt (ca. Zeile 1433):**
+```typescript
 const systemPrompt = buildIntelligentSystemPrompt({
-  ...existingConfig,
-  topicContexts: topicHistory,  // NEU
-  responseBudget: budget,        // NEU
+  userContext: healthContext,
+  persona: persona,
+  conversationHistory: formattedHistory,
+  personaPrompt: personaPrompt || '',
+  ragKnowledge: ragSources?.knowledge_chunks || [],
+  currentMessage: text,
+  userInsights: userInsights,
+  userPatterns: userPatterns,
+  topicContexts: topicHistory,      // NEU
+  responseBudget: responseBudget,   // NEU
 });
+```
 
-// ... LLM Call ...
-
-// 6. Post-Response: Update Topic Stats
-const responseLength = finalResponse.length;
-await updateTopicStats(svcClient, userId, detectedTopics, responseLength);
+**Post-Response Topic Update (nach LLM Response, ca. Zeile 2450):**
+```typescript
+// Update topic stats after response
+if (detectedTopics.length > 0 && finalResponse) {
+  await updateTopicStats(svcClient, userId, detectedTopics, finalResponse.length);
+  console.log('[ARES-TOPIC] Updated stats for', detectedTopics.length, 'topics');
+}
 ```
 
 ---
 
-## Betroffene Dateien
+## Phase 6: Admin Analytics Dashboard
+
+### Neue Datei: `src/pages/Admin/ConversationAnalytics.tsx`
+
+```typescript
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { supabase } from '@/integrations/supabase/client';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+
+interface TopicStats {
+  topic: string;
+  total_mentions: number;
+  avg_chars: number;
+  expert_users: number;
+}
+
+export default function ConversationAnalytics() {
+  const [topicStats, setTopicStats] = useState<TopicStats[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadAnalytics();
+  }, []);
+
+  async function loadAnalytics() {
+    const { data, error } = await supabase
+      .from('user_topic_history')
+      .select('topic, mention_count, total_chars_exchanged, expert_level');
+    
+    if (error) {
+      console.error('Failed to load analytics:', error);
+      setLoading(false);
+      return;
+    }
+
+    // Aggregate by topic
+    const byTopic = new Map<string, TopicStats>();
+    for (const row of data || []) {
+      const existing = byTopic.get(row.topic) || {
+        topic: row.topic,
+        total_mentions: 0,
+        avg_chars: 0,
+        expert_users: 0,
+      };
+      existing.total_mentions += row.mention_count;
+      existing.avg_chars += row.total_chars_exchanged;
+      if (row.expert_level === 'expert') existing.expert_users++;
+      byTopic.set(row.topic, existing);
+    }
+
+    // Calculate averages
+    const stats = Array.from(byTopic.values()).map(s => ({
+      ...s,
+      avg_chars: Math.round(s.avg_chars / Math.max(1, s.total_mentions)),
+    }));
+
+    setTopicStats(stats.sort((a, b) => b.total_mentions - a.total_mentions));
+    setLoading(false);
+  }
+
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088FE'];
+
+  return (
+    <div className="container mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-bold">Conversation Analytics</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Topic-Verteilung</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={topicStats.slice(0, 5)}
+                  dataKey="total_mentions"
+                  nameKey="topic"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  label={({ topic }) => topic}
+                >
+                  {topicStats.slice(0, 5).map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Durchschnittliche Antwortlänge pro Topic</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={topicStats.slice(0, 8)}>
+                <XAxis dataKey="topic" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="avg_chars" fill="#8884d8" name="Ø Zeichen" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Expert-Level Users pro Topic</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {topicStats.map(stat => (
+              <div key={stat.topic} className="p-4 border rounded-lg">
+                <div className="font-medium capitalize">{stat.topic}</div>
+                <div className="text-2xl font-bold">{stat.expert_users}</div>
+                <div className="text-sm text-muted-foreground">Expert Users</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+```
+
+### Änderungen in `src/pages/Admin/index.ts`
+
+**Neuer Export:**
+```typescript
+export { default as ConversationAnalytics } from './ConversationAnalytics';
+```
+
+### Änderungen in Router (falls vorhanden)
+
+Route hinzufügen:
+```typescript
+<Route path="/admin/conversation-analytics" element={<ConversationAnalytics />} />
+```
+
+---
+
+## Zusammenfassung der Dateien
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `user_topic_history` | MIGRATION | Neue Tabelle + RPC |
-| `_shared/context/topicTracker.ts` | NEW | Topic Extraction & History |
-| `_shared/ai/responseBudget.ts` | NEW | Budget Calculator |
-| `_shared/context/intelligentPromptBuilder.ts` | EDIT | +Topic Expertise Section, +Budget Section |
-| `_shared/context/index.ts` | EDIT | Exports für neue Module |
+| SQL Migration | CREATE | `user_topic_history` Tabelle + `increment_topic_stats` RPC |
+| `_shared/context/topicTracker.ts` | CREATE | Topic Extraction & History Loading |
+| `_shared/ai/responseBudget.ts` | CREATE | Budget Calculator |
+| `_shared/context/intelligentPromptBuilder.ts` | EDIT | +TopicExpertise Section, +Budget Section |
+| `_shared/context/index.ts` | EDIT | Neue Exports für topicTracker |
 | `coach-orchestrator-enhanced/index.ts` | EDIT | Integration aller Komponenten |
+| `src/pages/Admin/ConversationAnalytics.tsx` | CREATE | Analytics Dashboard |
+| `src/pages/Admin/index.ts` | EDIT | Export für neue Seite |
 
 ---
 
 ## Erwartetes Ergebnis
 
-### Vorher (Retatrutide zum 50. Mal):
-
-```text
+**Vorher** (Retatrutide zum 50. Mal):
+```
 User: "Wie war das nochmal mit Reta und Schlaf?"
-
-ARES: [2000+ Zeichen]
-Retatrutide ist ein Triple-Agonist der GLP-1, GIP und Glukagon-Rezeptoren aktiviert...
-Der Wirkmechanismus basiert auf...
-Bezüglich Schlaf gibt es mehrere Aspekte zu beachten...
-[Volle Wikipedia-Erklärung]
+ARES: [2000+ Zeichen Wikipedia-Erklärung]
 ```
 
-### Nachher:
-
-```text
+**Nachher**:
+```
 User: "Wie war das nochmal mit Reta und Schlaf?"
 
 [System Prompt enthält:]
@@ -531,27 +679,19 @@ Grund: Expert-Level: expert, Recent deep-dive: 3h ago
 ARES: [~350 Zeichen]
 "Hatten wir vorhin - GLP-1 kann REM beeinflussen. Dein Tiefschlaf war 
 diese Woche stabil bei 1.2h, also keine Auffälligkeiten. Gibt's was 
-Neues das du beobachtet hast? Konkrete Einschlafprobleme oder eher 
-Durchschlafen?"
+Neues das du beobachtet hast?"
 ```
 
 ---
 
-## Implementierungs-Reihenfolge
+## Implementierungsreihenfolge
 
-1. **Database Migration** - Tabelle + RPC erstellen
-2. **topicTracker.ts** - Topic Extraction & DB-Anbindung
-3. **responseBudget.ts** - Budget-Logik
-4. **intelligentPromptBuilder.ts** - Neue Sections integrieren
-5. **coach-orchestrator-enhanced** - Alles zusammenführen
-6. **Deploy & Test** - Edge Functions deployen
-
----
-
-## Metriken für Erfolg
-
-Nach Implementation tracken wir:
-- Durchschnittliche Response-Länge pro Topic
-- Deep-Dive-Rate bei Expert-Level Topics (Ziel: < 20%)
-- User-Feedback/Engagement nach Antworten
-
+1. **Database Migration** ausführen (Tabelle + RPC)
+2. **topicTracker.ts** erstellen
+3. **responseBudget.ts** erstellen
+4. **intelligentPromptBuilder.ts** erweitern
+5. **context/index.ts** Exports aktualisieren
+6. **coach-orchestrator-enhanced** integrieren
+7. **ConversationAnalytics.tsx** Dashboard erstellen
+8. **Edge Functions deployen**
+9. **Testen** mit verschiedenen Topic-Szenarien
