@@ -6477,6 +6477,7 @@ export type Database = {
           product_name: string
           product_sku: string | null
           product_url: string | null
+          quality_tags: string[] | null
           servings_per_pack: number | null
           supplement_id: string | null
           updated_at: string | null
@@ -6503,6 +6504,7 @@ export type Database = {
           product_name: string
           product_sku?: string | null
           product_url?: string | null
+          quality_tags?: string[] | null
           servings_per_pack?: number | null
           supplement_id?: string | null
           updated_at?: string | null
@@ -6529,6 +6531,7 @@ export type Database = {
           product_name?: string
           product_sku?: string | null
           product_url?: string | null
+          quality_tags?: string[] | null
           servings_per_pack?: number | null
           supplement_id?: string | null
           updated_at?: string | null
