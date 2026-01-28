@@ -4,8 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SupplementToggleRow } from './SupplementToggleRow';
+import { SupplementDetailSheet } from './SupplementDetailSheet';
 import { useSupplementLibrary, useUserStack } from '@/hooks/useSupplementLibrary';
 import { useSupplementToggle } from '@/hooks/useSupplementLibrary';
+import { META_CATEGORIES, type MetaCategoryKey } from '@/lib/categoryMapping';
 import {
   NECESSITY_TIER_CONFIG,
   type NecessityTier,
@@ -34,7 +36,9 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
   onAdd,
 }) => {
   const [activeTier, setActiveTier] = useState<NecessityTier>('essential');
+  const [activeMetaCategory, setActiveMetaCategory] = useState<MetaCategoryKey | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [detailItem, setDetailItem] = useState<SupplementLibraryItem | null>(null);
 
   // Fetch master library and user stack
   const { data: library, isLoading: libraryLoading } = useSupplementLibrary();
@@ -73,19 +77,33 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
     return groups;
   }, [library]);
 
-  // Filter by search query
+  // Filter by meta category and search query
   const filteredSupplements = useMemo(() => {
-    const tierItems = groupedByTier[activeTier] || [];
-    if (!searchQuery.trim()) return tierItems;
+    let items = groupedByTier[activeTier] || [];
+    
+    // Meta-Kategorie-Filter
+    if (activeMetaCategory !== 'all') {
+      const allowedCategories = META_CATEGORIES[activeMetaCategory].categories;
+      items = items.filter(item => 
+        allowedCategories.some(cat => 
+          cat.toLowerCase() === (item.category || '').toLowerCase()
+        )
+      );
+    }
 
-    const query = searchQuery.toLowerCase();
-    return tierItems.filter(
-      (item) =>
-        item.name.toLowerCase().includes(query) ||
-        item.category?.toLowerCase().includes(query) ||
-        item.description?.toLowerCase().includes(query)
-    );
-  }, [groupedByTier, activeTier, searchQuery]);
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      items = items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(query) ||
+          item.category?.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query)
+      );
+    }
+
+    return items;
+  }, [groupedByTier, activeTier, activeMetaCategory, searchQuery]);
 
   // Count active items per tier
   const tierCounts = useMemo(() => {
@@ -153,6 +171,42 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
         })}
       </div>
 
+      {/* Meta Category Pills (Wirkebenen) */}
+      <div className="flex gap-1.5 overflow-x-auto snap-x snap-mandatory pb-1 -mx-1 px-1 scrollbar-hide">
+        {/* "Alle" pill */}
+        <button
+          onClick={() => setActiveMetaCategory('all')}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-medium transition-all border snap-start shrink-0",
+            activeMetaCategory === 'all'
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+          )}
+        >
+          Alle
+        </button>
+
+        {/* Meta category pills */}
+        {(Object.keys(META_CATEGORIES) as MetaCategoryKey[]).map((key) => {
+          const meta = META_CATEGORIES[key];
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveMetaCategory(key)}
+              className={cn(
+                "flex items-center gap-1 px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-medium transition-all border snap-start shrink-0",
+                activeMetaCategory === key
+                  ? cn("border-current", meta.bgClass, meta.textClass)
+                  : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted"
+              )}
+            >
+              <span>{meta.emoji}</span>
+              <span className="hidden sm:inline">{meta.shortLabel}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Tier Description */}
       <div
         className={cn(
@@ -175,6 +229,8 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
           <div className="text-center py-12 text-muted-foreground text-sm">
             {searchQuery
               ? `Keine Ergebnisse für "${searchQuery}"`
+              : activeMetaCategory !== 'all'
+              ? `Keine ${META_CATEGORIES[activeMetaCategory].shortLabel} in ${currentConfig.shortLabel}`
               : `Keine ${currentConfig.shortLabel || currentConfig.label} verfügbar`}
           </div>
         ) : (
@@ -184,6 +240,7 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
               item={item}
               isActive={activeSupplementIds.has(item.id)}
               onToggle={(id, active) => handleToggle(item, active)}
+              onInfoClick={setDetailItem}
               isLoading={isToggling}
             />
           ))
@@ -202,6 +259,13 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
           </Button>
         </div>
       )}
+
+      {/* Detail Sheet */}
+      <SupplementDetailSheet
+        item={detailItem}
+        isOpen={!!detailItem}
+        onClose={() => setDetailItem(null)}
+      />
     </div>
   );
 };

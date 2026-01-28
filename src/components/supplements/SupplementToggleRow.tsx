@@ -3,12 +3,19 @@ import { Switch } from '@/components/ui/switch';
 import { RefreshCw, Check, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getScheduleLabel } from '@/lib/schedule-utils';
-import type { SupplementLibraryItem } from '@/types/supplementLibrary';
+import { getMetaCategory, META_CATEGORIES } from '@/lib/categoryMapping';
+import {
+  EVIDENCE_LEVEL_CONFIG,
+  TIMING_CONSTRAINT_LABELS,
+  type SupplementLibraryItem,
+  type EvidenceLevel,
+} from '@/types/supplementLibrary';
 
 interface SupplementToggleRowProps {
   item: SupplementLibraryItem;
   isActive: boolean;
   onToggle: (id: string, active: boolean) => void;
+  onInfoClick?: (item: SupplementLibraryItem) => void;
   isLoading?: boolean;
 }
 
@@ -20,12 +27,18 @@ export const SupplementToggleRow: React.FC<SupplementToggleRowProps> = ({
   item,
   isActive,
   onToggle,
+  onInfoClick,
   isLoading,
 }) => {
   const scheduleLabel = getScheduleLabel(item.cycling_protocol);
+  const metaCategoryKey = getMetaCategory(item.category);
+  const metaCategory = META_CATEGORIES[metaCategoryKey];
 
-  // Get default timing label
+  // Get timing label from constraint or common_timing
   const getTimingLabel = () => {
+    if (item.timing_constraint && item.timing_constraint !== 'any') {
+      return TIMING_CONSTRAINT_LABELS[item.timing_constraint];
+    }
     const timing = item.common_timing?.[0]?.toLowerCase() || '';
     if (timing.includes('morgen') || timing.includes('nüchtern')) return 'Morgens';
     if (timing.includes('mittag')) return 'Mittags';
@@ -33,7 +46,25 @@ export const SupplementToggleRow: React.FC<SupplementToggleRowProps> = ({
     if (timing.includes('schlaf')) return 'Vor dem Schlaf';
     if (timing.includes('vor training')) return 'Vor Training';
     if (timing.includes('nach training')) return 'Nach Training';
-    return 'Morgens';
+    return 'Flexibel';
+  };
+
+  // Get evidence badge
+  const getEvidenceBadge = () => {
+    if (!item.evidence_level) return null;
+    const config = EVIDENCE_LEVEL_CONFIG[item.evidence_level as EvidenceLevel];
+    if (!config) return null;
+    return (
+      <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", config.bgClass, config.textClass)}>
+        {item.evidence_level === 'stark' ? '🔬' : item.evidence_level === 'moderat' ? '📊' : '💡'}
+      </span>
+    );
+  };
+
+  // Format dosage with unit
+  const formatDosage = () => {
+    if (!item.default_dosage) return 'Nach Bedarf';
+    return `${item.default_dosage}${item.default_unit || ''}`;
   };
 
   return (
@@ -45,34 +76,49 @@ export const SupplementToggleRow: React.FC<SupplementToggleRowProps> = ({
           : "bg-card/50 border-border/30 hover:bg-card"
       )}
     >
-      {/* Icon */}
+      {/* Icon with meta category color */}
       <div
         className={cn(
           "w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0",
-          isActive ? "bg-primary/10" : "bg-muted/50"
+          isActive ? "bg-primary/10" : metaCategory.bgClass
         )}
       >
-        💊
+        {metaCategory.emoji}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium text-sm truncate">{item.name}</span>
+          {/* Info Icon - Clickable */}
+          {onInfoClick && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onInfoClick(item);
+              }}
+              className="p-0.5 rounded hover:bg-muted transition-colors shrink-0"
+              aria-label="Mehr Informationen"
+            >
+              <Info className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+            </button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground flex-wrap">
           {isActive ? (
             <>
               <Check className="h-3 w-3 text-green-500 shrink-0" />
               <span className="truncate">{getTimingLabel()}</span>
-              <span>•</span>
-              <span className="truncate">{item.default_dosage || 'Standard'}</span>
+              <span className="text-muted-foreground/50">·</span>
+              <span className="truncate">{formatDosage()}</span>
             </>
           ) : (
             <>
-              <Info className="h-3 w-3 shrink-0" />
-              <span className="truncate">Empfohlen: {item.default_dosage || 'Nach Bedarf'}</span>
+              <span className="truncate">{formatDosage()}</span>
+              <span className="text-muted-foreground/50">·</span>
+              <span className="truncate">{getTimingLabel()}</span>
+              {getEvidenceBadge()}
             </>
           )}
         </div>
