@@ -79,8 +79,8 @@ export const InlineSupplementList: React.FC<InlineSupplementListProps> = ({
 
       if (error) throw error;
 
-      // Trigger event to refresh supplement list
-      window.dispatchEvent(new CustomEvent('supplementRecommendationsAdded'));
+      // Trigger unified event to refresh supplement list
+      window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
       
       toast.success(`${selectedItems.length} Supplement(e) zu deinem Plan hinzugefügt!`);
       onConfirm?.();

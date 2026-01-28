@@ -102,8 +102,8 @@ export const useSupplementRecognition = () => {
 
         console.log(`✅ Added ${supplementsToAdd.length} supplements to user stack`);
         
-        // Fire event to refresh supplement list
-        window.dispatchEvent(new CustomEvent('supplement-recommendations-saved'));
+        // Fire unified event to refresh supplement list
+        window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
 
         toast.success(`${supplementsToAdd.length} Supplement${supplementsToAdd.length > 1 ? 'e' : ''} zur Übersicht hinzugefügt!`);
       } else {

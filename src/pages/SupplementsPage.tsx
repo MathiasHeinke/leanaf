@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SupplementTimeline } from '@/components/supplements/SupplementTimeline';
 import { SupplementInventory } from '@/components/supplements/SupplementInventory';
+import { SupplementTrackingModal } from '@/components/SupplementTrackingModal';
 import { useUserStackByTiming, useUserStackByCategory } from '@/hooks/useSupplementLibrary';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +17,7 @@ import type { UserStackItem } from '@/types/supplementLibrary';
 export default function SupplementsPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'timeline' | 'inventory'>('timeline');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
   // Fetch data with both groupings
   const { 
@@ -63,9 +65,15 @@ export default function SupplementsPage() {
 
   // Handle add button click
   const handleAdd = () => {
-    console.log('Add supplement clicked');
-    // TODO: Open add wizard
-    toast.info('Add Wizard kommt in Phase 3');
+    setIsAddModalOpen(true);
+  };
+
+  const handleAddComplete = () => {
+    setIsAddModalOpen(false);
+    refetchTimeline();
+    refetchInventory();
+    // Dispatch unified event for all listeners
+    window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
   };
 
   // Stats
@@ -240,6 +248,12 @@ export default function SupplementsPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Add Supplement Modal */}
+      <SupplementTrackingModal 
+        isOpen={isAddModalOpen} 
+        onClose={handleAddComplete} 
+      />
     </div>
   );
 }

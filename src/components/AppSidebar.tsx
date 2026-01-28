@@ -68,7 +68,7 @@ const GROUP_PROTOKOLL: NavItem[] = [
   { title: "Routinen", url: "/routines", icon: Sparkles, comingSoon: true },
   { title: "Training", url: "/training", icon: Dumbbell },
   { title: "Ernährung", url: "/nutrition-planner", icon: Utensils, comingSoon: true },
-  { title: "Supplements", url: "/supplements", icon: Pill, comingSoon: true },
+  { title: "Supplements", url: "/supplements", icon: Pill },
   { title: "Peptide", url: "/peptides", icon: Syringe, comingSoon: true },
 ];
 

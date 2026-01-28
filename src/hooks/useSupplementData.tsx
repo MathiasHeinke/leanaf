@@ -248,6 +248,13 @@ export const useSupplementData = (currentDate?: Date) => {
   // Subscribe to global data refresh events; loader has TTL guard
   useDataRefresh(loadSupplementData);
 
+  // Listen for unified supplement-stack-changed events
+  useEffect(() => {
+    const handleStackChange = () => loadSupplementData({ force: true });
+    window.addEventListener('supplement-stack-changed', handleStackChange);
+    return () => window.removeEventListener('supplement-stack-changed', handleStackChange);
+  }, [loadSupplementData]);
+
 
   // Group supplements by timing with robust error handling
   const groupedSupplements: TimeGroupedSupplements = userSupplements.reduce((acc, supplement) => {
