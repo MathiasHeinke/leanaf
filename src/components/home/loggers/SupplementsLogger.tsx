@@ -38,12 +38,23 @@ const TIMING_LABELS: Record<string, string> = {
   post_workout: 'Post-Workout',
 };
 
+// Chronological order for timing groups
+const TIMING_ORDER: string[] = [
+  'morning',      // 05:00 - 11:59
+  'noon',         // 12:00 - 16:59  
+  'evening',      // 17:00 - 20:59
+  'bedtime',      // 21:00 - 04:59
+  'pre_workout',  // Dynamic
+  'post_workout', // Dynamic
+];
+
 // Determine current timing based on hour
 const getCurrentTiming = (): string => {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 12) return 'morning';
   if (hour >= 12 && hour < 17) return 'noon';
-  return 'evening';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'bedtime'; // 21:00 - 04:59
 };
 
 export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose }) => {
@@ -64,7 +75,11 @@ export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose })
   const [loggingAdHoc, setLoggingAdHoc] = useState<string | null>(null);
 
   const currentTiming = getCurrentTiming();
-  const timings = Object.keys(groupedSupplements);
+  
+  // Sort timings chronologically
+  const sortedTimings = Object.keys(groupedSupplements).sort(
+    (a, b) => TIMING_ORDER.indexOf(a) - TIMING_ORDER.indexOf(b)
+  );
 
   // Calculate overall stats
   const totalScheduled = Object.values(groupedSupplements).reduce((sum, g) => sum + g.total, 0);
@@ -145,7 +160,7 @@ export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose })
     );
   }
 
-  if (timings.length === 0) {
+  if (sortedTimings.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <p>Keine aktiven Supplements konfiguriert.</p>
@@ -167,13 +182,14 @@ export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose })
         </span>
       </div>
 
-      {/* Timing Groups */}
-      {timings.map((timing) => {
+      {/* Timing Groups - Chronologically sorted */}
+      {sortedTimings.map((timing) => {
         const group = groupedSupplements[timing];
         const Icon = TIMING_ICONS[timing] || Sun;
         const label = TIMING_LABELS[timing] || timing;
         const isComplete = group.taken === group.total && group.total > 0;
         const isExpanded = expandedTiming === timing;
+        const isCurrent = timing === currentTiming;
 
         return (
           <Collapsible
@@ -185,12 +201,18 @@ export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose })
               <div
                 className={cn(
                   "flex items-center justify-between w-full px-4 py-3 rounded-xl transition-colors",
-                  isComplete ? "bg-green-500/10" : "bg-muted/50 hover:bg-muted"
+                  isComplete ? "bg-green-500/10" : "bg-muted/50 hover:bg-muted",
+                  isCurrent && !isComplete && "ring-2 ring-primary/50"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <Icon className={cn("w-5 h-5", isComplete ? "text-green-500" : "text-muted-foreground")} />
                   <span className="font-medium">{label}</span>
+                  {isCurrent && !isComplete && (
+                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                      Jetzt
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={cn(
