@@ -142,6 +142,10 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   // Movement fields
   const [steps, setSteps] = useState<string>('');
   const [distanceKm, setDistanceKm] = useState<string>('');
+  
+  // RPE & Advanced options
+  const [rpe, setRpe] = useState<number | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const selectedTypeConfig = allTypes.find(t => t.id === selectedType);
   
@@ -210,6 +214,11 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
     if (selectedType === 'movement') {
       if (steps) sessionData.steps = parseInt(steps);
       if (distanceKm) sessionData.distance_km = parseFloat(distanceKm.replace(',', '.'));
+    }
+    
+    // Add RPE to session_data if selected
+    if (rpe) {
+      sessionData.rpe = rpe;
     }
     
     const success = await trackEvent('workout', { 
@@ -319,7 +328,7 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
               className="overflow-hidden"
             >
               <div className="pt-2 space-y-4">
-                {/* RPT: Multi-Select Split Dropdown + Volume */}
+                {/* RPT: Multi-Select Split Dropdown + Collapsible Volume */}
                 {selectedType === 'rpt' && (
                   <>
                     <div className="text-sm font-medium text-muted-foreground">Trainierte Splits</div>
@@ -350,18 +359,41 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                       </PopoverContent>
                     </Popover>
                     
-                    {/* Volume Input */}
-                    <div className="flex items-center gap-3">
-                      <label className="text-sm text-muted-foreground">Volumen</label>
-                      <NumericInput
-                        placeholder="8500"
-                        value={totalVolume}
-                        onChange={setTotalVolume}
-                        allowDecimals={false}
-                        className="w-24"
-                      />
-                      <span className="text-sm text-muted-foreground">kg</span>
-                    </div>
+                    {/* Collapsible Advanced Options */}
+                    <button
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <ChevronDown className={cn(
+                        "w-3 h-3 transition-transform duration-200",
+                        showAdvanced && "rotate-180"
+                      )} />
+                      Profi-Optionen
+                    </button>
+                    
+                    <AnimatePresence>
+                      {showAdvanced && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="flex items-center gap-3 pt-2">
+                            <label className="text-sm text-muted-foreground">Gesamtvolumen</label>
+                            <NumericInput
+                              placeholder="8500"
+                              value={totalVolume}
+                              onChange={setTotalVolume}
+                              allowDecimals={false}
+                              className="w-24"
+                            />
+                            <span className="text-sm text-muted-foreground">kg</span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </>
                 )}
 
@@ -515,6 +547,41 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                     <p className="text-sm text-muted-foreground mt-2">
                       Aktive Regeneration – auch Ruhe ist Training!
                     </p>
+                  </div>
+                )}
+
+                {/* RPE INTENSITY - For all workout types except rest */}
+                {selectedType && selectedType !== 'rest' && (
+                  <div className="space-y-3 pt-2">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Intensität (RPE)
+                    </div>
+                    <div className="flex gap-1.5 justify-between">
+                      {Array.from({ length: 10 }, (_, i) => i + 1).map((value) => (
+                        <motion.button
+                          key={value}
+                          whileTap={{ scale: 0.9 }}
+                          onClick={() => setRpe(rpe === value ? null : value)}
+                          className={cn(
+                            "flex-1 h-10 rounded-lg text-sm font-semibold transition-all",
+                            rpe === value
+                              ? value <= 5 
+                                ? "bg-emerald-500 text-white ring-2 ring-emerald-400"
+                                : value <= 8 
+                                  ? "bg-amber-500 text-white ring-2 ring-amber-400"
+                                  : "bg-rose-500 text-white ring-2 ring-rose-400"
+                              : "bg-muted hover:bg-muted/80 text-foreground"
+                          )}
+                        >
+                          {value}
+                        </motion.button>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground px-1">
+                      <span>Leicht</span>
+                      <span>Mittel</span>
+                      <span>Maximum</span>
+                    </div>
                   </div>
                 )}
 
