@@ -83,6 +83,7 @@ export const EVIDENCE_LEVEL_CONFIG: Record<EvidenceLevel, {
 // Necessity Tier Konfiguration für UI
 export const NECESSITY_TIER_CONFIG: Record<NecessityTier, {
   label: string;
+  shortLabel: string;
   description: string;
   icon: string;
   impactRange: string;
@@ -91,6 +92,7 @@ export const NECESSITY_TIER_CONFIG: Record<NecessityTier, {
 }> = {
   essential: {
     label: 'THE ESSENTIALS',
+    shortLabel: 'Essential',
     description: 'Non-Negotiables. Jeder sollte diese nehmen.',
     icon: '🚨',
     impactRange: '9.0 - 10.0',
@@ -99,6 +101,7 @@ export const NECESSITY_TIER_CONFIG: Record<NecessityTier, {
   },
   optimizer: {
     label: 'TARGETED OPTIMIZERS',
+    shortLabel: 'Optimizer',
     description: 'Für spezifische Ziele oder Mängel.',
     icon: '🚀',
     impactRange: '7.0 - 8.9',
@@ -107,6 +110,7 @@ export const NECESSITY_TIER_CONFIG: Record<NecessityTier, {
   },
   specialist: {
     label: 'ADVANCED/EXPERIMENTAL',
+    shortLabel: 'Specialist',
     description: 'Nische, teuer oder experimentell.',
     icon: '🧪',
     impactRange: '< 7.0',

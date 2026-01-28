@@ -1,6 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import { parseScheduleFromProtocol } from '@/lib/schedule-utils';
 import type { 
   SupplementLibraryItem, 
   UserStackItem, 
@@ -12,7 +15,8 @@ import type {
   NecessityTier,
   FormQuality,
   SupplementBrand,
-  SupplementProduct
+  SupplementProduct,
+  PREFERRED_TIMING_LABELS,
 } from '@/types/supplementLibrary';
 
 // Query keys for React Query
@@ -414,4 +418,133 @@ export const useSupplementsByCategoryInPhase = (phase: number) => {
     specialists: phaseData?.specialists || [],
     ...rest 
   };
+};
+
+// =====================================================
+// Toggle & Auto-Activate Hooks (Blueprint & Flow)
+// =====================================================
+
+// Mapping function: common_timing -> preferred_timing
+function mapCommonTimingToPreferred(commonTiming: string[]): PreferredTiming {
+  if (!commonTiming?.length) return 'morning';
+
+  const first = commonTiming[0]?.toLowerCase();
+
+  if (first?.includes('morgen') || first?.includes('nüchtern')) return 'morning';
+  if (first?.includes('mittag')) return 'noon';
+  if (first?.includes('nachmittag')) return 'afternoon';
+  if (first?.includes('abend') || first?.includes('nacht')) return 'evening';
+  if (first?.includes('schlaf')) return 'bedtime';
+  if (first?.includes('vor training')) return 'pre_workout';
+  if (first?.includes('nach training')) return 'post_workout';
+
+  return 'morning';
+}
+
+// Toggle supplement activation (add/remove from user stack)
+export const useSupplementToggle = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [isToggling, setIsToggling] = useState(false);
+
+  const toggleSupplement = async (item: SupplementLibraryItem, activate: boolean) => {
+    if (!user?.id) return;
+
+    setIsToggling(true);
+    try {
+      if (activate) {
+        // Magic: Auto-fill with defaults from library
+        const timing = mapCommonTimingToPreferred(item.common_timing || []);
+        const schedule = item.cycling_required
+          ? parseScheduleFromProtocol(item.cycling_protocol)
+          : { type: 'daily' as const };
+
+        const { error } = await supabase.from('user_supplements').upsert(
+          {
+            user_id: user.id,
+            supplement_id: item.id,
+            name: item.name,
+            dosage: item.default_dosage || '',
+            unit: item.default_unit || 'mg',
+            preferred_timing: timing,
+            timing: item.common_timing || [],
+            schedule: schedule as any,
+            is_active: true,
+          },
+          { onConflict: 'user_id,supplement_id' }
+        );
+
+        if (error) throw error;
+        toast.success(`${item.name} aktiviert`);
+      } else {
+        // Deactivate (don't delete - user might want to reactivate)
+        const { error } = await supabase
+          .from('user_supplements')
+          .update({ is_active: false })
+          .eq('user_id', user.id)
+          .eq('supplement_id', item.id);
+
+        if (error) throw error;
+        toast.success(`${item.name} pausiert`);
+      }
+
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: SUPPLEMENT_LIBRARY_KEYS.userStack(user.id) });
+      window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
+    } catch (err) {
+      console.error('Error toggling supplement:', err);
+      toast.error('Fehler beim Aktualisieren');
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  return { toggleSupplement, isToggling };
+};
+
+// Auto-activate all essentials for onboarding
+export const useAutoActivateEssentials = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: phaseSupplements } = useSupplementsByPhase(0); // Phase 0 = Foundation
+  const [isActivating, setIsActivating] = useState(false);
+
+  const activateEssentials = async () => {
+    if (!user?.id || !phaseSupplements?.essentials?.length) {
+      toast.error('Keine Essentials gefunden');
+      return;
+    }
+
+    setIsActivating(true);
+    try {
+      const inserts = phaseSupplements.essentials.map((item) => ({
+        user_id: user.id,
+        supplement_id: item.id,
+        name: item.name,
+        dosage: item.default_dosage || '',
+        unit: item.default_unit || 'mg',
+        preferred_timing: mapCommonTimingToPreferred(item.common_timing || []),
+        timing: item.common_timing || [],
+        schedule: { type: 'daily' as const } as any,
+        is_active: true,
+      }));
+
+      const { error } = await supabase
+        .from('user_supplements')
+        .upsert(inserts, { onConflict: 'user_id,supplement_id' });
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: SUPPLEMENT_LIBRARY_KEYS.userStack(user.id) });
+      window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
+      toast.success(`${inserts.length} Essentials aktiviert!`);
+    } catch (err) {
+      console.error('Error activating essentials:', err);
+      toast.error('Fehler beim Aktivieren');
+    } finally {
+      setIsActivating(false);
+    }
+  };
+
+  return { activateEssentials, isActivating, essentialsCount: phaseSupplements?.essentials?.length || 0 };
 };

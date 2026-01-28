@@ -1,387 +1,305 @@
-import React, { useState } from 'react';
-import { Pill, Clock, Package, Sparkles, Lightbulb, Plus } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Pill, Clock, Package, Sparkles, Plus, Beaker, CalendarClock } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SupplementTimeline } from '@/components/supplements/SupplementTimeline';
 import { SupplementInventory } from '@/components/supplements/SupplementInventory';
-import { PhasedSupplementBrowser } from '@/components/supplements/PhasedSupplementBrowser';
+import { StackScoreCard } from '@/components/supplements/StackScoreCard';
 import { SupplementTrackingModal } from '@/components/SupplementTrackingModal';
-import { useUserStackByTiming, useUserStackByCategory, useMissingEssentials } from '@/hooks/useSupplementLibrary';
+import { 
+  useUserStackByTiming, 
+  useUserStackByCategory, 
+  useMissingEssentials,
+  useAutoActivateEssentials,
+} from '@/hooks/useSupplementLibrary';
+import { shouldShowSupplement } from '@/lib/schedule-utils';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import type { UserStackItem, SupplementLibraryItem } from '@/types/supplementLibrary';
+import { cn } from '@/lib/utils';
+import type { UserStackItem, SupplementLibraryItem, PreferredTiming } from '@/types/supplementLibrary';
+import type { SupplementSchedule } from '@/lib/schedule-utils';
+
+type ViewMode = 'flow' | 'protocol';
+
+// Stat Card Component
+const StatCard: React.FC<{
+  value: string | number;
+  label: string;
+  sublabel?: string;
+  icon: React.ReactNode;
+  colorClass?: string;
+  className?: string;
+}> = ({ value, label, sublabel, icon, colorClass = 'bg-primary/10 text-primary', className }) => (
+  <Card className={cn("bg-card/50 snap-start min-w-[140px] shrink-0", className)}>
+    <CardContent className="p-4">
+      <div className="flex items-center gap-3">
+        <div className={cn("p-2 rounded-lg shrink-0", colorClass)}>
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-xs text-muted-foreground truncate">{label}</p>
+          {sublabel && (
+            <p className="text-[10px] text-muted-foreground/70 truncate">{sublabel}</p>
+          )}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 export default function SupplementsPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'timeline' | 'inventory' | 'recommendations'>('timeline');
+  const [activeView, setActiveView] = useState<ViewMode>('flow');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedRecommendation, setSelectedRecommendation] = useState<SupplementLibraryItem | null>(null);
 
   // User's current phase (default to 0 = Foundation)
-  const userPhase = 0; // TODO: Get from user profile/protocol status
-  
-  // Fetch data with both groupings
-  const { 
-    groupedByTiming, 
+  const userPhase = 0;
+
+  // Fetch data
+  const {
+    groupedByTiming,
     activeStack,
     isLoading: timelineLoading,
-    refetch: refetchTimeline 
+    refetch: refetchTimeline,
   } = useUserStackByTiming();
-  
-  const { 
+
+  const {
     groupedByCategory,
     isLoading: inventoryLoading,
-    refetch: refetchInventory 
+    refetch: refetchInventory,
   } = useUserStackByCategory();
 
   // Missing essentials indicator
   const { missingCount, totalEssentials } = useMissingEssentials(userPhase);
 
+  // Auto-activate essentials hook
+  const { activateEssentials, isActivating } = useAutoActivateEssentials();
+
   const isLoading = timelineLoading || inventoryLoading;
 
-  // Toggle supplement active state
-  const handleToggleActive = async (supplement: UserStackItem, isActive: boolean) => {
-    if (!user?.id) return;
+  // Calculate stats
+  const totalInStack = Object.values(groupedByCategory).reduce(
+    (sum, items) => sum + items.length,
+    0
+  );
+  const totalActive = activeStack?.length || 0;
 
-    try {
-      const { error } = await supabase
-        .from('user_supplements')
-        .update({ is_active: isActive })
-        .eq('id', supplement.id)
-        .eq('user_id', user.id);
+  // Smart scheduling: count how many are due TODAY
+  const todayCount = useMemo(() => {
+    return (activeStack || []).filter((s) => {
+      // Safely cast schedule - it's stored as JSON in DB
+      const schedule = s.schedule && typeof s.schedule === 'object' && 'type' in s.schedule
+        ? (s.schedule as unknown as SupplementSchedule)
+        : null;
+      return shouldShowSupplement(schedule);
+    }).length;
+  }, [activeStack]);
 
-      if (error) throw error;
+  // Stack Score: % of essentials activated
+  const stackScore = useMemo(() => {
+    if (totalEssentials === 0) return 100;
+    const activeEssentials = totalEssentials - missingCount;
+    return Math.round((activeEssentials / totalEssentials) * 100);
+  }, [totalEssentials, missingCount]);
 
-      toast.success(isActive ? 'Supplement aktiviert' : 'Supplement pausiert');
-      refetchTimeline();
-      refetchInventory();
-    } catch (err) {
-      console.error('Error toggling supplement:', err);
-      toast.error('Fehler beim Aktualisieren');
+  // Filter groupedByTiming to only show supplements due today
+  const todaysGroupedByTiming = useMemo(() => {
+    const filtered: Record<PreferredTiming, UserStackItem[]> = {} as any;
+    for (const [timing, items] of Object.entries(groupedByTiming)) {
+      filtered[timing as PreferredTiming] = (items || []).filter((s) => {
+        // Safely cast schedule
+        const schedule = s.schedule && typeof s.schedule === 'object' && 'type' in s.schedule
+          ? (s.schedule as unknown as SupplementSchedule)
+          : null;
+        return shouldShowSupplement(schedule);
+      });
     }
-  };
-
-  // Handle supplement click (for future edit modal)
-  const handleSupplementClick = (supplement: UserStackItem) => {
-    console.log('Supplement clicked:', supplement);
-    // TODO: Open edit modal
-  };
+    return filtered;
+  }, [groupedByTiming]);
 
   // Handle add button click
   const handleAdd = () => {
-    setSelectedRecommendation(null);
-    setIsAddModalOpen(true);
-  };
-
-  // Handle add from recommendation
-  const handleAddFromRecommendation = (supplement: SupplementLibraryItem) => {
-    setSelectedRecommendation(supplement);
     setIsAddModalOpen(true);
   };
 
   const handleAddComplete = () => {
     setIsAddModalOpen(false);
-    setSelectedRecommendation(null);
     refetchTimeline();
     refetchInventory();
     window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
   };
 
-  // Stats
-  const totalActive = activeStack?.length || 0;
-  const totalInStack = Object.values(groupedByCategory).reduce(
-    (sum, items) => sum + items.length, 0
-  );
+  // Handle auto-activate essentials
+  const handleAutoActivate = async () => {
+    await activateEssentials();
+    refetchTimeline();
+    refetchInventory();
+    window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
+  };
 
   return (
-    <div className="container max-w-6xl py-6 space-y-6">
+    <div className="container max-w-2xl py-6 pb-24 space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          <div className="p-3 rounded-xl bg-primary/10 border border-primary/20">
-            <Pill className="h-6 w-6 text-primary" />
+      <div className="flex items-start justify-between gap-4 px-1">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
+            <Pill className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold">Stack Architect</h1>
+            <div className="flex items-center gap-2 mb-0.5">
+              <h1 className="text-xl font-bold">Stack Architect</h1>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                Layer 3
+              </Badge>
             </div>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-xs">
               Optimiere dein Supplement-Timing für maximale Absorption
             </p>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          <Button onClick={handleAdd} size="icon">
-            <Plus className="h-4 w-4" />
-          </Button>
+        <Button onClick={handleAdd} size="icon" variant="outline" className="shrink-0">
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Horizontal Scroll Stats */}
+      <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 scrollbar-hide">
+        <StatCard
+          value={totalActive}
+          label="Aktiv"
+          sublabel={`${todayCount} heute fällig`}
+          icon={<Package className="h-4 w-4" />}
+          colorClass="bg-primary/10 text-primary"
+        />
+        <StatCard
+          value={totalInStack}
+          label="Im Stack"
+          icon={<Beaker className="h-4 w-4" />}
+          colorClass="bg-blue-500/10 text-blue-500"
+        />
+        <StackScoreCard
+          score={stackScore}
+          essentialsActive={totalEssentials - missingCount}
+          essentialsTotal={totalEssentials}
+        />
+        {missingCount > 0 && (
+          <StatCard
+            value={missingCount}
+            label="Essentials fehlen"
+            icon={<Sparkles className="h-4 w-4" />}
+            colorClass="bg-amber-500/10 text-amber-500"
+          />
+        )}
+      </div>
+
+      {/* Segmented Control (iOS-Style Tab Switcher) */}
+      <div className="bg-muted/50 p-1 rounded-xl">
+        <div className="relative flex">
+          {/* Animated background slider */}
+          <motion.div
+            className="absolute top-0 bottom-0 bg-background rounded-lg shadow-sm"
+            initial={false}
+            animate={{
+              x: activeView === 'flow' ? 0 : '100%',
+              width: '50%',
+            }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          />
+
+          <button
+            onClick={() => setActiveView('flow')}
+            className={cn(
+              "flex-1 relative z-10 py-2.5 text-sm font-medium transition-colors text-center flex items-center justify-center gap-2 rounded-lg",
+              activeView === 'flow' ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
+            <CalendarClock className="h-4 w-4" />
+            Tagesablauf
+          </button>
+
+          <button
+            onClick={() => setActiveView('protocol')}
+            className={cn(
+              "flex-1 relative z-10 py-2.5 text-sm font-medium transition-colors text-center flex items-center justify-center gap-2 rounded-lg",
+              activeView === 'protocol' ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
+            <Beaker className="h-4 w-4" />
+            Protokoll
+          </button>
         </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Package className="h-4 w-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalInStack}</p>
-                <p className="text-xs text-muted-foreground">Im Stack</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <Clock className="h-4 w-4 text-green-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{totalActive}</p>
-                <p className="text-xs text-muted-foreground">Aktiv heute</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/10">
-                <Lightbulb className="h-4 w-4 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {missingCount > 0 ? missingCount : '✓'}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {missingCount > 0 ? 'Essentials fehlen' : 'Essentials komplett'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Desktop: Tab Layout */}
-      <div className="hidden lg:block">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'timeline' | 'inventory' | 'recommendations')}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="timeline" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Timeline
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Inventar
-            </TabsTrigger>
-            <TabsTrigger value="recommendations" className="flex items-center gap-2">
-              <Lightbulb className="h-4 w-4" />
-              Empfehlungen
-              {missingCount > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                  {missingCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="timeline">
-            <div className="grid lg:grid-cols-5 lg:gap-6">
-              {/* Timeline (60%) */}
-              <Card className="lg:col-span-3">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-primary" />
-                    Tages-Timeline
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <TimelineSkeleton />
-                  ) : (
-                    <SupplementTimeline
-                      groupedByTiming={groupedByTiming}
-                      onSupplementClick={handleSupplementClick}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Quick Inventory (40%) */}
-              <Card className="lg:col-span-2">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Package className="h-5 w-5 text-primary" />
-                    Inventar
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <InventorySkeleton />
-                  ) : (
-                    <SupplementInventory
-                      groupedByCategory={groupedByCategory}
-                      onToggleActive={handleToggleActive}
-                      onEdit={handleSupplementClick}
-                      onAdd={handleAdd}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="inventory">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Package className="h-5 w-5 text-primary" />
-                  Vollständiges Inventar
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {isLoading ? (
-                  <InventorySkeleton />
-                ) : (
-                  <SupplementInventory
-                    groupedByCategory={groupedByCategory}
-                    onToggleActive={handleToggleActive}
-                    onEdit={handleSupplementClick}
-                    onAdd={handleAdd}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="recommendations">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-primary" />
-                  ARES Empfehlungen
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PhasedSupplementBrowser
-                  initialPhase={userPhase}
-                  userPhase={userPhase}
-                  onAddSupplement={handleAddFromRecommendation}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Mobile: Tabs */}
-      <div className="lg:hidden">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'timeline' | 'inventory' | 'recommendations')}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="timeline" className="flex items-center gap-1 text-xs">
-              <Clock className="h-3 w-3" />
-              Timeline
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="flex items-center gap-1 text-xs">
-              <Package className="h-3 w-3" />
-              Inventar
-            </TabsTrigger>
-            <TabsTrigger value="recommendations" className="flex items-center gap-1 text-xs">
-              <Lightbulb className="h-3 w-3" />
-              Tipps
-              {missingCount > 0 && (
-                <Badge variant="destructive" className="ml-0.5 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
-                  {missingCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="timeline" className="mt-4">
-            <Card>
-              <CardContent className="pt-6">
-                {isLoading ? (
-                  <TimelineSkeleton />
-                ) : (
-                  <SupplementTimeline
-                    groupedByTiming={groupedByTiming}
-                    onSupplementClick={handleSupplementClick}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="inventory" className="mt-4">
-            <Card>
-              <CardContent className="pt-6">
-                {isLoading ? (
-                  <InventorySkeleton />
-                ) : (
-                  <SupplementInventory
-                    groupedByCategory={groupedByCategory}
-                    onToggleActive={handleToggleActive}
-                    onEdit={handleSupplementClick}
-                    onAdd={handleAdd}
-                  />
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="recommendations" className="mt-4">
-            <Card>
-              <CardContent className="pt-6">
-                <PhasedSupplementBrowser
-                  initialPhase={userPhase}
-                  userPhase={userPhase}
-                  onAddSupplement={handleAddFromRecommendation}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+      {/* Content Area */}
+      <AnimatePresence mode="wait">
+        {isLoading ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <LoadingSkeleton />
+          </motion.div>
+        ) : activeView === 'flow' ? (
+          <motion.div
+            key="flow"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <SupplementTimeline
+              groupedByTiming={todaysGroupedByTiming}
+              onAutoActivateEssentials={handleAutoActivate}
+              isActivating={isActivating}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="protocol"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <SupplementInventory
+              groupedByCategory={groupedByCategory}
+              onAdd={handleAdd}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Add Supplement Modal */}
-      <SupplementTrackingModal 
-        isOpen={isAddModalOpen} 
-        onClose={handleAddComplete} 
+      <SupplementTrackingModal
+        isOpen={isAddModalOpen}
+        onClose={handleAddComplete}
       />
     </div>
   );
 }
 
-// Loading skeletons
-const TimelineSkeleton = () => (
-  <div className="space-y-6">
-    {[1, 2, 3, 4, 5].map((i) => (
-      <div key={i} className="flex gap-4">
-        <Skeleton className="h-3 w-3 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-const InventorySkeleton = () => (
-  <div className="space-y-6">
+// Loading skeleton
+const LoadingSkeleton = () => (
+  <div className="space-y-4">
     {[1, 2, 3].map((i) => (
-      <div key={i} className="space-y-3">
-        <Skeleton className="h-5 w-32" />
-        <Skeleton className="h-14 w-full" />
-        <Skeleton className="h-14 w-full" />
+      <div key={i} className="p-4 rounded-xl border border-border/30 bg-card/50">
+        <div className="flex items-center gap-3 mb-3">
+          <Skeleton className="h-8 w-8 rounded-lg" />
+          <div className="space-y-1.5 flex-1">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-24 rounded-full" />
+          <Skeleton className="h-8 w-28 rounded-full" />
+        </div>
       </div>
     ))}
   </div>
