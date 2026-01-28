@@ -19,3 +19,15 @@ export {
   type ConversationMessage,
   type IntelligentPromptConfig,
 } from './intelligentPromptBuilder.ts';
+
+// ARES 3.0 Response Intelligence - Topic Tracker
+export {
+  extractTopics,
+  loadTopicHistory,
+  updateTopicStats,
+  findPrimaryTopic,
+  buildTopicExpertiseSection,
+  TOPIC_PATTERNS,
+  type TopicContext,
+  type TopicLevel,
+} from './topicTracker.ts';

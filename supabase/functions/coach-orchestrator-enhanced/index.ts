@@ -20,9 +20,21 @@ import {
   loadUserHealthContext,
   buildIntelligentSystemPrompt,
   convertConversationHistory,
+  // ARES 3.0 Response Intelligence
+  extractTopics,
+  loadTopicHistory,
+  updateTopicStats,
+  findPrimaryTopic,
   type UserHealthContext,
   type ConversationMessage,
+  type TopicContext,
 } from '../_shared/context/index.ts';
+
+// ARES 3.0 Response Budget Calculator
+import {
+  calculateResponseBudget,
+  type BudgetResult,
+} from '../_shared/ai/responseBudget.ts';
 
 // Phase 4: Memory Extraction System
 import {
@@ -1382,7 +1394,7 @@ function formatConversationHistory(conversations: any[]): string {
   return formatted;
 }
 
-function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext, userInsights, userPatterns, knowledgeContext, bloodworkContext, topicState }: {
+function buildAresPrompt({ persona, context, ragSources, text, images, userMoodContext, conversationHistory, personaPrompt, healthContext, userInsights, userPatterns, knowledgeContext, bloodworkContext, topicState, topicHistory, responseBudget }: {
   persona: any;
   context: any;
   ragSources: any;
@@ -1397,6 +1409,9 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
   knowledgeContext?: KnowledgeContext | null; // Phase 5: Scientific knowledge
   bloodworkContext?: BloodworkContext | null; // Phase 5: Bloodwork analysis
   topicState?: TopicState | null; // Phase 7: Topic state machine
+  // ARES 3.0 Response Intelligence
+  topicHistory?: Map<string, TopicContext>;
+  responseBudget?: BudgetResult;
 }) {
   const dialResult: AresDialResult = decideAresDial(userMoodContext || {}, text);
   const ritualContext = getRitualContext();
@@ -1439,6 +1454,9 @@ function buildAresPrompt({ persona, context, ragSources, text, images, userMoodC
       currentMessage: text,
       userInsights: userInsights, // Phase 4: Memory insights
       userPatterns: userPatterns, // Phase 4: Memory patterns
+      // ARES 3.0 Response Intelligence
+      topicContexts: topicHistory,
+      responseBudget: responseBudget,
     });
     
     // Add memory and tools section that the intelligent builder doesn't include
@@ -2741,10 +2759,47 @@ Deno.serve(async (req) => {
       patterns_loaded: userPatterns.length
     } as any);
 
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ARES 3.0 RESPONSE INTELLIGENCE: Topic Extraction & Budget Calculation
+    // ═══════════════════════════════════════════════════════════════════════════
+    const detectedTopics = extractTopics(text);
+    let topicHistory = new Map<string, TopicContext>();
+    let primaryTopic: TopicContext | null = null;
+    let responseBudget: BudgetResult | undefined;
+    
+    if (detectedTopics.length > 0) {
+      console.log('[ARES-TOPIC] Detected topics:', detectedTopics.join(', '));
+      
+      try {
+        topicHistory = await loadTopicHistory(supaSvc, user.id, detectedTopics);
+        primaryTopic = findPrimaryTopic(topicHistory);
+        
+        if (primaryTopic) {
+          console.log(`[ARES-TOPIC] Primary: ${primaryTopic.topic} (${primaryTopic.level}, ${primaryTopic.mentionCount}x)`);
+        }
+        
+        // Calculate response budget based on expertise + semantic analysis
+        responseBudget = calculateResponseBudget({
+          userMessageLength: text.length,
+          primaryTopic,
+          intent: semanticAnalysis?.intent || 'question',
+          detailLevel: semanticAnalysis?.required_detail_level || 'moderate',
+          timeOfDay: getTimeOfDay() as 'morning' | 'day' | 'evening',
+        });
+        
+        console.log(`[ARES-BUDGET] ${responseBudget.maxChars} chars, reason: ${responseBudget.reason}`);
+      } catch (topicErr) {
+        console.warn('[ARES-TOPIC] Failed to load topic history:', topicErr);
+      }
+    } else {
+      console.log('[ARES-TOPIC] No topics detected in message');
+    }
+
     // Build prompt with memory, conversation history, and Phase 2 persona prompt
     // Phase 3: Pass healthContext for intelligent prompts
     // Phase 4: Pass userInsights and userPatterns for memory context
     // Phase 7: Pass topicState for conversation flow management
+    // ARES 3.0: Pass topicHistory and responseBudget for Response Intelligence
     const { systemPrompt, completePrompt, dial, temperature } = buildAresPrompt({ 
       persona: userPersona || persona, 
       context, 
@@ -2760,6 +2815,9 @@ Deno.serve(async (req) => {
       knowledgeContext: knowledgeContext || undefined, // Phase 5: Scientific knowledge
       bloodworkContext: bloodworkContext || undefined, // Phase 5: Bloodwork analysis
       topicState: topicState || undefined, // Phase 7: Topic state machine
+      // ARES 3.0 Response Intelligence
+      topicHistory: topicHistory.size > 0 ? topicHistory : undefined,
+      responseBudget: responseBudget,
     });
 
     // Store system prompt AND user input for full LLM tracing
@@ -2997,6 +3055,13 @@ Deno.serve(async (req) => {
     // This ensures the Edge Function doesn't terminate before DB writes finish
     const memoryResult = await memoryExtractionPromise;
     console.log('[MEMORY] Extraction completed with result:', memoryResult.success ? 'SUCCESS' : 'FAILED');
+
+    // ARES 3.0 Response Intelligence: Update topic stats after response
+    if (detectedTopics.length > 0 && finalOutput) {
+      updateTopicStats(supaSvc, user.id, detectedTopics, finalOutput.length)
+        .then(() => console.log(`[ARES-TOPIC] Updated stats for ${detectedTopics.length} topics`))
+        .catch(err => console.warn('[ARES-TOPIC] Failed to update stats:', err));
+    }
 
     // Phase 8: Award XP for this interaction (non-blocking but awaited)
     let xpResult: XPResult | null = null;
