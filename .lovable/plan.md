@@ -1,63 +1,60 @@
 
 
-# Plan: Vollständiges Seeding der verbleibenden ~150 Produkte
+# Plan: Seeding der verbleibenden ~10-15 Produkte
 
-## Aktuelle Datenbank-Statistik
+## Aktuelle Situation
 
-| Marke | In DB | In Seed (geschätzt) | Delta |
-|-------|-------|---------------------|-------|
-| Biogena | 47 | ~60 | ~13 |
-| MoleQlar | 45 | ~50+ | ~5 |
-| Sunday Natural | 34 | ~50+ | ~16 |
-| Now Foods | 21 | ~40+ | ~19 |
-| Orthomol | 20 | ~25 | ~5 |
-| Nature Love | 18 | ~30+ | ~12 |
-| ESN | 16 | ~25 | ~9 |
-| Naturtreu | 15 | ~25+ | ~10 |
-| Doppelherz | 13 | ~15 | ~2 |
-| Bulk | 13 | ~20 | ~7 |
-| Doctor's Best | 12 | ~25+ | ~13 |
-| More Nutrition | 11 | ~18 | ~7 |
-| ProFuel | 10 | ~18 | ~8 |
-| Thorne | 8 | ~20+ | ~12 |
-| Life Extension | 7 | ~25+ | ~18 |
-| **Total** | **291** | **~450** | **~160** |
+| Marke | In DB | Geschätzt in Seed | Delta |
+|-------|-------|-------------------|-------|
+| **Biogena** | 57 | ~60 | ~3 |
+| **MoleQlar** | 54 | ~55 | ~1 |
+| **Sunday Natural** | 50 | ~50 | 0 ✅ |
+| **Now Foods** | 37 | ~40 | ~3 |
+| **Nature Love** | 28 | ~30 | ~2 |
+| **Naturtreu** | 26 | ~26 | 0 ✅ |
+| **Orthomol** | 27 | ~28 | ~1 |
+| **Doctor's Best** | 25 | ~28 | ~3 |
+| **Thorne** | 22 | ~24 | ~2 |
+| **Life Extension** | 21 | ~24 | ~3 |
+| **ESN** | 23 | ~24 | ~1 |
+| **Bulk** | 21 | ~21 | 0 ✅ |
+| **Doppelherz** | 20 | ~20 | 0 ✅ |
+| **ProFuel** | 19 | ~20 | ~1 |
+| **More Nutrition** | 18 | ~19 | ~1 |
+| **Lebenskraft-pur** | 0 | 0 | - |
+| **Total** | **449** | **~470** | **~21** |
 
-## Seeding-Strategie
+## Vorgehensweise
 
-Die Edge Function `seed-products` empfängt Produkte per POST-Body und überspringt Duplikate automatisch (via `brand_id + product_name` Check).
+Ich werde die Edge Function `seed-products` mit dem kompletten `COMPLETE_PRODUCT_SEED` Array aufrufen. Die Funktion:
 
-### Ausführungsschritte
+1. Empfängt alle ~470 Produkte aus den Seed-Dateien
+2. Prüft jedes Produkt auf Duplikate via `(brand_id, product_name)` Unique Constraint
+3. Überspringt alle 449 bereits existierenden Produkte
+4. Fügt nur die ~21 fehlenden Produkte ein
 
-1. **Budget-Kategorie seeden** (Nature Love, Naturtreu, Now Foods, Doctor's Best)
-   - ~60 neue Produkte erwartet
-   - Batch-Größe: 30 Produkte pro Request
+## Erwartete fehlende Produkte
 
-2. **Premium-Kategorie seeden** (MoleQlar, Sunday Natural, Life Extension, Thorne)  
-   - ~50 neue Produkte erwartet
-   - Batch-Größe: 30 Produkte pro Request
+Basierend auf der Analyse sind wahrscheinlich folgende Produkte noch nicht in der DB:
 
-3. **Sport-Kategorie seeden** (ESN, More Nutrition, Bulk, ProFuel)
-   - ~30 neue Produkte erwartet
-   - Batch-Größe: 30 Produkte pro Request
-
-4. **Pharmacy-Kategorie seeden** (Biogena, Orthomol, Doppelherz)
-   - ~20 neue Produkte erwartet
-   - Batch-Größe: 30 Produkte pro Request
-
-## Erwartetes Endergebnis
-
-| Metrik | Vorher | Nachher |
-|--------|--------|---------|
-| Produkte | 291 | ~450 |
-| Marken | 17 | 17 |
-| Wirkstoffe | 111 | 120+ |
+- **Nature Love**: Lions Mane Extrakt, Cordyceps Extrakt, Quercetin 500mg
+- **Now Foods**: Tongkat Ali, 5-HTP, weitere Spezialprodukte
+- **Doctor's Best**: Acetyl-L-Carnitin, Alpha-Liponsäure Varianten
+- **Biogena**: Sulforaphan, Alpha-GPC Varianten
+- **Life Extension/Thorne**: Einzelne Premium-Longevity-Produkte
 
 ## Technische Umsetzung
 
-Ich werde die Edge Function `seed-products` mit dem vollständigen `COMPLETE_PRODUCT_SEED` Array aufrufen. Die Funktion:
-- Akzeptiert alle ~450 Produkte
-- Prüft jedes Produkt auf Duplikate
-- Fügt nur neue Produkte ein
-- Gibt detaillierte Statistiken zurück
+1. Edge Function `seed-products` aufrufen mit `COMPLETE_PRODUCT_SEED`
+2. Batch-Größe: 30 Produkte pro Request (ca. 16 Batches)
+3. Automatische Duplikat-Erkennung durch DB-Constraint
+4. Ergebnis: `products_added`, `products_skipped` Statistiken
+
+## Erwartetes Ergebnis
+
+| Metrik | Vorher | Nachher |
+|--------|--------|---------|
+| Produkte | 449 | ~470 |
+| Neue Produkte | - | ~21 |
+| Übersprungen | - | ~449 |
 
