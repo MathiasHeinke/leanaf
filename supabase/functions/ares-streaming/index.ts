@@ -49,9 +49,23 @@ import {
   loadUserHealthContext,
   buildIntelligentSystemPrompt,
   convertConversationHistory,
+  extractTopics,
+  loadTopicHistory,
+  updateTopicStats,
+  findPrimaryTopic,
+  buildTopicExpertiseSection,
   type UserHealthContext,
   type ConversationMessage,
+  type TopicContext,
 } from '../_shared/context/index.ts';
+
+// Phase 11b: Response Budget Calculator (Topic Expertise Awareness)
+import {
+  calculateResponseBudget,
+  buildBudgetPromptSection,
+  type BudgetResult,
+  type BudgetFactors,
+} from '../_shared/ai/responseBudget.ts';
 
 // Phase 4: Memory System
 import {
@@ -81,6 +95,11 @@ import {
   formatBloodworkForPrompt,
   type BloodworkContext,
 } from '../_shared/bloodwork/index.ts';
+
+// Phase 11c: Gamification XP System
+import {
+  awardInteractionXP,
+} from '../_shared/gamification/index.ts';
 
 // Phase 9: ARES Protocol Deep Knowledge
 import {
@@ -309,7 +328,9 @@ function buildStreamingSystemPrompt(
   userInsights: UserInsight[],
   conversationHistory: ConversationMessage[],
   narrativeAnalysis?: NarrativeAnalysis,
-  identityContext?: IdentityContext
+  identityContext?: IdentityContext,
+  topicContexts?: Map<string, TopicContext>,
+  responseBudget?: BudgetResult | null
 ): string {
   const parts: string[] = [];
   
@@ -350,6 +371,28 @@ function buildStreamingSystemPrompt(
     const memorySection = buildTimeAwareMemorySection(userInsights);
     if (memorySection) {
       parts.push(memorySection);
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // TOPIC EXPERTISE - Prevent Groundhog Day Repetition
+  // ═══════════════════════════════════════════════════════════════════
+  if (topicContexts && topicContexts.size > 0) {
+    const expertiseSection = buildTopicExpertiseSection(topicContexts);
+    if (expertiseSection) {
+      parts.push(expertiseSection);
+      parts.push('');
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // RESPONSE BUDGET - Dynamic Length based on Expertise
+  // ═══════════════════════════════════════════════════════════════════
+  if (responseBudget) {
+    const budgetSection = buildBudgetPromptSection(responseBudget);
+    if (budgetSection) {
+      parts.push(budgetSection);
+      parts.push('');
     }
   }
   
@@ -861,7 +904,60 @@ Deno.serve(async (req) => {
           }
 
           // ═══════════════════════════════════════════════════════════════════
-          // PHASE 2d: Build system prompt with dynamic instructions
+          // PHASE 2e: Topic Tracking - Prevent "Groundhog Day" Repetition
+          // ═══════════════════════════════════════════════════════════════════
+          const detectedTopics = extractTopics(text);
+          let topicContexts = new Map<string, TopicContext>();
+          let primaryTopic: TopicContext | null = null;
+          
+          if (detectedTopics.length > 0) {
+            try {
+              const topicHistory = await loadTopicHistory(supaSvc, userId, detectedTopics);
+              topicContexts = topicHistory;
+              primaryTopic = findPrimaryTopic(topicContexts);
+              
+              if (primaryTopic) {
+                console.log('[ARES-STREAM] Primary topic:', primaryTopic.topic, 
+                            'Level:', primaryTopic.level, 
+                            'Mentions:', primaryTopic.mentionCount);
+                if (primaryTopic.level === 'expert') {
+                  enqueue({ type: 'thinking', step: 'expertise', message: `Expert bei ${primaryTopic.topic}`, done: true });
+                }
+              }
+            } catch (e) {
+              console.warn('[ARES-STREAM] Topic tracking failed:', e);
+            }
+          }
+
+          // ═══════════════════════════════════════════════════════════════════
+          // PHASE 2f: Response Budget Calculator
+          // ═══════════════════════════════════════════════════════════════════
+          let responseBudget: BudgetResult | null = null;
+          
+          if (semanticAnalysis) {
+            const hour = new Date().getHours();
+            const timeOfDay: 'morning' | 'day' | 'evening' = 
+              hour >= 17 && hour < 22 ? 'evening' : 
+              hour >= 5 && hour < 12 ? 'morning' : 'day';
+            
+            const budgetFactors: BudgetFactors = {
+              userMessageLength: text.length,
+              primaryTopic: primaryTopic,
+              intent: semanticAnalysis.intent,
+              detailLevel: semanticAnalysis.required_detail_level,
+              timeOfDay: timeOfDay,
+            };
+            
+            responseBudget = calculateResponseBudget(budgetFactors);
+            console.log('[ARES-STREAM] Response Budget:', {
+              maxChars: responseBudget.maxChars,
+              reason: responseBudget.reason,
+              constraints: responseBudget.constraints.length
+            });
+          }
+
+          // ═══════════════════════════════════════════════════════════════════
+          // PHASE 2g: Build system prompt with dynamic instructions
           // ═══════════════════════════════════════════════════════════════════
           let baseSystemPrompt = buildStreamingSystemPrompt(
             persona,
@@ -872,7 +968,9 @@ Deno.serve(async (req) => {
             insightsResult as UserInsight[],
             conversationHistory,
             narrativeAnalysis,
-            identityContext
+            identityContext,
+            topicContexts,
+            responseBudget
           );
           
           // Inject dynamic response length instructions based on semantic analysis
@@ -1178,6 +1276,35 @@ Deno.serve(async (req) => {
                 const allInsights = await getAllUserInsights(userId, supaSvc);
                 await detectPatterns(userId, newInsights, allInsights, supaSvc);
               }
+              
+              // ═══════════════════════════════════════════════════════════════════
+              // PHASE 6b: Gamification - Award XP for Streaming Interactions
+              // ═══════════════════════════════════════════════════════════════════
+              try {
+                const xpResult = await awardInteractionXP(supaSvc, userId, {
+                  toolsUsed: [], // Streaming hat keine Tools
+                  messageText: text,
+                  streakDays: healthContext?.basics?.streak || 0,
+                });
+                if (xpResult) {
+                  console.log('[ARES-STREAM] XP awarded:', xpResult.totalXP, 'Breakdown:', xpResult.breakdown);
+                }
+              } catch (xpError) {
+                console.warn('[ARES-STREAM] XP award failed:', xpError);
+              }
+              
+              // ═══════════════════════════════════════════════════════════════════
+              // PHASE 6c: Topic Stats Update - Track expertise growth
+              // ═══════════════════════════════════════════════════════════════════
+              if (detectedTopics.length > 0 && finalResponse.length > 0) {
+                try {
+                  await updateTopicStats(supaSvc, userId, detectedTopics, finalResponse.length);
+                  console.log('[ARES-STREAM] Topic stats updated for:', detectedTopics.join(', '));
+                } catch (topicError) {
+                  console.warn('[ARES-STREAM] Topic stats update failed:', topicError);
+                }
+              }
+              
             } catch (postError) {
               console.error('[ARES-STREAM] Post-stream tasks failed:', postError);
             }
