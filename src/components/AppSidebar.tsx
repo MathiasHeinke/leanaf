@@ -3,28 +3,26 @@ import { useEffect, useState } from "react";
 import { 
   LayoutDashboard, 
   Dumbbell,
-  TrendingUp,
-  BarChart3,
   User as UserIcon, 
   Settings, 
   CreditCard, 
-  Trophy, 
   Bug, 
   LogOut,
-  Star,
-  Award,
-  Crown,
   FileText,
   Shield,
   Info,
   History as HistoryIcon,
-  Zap,
   Sun,
   Moon,
   Clock,
-  TestTube,
   ChevronDown,
-  FlaskConical
+  FlaskConical,
+  Sparkles,
+  Utensils,
+  Pill,
+  Syringe,
+  Dna,
+  LineChart
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -36,7 +34,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
@@ -44,29 +41,50 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "@/hooks/useTranslation";
-import { usePointsSystem } from "@/hooks/usePointsSystem";
 import { useAutoDarkMode } from "@/hooks/useAutoDarkMode";
 import { BugReportDialog } from "./BugReportDialog";
 
-const navigationItems = [
+// Navigation item type
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  comingSoon?: boolean;
+  key?: string;
+  adminOnly?: boolean;
+}
+
+// Group 1: LIVE - The Cockpit
+const GROUP_LIVE: NavItem[] = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  // UNTER BEOBACHTUNG: ARES Protokoll temporär ausgeblendet
-  // { title: "ARES Protokoll", url: "/protocol", icon: FlaskConical },
-  { title: "Workout", url: "/training", icon: Dumbbell },
-  // UNTER BEOBACHTUNG: Transformation temporär ausgeblendet - später in Analyse/History integrieren
-  // { title: "Transformation", url: "/transformation", icon: TrendingUp },
-  { title: "Blutwerte", url: "/bloodwork", icon: TestTube },
-  { title: "History", url: "/history", icon: HistoryIcon },
-  { title: "Analyse", url: "/analyse", icon: BarChart3 },
-  // UNTER BEOBACHTUNG: Erfolge temporär ausgeblendet
-  // { title: "Erfolge", url: "/achievements", icon: Trophy },
-  { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
 ];
 
-const settingsItems = [
+// Group 2: ARES PROTOKOLL - Strategy & Builder
+const GROUP_PROTOKOLL: NavItem[] = [
+  { title: "ARES Protokoll", url: "/protocol", icon: FlaskConical },
+  { title: "Routinen", url: "/routines", icon: Sparkles, comingSoon: true },
+  { title: "Training", url: "/training", icon: Dumbbell },
+  { title: "Ernährung", url: "/nutrition-planner", icon: Utensils, comingSoon: true },
+  { title: "Supplements", url: "/supplements", icon: Pill, comingSoon: true },
+  { title: "Peptide", url: "/peptides", icon: Syringe, comingSoon: true },
+];
+
+// Group 3: ANALYSE & DATEN - The Lab
+const GROUP_ANALYSE: NavItem[] = [
+  { title: "Bio-Daten", url: "/biodata", icon: Dna },
+  { title: "Analyse", url: "/analyse", icon: LineChart },
+  { title: "Logbuch", url: "/history", icon: HistoryIcon },
+];
+
+// Group 4: SYSTEM
+const GROUP_SYSTEM: NavItem[] = [
+  { title: "Profil", url: "/profile", icon: UserIcon },
+];
+
+const settingsItems: NavItem[] = [
   { title: "Einstellungen", url: "/account", icon: Settings, key: "header.account" },
   { title: "Credits & Packs", url: "/credits", icon: CreditCard, key: "header.subscription" },
   { title: "Admin", url: "/admin", icon: Shield, adminOnly: true },
@@ -82,69 +100,13 @@ export function AppSidebar() {
   const { state, setOpenMobile, isMobile } = useSidebar();
   const { signOut, user } = useAuth();
   const { t } = useTranslation();
-  const { userPoints } = usePointsSystem();
   const { toggleTheme, getThemeStatus, getThemeIcon } = useAutoDarkMode();
   const navigate = useNavigate();
   const location = useLocation();
-  const [userGender, setUserGender] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [legalOpen, setLegalOpen] = useState(false);
   
   const collapsed = state === "collapsed";
-
-  useEffect(() => {
-    const fetchUserGender = async () => {
-      if (!user) {
-        setUserGender(null);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('gender')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching user gender:', error);
-          setUserGender(null);
-        } else {
-          setUserGender(data?.gender || null);
-        }
-      } catch (error) {
-        console.error('Error fetching user gender:', error);
-        setUserGender(null);
-      }
-    };
-
-    fetchUserGender();
-  }, [user]);
-
-  // Helper functions for level calculations
-  const getMinPointsForLevel = (level: number): number => {
-    if (level === 1) return 0;
-    if (level === 2) return 100;
-    if (level === 3) return 200;
-    if (level === 4) return 350;
-    if (level === 5) return 550;
-    if (level === 6) return 800;
-    if (level === 7) return 1100;
-    if (level >= 8) return 1500 + ((level - 8) * 500);
-    return 0;
-  };
-
-  const getMaxPointsForLevel = (level: number): number => {
-    if (level === 1) return 100;
-    if (level === 2) return 200;
-    if (level === 3) return 350;
-    if (level === 4) return 550;
-    if (level === 5) return 800;
-    if (level === 6) return 1100;
-    if (level === 7) return 1500;
-    if (level >= 8) return 2000 + ((level - 8) * 500);
-    return 100;
-  };
 
   const handleSignOut = async () => {
     try {
@@ -168,14 +130,10 @@ export function AppSidebar() {
       : "hover:bg-accent/50";
   };
 
-  const isNavDisabled = () => false;
-
-  const handleNavigation = (url: string, disabled: boolean = false) => {
-    if (!disabled) {
-      navigate(url);
-      if (isMobile) {
-        setTimeout(() => setOpenMobile(false), 100);
-      }
+  const handleNavigation = (url: string) => {
+    navigate(url);
+    if (isMobile) {
+      setTimeout(() => setOpenMobile(false), 100);
     }
   };
 
@@ -208,101 +166,63 @@ export function AppSidebar() {
     return themeStatus.current === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode';
   };
 
+  // Render a navigation group
+  const renderNavGroup = (
+    items: typeof GROUP_LIVE, 
+    label: string, 
+    showDivider: boolean = false
+  ) => (
+    <SidebarGroup className={showDivider ? "border-t border-border/40 pt-2" : ""}>
+      <SidebarGroupLabel className={`text-xs font-medium text-muted-foreground uppercase tracking-wider ${collapsed ? "sr-only" : "px-2 mb-1"}`}>
+        {label}
+      </SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => (
+            <SidebarMenuItem key={item.url}>
+              <SidebarMenuButton 
+                asChild 
+                className={`${getNavClass(item.url)} ${item.comingSoon ? "opacity-70" : ""}`}
+                size={collapsed ? "sm" : "default"}
+              >
+                <button
+                  onClick={() => handleNavigation(item.url)}
+                  className="flex items-center w-full"
+                >
+                  <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
+                  {!collapsed && (
+                    <>
+                      <span className="flex-1">{item.title}</span>
+                      {item.comingSoon && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 ml-2">
+                          Soon
+                        </Badge>
+                      )}
+                    </>
+                  )}
+                </button>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"}>
-      {/* UNTER BEOBACHTUNG: Level-Anzeige temporär ausgeblendet
-      <SidebarHeader className="border-b border-border/40 pb-4">
-        {userPoints && (
-          <>
-            {!collapsed ? (
-              <div className="flex items-start gap-3 px-2">
-                <div className="flex-shrink-0 flex items-center justify-center h-6 w-6" style={{ color: userPoints.level_name === 'Gold' ? '#FFD700' : userPoints.level_name === 'Silver' ? '#C0C0C0' : userPoints.level_name === 'Bronze' ? '#CD7F32' : '#4A90E2' }}>
-                  {userPoints.level_name === 'Rookie' && <Star className="w-5 h-5" />}
-                  {userPoints.level_name === 'Bronze' && <Award className="w-5 h-5" />}
-                  {userPoints.level_name === 'Silver' && <Trophy className="w-5 h-5" />}
-                  {(userPoints.level_name === 'Gold' || userPoints.level_name === 'Platinum' || userPoints.level_name === 'Diamond' || userPoints.level_name === 'Master' || userPoints.level_name === 'Grandmaster') && <Crown className="w-5 h-5" />}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-foreground mb-2">
-                    Level {userPoints.current_level} {userPoints.level_name} | {userPoints.total_points.toLocaleString()} Punkte
-                  </div>
-                  
-                  <Progress 
-                    value={((userPoints.total_points - getMinPointsForLevel(userPoints.current_level)) / (getMaxPointsForLevel(userPoints.current_level) - getMinPointsForLevel(userPoints.current_level))) * 100} 
-                    className="h-1.5"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex justify-center px-2">
-                <div className="flex items-center justify-center h-6 w-6" style={{ color: userPoints.level_name === 'Gold' ? '#FFD700' : userPoints.level_name === 'Silver' ? '#C0C0C0' : userPoints.level_name === 'Bronze' ? '#CD7F32' : '#4A90E2' }}>
-                  {userPoints.level_name === 'Rookie' && <Star className="w-5 h-5" />}
-                  {userPoints.level_name === 'Bronze' && <Award className="w-5 h-5" />}
-                  {userPoints.level_name === 'Silver' && <Trophy className="w-5 h-5" />}
-                  {(userPoints.level_name === 'Gold' || userPoints.level_name === 'Platinum' || userPoints.level_name === 'Diamond' || userPoints.level_name === 'Master' || userPoints.level_name === 'Grandmaster') && <Crown className="w-5 h-5" />}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </SidebarHeader>
-      */}
+      <SidebarContent className="gap-0">
+        {/* Group 1: LIVE */}
+        {renderNavGroup(GROUP_LIVE, "Live")}
 
-      <SidebarContent className="gap-2">
-        {/* Main Navigation with ARES/FREYA integrated */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {/* UNTER BEOBACHTUNG: ARES/FREYA temporär ausgeblendet
-              {user && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton 
-                    asChild 
-                    className={`${getNavClass(userGender === 'male' ? '/coach/ares' : '/coach/freya')} font-semibold`}
-                    size={collapsed ? "sm" : "default"}
-                  >
-                    <button
-                      onClick={() => handleNavigation(userGender === 'male' ? '/coach/ares' : '/coach/freya')}
-                      className="flex items-center w-full"
-                    >
-                      {userGender === 'male' ? (
-                        <Zap className={`h-4 w-4 ${collapsed ? "" : "mr-3"} text-amber-500`} />
-                      ) : (
-                        <Crown className={`h-4 w-4 ${collapsed ? "" : "mr-3"} text-purple-500`} />
-                      )}
-                      {!collapsed && (
-                        <span>{userGender === 'male' ? 'ARES' : 'FREYA'}</span>
-                      )}
-                    </button>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
-              */}
+        {/* Group 2: PROTOKOLL */}
+        {renderNavGroup(GROUP_PROTOKOLL, "Protokoll", true)}
 
-              {/* Rest der Navigation */}
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton 
-                    asChild 
-                    className={getNavClass(item.url)}
-                    size={collapsed ? "sm" : "default"}
-                  >
-                    <button
-                      onClick={() => handleNavigation(item.url, isNavDisabled())}
-                      className="flex items-center w-full"
-                    >
-                      <item.icon className={`h-4 w-4 ${collapsed ? "" : "mr-3"}`} />
-                      {!collapsed && (
-                        <span>{item.key ? t(item.key) : item.title}</span>
-                      )}
-                    </button>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Group 3: ANALYSE */}
+        {renderNavGroup(GROUP_ANALYSE, "Analyse", true)}
+
+        {/* Group 4: SYSTEM */}
+        {renderNavGroup(GROUP_SYSTEM, "System", true)}
 
         {/* Einstellungen - Collapsible */}
         <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
