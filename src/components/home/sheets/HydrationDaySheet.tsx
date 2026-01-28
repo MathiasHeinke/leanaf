@@ -139,7 +139,7 @@ const QuickAddButton: React.FC<{
       ) : (
         <>
           {isCoffee ? <Coffee className="w-5 h-5" /> : <GlassWater className="w-5 h-5" />}
-          <span>{isCoffee ? 'Kaffee' : `+${amount}ml`}</span>
+          <span>+{amount}ml</span>
         </>
       )}
     </motion.button>
@@ -377,12 +377,12 @@ export const HydrationDaySheet: React.FC<HydrationDaySheetProps> = ({
                   variant="solid" 
                   onAdd={logWater}
                 />
-                <QuickAddButton 
-                  amount={150} 
-                  variant="coffee"
-                  type="coffee"
-                  onAdd={logCoffee}
-                />
+          <QuickAddButton 
+            amount={150} 
+            variant="coffee"
+            type="coffee"
+            onAdd={logCoffee}
+          />
               </div>
             </div>
           </motion.div>
