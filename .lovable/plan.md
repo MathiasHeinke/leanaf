@@ -1,198 +1,95 @@
 
-
-# Training Logger: RPE-Intensität + Verstecktes Volumen
-
-## Zusammenfassung
-
-Der TrainingLogger braucht:
-1. **RPE-Eingabe (1-10)**: Wie hart war das Training? Wichtig für Auswertungen und Recovery-Empfehlungen
-2. **Volumen-Feld verstecken**: Für Kraft-Training weiterhin möglich, aber als "Profi-Option" einklappbar
+# Transformation-Navigation: Ausblenden + spätere Integration
 
 ## Aktuelle Situation
 
-Der TrainingLogger hat:
-- Workout-Typ-Auswahl (Kraft, Zone 2, VO2max, Sauna, Bewegung, Ruhetag)
-- Splits-Auswahl bei Kraft
-- Volumen-Eingabe bei Kraft (sichtbar)
-- Dauer-Eingabe bei Cardio/Sauna
-- **Keine RPE-Eingabe**
+Die Navigation hat aktuell:
+- Dashboard
+- ARES Protokoll
+- Workout
+- **Transformation** ← Eigene Seite
+- Blutwerte
+- History (Tabs: Table, Gewicht, Workouts, Quicklogs, Journal)
+- Analyse (Tabs: Intake, Output, More)
+- Profil
 
-Die `training_sessions` Tabelle speichert Daten in `session_data` (JSONB) - dort kann RPE abgelegt werden.
+## Das Problem
 
-## Die Lösung
+"Transformation" ist eigentlich eine Analyse-/History-Funktion:
+- Progress-Fotos = Gewichtsverlauf mit Bildern
+- Foto-Vergleiche = Fortschritts-Analyse
+- KI-Zielbilder = Motivations-Feature
 
-### 1. RPE-Slider/Buttons für alle Workout-Typen (außer Ruhetag)
+Als eigener Nav-Punkt wirkt es fragmentiert.
 
-Nach der Typ-spezifischen Detail-Sektion kommt eine RPE-Eingabe:
-- **Design**: Horizontale Buttons 1-10 im Apple Health Stil (wie Sauna-Temperatur)
-- **Farbverlauf**: 1-5 grün/blau → 6-8 gelb/orange → 9-10 rot
-- **Labels**: Unter den Buttons "Leicht" links, "Maximum" rechts
-- **Default**: Kein Default (User muss auswählen, aber optional)
+## Empfehlung
 
-### 2. Volumen als eingeklappte "Profi-Option"
-
-Das bestehende Volumen-Feld bei Kraft wird:
-- Standardmäßig eingeklappt in einem Collapsible
-- "Profi-Optionen" oder "Mehr Details" Label
-- Enthält: Volumen (kg), später auch Sätze/Wiederholungen
-
-## Technische Umsetzung
-
-### Datei: `src/components/home/loggers/TrainingLogger.tsx`
-
-#### Neue State-Variable
+### Schritt 1: Jetzt - Transformation ausblenden
+In `AppSidebar.tsx` den Transformation-Eintrag kommentieren (wie bei ARES/Erfolge):
 ```typescript
-const [rpe, setRpe] = useState<number | null>(null);
-const [showAdvanced, setShowAdvanced] = useState(false);
+// UNTER BEOBACHTUNG: Transformation temporär ausgeblendet
+// { title: "Transformation", url: "/transformation", icon: TrendingUp },
 ```
 
-#### RPE in handleSave() speichern
+### Schritt 2: Später - Integration in bestehende Seiten
+
+**Option A: In Analyse integrieren (empfohlen)**
+
+Die Analyse-Seite hat bereits Tabs (Intake, Output, More). Ein vierter Tab "Transformation" oder Integration in "More" wäre logisch:
+
+| Tab | Fokus |
+|-----|-------|
+| Intake | Ernährung, Supplements, Hydration |
+| Output | Training, Schritte, RPE |
+| More | Goals, Gewicht-Charts, Body Measurements |
+| **Transformation** | Progress-Fotos, KI-Vergleich, Foto-Timeline |
+
+**Option B: In History > Gewicht integrieren**
+
+Der "Gewicht"-Tab in History zeigt bereits Weight-Entries. Die Progress-Fotos sind direkt mit Gewichtsmessungen verknüpft - könnte dort eingebettet werden.
+
+**Option C: Hybrid-Lösung**
+
+- **History > Gewicht**: Zeigt Gewicht + zugehörige Progress-Fotos
+- **Analyse > More**: Zeigt Foto-Vergleiche und KI-Transformationen
+
+## Technische Umsetzung (Schritt 1)
+
+### Datei: `src/components/AppSidebar.tsx`
+
+Zeile 58 auskommentieren:
 ```typescript
-// In session_data
-if (rpe) {
-  sessionData.rpe = rpe;
-}
-
-// Beim trackEvent
-const success = await trackEvent('workout', { 
-  training_type: selectedType,
-  // ... existing fields
-  session_data: {
-    ...sessionData,
-    rpe: rpe
-  }
-});
+const navigationItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "ARES Protokoll", url: "/protocol", icon: FlaskConical },
+  { title: "Workout", url: "/training", icon: Dumbbell },
+  // UNTER BEOBACHTUNG: Transformation temporär ausgeblendet - später in Analyse/History integrieren
+  // { title: "Transformation", url: "/transformation", icon: TrendingUp },
+  { title: "Blutwerte", url: "/bloodwork", icon: TestTube },
+  { title: "History", url: "/history", icon: HistoryIcon },
+  { title: "Analyse", url: "/analyse", icon: BarChart3 },
+  // UNTER BEOBACHTUNG: Erfolge temporär ausgeblendet
+  // { title: "Erfolge", url: "/achievements", icon: Trophy },
+  { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
+];
 ```
 
-#### Neue UI-Komponente: RPE-Eingabe
+### Was bleibt erhalten
 
-Nach den Typ-spezifischen Details (ca. Zeile 520, vor dem Duration-Block):
+- Die `/transformation` Route bleibt funktional
+- `TransformationJourneyWidget` und alle Unterkomponenten bleiben
+- User können via URL weiterhin zugreifen
+- Spätere Tab-Integration kann die bestehenden Komponenten wiederverwenden
 
-```tsx
-{/* RPE INTENSITY - For all workout types except rest */}
-{selectedType && selectedType !== 'rest' && (
-  <div className="space-y-3">
-    <div className="text-sm font-medium text-muted-foreground">
-      Intensität (RPE)
-    </div>
-    <div className="flex gap-1.5 justify-between">
-      {Array.from({ length: 10 }, (_, i) => i + 1).map((value) => (
-        <motion.button
-          key={value}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setRpe(rpe === value ? null : value)}
-          className={cn(
-            "flex-1 h-10 rounded-lg text-sm font-semibold transition-all",
-            rpe === value
-              ? value <= 5 
-                ? "bg-emerald-500 text-white ring-2 ring-emerald-400"
-                : value <= 8 
-                  ? "bg-amber-500 text-white ring-2 ring-amber-400"
-                  : "bg-rose-500 text-white ring-2 ring-rose-400"
-              : "bg-muted hover:bg-muted/80 text-foreground"
-          )}
-        >
-          {value}
-        </motion.button>
-      ))}
-    </div>
-    <div className="flex justify-between text-xs text-muted-foreground px-1">
-      <span>Leicht</span>
-      <span>Mittel</span>
-      <span>Maximum</span>
-    </div>
-  </div>
-)}
-```
+## Vorteile dieser Strategie
 
-#### Kraft: Volumen als Collapsible
+1. **Weniger Nav-Einträge** = cleaner Navigation
+2. **Logische Gruppierung** = Fotos bei Analyse/History
+3. **Keine Datenverluste** = Route und Code bleiben
+4. **Flexibilität** = Später entscheiden wo es am besten passt
 
-Das bestehende Volumen-Feld bei Kraft (Zeile 353-364) wird eingeklappt:
+## Betroffene Datei
 
-```tsx
-{selectedType === 'rpt' && (
-  <>
-    {/* Splits dropdown - existing */}
-    <div className="text-sm font-medium text-muted-foreground">Trainierte Splits</div>
-    {/* ... existing popover ... */}
-    
-    {/* Collapsible Advanced Options */}
-    <button
-      onClick={() => setShowAdvanced(!showAdvanced)}
-      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-    >
-      <ChevronDown className={cn(
-        "w-3 h-3 transition-transform",
-        showAdvanced && "rotate-180"
-      )} />
-      Profi-Optionen
-    </button>
-    
-    <AnimatePresence>
-      {showAdvanced && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="overflow-hidden"
-        >
-          <div className="flex items-center gap-3 pt-2">
-            <label className="text-sm text-muted-foreground">Gesamtvolumen</label>
-            <NumericInput
-              placeholder="8500"
-              value={totalVolume}
-              onChange={setTotalVolume}
-              allowDecimals={false}
-              className="w-24"
-            />
-            <span className="text-sm text-muted-foreground">kg</span>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </>
-)}
-```
-
-## Erwartetes Ergebnis
-
-### Vor dem Update
-- Kraft-Training: Nur Splits + Volumen (immer sichtbar)
-- Kein Weg die Intensität zu erfassen
-
-### Nach dem Update
-- Alle Trainingsarten: RPE 1-10 Buttons mit Farbverlauf
-- Kraft-Training: Splits sichtbar, Volumen unter "Profi-Optionen"
-- RPE wird in `session_data.rpe` gespeichert
-
-### Beispiel: Kraft-Training loggen
-1. User wählt "Kraft" → Splits-Dropdown erscheint
-2. Wählt "Push" → Optional: "Profi-Optionen" für Volumen
-3. RPE-Buttons erscheinen → Wählt "7" (gelb/orange)
-4. Speichern → session_data: `{ splits: ['push'], rpe: 7 }`
-
-## Betroffene Dateien
-
-| Datei | Aktion | Änderungen |
-|-------|--------|------------|
-| `src/components/home/loggers/TrainingLogger.tsx` | **EDIT** | RPE-State + Buttons, Volumen als Collapsible |
-
-## Datenbank-Kompatibilität
-
-Die `training_sessions` Tabelle hat bereits `session_data` (JSONB) - dort wird RPE gespeichert:
-```json
-{
-  "splits": ["push", "pull"],
-  "rpe": 7
-}
-```
-
-Keine Migration erforderlich.
-
-## Spätere Erweiterungen
-
-1. **RPE im TrainingDaySheet anzeigen**: Hero-Section zeigt RPE neben Dauer/Volumen
-2. **RPE-Auswertung**: Durchschnittliche Intensität pro Woche/Monat
-3. **Recovery-Empfehlungen**: Hohe RPE (9-10) → Mehr Erholung empfehlen
-4. **Volumen-Tracking**: Profi-Optionen erweitern um Sätze/Wiederholungen
-
+| Datei | Aktion | Änderung |
+|-------|--------|----------|
+| `src/components/AppSidebar.tsx` | **EDIT** | Transformation-Eintrag auskommentieren |
