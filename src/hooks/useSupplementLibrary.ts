@@ -490,7 +490,7 @@ export const useSupplementToggle = () => {
             dosage: item.default_dosage || '',
             unit: item.default_unit || 'mg',
             preferred_timing: preferredTiming,
-            timing: (item.common_timing?.length) ? item.common_timing : ['morning'],
+            timing: [preferredTiming], // Use mapped timing for consistency with SmartFocusCard
             schedule: schedule as any,
             is_active: true,
           },
@@ -547,7 +547,7 @@ export const useAutoActivateEssentials = () => {
         dosage: item.default_dosage || '',
         unit: item.default_unit || 'mg',
         preferred_timing: mapTimingToPreferred(item.timing_constraint, item.common_timing),
-        timing: (item.common_timing?.length) ? item.common_timing : ['morning'],
+        timing: [mapTimingToPreferred(item.timing_constraint, item.common_timing)], // Use mapped timing for consistency
         schedule: { type: 'daily' as const } as any,
         is_active: true,
       }));
