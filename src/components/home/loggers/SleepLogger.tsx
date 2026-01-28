@@ -73,6 +73,7 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
   const [bedtime, setBedtime] = useState<string>('');
   const [wakeTime, setWakeTime] = useState<string>('');
   const [interruptions, setInterruptions] = useState(0);
+  const [deepSleep, setDeepSleep] = useState(0); // Tiefschlaf in Minuten
   
   // Extended fields - Morning Check
   const [screenTime, setScreenTime] = useState(30);
@@ -97,7 +98,8 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
       sleep_interruptions: interruptions > 0 ? interruptions : undefined,
       screen_time_evening: screenTime > 0 ? screenTime : undefined,
       morning_libido: libido || undefined,
-      motivation_level: motivation || undefined
+      motivation_level: motivation || undefined,
+      deep_sleep_minutes: deepSleep > 0 ? deepSleep : undefined
     });
     if (success) {
       // Dispatch completion event for ActionCardStack
@@ -229,6 +231,37 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
                 >
                   <Plus className="w-4 h-4" />
                 </motion.button>
+              </div>
+            </div>
+
+            {/* Deep Sleep Slider */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm">Tiefschlaf</span>
+                <span className="text-sm font-medium tabular-nums text-indigo-400">
+                  {deepSleep >= 60 
+                    ? `${Math.floor(deepSleep / 60)}h ${deepSleep % 60 > 0 ? `${deepSleep % 60}min` : ''}`
+                    : `${deepSleep}min`
+                  }
+                </span>
+              </div>
+              <Slider
+                value={[deepSleep]}
+                onValueChange={([val]) => setDeepSleep(val)}
+                min={0}
+                max={180}
+                step={5}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>0</span>
+                <span className={cn(
+                  "px-1.5 py-0.5 rounded-full",
+                  deepSleep >= 90 ? "bg-indigo-500/20 text-indigo-400" : "text-muted-foreground"
+                )}>
+                  Ziel: 1.5h
+                </span>
+                <span>3h</span>
               </div>
             </div>
           </CollapsibleContent>

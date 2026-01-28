@@ -41,6 +41,7 @@ export interface EventPayload {
   screen_time_evening?: number;
   morning_libido?: number;
   motivation_level?: number;
+  deep_sleep_minutes?: number; // Tiefschlaf in Minuten
   
   // Journal (NEW)
   content?: string;
@@ -233,7 +234,8 @@ export const useAresEvents = () => {
           sleep_interruptions: payload.sleep_interruptions || null,
           screen_time_evening: payload.screen_time_evening || null,
           morning_libido: payload.morning_libido || null,
-          motivation_level: payload.motivation_level || null
+          motivation_level: payload.motivation_level || null,
+          deep_sleep_minutes: payload.deep_sleep_minutes || null
         }, { onConflict: 'user_id,date' });
         
         if (error) {
