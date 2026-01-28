@@ -6088,6 +6088,7 @@ export type Database = {
       }
       supplement_database: {
         Row: {
+          brand_recommendation: string | null
           category: string
           common_brands: string[] | null
           common_timing: string[] | null
@@ -6097,11 +6098,14 @@ export type Database = {
           description: string | null
           id: string
           image_url: string | null
+          interaction_tags: string[] | null
           name: string
           recognition_keywords: string[] | null
+          timing_constraint: string | null
           updated_at: string
         }
         Insert: {
+          brand_recommendation?: string | null
           category: string
           common_brands?: string[] | null
           common_timing?: string[] | null
@@ -6111,11 +6115,14 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          interaction_tags?: string[] | null
           name: string
           recognition_keywords?: string[] | null
+          timing_constraint?: string | null
           updated_at?: string
         }
         Update: {
+          brand_recommendation?: string | null
           category?: string
           common_brands?: string[] | null
           common_timing?: string[] | null
@@ -6125,8 +6132,10 @@ export type Database = {
           description?: string | null
           id?: string
           image_url?: string | null
+          interaction_tags?: string[] | null
           name?: string
           recognition_keywords?: string[] | null
+          timing_constraint?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -7647,9 +7656,12 @@ export type Database = {
           is_active: boolean
           name: string | null
           notes: string | null
+          preferred_timing: string | null
           rating: number | null
           schedule: Json | null
+          schedule_type: string | null
           source: string | null
+          stock_count: number | null
           supplement_id: string | null
           timing: string[]
           unit: string
@@ -7671,9 +7683,12 @@ export type Database = {
           is_active?: boolean
           name?: string | null
           notes?: string | null
+          preferred_timing?: string | null
           rating?: number | null
           schedule?: Json | null
+          schedule_type?: string | null
           source?: string | null
+          stock_count?: number | null
           supplement_id?: string | null
           timing?: string[]
           unit?: string
@@ -7695,9 +7710,12 @@ export type Database = {
           is_active?: boolean
           name?: string | null
           notes?: string | null
+          preferred_timing?: string | null
           rating?: number | null
           schedule?: Json | null
+          schedule_type?: string | null
           source?: string | null
+          stock_count?: number | null
           supplement_id?: string | null
           timing?: string[]
           unit?: string
