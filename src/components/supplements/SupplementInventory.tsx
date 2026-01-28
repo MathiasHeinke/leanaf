@@ -1,14 +1,21 @@
-import React from 'react';
-import { Package, Pause, Play, Edit2, AlertTriangle, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Package, Edit2, AlertTriangle, Building2, Target, FlaskConical } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { EvidenceRing } from './EvidenceRing';
+import { FormQualityBadge } from './FormQualityBadge';
+import { InteractionBadges } from './InteractionWarnings';
+import { haptics } from '@/lib/haptics';
 import { 
   SCHEDULE_TYPE_LABELS,
   TIMING_CONSTRAINT_ICONS,
+  NECESSITY_TIER_CONFIG,
   type UserStackItem,
   type ScheduleType,
+  type NecessityTier,
 } from '@/types/supplementLibrary';
 
 interface SupplementInventoryProps {
@@ -18,25 +25,14 @@ interface SupplementInventoryProps {
   onAdd?: () => void;
 }
 
-// Category display order and icons
-const CATEGORY_CONFIG: Record<string, { order: number; icon: string; label: string }> = {
-  'Vitamine': { order: 1, icon: '💊', label: 'Vitamine' },
-  'Mineralstoffe': { order: 2, icon: '🔋', label: 'Mineralstoffe' },
-  'Aminosäuren': { order: 3, icon: '💪', label: 'Aminosäuren' },
-  'Fettsäuren': { order: 4, icon: '🐟', label: 'Fettsäuren' },
-  'Adaptogene': { order: 5, icon: '🌿', label: 'Adaptogene' },
-  'Nootropics': { order: 6, icon: '🧠', label: 'Nootropics' },
-  'Performance': { order: 7, icon: '⚡', label: 'Performance' },
-  'Longevity': { order: 8, icon: '🧬', label: 'Longevity' },
-  'Schlaf': { order: 9, icon: '🌙', label: 'Schlaf' },
-  'Sonstige': { order: 99, icon: '📦', label: 'Sonstige' },
+// Tier icons for pyramid navigation
+const TIER_ICONS: Record<NecessityTier, React.ElementType> = {
+  essential: Building2,
+  optimizer: Target,
+  specialist: FlaskConical,
 };
 
-const getCategoryConfig = (category: string) => {
-  return CATEGORY_CONFIG[category] || { order: 50, icon: '📦', label: category };
-};
-
-// Single inventory item
+// Single inventory item with premium features
 const InventoryItem: React.FC<{
   supplement: UserStackItem;
   onToggle?: (isActive: boolean) => void;
@@ -45,20 +41,29 @@ const InventoryItem: React.FC<{
   const constraint = supplement.supplement?.timing_constraint || 'any';
   const constraintIcon = TIMING_CONSTRAINT_ICONS[constraint];
   const isLowStock = supplement.stock_count !== null && supplement.stock_count <= 7;
+  const impactScore = supplement.supplement?.impact_score || 5;
+
+  const handleToggle = (checked: boolean) => {
+    haptics.light();
+    onToggle?.(checked);
+  };
 
   return (
     <div className={cn(
-      "group flex items-center gap-3 p-3 rounded-lg",
+      "group flex items-center gap-3 p-3 rounded-xl",
       "bg-card/50 border border-border/30",
-      "hover:border-border/60 transition-colors",
+      "hover:border-border/60 transition-all duration-200",
       !supplement.is_active && "opacity-50"
     )}>
       {/* Active toggle */}
       <Switch
         checked={supplement.is_active}
-        onCheckedChange={onToggle}
+        onCheckedChange={handleToggle}
         className="flex-none"
       />
+
+      {/* Evidence Ring */}
+      <EvidenceRing score={impactScore} size="sm" className="flex-none" />
 
       {/* Main content */}
       <div className="flex-1 min-w-0">
@@ -79,7 +84,20 @@ const InventoryItem: React.FC<{
               {SCHEDULE_TYPE_LABELS[supplement.schedule_type as ScheduleType]}
             </Badge>
           )}
+          {supplement.supplement?.form_quality && (
+            <FormQualityBadge 
+              quality={supplement.supplement.form_quality} 
+              className="text-[10px]"
+            />
+          )}
         </div>
+        {/* Interaction badges */}
+        {supplement.supplement && (
+          <InteractionBadges 
+            supplement={supplement.supplement} 
+            className="mt-1"
+          />
+        )}
       </div>
 
       {/* Stock indicator */}
@@ -106,27 +124,52 @@ const InventoryItem: React.FC<{
   );
 };
 
+/**
+ * SupplementInventory - Premium UX v2 with Pyramid Navigation
+ * Groups supplements by necessity tier (Essential, Optimizer, Specialist)
+ * with animated tabs and progress indicators
+ */
 export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
   groupedByCategory,
   onToggleActive,
   onEdit,
   onAdd,
 }) => {
-  // Sort categories by order
-  const sortedCategories = Object.entries(groupedByCategory)
-    .sort(([a], [b]) => {
-      const configA = getCategoryConfig(a);
-      const configB = getCategoryConfig(b);
-      return configA.order - configB.order;
+  const [activeTab, setActiveTab] = useState<NecessityTier>('essential');
+
+  // Group supplements by necessity tier
+  const { groupedByTier, tierCounts, totalCount, activeCount } = useMemo(() => {
+    const allSupplements = Object.values(groupedByCategory).flat();
+    
+    const grouped: Record<NecessityTier, UserStackItem[]> = {
+      essential: [],
+      optimizer: [],
+      specialist: [],
+    };
+
+    allSupplements.forEach(supplement => {
+      const tier = supplement.supplement?.necessity_tier || 'optimizer';
+      grouped[tier].push(supplement);
     });
 
-  const totalCount = Object.values(groupedByCategory).reduce(
-    (sum, items) => sum + items.length, 0
-  );
+    // Sort each tier by impact score (descending)
+    Object.keys(grouped).forEach(tier => {
+      grouped[tier as NecessityTier].sort((a, b) => 
+        (b.supplement?.impact_score || 0) - (a.supplement?.impact_score || 0)
+      );
+    });
 
-  const activeCount = Object.values(groupedByCategory).reduce(
-    (sum, items) => sum + items.filter(i => i.is_active).length, 0
-  );
+    return {
+      groupedByTier: grouped,
+      tierCounts: {
+        essential: grouped.essential.length,
+        optimizer: grouped.optimizer.length,
+        specialist: grouped.specialist.length,
+      },
+      totalCount: allSupplements.length,
+      activeCount: allSupplements.filter(s => s.is_active).length,
+    };
+  }, [groupedByCategory]);
 
   if (totalCount === 0) {
     return (
@@ -148,7 +191,7 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Summary */}
       <div className="flex items-center justify-between px-1">
         <div className="text-sm text-muted-foreground">
@@ -164,36 +207,80 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
         )}
       </div>
 
-      {/* Categories */}
-      {sortedCategories.map(([category, supplements]) => {
-        const config = getCategoryConfig(category);
-        const activeInCategory = supplements.filter(s => s.is_active).length;
+      {/* Pyramid Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NecessityTier)}>
+        <TabsList className="grid w-full grid-cols-3 h-auto p-1 bg-muted/50">
+          {(['essential', 'optimizer', 'specialist'] as NecessityTier[]).map((tier) => {
+            const config = NECESSITY_TIER_CONFIG[tier];
+            const Icon = TIER_ICONS[tier];
+            const count = tierCounts[tier];
+            const activeInTier = groupedByTier[tier].filter(s => s.is_active).length;
 
-        return (
-          <div key={category}>
-            {/* Category header */}
-            <div className="flex items-center gap-2 mb-3 px-1">
-              <span className="text-base">{config.icon}</span>
-              <span className="text-sm font-medium">{config.label}</span>
-              <Badge variant="secondary" className="text-xs">
-                {activeInCategory}/{supplements.length}
-              </Badge>
-            </div>
+            return (
+              <TabsTrigger
+                key={tier}
+                value={tier}
+                className={cn(
+                  "flex flex-col items-center gap-1 py-2 px-2 data-[state=active]:bg-background",
+                  "transition-all duration-200"
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Icon className="h-4 w-4" />
+                  <span className="text-xs font-medium truncate">{config.label.split(' ')[0]}</span>
+                </div>
+                <Badge 
+                  variant={activeTab === tier ? "default" : "secondary"}
+                  className="text-[10px] px-1.5"
+                >
+                  {activeInTier}/{count}
+                </Badge>
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
 
-            {/* Items */}
-            <div className="space-y-2">
-              {supplements.map((supplement) => (
-                <InventoryItem
-                  key={supplement.id}
-                  supplement={supplement}
-                  onToggle={(isActive) => onToggleActive?.(supplement, isActive)}
-                  onEdit={() => onEdit?.(supplement)}
-                />
-              ))}
-            </div>
-          </div>
-        );
-      })}
+        {/* Tab Content */}
+        {(['essential', 'optimizer', 'specialist'] as NecessityTier[]).map((tier) => {
+          const supplements = groupedByTier[tier];
+          const config = NECESSITY_TIER_CONFIG[tier];
+
+          return (
+            <TabsContent key={tier} value={tier} className="mt-4 space-y-4">
+              {/* Tier description */}
+              <div className={cn(
+                "flex items-center gap-2 p-3 rounded-lg text-sm",
+                config.bgClass,
+                "border",
+                config.borderClass
+              )}>
+                <span>{config.icon}</span>
+                <span className="text-muted-foreground">{config.description}</span>
+              </div>
+
+              {/* Supplements list */}
+              {supplements.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Keine {config.label} in deinem Stack
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {supplements.map((supplement) => (
+                    <InventoryItem
+                      key={supplement.id}
+                      supplement={supplement}
+                      onToggle={(isActive) => onToggleActive?.(supplement, isActive)}
+                      onEdit={() => onEdit?.(supplement)}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          );
+        })}
+      </Tabs>
     </div>
   );
 };
+
+export default SupplementInventory;

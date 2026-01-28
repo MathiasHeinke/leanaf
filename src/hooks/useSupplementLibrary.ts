@@ -9,16 +9,21 @@ import type {
   ScheduleType,
   PreferredTiming,
   EvidenceLevel,
-  NecessityTier
+  NecessityTier,
+  FormQuality,
+  SupplementBrand,
+  SupplementProduct
 } from '@/types/supplementLibrary';
 
 // Query keys for React Query
 export const SUPPLEMENT_LIBRARY_KEYS = {
   library: ['supplement-library'] as const,
   userStack: (userId: string) => ['user-stack', userId] as const,
+  products: (supplementId: string) => ['supplement-products', supplementId] as const,
+  brands: ['supplement-brands'] as const,
 };
 
-// Fetch master supplement library
+// Fetch master supplement library with Premium UX v2 fields
 export const useSupplementLibrary = () => {
   return useQuery({
     queryKey: SUPPLEMENT_LIBRARY_KEYS.library,
@@ -52,9 +57,100 @@ export const useSupplementLibrary = () => {
         hallmarks_addressed: item.hallmarks_addressed || [],
         cost_per_day_eur: item.cost_per_day_eur,
         amazon_de_asin: item.amazon_de_asin,
+        // Premium UX v2 fields
+        form_quality: item.form_quality as FormQuality | null,
+        synergies: item.synergies || null,
+        blockers: item.blockers || null,
+        cycling_required: item.cycling_required ?? false,
+        cycling_protocol: item.cycling_protocol || null,
+        underrated_score: item.underrated_score || null,
+        warnung: item.warnung || null,
       }));
     },
     staleTime: 1000 * 60 * 10, // 10 minutes - library rarely changes
+  });
+};
+
+// Fetch supplement products for a specific supplement
+export const useSupplementProducts = (supplementId?: string) => {
+  return useQuery({
+    queryKey: SUPPLEMENT_LIBRARY_KEYS.products(supplementId || ''),
+    queryFn: async (): Promise<SupplementProduct[]> => {
+      const { data, error } = await supabase
+        .from('supplement_products')
+        .select(`
+          *,
+          supplement_brands(*)
+        `)
+        .eq('supplement_id', supplementId!)
+        .order('is_recommended', { ascending: false })
+        .order('price_per_serving', { ascending: true });
+
+      if (error) throw error;
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        brand_id: item.brand_id,
+        supplement_id: item.supplement_id,
+        product_name: item.product_name,
+        pack_size: item.pack_size,
+        pack_unit: item.pack_unit,
+        servings_per_pack: item.servings_per_pack,
+        dose_per_serving: item.dose_per_serving,
+        dose_unit: item.dose_unit,
+        price_eur: item.price_eur,
+        price_per_serving: item.price_per_serving,
+        form: item.form,
+        is_vegan: item.is_vegan,
+        is_recommended: item.is_recommended,
+        is_verified: item.is_verified,
+        amazon_asin: item.amazon_asin,
+        product_url: item.product_url,
+        brand: item.supplement_brands ? {
+          id: item.supplement_brands.id,
+          name: item.supplement_brands.name,
+          slug: item.supplement_brands.slug,
+          country: item.supplement_brands.country,
+          website: item.supplement_brands.website,
+          price_tier: item.supplement_brands.price_tier,
+          specialization: item.supplement_brands.specialization,
+          quality_certifications: item.supplement_brands.quality_certifications,
+          description: item.supplement_brands.description,
+          logo_url: item.supplement_brands.logo_url,
+        } : null,
+      }));
+    },
+    enabled: !!supplementId,
+    staleTime: 1000 * 60 * 5,
+  });
+};
+
+// Fetch all supplement brands
+export const useSupplementBrands = () => {
+  return useQuery({
+    queryKey: SUPPLEMENT_LIBRARY_KEYS.brands,
+    queryFn: async (): Promise<SupplementBrand[]> => {
+      const { data, error } = await supabase
+        .from('supplement_brands')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+
+      return (data || []).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        slug: item.slug,
+        country: item.country,
+        website: item.website,
+        price_tier: item.price_tier,
+        specialization: item.specialization,
+        quality_certifications: item.quality_certifications,
+        description: item.description,
+        logo_url: item.logo_url,
+      }));
+    },
+    staleTime: 1000 * 60 * 30, // 30 minutes - brands rarely change
   });
 };
 
@@ -89,7 +185,14 @@ export const useUserStack = () => {
             evidence_level,
             hallmarks_addressed,
             cost_per_day_eur,
-            amazon_de_asin
+            amazon_de_asin,
+            form_quality,
+            synergies,
+            blockers,
+            cycling_required,
+            cycling_protocol,
+            underrated_score,
+            warnung
           )
         `)
         .eq('user_id', user.id)
@@ -137,6 +240,14 @@ export const useUserStack = () => {
             hallmarks_addressed: supplement.hallmarks_addressed || [],
             cost_per_day_eur: supplement.cost_per_day_eur,
             amazon_de_asin: supplement.amazon_de_asin,
+            // Premium UX v2 fields
+            form_quality: supplement.form_quality as FormQuality | null,
+            synergies: supplement.synergies || null,
+            blockers: supplement.blockers || null,
+            cycling_required: supplement.cycling_required ?? false,
+            cycling_protocol: supplement.cycling_protocol || null,
+            underrated_score: supplement.underrated_score || null,
+            warnung: supplement.warnung || null,
           } : null,
         };
       });
@@ -178,6 +289,32 @@ export const useUserStackByTiming = () => {
   }, {} as Record<PreferredTiming, UserStackItem[]>);
 
   return { groupedByTiming, activeStack, stack, ...rest };
+};
+
+// Group user stack by necessity tier for pyramid navigation
+export const useUserStackByTier = () => {
+  const { data: stack, ...rest } = useUserStack();
+
+  const activeStack = (stack || []).filter(item => item.is_active);
+
+  const groupedByTier = activeStack.reduce((acc, item) => {
+    const tier = item.supplement?.necessity_tier || 'optimizer';
+    if (!acc[tier]) {
+      acc[tier] = [];
+    }
+    acc[tier].push(item);
+    return acc;
+  }, {} as Record<NecessityTier, UserStackItem[]>);
+
+  return { 
+    groupedByTier, 
+    essentials: groupedByTier.essential || [],
+    optimizers: groupedByTier.optimizer || [],
+    specialists: groupedByTier.specialist || [],
+    activeStack, 
+    stack, 
+    ...rest 
+  };
 };
 
 // =====================================================

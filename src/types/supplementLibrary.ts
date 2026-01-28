@@ -153,6 +153,16 @@ export const PHASE_CONFIG: Record<number, {
   }
 };
 
+// Form Quality for bioavailability
+export type FormQuality = 'optimal' | 'gut' | 'schlecht';
+
+// Form Quality Labels for UI
+export const FORM_QUALITY_LABELS: Record<FormQuality, { label: string; description: string; color: string }> = {
+  optimal: { label: 'Optimal', description: 'Beste Bioverfügbarkeit', color: 'green' },
+  gut: { label: 'Gut', description: 'Solide Aufnahme', color: 'yellow' },
+  schlecht: { label: 'Schlecht', description: 'Geringe Absorption', color: 'red' },
+};
+
 // Supplement Library Item (Master-Katalog) - erweitert
 export interface SupplementLibraryItem {
   id: string;
@@ -176,6 +186,51 @@ export interface SupplementLibraryItem {
   hallmarks_addressed: string[];
   cost_per_day_eur?: number | null;
   amazon_de_asin?: string | null;
+  // Premium UX v2 fields
+  form_quality?: FormQuality | null;
+  synergies?: string[] | null;
+  blockers?: string[] | null;
+  cycling_required?: boolean | null;
+  cycling_protocol?: string | null;
+  underrated_score?: number | null;
+  warnung?: string | null;
+}
+
+// Supplement Brand Interface
+export interface SupplementBrand {
+  id: string;
+  name: string;
+  slug: string;
+  country: string | null;
+  website: string | null;
+  price_tier: 'budget' | 'mid' | 'premium' | 'luxury' | null;
+  specialization: string[] | null;
+  quality_certifications: string[] | null;
+  description: string | null;
+  logo_url: string | null;
+}
+
+// Supplement Product Interface
+export interface SupplementProduct {
+  id: string;
+  brand_id: string | null;
+  supplement_id: string | null;
+  product_name: string;
+  pack_size: number;
+  pack_unit: string | null;
+  servings_per_pack: number | null;
+  dose_per_serving: number;
+  dose_unit: string;
+  price_eur: number | null;
+  price_per_serving: number | null;
+  form: string | null;
+  is_vegan: boolean | null;
+  is_recommended: boolean | null;
+  is_verified: boolean | null;
+  amazon_asin: string | null;
+  product_url: string | null;
+  brand?: SupplementBrand | null;
+  supplement?: SupplementLibraryItem | null;
 }
 
 // User Stack Item (persönlicher Stack)
