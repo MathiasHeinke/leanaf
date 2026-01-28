@@ -256,6 +256,7 @@ export default function SupplementsPage() {
             <SupplementTimeline
               groupedByTiming={todaysGroupedByTiming}
               onAutoActivateEssentials={handleAutoActivate}
+              onRefetch={refetchTimeline}
               isActivating={isActivating}
             />
           </motion.div>

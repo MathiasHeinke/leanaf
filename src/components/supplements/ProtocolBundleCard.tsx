@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Check, ChevronRight, Sun, Moon, Coffee, Dumbbell, Clock } from 'lucide-react';
+import { motion, LayoutGroup } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
+import { ExpandableSupplementChip } from './ExpandableSupplementChip';
+import { useUpdateSupplement, useDeleteSupplement, useSupplementBrands } from '@/hooks/useSupplementLibrary';
 import type { UserStackItem, PreferredTiming } from '@/types/supplementLibrary';
 
 interface ProtocolBundleCardProps {
@@ -13,6 +16,7 @@ interface ProtocolBundleCardProps {
   supplements: UserStackItem[];
   onCompleteStack: () => void;
   onSupplementClick?: (supplement: UserStackItem) => void;
+  onRefetch?: () => void;
   isCompleted?: boolean;
   className?: string;
 }
@@ -40,8 +44,9 @@ const TIMING_COLORS: Record<PreferredTiming, string> = {
 /**
  * ProtocolBundleCard - Groups supplements by time slot
  * Features:
- * - Horizontal pill badges for supplements
- * - Aggregated cost per day
+ * - Expandable supplement chips with inline editing
+ * - Liquid layout animations via Framer Motion
+ * - Timing constraint badges
  * - "Complete Stack" button with haptic feedback
  * - Collapsed state after completion
  */
@@ -52,10 +57,16 @@ export const ProtocolBundleCard: React.FC<ProtocolBundleCardProps> = ({
   supplements,
   onCompleteStack,
   onSupplementClick,
+  onRefetch,
   isCompleted = false,
   className,
 }) => {
   const [isPressing, setIsPressing] = useState(false);
+  
+  // Hooks for update/delete
+  const { updateSupplement } = useUpdateSupplement();
+  const { deleteSupplement } = useDeleteSupplement();
+  const { data: brands } = useSupplementBrands();
   
   const Icon = TIMING_ICONS[timing] || Clock;
   const gradientColor = TIMING_COLORS[timing] || 'from-muted/50 to-muted/30';
@@ -70,10 +81,23 @@ export const ProtocolBundleCard: React.FC<ProtocolBundleCardProps> = ({
     onCompleteStack();
   };
   
+  // Handle save from chip
+  const handleSave = useCallback(async (id: string, updates: any) => {
+    await updateSupplement(id, updates);
+    onRefetch?.();
+  }, [updateSupplement, onRefetch]);
+  
+  // Handle delete from chip
+  const handleDelete = useCallback(async (id: string) => {
+    await deleteSupplement(id);
+    onRefetch?.();
+  }, [deleteSupplement, onRefetch]);
+  
   // Collapsed completed state
   if (isCompleted) {
     return (
-      <div
+      <motion.div
+        layout
         className={cn(
           'flex items-center gap-3 p-3 rounded-xl',
           'bg-green-500/10 border border-green-500/20',
@@ -84,15 +108,15 @@ export const ProtocolBundleCard: React.FC<ProtocolBundleCardProps> = ({
           <Check className="h-4 w-4 text-green-500" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-green-600">{title}</p>
+          <p className="text-sm font-medium text-green-600 dark:text-green-400">{title}</p>
           <p className="text-xs text-muted-foreground">
             {supplements.length} Supplements eingenommen
           </p>
         </div>
-        <Badge variant="outline" className="text-green-600 border-green-500/30">
+        <Badge variant="outline" className="text-green-600 dark:text-green-400 border-green-500/30">
           ✓ Done
         </Badge>
-      </div>
+      </motion.div>
     );
   }
   
@@ -121,29 +145,22 @@ export const ProtocolBundleCard: React.FC<ProtocolBundleCardProps> = ({
         </div>
       </div>
       
-      {/* Horizontal Pills */}
+      {/* Expandable Supplement Chips with Liquid Layout */}
       <div className="px-4 pb-3">
-        <div className="flex flex-wrap gap-2">
-          {supplements.map((supplement) => (
-            <button
-              key={supplement.id}
-              onClick={() => onSupplementClick?.(supplement)}
-              className={cn(
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-full',
-                'bg-background/80 border border-border/50',
-                'hover:border-primary/50 hover:bg-background',
-                'transition-all duration-200 text-left'
-              )}
-            >
-              <span className="text-xs font-medium truncate max-w-[120px]">
-                {supplement.name}
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                {supplement.dosage}{supplement.unit}
-              </span>
-            </button>
-          ))}
-        </div>
+        <LayoutGroup>
+          <motion.div layout className="flex flex-col gap-2">
+            {supplements.map((supplement) => (
+              <motion.div key={supplement.id} layout>
+                <ExpandableSupplementChip
+                  item={supplement}
+                  brands={brands}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        </LayoutGroup>
       </div>
       
       {/* Footer with cost and action */}

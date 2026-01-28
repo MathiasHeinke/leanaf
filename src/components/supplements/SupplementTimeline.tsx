@@ -17,6 +17,7 @@ interface SupplementTimelineProps {
   onSupplementClick?: (supplement: UserStackItem) => void;
   onCompleteStack?: (timing: PreferredTiming, supplements: UserStackItem[]) => void;
   onAutoActivateEssentials?: () => Promise<void>;
+  onRefetch?: () => void;
   isActivating?: boolean;
 }
 
@@ -41,6 +42,7 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
   onSupplementClick,
   onCompleteStack,
   onAutoActivateEssentials,
+  onRefetch,
   isActivating,
 }) => {
   // Track completed stacks (local state for UI)
@@ -128,6 +130,7 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
               supplements={supplements}
               onCompleteStack={() => handleCompleteStack(slot.id)}
               onSupplementClick={onSupplementClick}
+              onRefetch={onRefetch}
               isCompleted={isCompleted}
             />
           );
@@ -151,6 +154,7 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
                 supplements={groupedByTiming.pre_workout || []}
                 onCompleteStack={() => handleCompleteStack('pre_workout')}
                 onSupplementClick={onSupplementClick}
+                onRefetch={onRefetch}
                 isCompleted={completedStacks.has('pre_workout')}
               />
             )}
@@ -162,6 +166,7 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
                 supplements={groupedByTiming.post_workout || []}
                 onCompleteStack={() => handleCompleteStack('post_workout')}
                 onSupplementClick={onSupplementClick}
+                onRefetch={onRefetch}
                 isCompleted={completedStacks.has('post_workout')}
               />
             )}
