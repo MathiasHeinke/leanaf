@@ -1,16 +1,18 @@
-// ARES Complete Supplement Seed Index v3.4
-// Kombiniert alle Seed-Dateien: ~300 Produkte
-// Budget, Premium, Sport + bestehende Kategorien
+// ARES Complete Supplement Seed Index v3.5
+// Kombiniert alle Seed-Dateien: ~520+ Produkte
+// Budget, Premium, Sport, Pharmacy Kategorien
 
 import { ProductSeed } from '../supplementProductsSeed';
 import { ALL_BUDGET_PRODUCTS, BUDGET_SEED_STATS } from './budgetBrandsSeed';
 import { ALL_PREMIUM_PRODUCTS, PREMIUM_SEED_STATS } from './premiumBrandsSeed';
 import { ALL_SPORT_PRODUCTS, SPORT_SEED_STATS } from './sportBrandsSeed';
+import { ALL_PHARMACY_PRODUCTS, PHARMACY_SEED_STATS } from './pharmacyBrandsSeed';
 
 // Re-export für direkten Zugriff
 export * from './budgetBrandsSeed';
 export * from './premiumBrandsSeed';
 export * from './sportBrandsSeed';
+export * from './pharmacyBrandsSeed';
 
 // ============================================
 // COMPLETE COMBINED SEED DATA
@@ -20,6 +22,7 @@ export const COMPLETE_PRODUCT_SEED: ProductSeed[] = [
   ...ALL_BUDGET_PRODUCTS,
   ...ALL_PREMIUM_PRODUCTS,
   ...ALL_SPORT_PRODUCTS,
+  ...ALL_PHARMACY_PRODUCTS,
 ];
 
 // ============================================
@@ -33,6 +36,7 @@ export const COMPLETE_SEED_STATS = {
   budget_brands: BUDGET_SEED_STATS.total_products,
   premium_brands: PREMIUM_SEED_STATS.total_products,
   sport_brands: SPORT_SEED_STATS.total_products,
+  pharmacy_brands: PHARMACY_SEED_STATS.total_products,
   
   // By individual brand
   brands: {
@@ -53,6 +57,11 @@ export const COMPLETE_SEED_STATS = {
     more_nutrition: SPORT_SEED_STATS.more_nutrition,
     bulk: SPORT_SEED_STATS.bulk,
     profuel: SPORT_SEED_STATS.profuel,
+    
+    // Pharmacy
+    biogena: PHARMACY_SEED_STATS.biogena,
+    orthomol: PHARMACY_SEED_STATS.orthomol,
+    doppelherz: PHARMACY_SEED_STATS.doppelherz,
   },
   
   // By attributes

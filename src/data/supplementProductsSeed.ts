@@ -7,13 +7,13 @@ export interface ProductSeed {
   supplement_name: string;
   product_name: string;
   pack_size: number;
-  pack_unit: 'capsules' | 'tablets' | 'g' | 'ml' | 'softgels' | 'sachets' | 'drops';
+  pack_unit: 'capsules' | 'tablets' | 'g' | 'ml' | 'softgels' | 'sachets' | 'drops' | 'portions' | 'bottles';
   servings_per_pack: number;
   dose_per_serving: number;
   dose_unit: string;
   price_eur: number;
   price_per_serving: number;
-  form: 'capsule' | 'tablet' | 'powder' | 'softgel' | 'drops' | 'sachet' | 'liquid';
+  form: 'capsule' | 'tablet' | 'powder' | 'softgel' | 'drops' | 'sachet' | 'liquid' | 'spray' | 'combination';
   is_vegan?: boolean;
   is_recommended?: boolean;
   quality_tags?: string[];
