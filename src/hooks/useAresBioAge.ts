@@ -136,9 +136,14 @@ function calcFitnessScore(
   return consistencyScore * 0.30 + cardioScore * 0.35 + strengthScore * 0.35;
 }
 
-// Sleep Score (20%)
+// Sleep Score (20%) - ENHANCED with Bedtime + Recency
 function calcSleepScore(
-  sleepEntries: { sleep_hours: number | null; sleep_quality: number | null }[]
+  sleepEntries: { 
+    sleep_hours: number | null; 
+    sleep_quality: number | null;
+    bedtime?: string | null;
+    date?: string | null;
+  }[]
 ): number {
   if (sleepEntries.length === 0) return 50; // Neutral default
 
@@ -147,21 +152,79 @@ function calcSleepScore(
 
   const avgHours = avg(hours);
 
-  // Duration Score: 7-9h = 100
+  // 1. DURATION SCORE (optimal 7-9h)
   const durationScore = avgHours >= 7 && avgHours <= 9
     ? 100
     : Math.max(0, 100 - Math.abs(avgHours - 8) * 25);
 
-  // Consistency Score: Std.Dev < 1h is good
+  // 2. CONSISTENCY SCORE (Std.Dev < 1h is good)
   const sleepStdDev = stdDev(hours);
   const consistencyScore = Math.max(0, 100 - sleepStdDev * 50);
 
-  // Quality Score: Avg of 1-5 scale → 0-100
+  // 3. QUALITY SCORE - FIX: DB uses 1-10 scale → 0-100
   const qualities = sleepEntries.filter(s => s.sleep_quality).map(s => s.sleep_quality!);
-  const avgQuality = qualities.length > 0 ? avg(qualities) : 3;
-  const qualityScore = avgQuality * 20;
+  const avgQuality = qualities.length > 0 ? avg(qualities) : 5;
+  const qualityScore = avgQuality * 10; // FIX: Was * 20 (assumed 1-5 scale)
 
-  return durationScore * 0.35 + consistencyScore * 0.25 + qualityScore * 0.40;
+  // 4. BEDTIME SCORE - NEW! Circadian rhythm penalty
+  let bedtimeScore = 50; // Neutral default if no bedtime data
+  const bedtimes = sleepEntries
+    .filter(s => s.bedtime)
+    .map(s => {
+      const [hourStr] = s.bedtime!.split(':');
+      const hour = parseInt(hourStr, 10);
+      // Normalize: 24:00 → 0, values > 24 handled
+      return hour >= 24 ? hour - 24 : hour;
+    });
+  
+  if (bedtimes.length > 0) {
+    const avgBedtimeHour = avg(bedtimes);
+    
+    // Optimal: 22-23 Uhr (circadian sweet spot)
+    if (avgBedtimeHour >= 22 && avgBedtimeHour < 23) {
+      bedtimeScore = 100;
+    } else if (avgBedtimeHour >= 21 && avgBedtimeHour < 24) {
+      bedtimeScore = 80;
+    } else if (avgBedtimeHour >= 0 && avgBedtimeHour < 1) {
+      bedtimeScore = 60;
+    } else if (avgBedtimeHour >= 1 && avgBedtimeHour < 2) {
+      bedtimeScore = 40;
+    } else if (avgBedtimeHour >= 2 && avgBedtimeHour < 3) {
+      bedtimeScore = 20;
+    } else {
+      bedtimeScore = 0; // After 03:00 = catastrophic
+    }
+  }
+
+  // 5. RECENCY WEIGHTING - NEW! Recent bad habits get penalized
+  const today = new Date();
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(today.getDate() - 7);
+  
+  const recentEntries = sleepEntries.filter(s => 
+    s.date && new Date(s.date) >= sevenDaysAgo
+  );
+  
+  let recencyMultiplier = 1.0;
+  if (recentEntries.length >= 3) {
+    const recentQualities = recentEntries.filter(s => s.sleep_quality).map(s => s.sleep_quality!);
+    if (recentQualities.length > 0) {
+      const recentAvgQuality = avg(recentQualities);
+      // If recent week is worse than overall → 15% penalty
+      if (recentAvgQuality < avgQuality) {
+        recencyMultiplier = 0.85;
+      }
+    }
+  }
+
+  // WEIGHTED SCORE with bedtime factor
+  const baseScore = 
+    durationScore * 0.25 +      // Reduced from 0.35
+    consistencyScore * 0.20 +   // Reduced from 0.25  
+    qualityScore * 0.30 +       // Reduced from 0.40
+    bedtimeScore * 0.25;        // NEW!
+
+  return Math.min(100, Math.max(0, baseScore * recencyMultiplier));
 }
 
 // Nutrition Score (15%)
@@ -334,7 +397,7 @@ export function useAresBioAge(): AresBioAgeResult {
     weights: { weight: number; body_fat_percentage: number | null }[];
     measurements: { waist: number | null; hips: number | null } | null;
     training: { training_type: string | null; total_duration_minutes: number | null }[];
-    sleep: { sleep_hours: number | null; sleep_quality: number | null }[];
+    sleep: { sleep_hours: number | null; sleep_quality: number | null; bedtime: string | null; date: string | null }[];
     meals: { calories: number | null; protein: number | null; date: string }[];
     hormones: { energy_level: number | null; stress_level: number | null; libido_level: number | null }[];
     bloodwork: any | null;
@@ -389,7 +452,7 @@ export function useAresBioAge(): AresBioAgeResult {
           .gte('session_date', past28Days),
         supabase
           .from('sleep_tracking')
-          .select('sleep_hours, sleep_quality')
+          .select('sleep_hours, sleep_quality, bedtime, date')
           .eq('user_id', user.id)
           .gte('date', past28Days),
         supabase
