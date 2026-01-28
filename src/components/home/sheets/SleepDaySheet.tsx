@@ -151,6 +151,17 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
   const screenTime = todayEntry?.screen_time_evening || 0;
   const motivation = todayEntry?.motivation_level || 0;
   const libido = todayEntry?.morning_libido || 0;
+  const deepSleepMinutes = todayEntry?.deep_sleep_minutes || 0;
+
+  // Helper: Format deep sleep
+  const formatDeepSleep = (minutes: number): string => {
+    if (minutes >= 60) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return m > 0 ? `${h}h ${m}min` : `${h}h`;
+    }
+    return `${minutes}min`;
+  };
 
   const handleNavigateToSleep = () => {
     onClose();
@@ -252,7 +263,7 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
           )}
 
           {/* Context Factors */}
-          {hasLoggedToday && (interruptions > 0 || screenTime > 0 || motivation > 0 || libido > 0) && (
+          {hasLoggedToday && (interruptions > 0 || screenTime > 0 || motivation > 0 || libido > 0 || deepSleepMinutes > 0) && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -262,6 +273,17 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
                 Einflussfaktoren
               </h3>
               <div className="flex flex-wrap gap-2">
+                {deepSleepMinutes > 0 && (
+                  <div className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm",
+                    deepSleepMinutes >= 90 
+                      ? "bg-indigo-500/10 text-indigo-500"
+                      : "bg-orange-500/10 text-orange-500"
+                  )}>
+                    <Moon className="w-3.5 h-3.5" />
+                    <span>💤 {formatDeepSleep(deepSleepMinutes)} Tiefschlaf</span>
+                  </div>
+                )}
                 {interruptions > 0 && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 text-red-500 rounded-full text-sm">
                     <AlertCircle className="w-3.5 h-3.5" />

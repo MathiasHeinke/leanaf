@@ -5927,6 +5927,7 @@ export type Database = {
           bonus_points: number | null
           created_at: string
           date: string
+          deep_sleep_minutes: number | null
           id: string
           last_meal_time: string | null
           morning_libido: number | null
@@ -5947,6 +5948,7 @@ export type Database = {
           bonus_points?: number | null
           created_at?: string
           date?: string
+          deep_sleep_minutes?: number | null
           id?: string
           last_meal_time?: string | null
           morning_libido?: number | null
@@ -5967,6 +5969,7 @@ export type Database = {
           bonus_points?: number | null
           created_at?: string
           date?: string
+          deep_sleep_minutes?: number | null
           id?: string
           last_meal_time?: string | null
           morning_libido?: number | null

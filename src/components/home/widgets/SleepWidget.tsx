@@ -40,14 +40,16 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
       
       const { data: sleepRecords } = await supabase
         .from('sleep_tracking')
-        .select('date, sleep_hours')
+        .select('date, sleep_hours, deep_sleep_minutes')
         .eq('user_id', user.id)
         .in('date', dates);
       
-      // Create a map of date -> hours
+      // Create maps for date -> hours and deep sleep
       const sleepMap = new Map<string, number>();
+      const deepSleepMap = new Map<string, number>();
       sleepRecords?.forEach(r => {
         sleepMap.set(r.date, Number(r.sleep_hours) || 0);
+        deepSleepMap.set(r.date, Number(r.deep_sleep_minutes) || 0);
       });
       
       // Build sparkline (percentage of 8h target)
@@ -58,13 +60,14 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
       
       const todayStr = today.toISOString().slice(0, 10);
       const todayHours = sleepMap.get(todayStr) || 0;
+      const todayDeepSleep = deepSleepMap.get(todayStr) || 0;
       
       // Calculate weekly average
       const totalHours = Array.from(sleepMap.values()).reduce((a, b) => a + b, 0);
       const daysWithData = sleepMap.size;
       const weeklyAvg = daysWithData > 0 ? totalHours / daysWithData : 0;
       
-      return { todayHours, weeklyAvg, sparkline };
+      return { todayHours, weeklyAvg, sparkline, todayDeepSleep };
     },
     staleTime: 60000
   });
@@ -73,6 +76,17 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
   const weeklyAvg = sleepData?.weeklyAvg || 0;
   const sleepSparkline = sleepData?.sparkline?.length ? sleepData.sparkline : [0, 0, 0, 0, 0, 0, 0];
   const sleepStatus = sleepHours >= 7 ? 'good' : sleepHours >= 5 ? 'ok' : sleepHours > 0 ? 'low' : 'none';
+  const deepSleepMinutes = sleepData?.todayDeepSleep || 0;
+
+  // Format deep sleep for display
+  const formatDeepSleep = (minutes: number): string => {
+    if (minutes >= 60) {
+      const h = Math.floor(minutes / 60);
+      const m = minutes % 60;
+      return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    }
+    return `${minutes}m`;
+  };
 
   const statusColors = {
     good: {
@@ -143,6 +157,14 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
           <span className="text-sm font-bold text-foreground">
             {sleepHours > 0 ? `${sleepHours.toFixed(1)}h` : '--'}
           </span>
+          {deepSleepMinutes > 0 && (
+            <span className={cn(
+              "text-xs",
+              deepSleepMinutes >= 90 ? "text-indigo-400" : "text-orange-400"
+            )}>
+              💤 {formatDeepSleep(deepSleepMinutes)}
+            </span>
+          )}
           <span className="text-xs text-muted-foreground">
             {weeklyAvg > 0 ? `Ø ${weeklyAvg.toFixed(1)}h` : ''}
           </span>
@@ -198,6 +220,17 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
             </p>
             <p className="text-xs text-muted-foreground">Heute</p>
           </div>
+          <div className="text-center">
+            {deepSleepMinutes > 0 && (
+              <p className={cn(
+                "text-sm font-medium",
+                deepSleepMinutes >= 90 ? "text-indigo-400" : "text-orange-400"
+              )}>
+                💤 {formatDeepSleep(deepSleepMinutes)}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">Tiefschlaf</p>
+          </div>
           <div className="text-right">
             <p className="text-sm font-medium text-muted-foreground">
               {weeklyAvg > 0 ? `Ø ${weeklyAvg.toFixed(1)}h` : '--'}
@@ -247,6 +280,14 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
           <p className="text-2xl font-bold text-foreground">
             {sleepHours > 0 ? `${sleepHours.toFixed(0)}h` : '--'}
           </p>
+          {deepSleepMinutes > 0 && (
+            <p className={cn(
+              "text-xs",
+              deepSleepMinutes >= 90 ? "text-indigo-400" : "text-orange-400"
+            )}>
+              💤 {formatDeepSleep(deepSleepMinutes)}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground">Ø Letzte 7 Tage</p>
         </div>
       </motion.div>
