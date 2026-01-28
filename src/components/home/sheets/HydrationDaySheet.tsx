@@ -7,7 +7,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { X, Droplets, GlassWater, Check, Pencil, Coffee, Wine } from 'lucide-react';
+import { X, Droplets, GlassWater, Check, Pencil, Coffee, Milk } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { useTodaysFluids } from '@/hooks/useTodaysFluids';
@@ -140,8 +140,8 @@ const QuickAddButton: React.FC<{
         <>
           {isCoffee && <Coffee className="w-5 h-5" />}
           {!isCoffee && variant === 'outline' && <GlassWater className="w-5 h-5" />}
-          {!isCoffee && variant === 'solid' && <Wine className="w-5 h-5" />}
-          <span>+{(amount / 1000).toFixed(2).replace('.', ',')}l</span>
+          {!isCoffee && variant === 'solid' && <Milk className="w-5 h-5" />}
+          {!isCoffee && <span>+{(amount / 1000).toFixed(2).replace('.', ',')}l</span>}
         </>
       )}
     </motion.button>
@@ -370,6 +370,12 @@ export const HydrationDaySheet: React.FC<HydrationDaySheetProps> = ({
             <div className="sticky bottom-0 px-5 py-4 bg-gradient-to-t from-background via-background to-transparent border-t border-border/30">
               <div className="flex gap-3">
                 <QuickAddButton 
+                  amount={150} 
+                  variant="coffee"
+                  type="coffee"
+                  onAdd={logCoffee}
+                />
+                <QuickAddButton 
                   amount={250} 
                   variant="outline" 
                   onAdd={logWater}
@@ -379,12 +385,6 @@ export const HydrationDaySheet: React.FC<HydrationDaySheetProps> = ({
                   variant="solid" 
                   onAdd={logWater}
                 />
-          <QuickAddButton 
-            amount={150} 
-            variant="coffee"
-            type="coffee"
-            onAdd={logCoffee}
-          />
               </div>
             </div>
           </motion.div>
