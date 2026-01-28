@@ -243,6 +243,10 @@ ${dialInstructions.length > 0 ? dialInstructions.join('\n') : 'Sei ausgewogen un
 /**
  * Wendet Kontext-Modifikationen auf die Dials an
  * (±30% Anpassung basierend auf Topic, Mood, Time)
+ * 
+ * ARES 3.0 SITUATIONAL INTELLIGENCE:
+ * Reality Audit Override kommt VOR den Mood-Anpassungen!
+ * Wenn eine Narrative/Excuse erkannt wird, überschreiben wir die "Sozialarbeiter-Logik".
  */
 export function resolvePersonaWithContext(
   persona: CoachPersona,
@@ -250,6 +254,32 @@ export function resolvePersonaWithContext(
 ): ResolvedPersona {
   const baseDials = { ...persona.dials };
   const appliedModifiers: string[] = [];
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SITUATIONAL INTELLIGENCE: Reality Audit Override (KILL SWITCH)
+  // Kommt VOR den normalen Mood-Anpassungen!
+  // Wenn Excuse detected → Überschreibe die Sozialarbeiter-Logik
+  // ═══════════════════════════════════════════════════════════════════════════════
+  if (context.narrativeDetected && !context.isHonestAdmission) {
+    // ELASTIC DIAL MODIFIERS (temporary for this response only)
+    baseDials.warmth = Math.min(baseDials.warmth, 4);      // Cap at 4 (nicht kuscheln)
+    baseDials.directness = Math.max(baseDials.directness, 9); // Floor at 9 (Klartext)
+    baseDials.humor = Math.min(baseDials.humor, 1);        // Nearly disable (ernst)
+    baseDials.challenge = Math.max(baseDials.challenge, 8);  // Floor at 8 (fordernd)
+    appliedModifiers.push('reality_audit_active');
+    
+    console.log('[PERSONA] Reality Audit Override: warmth→' + baseDials.warmth + 
+                ', directness→' + baseDials.directness + 
+                ', challenge→' + baseDials.challenge);
+    
+    // WICHTIG: Skip die normale empathy_mode Logik!
+    // Return early, damit Mood-basierte Wärme nicht greift
+    return {
+      ...persona,
+      resolvedDials: baseDials,
+      appliedModifiers
+    };
+  }
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // AI-NATIVE DETAIL LEVEL MODULATION (Semantic Router Integration)
@@ -303,8 +333,12 @@ export function resolvePersonaWithContext(
     appliedModifiers.push('nutrition_depth');
   }
   
-  // Mood-basierte Anpassungen
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // MOOD-BASIERTE ANPASSUNGEN
+  // Diese laufen NUR wenn KEIN Reality Audit aktiv ist
+  // ═══════════════════════════════════════════════════════════════════════════════
   if (context.mood === 'frustrated' || context.mood === 'overwhelmed') {
+    // Normale Empathie-Logik (nur bei ehrlicher Frustration, nicht bei Excuses)
     baseDials.warmth = Math.min(10, Math.round(baseDials.warmth * 1.3));
     baseDials.challenge = Math.max(1, Math.round(baseDials.challenge * 0.7));
     baseDials.directness = Math.max(1, Math.round(baseDials.directness * 0.8));
