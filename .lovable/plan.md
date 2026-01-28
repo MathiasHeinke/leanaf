@@ -1,95 +1,191 @@
 
-# Transformation-Navigation: Ausblenden + spätere Integration
 
-## Aktuelle Situation
+# Architect Mode: Sidebar Navigation Refactoring
 
-Die Navigation hat aktuell:
-- Dashboard
-- ARES Protokoll
-- Workout
-- **Transformation** ← Eigene Seite
-- Blutwerte
-- History (Tabs: Table, Gewicht, Workouts, Quicklogs, Journal)
-- Analyse (Tabs: Intake, Output, More)
-- Profil
+## Zusammenfassung
 
-## Das Problem
+Die Sidebar wird zur "Layer 3 Configuration Hub" - dem Ort, wo **geplant** wird. Das Dashboard bleibt der Ort, wo **gehandelt** wird.
 
-"Transformation" ist eigentlich eine Analyse-/History-Funktion:
-- Progress-Fotos = Gewichtsverlauf mit Bildern
-- Foto-Vergleiche = Fortschritts-Analyse
-- KI-Zielbilder = Motivations-Feature
-
-Als eigener Nav-Punkt wirkt es fragmentiert.
-
-## Empfehlung
-
-### Schritt 1: Jetzt - Transformation ausblenden
-In `AppSidebar.tsx` den Transformation-Eintrag kommentieren (wie bei ARES/Erfolge):
-```typescript
-// UNTER BEOBACHTUNG: Transformation temporär ausgeblendet
-// { title: "Transformation", url: "/transformation", icon: TrendingUp },
+```text
+Dashboard = DO IT (Layer 0-2, Daily Execution)
+Sidebar = PLAN IT (Layer 3, Strategy & Configuration)
 ```
 
-### Schritt 2: Später - Integration in bestehende Seiten
+## Neue 4-Gruppen-Struktur
 
-**Option A: In Analyse integrieren (empfohlen)**
+```text
+┌─────────────────────────────────────────────────┐
+│ LIVE                                            │
+│   ● Dashboard                                   │
+├─────────────────────────────────────────────────┤
+│ PROTOKOLL                                       │
+│   ● ARES Protokoll (Phasen)                     │
+│   ○ Routinen           [Soon]                   │
+│   ● Training                                    │
+│   ○ Ernaehrung         [Soon]                   │
+│   ○ Supplements        [Soon]                   │
+│   ○ Peptide            [Soon]                   │
+├─────────────────────────────────────────────────┤
+│ ANALYSE                                         │
+│   ● Bio-Daten (NEU - Hub fuer Blood/BioAge)     │
+│   ● Analyse                                     │
+│   ● Logbuch (History)                           │
+├─────────────────────────────────────────────────┤
+│ SYSTEM                                          │
+│   ● Profil                                      │
+│   ▸ Einstellungen [Collapsible]                 │
+│   ▸ Rechtliches [Collapsible]                   │
+└─────────────────────────────────────────────────┘
 
-Die Analyse-Seite hat bereits Tabs (Intake, Output, More). Ein vierter Tab "Transformation" oder Integration in "More" wäre logisch:
+Legende: ● existiert | ○ neu (Platzhalter)
+```
 
-| Tab | Fokus |
-|-----|-------|
-| Intake | Ernährung, Supplements, Hydration |
-| Output | Training, Schritte, RPE |
-| More | Goals, Gewicht-Charts, Body Measurements |
-| **Transformation** | Progress-Fotos, KI-Vergleich, Foto-Timeline |
+## Technische Umsetzung
 
-**Option B: In History > Gewicht integrieren**
+### Datei 1: `src/components/AppSidebar.tsx` (EDIT)
 
-Der "Gewicht"-Tab in History zeigt bereits Weight-Entries. Die Progress-Fotos sind direkt mit Gewichtsmessungen verknüpft - könnte dort eingebettet werden.
-
-**Option C: Hybrid-Lösung**
-
-- **History > Gewicht**: Zeigt Gewicht + zugehörige Progress-Fotos
-- **Analyse > More**: Zeigt Foto-Vergleiche und KI-Transformationen
-
-## Technische Umsetzung (Schritt 1)
-
-### Datei: `src/components/AppSidebar.tsx`
-
-Zeile 58 auskommentieren:
+**Neue Imports:**
 ```typescript
-const navigationItems = [
+import { 
+  Sparkles,    // Routinen
+  Utensils,    // Ernaehrung
+  Pill,        // Supplements
+  Syringe,     // Peptide
+  Dna,         // Bio-Daten
+  LineChart    // Analyse
+} from "lucide-react";
+```
+
+**Neue Navigations-Gruppen:**
+```typescript
+// Group 1: LIVE - The Cockpit
+const GROUP_LIVE = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
+];
+
+// Group 2: ARES PROTOKOLL - Strategy & Builder
+const GROUP_PROTOKOLL = [
   { title: "ARES Protokoll", url: "/protocol", icon: FlaskConical },
-  { title: "Workout", url: "/training", icon: Dumbbell },
-  // UNTER BEOBACHTUNG: Transformation temporär ausgeblendet - später in Analyse/History integrieren
-  // { title: "Transformation", url: "/transformation", icon: TrendingUp },
-  { title: "Blutwerte", url: "/bloodwork", icon: TestTube },
-  { title: "History", url: "/history", icon: HistoryIcon },
-  { title: "Analyse", url: "/analyse", icon: BarChart3 },
-  // UNTER BEOBACHTUNG: Erfolge temporär ausgeblendet
-  // { title: "Erfolge", url: "/achievements", icon: Trophy },
-  { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
+  { title: "Routinen", url: "/routines", icon: Sparkles, comingSoon: true },
+  { title: "Training", url: "/training", icon: Dumbbell },
+  { title: "Ernaehrung", url: "/nutrition-planner", icon: Utensils, comingSoon: true },
+  { title: "Supplements", url: "/supplements", icon: Pill, comingSoon: true },
+  { title: "Peptide", url: "/peptides", icon: Syringe, comingSoon: true },
+];
+
+// Group 3: ANALYSE & DATEN - The Lab
+const GROUP_ANALYSE = [
+  { title: "Bio-Daten", url: "/biodata", icon: Dna },
+  { title: "Analyse", url: "/analyse", icon: LineChart },
+  { title: "Logbuch", url: "/history", icon: HistoryIcon },
+];
+
+// Group 4: SYSTEM
+const GROUP_SYSTEM = [
+  { title: "Profil", url: "/profile", icon: UserIcon },
 ];
 ```
 
-### Was bleibt erhalten
+**UI-Struktur mit SidebarGroupLabel:**
+- Jede Gruppe bekommt ein Label (LIVE, PROTOKOLL, ANALYSE, SYSTEM)
+- Visuelle Divider zwischen Gruppen
+- "Soon" Badge fuer kommende Features
+- Labels im collapsed State: `sr-only` (nur Icons sichtbar)
 
-- Die `/transformation` Route bleibt funktional
-- `TransformationJourneyWidget` und alle Unterkomponenten bleiben
-- User können via URL weiterhin zugreifen
-- Spätere Tab-Integration kann die bestehenden Komponenten wiederverwenden
+### Datei 2: `src/App.tsx` (EDIT)
 
-## Vorteile dieser Strategie
+Neue Routen registrieren:
+```typescript
+import RoutinesPage from "./pages/RoutinesPage";
+import NutritionPlannerPage from "./pages/NutritionPlannerPage";
+import SupplementsPage from "./pages/SupplementsPage";
+import PeptidesPage from "./pages/PeptidesPage";
+import BioDataPage from "./pages/BioDataPage";
 
-1. **Weniger Nav-Einträge** = cleaner Navigation
-2. **Logische Gruppierung** = Fotos bei Analyse/History
-3. **Keine Datenverluste** = Route und Code bleiben
-4. **Flexibilität** = Später entscheiden wo es am besten passt
+// In Routes:
+<Route path="/routines" element={<RoutinesPage />} />
+<Route path="/nutrition-planner" element={<NutritionPlannerPage />} />
+<Route path="/supplements" element={<SupplementsPage />} />
+<Route path="/peptides" element={<PeptidesPage />} />
+<Route path="/biodata" element={<BioDataPage />} />
+```
 
-## Betroffene Datei
+### Neue Seiten (CREATE)
 
-| Datei | Aktion | Änderung |
-|-------|--------|----------|
-| `src/components/AppSidebar.tsx` | **EDIT** | Transformation-Eintrag auskommentieren |
+| Datei | Beschreibung | Inhalt |
+|-------|--------------|--------|
+| `src/pages/RoutinesPage.tsx` | Routine Engine | Action Card Konfigurator (Coming Soon) |
+| `src/pages/NutritionPlannerPage.tsx` | Meal Architect | Meal Plans & Strategien (Coming Soon) |
+| `src/pages/SupplementsPage.tsx` | Stack Manager | Inventar & Stack Builder (Coming Soon) |
+| `src/pages/PeptidesPage.tsx` | Protocol Manager | Vial & Injection Management (Coming Soon) |
+| `src/pages/BioDataPage.tsx` | Bio-Daten Hub | Links zu Bloodwork, Bio-Age, Transformation |
+
+**Platzhalter-Design:**
+- Header mit Icon + Titel + "Layer 3" Badge
+- "Coming Soon" Card mit Konstruktions-Icon
+- Feature-Preview-Liste (was kommt)
+- Einheitliches Premium-Design
+
+### BioDataPage - Besonderheit
+
+Die BioDataPage ist KEIN reiner Platzhalter, sondern ein **Hub**:
+- Klickbare Card "Blutwerte" → navigiert zu `/bloodwork`
+- Klickbare Card "Transformation" → navigiert zu `/transformation`
+- Coming Soon Cards fuer "Bio-Age" und "Koerperkomposition"
+- Erklaerungstext zur Datenaggregation
+
+## Betroffene Dateien
+
+| Datei | Aktion | Beschreibung |
+|-------|--------|--------------|
+| `src/components/AppSidebar.tsx` | **EDIT** | Komplette Neustrukturierung mit 4 Gruppen |
+| `src/App.tsx` | **EDIT** | 5 neue Routen registrieren |
+| `src/pages/RoutinesPage.tsx` | **CREATE** | Platzhalter mit Feature-Preview |
+| `src/pages/NutritionPlannerPage.tsx` | **CREATE** | Platzhalter mit Feature-Preview |
+| `src/pages/SupplementsPage.tsx` | **CREATE** | Platzhalter mit Feature-Preview |
+| `src/pages/PeptidesPage.tsx` | **CREATE** | Platzhalter mit Feature-Preview |
+| `src/pages/BioDataPage.tsx` | **CREATE** | Hub-Seite mit Navigation zu Bloodwork/Transformation |
+
+## Erwartetes Ergebnis
+
+### Vorher
+- Flache Navigation ohne Struktur
+- Kein klares "Do vs. Plan" Konzept
+- Transformation/ARES ausgeblendet und vergessen
+
+### Nachher
+- Klare 4-Gruppen-Hierarchie
+- Professional "Pro Tool" Aesthetik
+- ARES Protokoll wieder sichtbar
+- Coming Soon Features sichtbar aber markiert
+- Bio-Daten als zentraler Hub
+
+### Visual Design
+
+```text
+┌──────────────────────────┐
+│ LIVE                     │  ← Subtle Label
+│ ┌──────────────────────┐ │
+│ │ 🏠 Dashboard         │ │  ← Active state
+│ └──────────────────────┘ │
+├──────────────────────────┤  ← Divider
+│ PROTOKOLL                │
+│ │ ⚗️ ARES Protokoll     │ │
+│ │ ✨ Routinen    [Soon] │ │  ← Badge
+│ │ 🏋️ Training           │ │
+│ │ 🍽️ Ernaehrung  [Soon] │ │
+│ │ 💊 Supplements [Soon] │ │
+│ │ 💉 Peptide     [Soon] │ │
+├──────────────────────────┤
+│ ANALYSE                  │
+│ │ 🧬 Bio-Daten          │ │
+│ │ 📈 Analyse            │ │
+│ │ 📜 Logbuch            │ │
+├──────────────────────────┤
+│ SYSTEM                   │
+│ │ 👤 Profil             │ │
+│ │ ▸ Einstellungen       │ │  ← Collapsible
+│ │ ▸ Rechtliches         │ │
+└──────────────────────────┘
+```
+
