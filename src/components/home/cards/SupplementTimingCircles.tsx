@@ -11,16 +11,18 @@ import { cn } from '@/lib/utils';
 import { useSupplementData, TimeGroupedSupplements } from '@/hooks/useSupplementData';
 import { toast } from 'sonner';
 
-// Timing order for display
-const TIMING_ORDER = ['morning', 'noon', 'evening', 'pre_workout', 'post_workout', 'before_bed'] as const;
+// Timing order for display (bedtime = Layer 3 standard)
+const TIMING_ORDER = ['morning', 'noon', 'evening', 'bedtime', 'pre_workout', 'post_workout'] as const;
 
 // Timing configuration
 const TIMING_CONFIG: Record<string, { icon: LucideIcon; label: string }> = {
   morning: { icon: Sunrise, label: 'Morgens' },
   noon: { icon: Sun, label: 'Mittags' },
   evening: { icon: Moon, label: 'Abends' },
+  bedtime: { icon: BedDouble, label: 'Vor Schlaf' },
   pre_workout: { icon: Dumbbell, label: 'Pre-WO' },
   post_workout: { icon: Dumbbell, label: 'Post-WO' },
+  // Legacy fallback
   before_bed: { icon: BedDouble, label: 'Vor Schlaf' },
 };
 
@@ -29,9 +31,9 @@ const getCurrentTimingPhase = (): string => {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 11) return 'morning';
   if (hour >= 11 && hour < 14) return 'noon';
-  if (hour >= 14 && hour < 17) return 'pre_workout'; // afternoon = potential workout time
+  if (hour >= 14 && hour < 17) return 'pre_workout';
   if (hour >= 17 && hour < 21) return 'evening';
-  return 'before_bed';
+  return 'bedtime'; // 21:00 - 04:59
 };
 
 interface TimingCircleProps {
