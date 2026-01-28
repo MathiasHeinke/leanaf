@@ -1,697 +1,301 @@
 
-# ARES Response Intelligence System - Vollständige Implementierung
+# ARES Elefantengedächtnis 2.0 - Finaler Implementierungsplan
 
-## Übersicht
+## Executive Summary
 
-Implementierung eines 6-Komponenten-Systems zur intelligenten Antwortsteuerung:
-1. **Database Migration** - `user_topic_history` Tabelle + RPC
-2. **Topic Tracker** - Erkennung und Tracking von Themen
-3. **Response Budget Calculator** - Dynamische Längensteuerung
-4. **Prompt Builder Integration** - Neue Sections im System Prompt
-5. **Orchestrator Integration** - Zusammenführung aller Komponenten
-6. **Admin Analytics Dashboard** - Visualisierung der Daten
+Das aktuelle Memory-System hat kritische Schwächen:
+
+| Problem | Ist-Zustand | Soll-Zustand |
+|---------|-------------|--------------|
+| **History-Limit** | 2 Stellen: `.limit(20)` und `.limit(30)` | Einheitlich `.limit(50)` + Token-Budget |
+| **Rolling Summary** | Existiert in DB, wird IGNORIERT | Aktiv geladen + in Prompt injiziert |
+| **Summary Generation** | Keine automatische Generierung | Trigger bei >40 Nachrichten |
+| **formatConversationHistory** | Schneidet Responses auf 200 Zeichen | Volle Responses, token-budgetiert |
 
 ---
 
-## Phase 1: Database Migration
+## Architektur-Übersicht
 
-### Neue Tabelle: `user_topic_history`
-
-```sql
-CREATE TABLE public.user_topic_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  topic TEXT NOT NULL,
-  mention_count INTEGER DEFAULT 1,
-  total_chars_exchanged INTEGER DEFAULT 0,
-  last_deep_dive_at TIMESTAMPTZ,
-  expert_level TEXT DEFAULT 'novice' 
-    CHECK (expert_level IN ('novice', 'intermediate', 'expert')),
-  first_mentioned_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  
-  UNIQUE(user_id, topic)
-);
-
-CREATE INDEX idx_user_topic_lookup ON user_topic_history(user_id, topic);
-
-ALTER TABLE user_topic_history ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own topic history" ON user_topic_history
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Service role full access" ON user_topic_history
-  FOR ALL USING (auth.role() = 'service_role');
-```
-
-### RPC Funktion: `increment_topic_stats`
-
-```sql
-CREATE OR REPLACE FUNCTION public.increment_topic_stats(
-  p_user_id UUID,
-  p_topic TEXT,
-  p_chars INTEGER,
-  p_is_deep_dive BOOLEAN DEFAULT FALSE
-) RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_current_count INTEGER;
-  v_new_level TEXT;
-BEGIN
-  INSERT INTO user_topic_history (user_id, topic, mention_count, total_chars_exchanged, last_deep_dive_at)
-  VALUES (
-    p_user_id, 
-    p_topic, 
-    1, 
-    p_chars, 
-    CASE WHEN p_is_deep_dive THEN now() ELSE NULL END
-  )
-  ON CONFLICT (user_id, topic) DO UPDATE SET
-    mention_count = user_topic_history.mention_count + 1,
-    total_chars_exchanged = user_topic_history.total_chars_exchanged + p_chars,
-    last_deep_dive_at = CASE 
-      WHEN p_is_deep_dive THEN now() 
-      ELSE user_topic_history.last_deep_dive_at 
-    END,
-    updated_at = now();
-  
-  SELECT mention_count INTO v_current_count 
-  FROM user_topic_history 
-  WHERE user_id = p_user_id AND topic = p_topic;
-  
-  v_new_level := CASE
-    WHEN v_current_count >= 20 THEN 'expert'
-    WHEN v_current_count >= 8 THEN 'intermediate'
-    ELSE 'novice'
-  END;
-  
-  UPDATE user_topic_history 
-  SET expert_level = v_new_level 
-  WHERE user_id = p_user_id AND topic = p_topic;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.increment_topic_stats TO authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_topic_stats TO service_role;
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         USER MESSAGE                                         │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  1. LOAD RAW MESSAGES (.limit(50) statt 20/30)                              │
+│     + Rolling Summary aus coach_conversation_memory (AKTIVIEREN!)           │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  2. TOKEN-BASED WINDOW (NEU)                                                │
+│     Budget: 2000 Token für Recent History                                   │
+│     Budget: 500 Token für Rolling Summary                                   │
+│     Logik: Neueste zuerst, älteste werden abgeschnitten                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  3. INTELLIGENT CONTEXT BUILDER                                             │
+│     Prompt Structure:                                                       │
+│     [Rolling Summary] ~500 Token (komprimierte ältere Gespräche)            │
+│     [Recent History] ~2000 Token (neueste Nachrichten)                      │
+│     TOTAL: ~2500 Token für Gesprächskontext                                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  4. POST-RESPONSE: Summary Trigger                                          │
+│     Wenn rawConversations.length > 40: generateRollingSummary (async)       │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 2: Topic Tracker
+## Phase 1: Token-Based Conversation Window
 
-### Neue Datei: `supabase/functions/_shared/context/topicTracker.ts`
+### Neue Datei: `supabase/functions/_shared/context/conversationWindow.ts`
+
+**Interfaces:**
+```typescript
+export interface ConversationPair {
+  message: string;      // User-Nachricht
+  response: string;     // ARES-Antwort
+  created_at?: string;  // Timestamp
+}
+
+export interface WindowResult {
+  pairs: ConversationPair[];    // Ausgewählte Paare (chronologisch)
+  totalTokens: number;          // Verbrauchte Token
+  trimmedCount: number;         // Abgeschnittene Paare
+  rollingSummary: string | null; // Formatierte Summary
+}
+```
+
+**Konstanten:**
+```typescript
+const TOKEN_BUDGET_HISTORY = 2000;  // Token für Recent Messages
+const TOKEN_BUDGET_SUMMARY = 500;   // Token für Rolling Summary
+const CHARS_PER_TOKEN = 4;          // Approximation
+const MIN_PAIRS_GUARANTEED = 3;     // Mindestens 3 Paare immer laden
+```
+
+**Hauptfunktionen:**
+```typescript
+// Token-Schätzung
+function estimateTokens(text: string): number;
+
+// Hauptlogik: Wählt Nachrichten nach Token-Budget
+function buildTokenBudgetedHistory(
+  pairs: ConversationPair[],
+  rollingSummary: string | null,
+  maxTokens?: number
+): WindowResult;
+
+// Formatiert für System Prompt
+function formatConversationContext(result: WindowResult): string;
+```
+
+**Output-Format:**
+```markdown
+## ZUSAMMENFASSUNG BISHERIGER GESPRÄCHE
+[Rolling Summary - komprimierte ältere Gespräche, falls vorhanden]
+
+## GESPRÄCHSVERLAUF (Letzte X Austausche)
+**WICHTIG: Du erinnerst dich an diese Gespräche!**
+
+**User**: [Nachricht vollständig]
+**ARES**: [Antwort vollständig, nicht abgeschnitten!]
+---
+```
+
+---
+
+## Phase 2: Rolling Summary Generator
+
+### Änderungen in `coach-orchestrator-enhanced/memory.ts`
+
+**Neue Funktion: `generateRollingSummary`**
 
 ```typescript
-/**
- * Topic Tracker - ARES 3.0 Response Intelligence
- * Erkennt und trackt User-Expertise pro Thema
- */
-
-export type TopicLevel = 'novice' | 'intermediate' | 'expert';
-
-export interface TopicContext {
-  topic: string;
-  level: TopicLevel;
-  mentionCount: number;
-  totalCharsExchanged: number;
-  lastDeepDive: Date | null;
-  hoursSinceDeepDive: number | null;
-}
-
-export const TOPIC_PATTERNS: Record<string, RegExp> = {
-  retatrutide: /retatrutide|reta|glp-?1|tirzepatide|semaglutide|ozempic|wegovy/i,
-  sleep: /schlaf|sleep|rem|tiefschlaf|einschlafen|aufwachen|insomnia/i,
-  training: /training|workout|krafttraining|cardio|hypertrophie|vo2max|deload/i,
-  protein: /protein|eiweiß|aminosäure|leucin|whey|casein/i,
-  nutrition: /ernährung|kalorien|makros|defizit|surplus|tdee|carb/i,
-  cortisol: /cortisol|stress|nebenniere|hpa|ashwagandha/i,
-  bioage: /bio.?age|biologisches?\s*alter|dunedin|pace|longevity|aging/i,
-  hormones: /hormon|testosteron|östrogen|thyroid|insulin|igf/i,
-  supplements: /supplement|vitamin|mineral|magnesium|zink|omega/i,
-  bloodwork: /blutbild|blutwerte|labor|ferritin|hba1c|leberwerte/i,
-};
-
-export function extractTopics(message: string): string[] {
-  const detected: string[] = [];
-  for (const [topic, pattern] of Object.entries(TOPIC_PATTERNS)) {
-    if (pattern.test(message)) {
-      detected.push(topic);
-    }
-  }
-  return detected;
-}
-
-export async function loadTopicHistory(
-  supaClient: any,
+export async function generateRollingSummary(
+  supaClient: SupabaseClient,
   userId: string,
-  topics: string[]
-): Promise<Map<string, TopicContext>> {
-  if (topics.length === 0) return new Map();
-  
-  const { data, error } = await supaClient
-    .from('user_topic_history')
-    .select('*')
-    .eq('user_id', userId)
-    .in('topic', topics);
-  
-  if (error) {
-    console.warn('[TopicTracker] Failed to load history:', error);
-    return new Map();
-  }
-  
-  const result = new Map<string, TopicContext>();
-  const now = Date.now();
-  
-  for (const row of data || []) {
-    const lastDeepDive = row.last_deep_dive_at 
-      ? new Date(row.last_deep_dive_at) 
-      : null;
-    
-    result.set(row.topic, {
-      topic: row.topic,
-      level: row.expert_level as TopicLevel,
-      mentionCount: row.mention_count,
-      totalCharsExchanged: row.total_chars_exchanged,
-      lastDeepDive,
-      hoursSinceDeepDive: lastDeepDive 
-        ? (now - lastDeepDive.getTime()) / (1000 * 60 * 60)
-        : null,
-    });
-  }
-  
-  return result;
-}
+  coachId: string,
+  oldMessages: { message: string; response: string }[]
+): Promise<void>;
+```
 
-export async function updateTopicStats(
-  supaClient: any,
-  userId: string,
-  topics: string[],
-  responseLength: number
-): Promise<void> {
-  const isDeepDive = responseLength > 1500;
-  const charsPerTopic = Math.ceil(responseLength / Math.max(1, topics.length));
-  
-  for (const topic of topics) {
-    try {
-      await supaClient.rpc('increment_topic_stats', {
-        p_user_id: userId,
-        p_topic: topic,
-        p_chars: charsPerTopic,
-        p_is_deep_dive: isDeepDive,
-      });
-    } catch (err) {
-      console.warn('[TopicTracker] Failed to update stats for', topic, err);
-    }
-  }
-}
+**Logik:**
+1. Mindestens 10 Paare erforderlich
+2. Maximal 20 Paare für Summary (älteste)
+3. Lovable AI Gateway (Gemini 3 Flash) für schnelle Zusammenfassung
+4. Upsert in `coach_conversation_memory`
+5. Maximale Summary-Länge: ~150 Wörter
+
+**Prompt für LLM:**
+```
+Fasse dieses Coaching-Gespräch präzise zusammen.
+Fokus auf: Hauptthemen, wichtige Entscheidungen, User-Ziele, Fortschritte.
+Maximal 150 Wörter, auf Deutsch.
 ```
 
 ---
 
-## Phase 3: Response Budget Calculator
-
-### Neue Datei: `supabase/functions/_shared/ai/responseBudget.ts`
-
-```typescript
-/**
- * Response Budget Calculator - ARES 3.0
- * Berechnet dynamisches Zeichenbudget basierend auf Kontext
- */
-
-import type { TopicContext, TopicLevel } from '../context/topicTracker.ts';
-import type { DetailLevel, IntentType } from './semanticRouter.ts';
-
-export interface BudgetFactors {
-  userMessageLength: number;
-  primaryTopic: TopicContext | null;
-  intent: IntentType;
-  detailLevel: DetailLevel;
-  timeOfDay: 'morning' | 'day' | 'evening';
-}
-
-export interface BudgetResult {
-  maxChars: number;
-  maxTokens: number;
-  reason: string;
-  constraints: string[];
-}
-
-const LEVEL_MULTIPLIERS: Record<TopicLevel, number> = {
-  novice: 1.0,
-  intermediate: 0.7,
-  expert: 0.5,
-};
-
-function getRecencyMultiplier(hoursSinceDeepDive: number | null): number {
-  if (hoursSinceDeepDive === null) return 1.0;
-  if (hoursSinceDeepDive < 24) return 0.4;
-  if (hoursSinceDeepDive < 72) return 0.6;
-  if (hoursSinceDeepDive < 168) return 0.8;
-  return 1.0;
-}
-
-export function calculateResponseBudget(factors: BudgetFactors): BudgetResult {
-  const BASE_BUDGETS: Record<DetailLevel, number> = {
-    ultra_short: 400,
-    concise: 800,
-    moderate: 1500,
-    extensive: 2500,
-  };
-  
-  let budget = BASE_BUDGETS[factors.detailLevel] || 1500;
-  const constraints: string[] = [];
-  const reasons: string[] = [];
-  
-  if (factors.primaryTopic) {
-    const levelMult = LEVEL_MULTIPLIERS[factors.primaryTopic.level];
-    if (levelMult < 1.0) {
-      budget *= levelMult;
-      constraints.push(
-        `User ist ${factors.primaryTopic.level.toUpperCase()} bei ${factors.primaryTopic.topic} - KEINE Grundlagen erklaeren`
-      );
-      reasons.push(`Expert-Level: ${factors.primaryTopic.level}`);
-    }
-    
-    const recencyMult = getRecencyMultiplier(factors.primaryTopic.hoursSinceDeepDive);
-    if (recencyMult < 1.0) {
-      budget *= recencyMult;
-      const hours = Math.round(factors.primaryTopic.hoursSinceDeepDive || 0);
-      constraints.push(`Thema wurde vor ${hours}h ausfuehrlich besprochen - NUR neue Infos`);
-      reasons.push(`Recent deep-dive: ${hours}h ago`);
-    }
-  }
-  
-  if (factors.userMessageLength < 50 && factors.intent === 'confirmation') {
-    budget = Math.min(budget, 300);
-    constraints.push('Kurze Bestaetigung - max 2-3 Saetze');
-    reasons.push('Short confirmation');
-  }
-  
-  if (factors.timeOfDay === 'evening') {
-    budget *= 0.85;
-    reasons.push('Evening mode');
-  }
-  
-  budget = Math.max(200, Math.min(budget, 3000));
-  
-  return {
-    maxChars: Math.round(budget),
-    maxTokens: Math.round(budget / 4),
-    reason: reasons.join(', ') || 'Standard budget',
-    constraints,
-  };
-}
-
-export function buildBudgetPromptSection(budget: BudgetResult): string {
-  const lines = [
-    '== RESPONSE BUDGET ==',
-    `Constraint: STRIKT UNTER ${budget.maxChars} Zeichen (~${budget.maxTokens} tokens)`,
-    `Grund: ${budget.reason}`,
-  ];
-  
-  if (budget.constraints.length > 0) {
-    lines.push('');
-    lines.push('WICHTIG:');
-    budget.constraints.forEach(c => lines.push(`- ${c}`));
-  }
-  
-  return lines.join('\n');
-}
-```
-
----
-
-## Phase 4: Prompt Builder Integration
-
-### Änderungen in `intelligentPromptBuilder.ts`
-
-**Neue Imports am Anfang der Datei:**
-```typescript
-import type { TopicContext } from './topicTracker.ts';
-import type { BudgetResult } from '../ai/responseBudget.ts';
-```
-
-**Erweitertes Interface `IntelligentPromptConfig`:**
-```typescript
-export interface IntelligentPromptConfig {
-  // ... bestehende Felder ...
-  topicContexts?: Map<string, TopicContext>;
-  responseBudget?: BudgetResult;
-}
-```
-
-**Neue Funktion `buildTopicExpertiseSection`:**
-```typescript
-function buildTopicExpertiseSection(
-  topicContexts: Map<string, TopicContext>
-): string {
-  if (topicContexts.size === 0) return '';
-  
-  const lines = [
-    '== USER TOPIC EXPERTISE ==',
-    '(Passe Erklaerungstiefe entsprechend an!)',
-  ];
-  
-  for (const [topic, ctx] of topicContexts) {
-    const lastDeepDive = ctx.hoursSinceDeepDive 
-      ? `Letzter Deep-Dive: vor ${Math.round(ctx.hoursSinceDeepDive)}h` 
-      : 'Noch nie ausfuehrlich besprochen';
-    
-    const instruction = ctx.level === 'expert'
-      ? 'KEINE BASICS erklaeren!'
-      : ctx.level === 'intermediate'
-      ? 'Grundlagen kurz halten.'
-      : 'Kann ausfuehrlich erklaert werden.';
-    
-    lines.push(`- ${topic.toUpperCase()}: ${ctx.level.toUpperCase()} (${ctx.mentionCount}x erwaehnt). ${lastDeepDive}. ${instruction}`);
-  }
-  
-  return lines.join('\n');
-}
-```
-
-**Integration in `buildIntelligentSystemPrompt`:**
-Nach Abschnitt 6 (MOOD DETECTION), vor Abschnitt 7 (Situational Instructions):
-```typescript
-// ABSCHNITT 6B: Topic Expertise (NEU)
-if (topicContexts && topicContexts.size > 0) {
-  sections.push('');
-  sections.push(buildTopicExpertiseSection(topicContexts));
-}
-
-// ABSCHNITT 6C: Response Budget (NEU)
-if (responseBudget) {
-  sections.push('');
-  sections.push(buildBudgetPromptSection(responseBudget));
-}
-```
-
-### Änderungen in `context/index.ts`
-
-**Neue Exports:**
-```typescript
-export {
-  extractTopics,
-  loadTopicHistory,
-  updateTopicStats,
-  TOPIC_PATTERNS,
-  type TopicContext,
-  type TopicLevel,
-} from './topicTracker.ts';
-```
-
----
-
-## Phase 5: Orchestrator Integration
+## Phase 3: Orchestrator Integration
 
 ### Änderungen in `coach-orchestrator-enhanced/index.ts`
 
-**Neue Imports (am Anfang):**
+**3.1 Import hinzufügen:**
 ```typescript
-import {
-  extractTopics,
-  loadTopicHistory,
-  updateTopicStats,
-  type TopicContext,
-} from '../_shared/context/topicTracker.ts';
-
-import {
-  calculateResponseBudget,
-  buildBudgetPromptSection,
-  type BudgetResult,
-} from '../_shared/ai/responseBudget.ts';
+import { 
+  buildTokenBudgetedHistory, 
+  formatConversationContext,
+  type WindowResult 
+} from '../_shared/context/conversationWindow.ts';
+import { loadRollingSummary, generateRollingSummary } from './memory.ts';
 ```
 
-**Integration nach Semantic Router (ca. Zeile 1125-1140):**
+**3.2 Limit erhöhen (2 Stellen!):**
+- Zeile 1028: `.limit(30)` → `.limit(50)`
+- Zeile 2630: `.limit(20)` → `.limit(50)`
+
+**3.3 Rolling Summary laden (nach Zeile 2637):**
 ```typescript
-// TOPIC INTELLIGENCE: Extract and load topic history
-const detectedTopics = extractTopics(text);
-console.log('[ARES-TOPIC] Detected topics:', detectedTopics);
-
-let topicHistory = new Map<string, TopicContext>();
-let primaryTopic: TopicContext | null = null;
-
-if (detectedTopics.length > 0) {
-  topicHistory = await loadTopicHistory(svcClient, userId, detectedTopics);
-  
-  // Find primary topic (most mentioned)
-  let maxMentions = 0;
-  for (const ctx of topicHistory.values()) {
-    if (ctx.mentionCount > maxMentions) {
-      maxMentions = ctx.mentionCount;
-      primaryTopic = ctx;
-    }
-  }
-  
-  if (primaryTopic) {
-    console.log('[ARES-TOPIC] Primary topic:', primaryTopic.topic, 
-                'level:', primaryTopic.level, 
-                'mentions:', primaryTopic.mentionCount);
-  }
+// NEU: Rolling Summary laden für komprimierte ältere Gespräche
+const rollingSummary = await loadRollingSummary(supaSvc, user.id, coachId);
+if (rollingSummary) {
+  console.log('[ARES-MEMORY] Rolling Summary loaded:', rollingSummary.length, 'chars');
 }
-
-// RESPONSE BUDGET: Calculate based on topic + semantic analysis
-const responseBudget = calculateResponseBudget({
-  userMessageLength: text.length,
-  primaryTopic,
-  intent: semanticAnalysis?.intent || 'question',
-  detailLevel: semanticAnalysis?.required_detail_level || 'moderate',
-  timeOfDay: getTimeOfDay() as 'morning' | 'day' | 'evening',
-});
-
-console.log('[ARES-BUDGET] Calculated:', responseBudget.maxChars, 'chars,', 
-            responseBudget.reason);
 ```
 
-**Übergabe an buildIntelligentSystemPrompt (ca. Zeile 1433):**
+**3.4 Token-budgetierte History erstellen:**
 ```typescript
-const systemPrompt = buildIntelligentSystemPrompt({
-  userContext: healthContext,
-  persona: persona,
-  conversationHistory: formattedHistory,
-  personaPrompt: personaPrompt || '',
-  ragKnowledge: ragSources?.knowledge_chunks || [],
-  currentMessage: text,
-  userInsights: userInsights,
-  userPatterns: userPatterns,
-  topicContexts: topicHistory,      // NEU
-  responseBudget: responseBudget,   // NEU
-});
+// Statt: conversationHistory direkt nutzen
+// NEU: Token-Budgeting anwenden
+const windowResult = buildTokenBudgetedHistory(
+  conversationHistory,
+  rollingSummary,
+  2500  // Gesamt-Token-Budget
+);
+
+console.log(`[ARES-MEMORY] Window: ${windowResult.pairs.length} pairs, ` +
+            `${windowResult.totalTokens} tokens, ${windowResult.trimmedCount} trimmed`);
 ```
 
-**Post-Response Topic Update (nach LLM Response, ca. Zeile 2450):**
+**3.5 Bestehende formatConversationHistory ersetzen:**
+Die bestehende Funktion (Zeile 1381-1395) schneidet Responses auf 200 Zeichen ab. 
+Wir ersetzen sie durch `formatConversationContext(windowResult)` die:
+- Volle Responses behält (Token-Budget kontrolliert Länge)
+- Rolling Summary voranstellt
+
+**3.6 Post-Response Summary-Trigger (nach Memory Extraction, ~Zeile 3070):**
 ```typescript
-// Update topic stats after response
-if (detectedTopics.length > 0 && finalResponse) {
-  await updateTopicStats(svcClient, userId, detectedTopics, finalResponse.length);
-  console.log('[ARES-TOPIC] Updated stats for', detectedTopics.length, 'topics');
+// Summary-Generation wenn viele Nachrichten akkumuliert
+const rawMessageCount = rawConversations?.length || 0;
+
+if (rawMessageCount > 40 && !rollingSummary) {
+  // Fire & Forget - blockiert Response nicht
+  generateRollingSummary(
+    supaSvc,
+    user.id,
+    coachId,
+    conversationHistory.slice(0, 20)  // Älteste 20 Paare
+  )
+    .then(() => console.log('[ARES-MEMORY] Rolling Summary generated'))
+    .catch(err => console.warn('[ARES-MEMORY] Summary generation failed:', err));
 }
 ```
 
 ---
 
-## Phase 6: Admin Analytics Dashboard
+## Phase 4: Context Index Export
 
-### Neue Datei: `src/pages/Admin/ConversationAnalytics.tsx`
+### Änderungen in `_shared/context/index.ts`
 
 ```typescript
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { supabase } from '@/integrations/supabase/client';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-
-interface TopicStats {
-  topic: string;
-  total_mentions: number;
-  avg_chars: number;
-  expert_users: number;
-}
-
-export default function ConversationAnalytics() {
-  const [topicStats, setTopicStats] = useState<TopicStats[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
-
-  async function loadAnalytics() {
-    const { data, error } = await supabase
-      .from('user_topic_history')
-      .select('topic, mention_count, total_chars_exchanged, expert_level');
-    
-    if (error) {
-      console.error('Failed to load analytics:', error);
-      setLoading(false);
-      return;
-    }
-
-    // Aggregate by topic
-    const byTopic = new Map<string, TopicStats>();
-    for (const row of data || []) {
-      const existing = byTopic.get(row.topic) || {
-        topic: row.topic,
-        total_mentions: 0,
-        avg_chars: 0,
-        expert_users: 0,
-      };
-      existing.total_mentions += row.mention_count;
-      existing.avg_chars += row.total_chars_exchanged;
-      if (row.expert_level === 'expert') existing.expert_users++;
-      byTopic.set(row.topic, existing);
-    }
-
-    // Calculate averages
-    const stats = Array.from(byTopic.values()).map(s => ({
-      ...s,
-      avg_chars: Math.round(s.avg_chars / Math.max(1, s.total_mentions)),
-    }));
-
-    setTopicStats(stats.sort((a, b) => b.total_mentions - a.total_mentions));
-    setLoading(false);
-  }
-
-  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#0088FE'];
-
-  return (
-    <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Conversation Analytics</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Topic-Verteilung</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={topicStats.slice(0, 5)}
-                  dataKey="total_mentions"
-                  nameKey="topic"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ topic }) => topic}
-                >
-                  {topicStats.slice(0, 5).map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Durchschnittliche Antwortlänge pro Topic</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topicStats.slice(0, 8)}>
-                <XAxis dataKey="topic" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="avg_chars" fill="#8884d8" name="Ø Zeichen" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Expert-Level Users pro Topic</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {topicStats.map(stat => (
-              <div key={stat.topic} className="p-4 border rounded-lg">
-                <div className="font-medium capitalize">{stat.topic}</div>
-                <div className="text-2xl font-bold">{stat.expert_users}</div>
-                <div className="text-sm text-muted-foreground">Expert Users</div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-```
-
-### Änderungen in `src/pages/Admin/index.ts`
-
-**Neuer Export:**
-```typescript
-export { default as ConversationAnalytics } from './ConversationAnalytics';
-```
-
-### Änderungen in Router (falls vorhanden)
-
-Route hinzufügen:
-```typescript
-<Route path="/admin/conversation-analytics" element={<ConversationAnalytics />} />
+// NEU: Token-Based Conversation Window
+export {
+  buildTokenBudgetedHistory,
+  formatConversationContext,
+  estimateTokens,
+  type ConversationPair,
+  type WindowResult,
+} from './conversationWindow.ts';
 ```
 
 ---
 
-## Zusammenfassung der Dateien
+## Betroffene Dateien
 
-| Datei | Aktion | Beschreibung |
-|-------|--------|--------------|
-| SQL Migration | CREATE | `user_topic_history` Tabelle + `increment_topic_stats` RPC |
-| `_shared/context/topicTracker.ts` | CREATE | Topic Extraction & History Loading |
-| `_shared/ai/responseBudget.ts` | CREATE | Budget Calculator |
-| `_shared/context/intelligentPromptBuilder.ts` | EDIT | +TopicExpertise Section, +Budget Section |
-| `_shared/context/index.ts` | EDIT | Neue Exports für topicTracker |
-| `coach-orchestrator-enhanced/index.ts` | EDIT | Integration aller Komponenten |
-| `src/pages/Admin/ConversationAnalytics.tsx` | CREATE | Analytics Dashboard |
-| `src/pages/Admin/index.ts` | EDIT | Export für neue Seite |
+| Datei | Aktion | Änderungen |
+|-------|--------|------------|
+| `_shared/context/conversationWindow.ts` | **CREATE** | Token-Budget-Logik (~130 LOC) |
+| `_shared/context/index.ts` | **EDIT** | +5 neue Exports |
+| `coach-orchestrator-enhanced/memory.ts` | **EDIT** | +generateRollingSummary (~50 LOC) |
+| `coach-orchestrator-enhanced/index.ts` | **EDIT** | Limits erhöhen, Summary laden, Window anwenden, Trigger |
+
+---
+
+## Sicherheits-Garantien
+
+1. **Minimum-Garantie:** Mindestens 3 Paare werden IMMER geladen (auch bei Budget-Überschreitung)
+2. **Maximum-Cap:** Rolling Summary auf 500 Token begrenzt
+3. **Fallback:** Bei Fehlern → alte Logik weiter funktionsfähig
+4. **Async Summary:** Generierung blockiert Response nicht
 
 ---
 
 ## Erwartetes Ergebnis
 
-**Vorher** (Retatrutide zum 50. Mal):
+### Vorher (starres 20-Nachrichten-Limit, abgeschnittene Responses):
 ```
-User: "Wie war das nochmal mit Reta und Schlaf?"
-ARES: [2000+ Zeichen Wikipedia-Erklärung]
+User: "Wie war das mit meiner Übelkeit von vorhin?"
+ARES: "Was für eine Übelkeit? Erzähl mir mehr."  
+// ❌ Vergessen nach 20+ Nachrichten
 ```
 
-**Nachher**:
+### Nachher (Token-budgetiert + Rolling Summary):
 ```
-User: "Wie war das nochmal mit Reta und Schlaf?"
-
 [System Prompt enthält:]
-== USER TOPIC EXPERTISE ==
-- RETATRUTIDE: EXPERT (47x erwaehnt). Letzter Deep-Dive: vor 3h. KEINE BASICS erklaeren!
+## ZUSAMMENFASSUNG BISHERIGER GESPRÄCHE
+Der User klagte über Übelkeit nach der Reta-Injektion. Wir besprachen 
+Ingwer und weniger Wasser. Er plant das Training umzustellen.
 
-== RESPONSE BUDGET ==
-Constraint: STRIKT UNTER 400 Zeichen
-Grund: Expert-Level: expert, Recent deep-dive: 3h ago
+## GESPRÄCHSVERLAUF (Letzte 12 Austausche)
+[Token-optimierte neueste Gespräche, volle Responses]
 
-ARES: [~350 Zeichen]
-"Hatten wir vorhin - GLP-1 kann REM beeinflussen. Dein Tiefschlaf war 
-diese Woche stabil bei 1.2h, also keine Auffälligkeiten. Gibt's was 
-Neues das du beobachtet hast?"
+User: "Wie war das mit meiner Übelkeit von vorhin?"
+ARES: "Die Übelkeit heute Morgen nach der Reta-Injektion? 
+Wir hatten Ingwer und weniger Wasser um die Injektion besprochen. 
+Hat sich das gebessert?"  
+// ✅ Erinnert sich!
 ```
 
 ---
 
 ## Implementierungsreihenfolge
 
-1. **Database Migration** ausführen (Tabelle + RPC)
-2. **topicTracker.ts** erstellen
-3. **responseBudget.ts** erstellen
-4. **intelligentPromptBuilder.ts** erweitern
-5. **context/index.ts** Exports aktualisieren
-6. **coach-orchestrator-enhanced** integrieren
-7. **ConversationAnalytics.tsx** Dashboard erstellen
-8. **Edge Functions deployen**
-9. **Testen** mit verschiedenen Topic-Szenarien
+1. **conversationWindow.ts** erstellen
+2. **context/index.ts** Exports aktualisieren
+3. **memory.ts** um generateRollingSummary erweitern
+4. **coach-orchestrator-enhanced/index.ts**:
+   - Imports hinzufügen
+   - Limits auf 50 erhöhen (2 Stellen!)
+   - Rolling Summary laden
+   - Token-budgetierte History erstellen
+   - formatConversationHistory durch formatConversationContext ersetzen
+   - Post-Response Summary-Trigger
+5. **Deploy Edge Functions**
+6. **Testen** mit langen Gesprächen (>40 Nachrichten)
+
+---
+
+## Erfolgsmetriken
+
+Nach Implementation tracken:
+- **Token-Utilization:** % des 2500-Token-Budgets genutzt
+- **Trim-Rate:** Wie oft werden Nachrichten abgeschnitten?
+- **Summary-Hit-Rate:** Wie oft wird Rolling Summary geladen?
+- **Summary-Generation-Rate:** Wie oft wird neue Summary generiert?
