@@ -63,13 +63,14 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size, onOp
         if (log.taken) takenMap.set(log.user_supplement_id, true);
       });
       
-      // Build items list with taken status
+      // Count taken from ALL supplements (not just display items)
+      const takenCount = activeSupps.filter(supp => takenMap.has(supp.id)).length;
+      
+      // Build items list for display (max 4)
       const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({
         name: supp.custom_name || supp.name || 'Supplement',
         taken: takenMap.has(supp.id)
       }));
-      
-      const takenCount = items.filter(i => i.taken).length;
       
       return {
         taken: takenCount,
