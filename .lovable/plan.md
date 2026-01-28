@@ -1,274 +1,315 @@
 
 
-# Fix: ARES Streaming - Fehlende Situational Intelligence
+# ARES Systemarchitektur-Analyse: Erkannte Inkonsistenzen
 
-## Diagnose
+## Zusammenfassung
 
-Die `ares-streaming` Edge Function ist eine **abgespeckte Version** des `coach-orchestrator-enhanced`. Zwei kritische Features fehlen vollstaendig:
-
-### Problem 1: Greeting-Suppression fehlt
-
-**intelligentPromptBuilder.ts (Zeilen 240-267):**
-```text
-== KRITISCH: GESPRAECHSFLUSS ==
-Dies ist KEINE neue Session - ihr seid bereits im Gespraech!
-
-VERBOTEN am Antwort-Anfang:
-- Begruessungen: "Guten Morgen", "Hey", "Hallo", "Moin", "Hi"
-- Anreden mit Name: "Also Mathias...", "Okay Mathias..."
-- Session-Opener: "Schoen dass du fragst", "Gute Frage"
-- Energie-Intros: "Schnall dich an", "Los gehts"
-```
-
-**ares-streaming `buildStreamingSystemPrompt()` (Zeilen 293-407):**
-- Hat Conversation History ✓
-- Hat Style Override ✓  
-- Hat KEINE GESPRAECHSFLUSS-Regeln ✗
-- Keine dynamische Vertrautheit ✗
-
-**Ergebnis:** ARES sagt "Guten Morgen, Mathias!" obwohl ihr bereits im Gespraech seid.
-
-### Problem 2: Narrative Detection fehlt
-
-**coach-orchestrator-enhanced (Zeilen 111-119, 1153-1217):**
-```typescript
-import { detectNarrative, getIdentityContext, ... } from '../_shared/coaching/index.ts';
-
-const narrativeAnalysis = detectNarrative(text);
-const identityContext = getIdentityContext(protocolMode);
-
-if (narrativeAnalysis.detected) {
-  console.log('[NARRATIVE] Excuse detected: type=' + narrativeAnalysis.excuseType);
-}
-```
-- Importiert detectNarrative() ✓
-- Aktiviert Reality Audit bei Excuses ✓
-- Gummiband-Prinzip funktioniert ✓
-
-**ares-streaming:**
-- Keine Imports von `_shared/coaching/` ✗
-- Keine Narrative Detection ✗
-- Keine Identity Context ✗
-- Kein Reality Audit ✗
-
-**Ergebnis:** "training hat nicht geklappt" triggert keinen Auditor Mode. ARES reagiert als Friend statt Challenge.
+Nach tiefgehender Analyse der ARES-Architektur wurden **7 kritische Inkonsistenzen** zwischen den Hauptmodulen identifiziert. Diese führen zu inkonsistentem Verhalten je nachdem, welcher Codepfad genutzt wird.
 
 ---
 
-## Loesung
+## Erkannte Inkonsistenzen
 
-### Datei: `supabase/functions/ares-streaming/index.ts`
+### 1. Response Budget Calculator fehlt im Streaming
 
-#### Aenderung 1: Imports hinzufuegen (nach Zeile 89)
+| Modul | Status | Auswirkung |
+|-------|--------|------------|
+| `coach-orchestrator-enhanced` | ✓ Hat `calculateResponseBudget()` | Dynamische Antwortlänge basierend auf Topic-Expertise |
+| `ares-streaming` | ✗ Fehlt komplett | Antwortet immer mit gleicher Länge unabhängig von User-Expertise |
 
+**Problem:** Wenn ein User bereits "Expert" bei Creatin ist, sollte ARES nicht erneut die Grundlagen erklären. Im Streaming-Modus fehlt diese Logik komplett.
+
+**Betroffene Dateien:**
+- `ares-streaming/index.ts` importiert `calculateResponseBudget` NICHT
+- `intelligentPromptBuilder.ts` Zeilen 291-296 hat die Integration
+
+---
+
+### 2. Topic State Machine nicht im Streaming
+
+| Modul | Status | Auswirkung |
+|-------|--------|------------|
+| `coach-orchestrator-enhanced` | ✓ Hat Topic State Machine | Erkennt Topic-Wechsel, pausierte Themen, Follow-up Prompts |
+| `ares-streaming` | ✗ Fehlt komplett | Kein Topic-Tracking, keine natürlichen Übergänge |
+
+**Problem:** ARES kann im Streaming nicht sagen "Wir hatten das Thema Protein vor 2 Tagen angefangen - willst du weitermachen?"
+
+**Imports fehlen in `ares-streaming`:**
 ```typescript
-// Phase 11: Situational Intelligence - Reality Audit System (Gummiband-Prinzip)
+// Diese fehlen komplett:
 import {
-  detectNarrative,
-  getExcuseTypeDescription,
-  getIdentityContext,
-  buildRealityAuditPrompt,
-  type NarrativeAnalysis,
-  type IdentityContext,
-} from '../_shared/coaching/index.ts';
-```
-
-#### Aenderung 2: Narrative Detection aktivieren (nach Zeile 762, nach Semantic Analysis)
-
-Nach der Semantic Analysis wird die Narrative Detection aktiviert:
-
-```typescript
-// ═══════════════════════════════════════════════════════════════════
-// PHASE 2c: Situational Intelligence - Narrative Detection
-// ═══════════════════════════════════════════════════════════════════
-const narrativeAnalysis = detectNarrative(text);
-
-// Protocol Mode aus Health Context ableiten
-const currentPhase = healthContext?.protocolStatus?.currentPhase ?? 0;
-const protocolMode = currentPhase === 0 
-  ? 'natural' 
-  : currentPhase >= 2 
-    ? 'clinical' 
-    : 'enhanced';
-const identityContext = getIdentityContext(protocolMode);
-
-if (narrativeAnalysis.detected) {
-  console.log('[ARES-STREAM] Narrative detected: type=' + narrativeAnalysis.excuseType + 
-              ', claim="' + narrativeAnalysis.originalClaim + '"');
-  enqueue({ type: 'thinking', step: 'audit', message: 'Reality Check aktiviert...', done: true });
-} else if (narrativeAnalysis.isVenting) {
-  console.log('[ARES-STREAM] Venting detected (empathy mode)');
-} else if (narrativeAnalysis.isHonestAdmission) {
-  console.log('[ARES-STREAM] Honest admission detected (no trigger)');
-}
-```
-
-#### Aenderung 3: buildStreamingSystemPrompt erweitern (Zeilen 293-407)
-
-Die Funktion `buildStreamingSystemPrompt` muss zwei neue Parameter bekommen:
-
-```typescript
-function buildStreamingSystemPrompt(
-  persona: CoachPersona | ResolvedPersona,
-  personaPrompt: string,
-  healthContext: UserHealthContext | null,
-  knowledgeContext: KnowledgeContext | null,
-  bloodworkContext: BloodworkContext | null,
-  userInsights: UserInsight[],
-  conversationHistory: ConversationMessage[],
-  narrativeAnalysis?: NarrativeAnalysis,    // NEU
-  identityContext?: IdentityContext          // NEU
-): string {
-```
-
-#### Aenderung 4: Greeting-Suppression Block einfuegen (nach Zeile 376)
-
-Nach dem Style Override Block kommt die Greeting-Suppression:
-
-```typescript
-// ═══════════════════════════════════════════════════════════════════
-// GESPRAECHSFLUSS - Keine Begruessungen bei laufender Session
-// ═══════════════════════════════════════════════════════════════════
-if (conversationHistory.length > 0) {
-  parts.push('');
-  parts.push('== KRITISCH: GESPRAECHSFLUSS ==');
-  parts.push('Dies ist KEINE neue Session - ihr seid bereits im Gespraech!');
-  parts.push('');
-  parts.push('VERBOTEN am Antwort-Anfang:');
-  parts.push('- Begruessungen: "Guten Morgen", "Hey", "Hallo", "Moin", "Hi"');
-  parts.push('- Anreden mit Name: "Also Mathias...", "Okay Mathias..."');
-  parts.push('- Session-Opener: "Schoen dass du fragst", "Gute Frage"');
-  parts.push('- Energie-Intros: "Schnall dich an", "Los gehts", "Lass uns..."');
-  parts.push('');
-  parts.push('STATTDESSEN - Starte direkt mit dem Inhalt:');
-  parts.push('- Bei Fragen: Direkt die Antwort');
-  parts.push('- Bei Statements: Direkte Reaktion ("Genau!", "Das stimmt...")');
-  parts.push('- Bei Follow-ups: Natuerliche Fortsetzung');
-  
-  // Dynamische Vertrautheit basierend auf Konversationslaenge
-  const msgCount = conversationHistory.length;
-  if (msgCount >= 6) {
-    parts.push('');
-    parts.push('KONVERSATIONS-TIEFE: Intensives Gespraech (6+ Nachrichten)');
-    parts.push('Sprich wie ein Freund der seit 10 Minuten mit dir redet.');
-    parts.push('Kurze, praegnante Antworten sind OK.');
-  } else if (msgCount >= 2) {
-    parts.push('');
-    parts.push('KONVERSATIONS-TIEFE: Laufendes Gespraech (2-5 Nachrichten)');
-    parts.push('Natuerlicher Flow, aber noch nicht ultra-kurz.');
-  }
-}
-```
-
-#### Aenderung 5: Reality Audit Block einfuegen (nach Greeting-Suppression)
-
-```typescript
-// ═══════════════════════════════════════════════════════════════════
-// REALITY AUDIT - Gummiband-Prinzip (Buddy ↔ Auditor)
-// ═══════════════════════════════════════════════════════════════════
-if (narrativeAnalysis?.detected && !narrativeAnalysis?.isHonestAdmission) {
-  parts.push('');
-  parts.push('== REALITY AUDIT AKTIV ==');
-  parts.push('');
-  parts.push('ERKANNTE NARRATIVE: ' + (narrativeAnalysis.excuseType || 'excuse'));
-  parts.push('USER-AUSSAGE: "' + narrativeAnalysis.originalClaim + '"');
-  if (identityContext) {
-    parts.push('USER IDENTITY: ' + identityContext.label + ' (' + identityContext.protocolMode + ')');
-  }
-  parts.push('');
-  parts.push('### DEINE REAKTION (genau diese Reihenfolge):');
-  parts.push('1. ERGEBNIS-CHECK: Nenne das konkrete Ergebnis (zB "Training verpasst")');
-  parts.push('2. STORY-BUST: Hinterfrage die Narrative sachlich');
-  parts.push('3. IDENTITAETS-REFERENZ: "Dein Protokoll ist nicht kompatibel mit..."');
-  parts.push('4. SYSTEM-FRAGE: Frage nach dem Prozess-Fix');
-  parts.push('5. BRUECKE ZURUECK: Beende mit aufmunterndem Closer + Emoji');
-  parts.push('');
-  parts.push('WICHTIG - DAS GUMMIBAND:');
-  parts.push('Nach dem Reality Check SOFORT zurueck zu warmem Friend-Modus!');
-  parts.push('Der Audit-Teil ist kurz und praezise, dann wieder aufmunternd.');
-} else if (narrativeAnalysis?.isVenting) {
-  parts.push('');
-  parts.push('== EMPATHIE-MODUS ==');
-  parts.push('User vented Frustration (ohne Excuse). Sei empathisch!');
-  parts.push('Frag nach: "Was war los?" oder "Erzaehl mal."');
-  parts.push('KEIN Reality Audit, kein Challenge. Einfach zuhoeren.');
-}
-```
-
-#### Aenderung 6: Funktionsaufruf aktualisieren (ca. Zeile 768)
-
-Der Aufruf von `buildStreamingSystemPrompt` muss die neuen Parameter enthalten:
-
-```typescript
-let baseSystemPrompt = buildStreamingSystemPrompt(
-  persona,
-  personaPrompt,
-  healthContext as UserHealthContext | null,
-  knowledgeContext as KnowledgeContext | null,
-  bloodworkContext as BloodworkContext | null,
-  insightsResult as UserInsight[],
-  conversationHistory,
-  narrativeAnalysis,    // NEU
-  identityContext       // NEU
-);
+  processMessage as processTopicMessage,
+  getPausedTopicsForFollowup,
+  generateReturnPrompt,
+  buildTopicContextPrompt,
+} from '../_shared/topic/index.ts';
 ```
 
 ---
 
-## Betroffene Dateien
+### 3. Gamification/XP-System nicht im Streaming
 
-| Datei | Aktion | Beschreibung |
-|-------|--------|--------------|
-| `supabase/functions/ares-streaming/index.ts` | **EDIT** | Imports + Narrative Detection + Greeting-Suppression + Reality Audit |
+| Modul | Status | Auswirkung |
+|-------|--------|------------|
+| `coach-orchestrator-enhanced` | ✓ Hat `awardInteractionXP()` | XP für Fragen, Tool-Nutzung, Streak-Boni |
+| `ares-streaming` | ✗ Fehlt komplett | Keine XP vergeben bei Streaming-Interaktionen |
+
+**Problem:** Users die primär den Streaming-Modus nutzen (die meisten!) bekommen keine Gamification-Rewards.
+
+---
+
+### 4. Topic Repetition Detection fehlt im Streaming
+
+| Modul | Status | Auswirkung |
+|-------|--------|------------|
+| `coach-orchestrator-enhanced` | ✓ Hat `extractTopics()`, `loadTopicHistory()`, `updateTopicStats()` | Erkennt wenn Thema >3000 chars in 24h besprochen wurde |
+| `ares-streaming` | ✗ Fehlt komplett | "Groundhog Day" - wiederholt dieselben Erklärungen |
+
+**Betroffene Imports:**
+```typescript
+// Diese fehlen in ares-streaming:
+import {
+  extractTopics,
+  loadTopicHistory,
+  updateTopicStats,
+  findPrimaryTopic,
+  buildTopicExpertiseSection,
+} from '../_shared/context/topicTracker.ts';
+```
+
+---
+
+### 5. Elefantengedächtnis (Token-Budgeted History) fehlt im Streaming
+
+| Modul | Status | Auswirkung |
+|-------|--------|------------|
+| `coach-orchestrator-enhanced` | ✓ Hat `buildTokenBudgetedHistory()` | Newest 2000 tokens + 500-token Rolling Summary |
+| `ares-streaming` | ✗ Nutzt nur letzte 12 Nachrichten | Verliert Kontext bei langen Sessions |
+
+**Problem:** Im Orchestrator wird bei >40 Nachrichten automatisch eine Rolling Summary generiert. Im Streaming fehlt diese Logik komplett.
+
+---
+
+### 6. Prompt-Builder hat unterschiedliche Inhalte
+
+**`buildIntelligentSystemPrompt()` (Orchestrator) enthält:**
+- Mood Detection + Response Guidelines (✓ Zeilen 272-280)
+- Topic Expertise Section (✓ Zeilen 284-288)
+- Response Budget Section (✓ Zeilen 291-296)
+- Reality Audit Prompt (✓ Zeilen 298-336)
+- Evidenz-Anforderung mit Studien-Zitaten (✓)
+- Blutbild-Protokoll mit konkreten Markern (✓)
+- Vorberechnete Metriken (TDEE, Protein) (✓)
+
+**`buildStreamingSystemPrompt()` (Streaming) enthält:**
+- Greeting-Suppression (✓ Zeilen 390-419)
+- Reality Audit (✓ Zeilen 422-450)
+- Response Rules (✓ Zeilen 453-472)
+- Vision Instructions (✓)
+
+**FEHLT im Streaming:**
+- ✗ Mood Detection Prompt Section
+- ✗ Topic Expertise Section
+- ✗ Response Budget Constraints
+- ✗ Evidenz-Anforderung (Studien-Zitate)
+- ✗ Blutbild-Protokoll Referenzen
+- ✗ Vorberechnete Metriken
+- ✗ Ausführliche Coaching-Regeln
+
+---
+
+### 7. RAG/Knowledge Loading unterschiedlich
+
+| Modul | Status | Auswirkung |
+|-------|--------|------------|
+| `coach-orchestrator-enhanced` | Hat `fetchRagSources()` mit Embeddings | Semantische Suche in Wissensdatenbank |
+| `ares-streaming` | Hat `loadRelevantKnowledge()` | Keyword-basierte Suche (weniger präzise) |
+
+**Problem:** Der Orchestrator nutzt OpenAI Embeddings für RAG, das Streaming nutzt eine simplere Keyword-Suche.
+
+---
+
+## Betroffene Module (Priorität)
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                    ARES SYSTEMARCHITEKTUR                            │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  coach-orchestrator-enhanced (Blocking)                              │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │ ✓ Narrative Detection      ✓ Response Budget                   │ │
+│  │ ✓ Topic State Machine      ✓ Gamification XP                   │ │
+│  │ ✓ Token-Budgeted History   ✓ Topic Repetition                  │ │
+│  │ ✓ Mood Detection           ✓ RAG Embeddings                    │ │
+│  │ ✓ Greeting Suppression     ✓ Evidence Requirements             │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  ares-streaming (SSE)                                                │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │ ✓ Narrative Detection      ✗ Response Budget                   │ │
+│  │ ✗ Topic State Machine      ✗ Gamification XP                   │ │
+│  │ ✗ Token-Budgeted History   ✗ Topic Repetition                  │ │
+│  │ ✗ Mood Detection           ✗ RAG Embeddings                    │ │
+│  │ ✓ Greeting Suppression     ✗ Evidence Requirements             │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+│  ares-research (SSE)                                                 │
+│  ┌─────────────────────────────────────────────────────────────────┐ │
+│  │ ✓ Persona TL;DR Wrapper    ✗ Keine ARES Context Integration    │ │
+│  │ ✗ Keine Memory             ✗ Keine Health Context              │ │
+│  │ ✗ Keine Bloodwork          ✗ Keine Protocol Awareness          │ │
+│  └─────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Empfohlene Priorisierung
+
+### Phase A: Kritische Parität (Sofort)
+
+1. **Response Budget → Streaming** (verhindert Wiederholungen)
+2. **Topic Tracking → Streaming** (verhindert "Groundhog Day")
+3. **Gamification → Streaming** (Users verlieren XP)
+
+### Phase B: Wichtige Parität (Kurzfristig)
+
+4. **Token-Budgeted History** (lange Sessions verlieren Kontext)
+5. **Mood Detection im Streaming Prompt**
+6. **Evidence Requirements im Streaming Prompt**
+
+### Phase C: Architektur-Entscheidung (Mittelfristig)
+
+**Option A: Streaming als "abgespeckte" Version akzeptieren**
+- Pro: Schneller, weniger Latenz
+- Con: Unterschiedliches Verhalten verwirrt User
+
+**Option B: Streaming auf volle Parität bringen**
+- Pro: Konsistentes Verhalten
+- Con: Höhere Latenz, mehr Komplexität
+
+**Option C: Unified Prompt Builder**
+- Einen einzigen `buildAresSystemPrompt()` der von beiden Modulen genutzt wird
+- Pro: Garantierte Konsistenz, weniger Code-Duplikation
+- Con: Refactoring-Aufwand
+
+---
+
+## Technische Umsetzung (Phase A)
+
+### 1. Response Budget in Streaming integrieren
+
+**Datei:** `supabase/functions/ares-streaming/index.ts`
+
+```typescript
+// Zeile ~55 - Import hinzufügen
+import {
+  calculateResponseBudget,
+  type BudgetResult,
+  type BudgetFactors,
+} from '../_shared/ai/responseBudget.ts';
+
+import {
+  extractTopics,
+  loadTopicHistory,
+  findPrimaryTopic,
+  type TopicContext,
+} from '../_shared/context/topicTracker.ts';
+```
+
+**Nach Semantic Analysis (Zeile ~860):**
+```typescript
+// PHASE 2e: Response Budget berechnen
+let responseBudget: BudgetResult | null = null;
+if (semanticAnalysis) {
+  const budgetFactors: BudgetFactors = {
+    userMessageLength: text.length,
+    primaryTopic: null, // TODO: Load from topic history
+    intent: semanticAnalysis.intent,
+    detailLevel: semanticAnalysis.required_detail_level,
+    timeOfDay: getTimeOfDay() === 'evening' ? 'evening' : 'day',
+  };
+  responseBudget = calculateResponseBudget(budgetFactors);
+}
+```
+
+### 2. Gamification in Streaming integrieren
+
+**Nach Response-Streaming (ca. Zeile 1100):**
+```typescript
+// PHASE 6: Gamification - Award XP
+EdgeRuntime.waitUntil((async () => {
+  try {
+    const xpResult = await awardInteractionXP(supaSvc, userId, {
+      toolsUsed: [], // Streaming hat keine Tools
+      messageText: text,
+      streakDays: healthContext?.basics?.streak || 0,
+    });
+    if (xpResult) {
+      console.log('[ARES-STREAM] XP awarded:', xpResult.totalXP);
+    }
+  } catch (e) {
+    console.warn('[ARES-STREAM] XP award failed:', e);
+  }
+})());
+```
+
+### 3. Topic Tracking Grundlagen hinzufügen
+
+**Imports erweitern:**
+```typescript
+import {
+  extractTopics,
+  loadTopicHistory,
+  updateTopicStats,
+  findPrimaryTopic,
+  buildTopicExpertiseSection,
+} from '../_shared/context/index.ts';
+```
+
+**Nach Context-Loading:**
+```typescript
+// PHASE 2f: Topic Analysis
+const detectedTopics = extractTopics(text);
+const topicContexts = new Map<string, TopicContext>();
+
+if (detectedTopics.length > 0) {
+  const topicHistory = await loadTopicHistory(userId, supaSvc, detectedTopics);
+  for (const [topic, context] of topicHistory) {
+    topicContexts.set(topic, context);
+  }
+}
+
+// Übergebe an buildStreamingSystemPrompt
+```
+
+---
+
+## Betroffene Dateien (Zusammenfassung)
+
+| Datei | Aktion | Aufwand |
+|-------|--------|---------|
+| `supabase/functions/ares-streaming/index.ts` | **MAJOR EDIT** | Hoch |
+| `supabase/functions/_shared/context/streamingPromptBuilder.ts` | **CREATE** (optional) | Mittel |
 
 ---
 
 ## Erwartetes Ergebnis
 
-### Vorher (Screenshot)
+### Vorher (Inkonsistentes Verhalten)
 
 ```
-User: "training hat nicht geklappt"
-
-ARES: "Guten Morgen, Mathias! ☕ Okay, tief durchatmen..."
-      [Lange wissenschaftliche Erklaerung ohne Challenge]
+Orchestrator: "Du bist Expert bei Creatin - kurz: 5g täglich, fertig."
+Streaming:    "Creatin Monohydrat ist ein... [500 Wort Erklärung]"
 ```
 
-### Nachher
+### Nachher (Konsistentes Verhalten)
 
 ```
-User: "training hat nicht geklappt"
-
-ARES: "Okay, Training nicht geschafft - was ist konkret passiert?
-       Das ist jetzt der zweite Tag diese Woche ohne mechanischen Reiz.
-       Dein Fundament-Protokoll braucht den Trainingsreiz fuer MPS.
-       Was muessen wir aendern, damit das morgen klappt? 💪"
+Beide: "Du bist Expert bei Creatin - kurz: 5g täglich, fertig."
 ```
 
-**Kein Greeting, direkter Einstieg, kurzer Reality Check, dann Bruecke zurueck.**
-
----
-
-## Technische Details
-
-### Narrative Detection Logik
-
-Die `detectNarrative()` Funktion erkennt:
-
-| Typ | Trigger | Beispiel | ARES Reaktion |
-|-----|---------|----------|---------------|
-| `excuse_time` | "weil" + Zeit-Keywords | "Konnte nicht, weil keine Zeit" | Reality Audit |
-| `excuse_energy` | "weil" + Energie-Keywords | "War zu muede" | Reality Audit |
-| `excuse_external` | "weil" + Externe Faktoren | "Chef war schuld" | Reality Audit |
-| `rationalization` | Rechtfertigungs-Patterns | "Muss auch mal leben" | Reality Audit |
-| `isVenting` | Frustration ohne Excuse | "Mann, war das stressig!" | Empathie |
-| `isHonestAdmission` | Ehrliches Eingestaendnis | "Hab's verkackt" | High-Five |
-
-### Identity Context (Gummiband-Kalibrierung)
-
-| Protocol Mode | Challenge Baseline | Beispiel |
-|---------------|-------------------|----------|
-| `natural` | 5 (moderat) | "Fundament-Builder - Gewohnheiten aufbauen" |
-| `enhanced` | 7 (streng) | "GLP-1/Peptide - hoehere Investition = hoehere Erwartung" |
-| `clinical` | 9 (Elite) | "TRT/HRT - keine Ausreden, Elite-Standards" |
+Beide Module reagieren gleich auf Expertise-Level, Topic-Historie, und Mood-Kontext.
 
