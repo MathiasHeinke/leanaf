@@ -14,6 +14,7 @@ interface ProtocolBundleCardProps {
   timing: PreferredTiming;
   timeRange: string;
   supplements: UserStackItem[];
+  takenIds?: Set<string>; // IDs of supplements already taken today
   onCompleteStack: () => void;
   onSupplementClick?: (supplement: UserStackItem) => void;
   onRefetch?: () => void;
@@ -55,6 +56,7 @@ export const ProtocolBundleCard: React.FC<ProtocolBundleCardProps> = ({
   timing,
   timeRange,
   supplements,
+  takenIds,
   onCompleteStack,
   onSupplementClick,
   onRefetch,

@@ -1,21 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { Clock, Dumbbell, Sparkles, Zap, Check } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Dumbbell, Sparkles, Zap, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { ProtocolBundleCard } from './ProtocolBundleCard';
-import { haptics } from '@/lib/haptics';
 import {
   TIMELINE_SLOTS,
   type UserStackItem,
   type PreferredTiming,
 } from '@/types/supplementLibrary';
 
+interface TodayIntake {
+  user_supplement_id: string;
+  timing: string;
+  taken: boolean;
+}
+
 interface SupplementTimelineProps {
   groupedByTiming: Record<PreferredTiming, UserStackItem[]>;
+  todayIntakes?: TodayIntake[];
   onSupplementClick?: (supplement: UserStackItem) => void;
   onCompleteStack?: (timing: PreferredTiming, supplements: UserStackItem[]) => void;
+  onLogStack?: (timing: PreferredTiming, supplementIds: string[]) => Promise<void>;
   onAutoActivateEssentials?: () => Promise<void>;
   onRefetch?: () => void;
   isActivating?: boolean;
@@ -36,17 +42,50 @@ const TIMING_TITLES: Record<PreferredTiming, string> = {
  * SupplementTimeline - Flow Tab (Premium UX v2)
  * Displays supplements grouped by time in Protocol Bundle Cards
  * with swipe-to-complete, haptic feedback, and onboarding nudge
+ * 
+ * SYNC FIX: Now derives completion state from todayIntakes (DB) instead of local state
  */
 export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
   groupedByTiming,
+  todayIntakes = [],
   onSupplementClick,
   onCompleteStack,
+  onLogStack,
   onAutoActivateEssentials,
   onRefetch,
   isActivating,
 }) => {
-  // Track completed stacks (local state for UI)
-  const [completedStacks, setCompletedStacks] = useState<Set<PreferredTiming>>(new Set());
+  // Derive completed stacks from database intake logs (NOT local state)
+  const completedStacks = useMemo(() => {
+    const completed = new Set<PreferredTiming>();
+    
+    // Build map: timing -> Set<supplementId>
+    const takenMap = new Map<string, Set<string>>();
+    todayIntakes.forEach(intake => {
+      if (!takenMap.has(intake.timing)) {
+        takenMap.set(intake.timing, new Set());
+      }
+      takenMap.get(intake.timing)!.add(intake.user_supplement_id);
+    });
+
+    // Check if all supplements in each timing slot are taken
+    Object.entries(groupedByTiming).forEach(([timing, supplements]) => {
+      if (supplements && supplements.length > 0) {
+        const takenInTiming = takenMap.get(timing) || new Set();
+        const allTaken = supplements.every(s => takenInTiming.has(s.id));
+        if (allTaken) {
+          completed.add(timing as PreferredTiming);
+        }
+      }
+    });
+
+    return completed;
+  }, [groupedByTiming, todayIntakes]);
+
+  // Build set of taken supplement IDs for individual chip status
+  const takenIds = useMemo(() => {
+    return new Set(todayIntakes.map(i => i.user_supplement_id));
+  }, [todayIntakes]);
 
   // Count total supplements
   const totalCount = useMemo(
@@ -54,12 +93,16 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
     [groupedByTiming]
   );
 
-  // Handle stack completion
-  const handleCompleteStack = (timing: PreferredTiming) => {
-    haptics.success();
-    setCompletedStacks((prev) => new Set([...prev, timing]));
-
+  // Handle stack completion - now logs to DB via parent
+  const handleCompleteStack = async (timing: PreferredTiming) => {
     const supplements = groupedByTiming[timing] || [];
+    
+    // Log to DB if handler provided
+    if (onLogStack) {
+      await onLogStack(timing, supplements.map(s => s.id));
+    }
+    
+    // Legacy callback for backwards compatibility
     onCompleteStack?.(timing, supplements);
   };
 
@@ -128,6 +171,7 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
               timing={slot.id}
               timeRange={slot.timeRange}
               supplements={supplements}
+              takenIds={takenIds}
               onCompleteStack={() => handleCompleteStack(slot.id)}
               onSupplementClick={onSupplementClick}
               onRefetch={onRefetch}
@@ -152,6 +196,7 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
                 timing="pre_workout"
                 timeRange="30-60 min vor Training"
                 supplements={groupedByTiming.pre_workout || []}
+                takenIds={takenIds}
                 onCompleteStack={() => handleCompleteStack('pre_workout')}
                 onSupplementClick={onSupplementClick}
                 onRefetch={onRefetch}
@@ -164,6 +209,7 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
                 timing="post_workout"
                 timeRange="Nach dem Training"
                 supplements={groupedByTiming.post_workout || []}
+                takenIds={takenIds}
                 onCompleteStack={() => handleCompleteStack('post_workout')}
                 onSupplementClick={onSupplementClick}
                 onRefetch={onRefetch}
