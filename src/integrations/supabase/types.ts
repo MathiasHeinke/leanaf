@@ -7711,6 +7711,42 @@ export type Database = {
           },
         ]
       }
+      user_topic_history: {
+        Row: {
+          expert_level: string | null
+          first_mentioned_at: string | null
+          id: string
+          last_deep_dive_at: string | null
+          mention_count: number | null
+          topic: string
+          total_chars_exchanged: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          expert_level?: string | null
+          first_mentioned_at?: string | null
+          id?: string
+          last_deep_dive_at?: string | null
+          mention_count?: number | null
+          topic: string
+          total_chars_exchanged?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          expert_level?: string | null
+          first_mentioned_at?: string | null
+          id?: string
+          last_deep_dive_at?: string | null
+          mention_count?: number | null
+          topic?: string
+          total_chars_exchanged?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_tracking_preferences: {
         Row: {
           created_at: string
@@ -8692,6 +8728,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_topic_stats: {
+        Args: {
+          p_chars: number
+          p_is_deep_dive?: boolean
+          p_topic: string
+          p_user_id: string
+        }
+        Returns: undefined
       }
       is_admin_by_email: { Args: never; Returns: boolean }
       is_admin_user: { Args: { user_uuid?: string }; Returns: boolean }

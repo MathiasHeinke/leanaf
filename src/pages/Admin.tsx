@@ -154,6 +154,21 @@ export const AdminPage = () => {
                 </Card>
               </Link>
 
+              {/* Conversation Analytics Link */}
+              <Link to="/admin/conversation-analytics">
+                <Card className="bg-background border-border dark:bg-card dark:border-border hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                      <MessageSquare className="w-5 h-5 mr-2" />
+                      Conversation Analytics
+                    </CardTitle>
+                    <CardDescription>
+                      Topic-Verteilung, Expert-Level Users, Response-Längen-Trends
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+
               {/* Embedding Status & RAG System */}
               <EmbeddingStatus />
               

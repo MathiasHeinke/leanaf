@@ -3,11 +3,16 @@
  * Baut intelligente, datenbasierte Prompts für den ARES Coach
  * 
  * ARES 3.0 PRO: Integriert Mood-Detection für emotionale Intelligenz
+ * ARES 3.0 RESPONSE INTELLIGENCE: Topic Expertise + Response Budget
  */
 
 import type { UserHealthContext } from './userContextLoader.ts';
 import type { CoachPersona, ResolvedPersona } from '../persona/types.ts';
 import type { UserInsight, UserPattern } from '../memory/types.ts';
+import type { TopicContext } from './topicTracker.ts';
+import type { BudgetResult } from '../ai/responseBudget.ts';
+import { buildTopicExpertiseSection } from './topicTracker.ts';
+import { buildBudgetPromptSection } from '../ai/responseBudget.ts';
 import { 
   detectMood, 
   getResponseGuidelines, 
@@ -57,6 +62,9 @@ export interface IntelligentPromptConfig {
   // Phase 4: Memory System
   userInsights?: UserInsight[];
   userPatterns?: UserPattern[];
+  // ARES 3.0 Response Intelligence
+  topicContexts?: Map<string, TopicContext>;
+  responseBudget?: BudgetResult;
 }
 
 // Re-export für externe Nutzung
@@ -76,6 +84,8 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
     currentMessage,
     userInsights,
     userPatterns,
+    topicContexts,
+    responseBudget,
   } = config;
 
   const sections: string[] = [];
@@ -223,6 +233,22 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
   if (moodSection) {
     sections.push('');
     sections.push(moodSection);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ABSCHNITT 6B: TOPIC EXPERTISE (ARES 3.0 Response Intelligence)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  if (topicContexts && topicContexts.size > 0) {
+    sections.push('');
+    sections.push(buildTopicExpertiseSection(topicContexts));
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ABSCHNITT 6C: RESPONSE BUDGET (ARES 3.0 Response Intelligence)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  if (responseBudget) {
+    sections.push('');
+    sections.push(buildBudgetPromptSection(responseBudget));
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
