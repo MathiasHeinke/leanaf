@@ -1,257 +1,169 @@
 
-# Expandable Supplement Chips - Pro-Level UX Implementation
+# Chip UX Improvements: Form Icons, Two-Line Layout & Green Checkmark
 
-## Status Quo
+## Aenderungen
 
-Die ProtocolBundleCard zeigt Supplements aktuell als **einfache Buttons**:
-```tsx
-<button className="px-3 py-1.5 rounded-full">
-  <span>{supplement.name}</span>
-  <span>{supplement.dosage}{supplement.unit}</span>
-</button>
+### 1. Form-Spezifische Icons (statt generisches 💊)
+
+**Neue `getFormIcon` Funktion:**
+
+| Unit | Icon | Beispiel |
+|------|------|----------|
+| `Tropfen`, `ml`, `Hub` | 💧 `Droplets` (blau) | Vitamin D Tropfen |
+| `g`, `Scoop`, `Loeffel` | 🥄 Emoji | Kreatin Pulver |
+| `Kapseln`, `Kapsel` | 💊 `Pill` (amber) | Omega-3 Kapseln |
+| `Tabletten`, `Tabl` | ⚪ `Disc` (slate) | Tabletten |
+| `IU`, `mg`, `mcg` | 🥚 `Egg` (Softgel) | Vitamin D3 Softgels |
+| Fallback | 💊 `Pill` (muted) | Alles andere |
+
+```typescript
+const getFormIcon = (unit: string): React.ReactNode => {
+  const u = unit?.toLowerCase() || '';
+  if (u.includes('tropfen') || u === 'ml' || u === 'hub') {
+    return <Droplets className="h-4 w-4 text-blue-500" />;
+  }
+  if (u === 'g' || u.includes('löffel') || u.includes('scoop')) {
+    return <span className="text-sm">🥄</span>;
+  }
+  if (u.includes('kapsel')) {
+    return <Pill className="h-4 w-4 text-amber-500" />;
+  }
+  if (u.includes('tabl')) {
+    return <Disc className="h-4 w-4 text-slate-500" />;
+  }
+  // IU, mg, mcg => Softgel style
+  return <Pill className="h-4 w-4 text-muted-foreground" />;
+};
 ```
-
-**Was fehlt:**
-- Timing Constraint Badges (Nuechtern, Mit Fett, etc.)
-- Edit/Delete Icons
-- Expandable Edit Mode mit Formular
-- Liquid Animation (Geschwister rutschen weg)
-- Hersteller-Auswahl
-- Zyklus-Konfiguration
 
 ---
 
-## Loesung: ExpandableSupplementChip Komponente
+### 2. Flexible Zwei-Zeilen Layout
 
-### Collapsed State (Normal)
+**Problem:** Bei langen Namen wie "Magnesium Glycinat" wird Text abgeschnitten.
+
+**Loesung:** `flex-wrap` erlaubt automatischen Umbruch:
 
 ```text
-+---------------------------------------------------------------------+
-| 💊 Vitamin D3 | 5000IU | 🥑 Mit Fett | [angepasst] | [✏️] [🗑️]     |
-+---------------------------------------------------------------------+
+EINZEILIG (wenn Platz):
++--------------------------------------------------+
+| 💧 Vitamin D3 | 5000IU | 🥑 Mit Fett         | ✓ |
++--------------------------------------------------+
+
+ZWEIZEILIG (wenn zu lang):
++--------------------------------------------------+
+| 💊 Magnesium Glycinat | 400mg              | ✓  |
+| 🌙 Vor Schlaf                                    |
++--------------------------------------------------+
 ```
 
-### Expanded State (Edit Mode)
-
-```text
-+---------------------------------------------------------------------+
-| VITAMIN D3 BEARBEITEN                                    [❌ Close] |
-+---------------------------------------------------------------------+
-| Menge:     [5000    ] [IU     ▼]                                    |
-| Timing:    [◉ Morgens] [○ Mittags] [○ Abends] [○ Vor Schlaf]        |
-| Einnahme:  🥑 Mit Fett (fettloeslich) - readonly Badge              |
-| Hersteller: [Sunday Natural     ▼]                                  |
-| Zyklus:    [○ Taeglich] [● Zyklisch: 5 On / 2 Off]                  |
-| Notizen:   [___________________________]                            |
-+---------------------------------------------------------------------+
-| [💾 Speichern]                                         [🗑️ Entfernen]|
-+---------------------------------------------------------------------+
+**CSS Approach:**
+```tsx
+<div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-8">
+  {/* Icon + Name + Dosierung + Constraint Badge */}
+</div>
 ```
+
+- `flex-wrap`: Erlaubt Zeilenumbruch
+- `gap-x-2 gap-y-1`: Horizontaler und vertikaler Abstand
+- `pr-8`: Platz fuer den Checkmark rechts oben
 
 ---
 
-## Animation: Framer Motion Layout
+### 3. Gruener Checkmark statt "[angepasst]" Badge
 
-```typescript
-// LayoutGroup umschliesst alle Chips
-<LayoutGroup>
-  {supplements.map((s) => (
-    <motion.div key={s.id} layout>
-      <ExpandableSupplementChip ... />
-    </motion.div>
-  ))}
-</LayoutGroup>
+**Vorher:**
+```tsx
+<Badge variant="outline" className="text-[10px]">
+  angepasst
+</Badge>
 ```
 
-Die `layout` Prop sorgt automatisch fuer "Liquid Shift" - andere Chips gleiten sanft zur Seite wenn einer expandiert.
-
----
-
-## Timing Constraint Badges
-
-| Constraint | Icon | Label | Farbe |
-|------------|------|-------|-------|
-| `fasted` | 💧 | Nuechtern | blue-100 |
-| `with_food` | 🍽️ | Zum Essen | amber-100 |
-| `with_fats` | 🥑 | Mit Fett | yellow-100 |
-| `bedtime` | 🌙 | Vor Schlaf | indigo-100 |
-| `pre_workout` | 🏋️ | Vor Training | green-100 |
-| `post_workout` | 💪 | Nach Training | teal-100 |
-| `any` | ⏰ | Flexibel | gray-100 |
-
----
-
-## Dateien
-
-### 1. Neue Komponente
-
-**`src/components/supplements/ExpandableSupplementChip.tsx`**
-
-- Collapsed View mit Name, Dosierung, Constraint Badge
-- Edit/Delete Icons (on hover/focus)
-- Expanded View mit Formular
-- Spring Animation (stiffness: 300, damping: 30)
-- Haptic Feedback bei Save/Delete
-
-### 2. Update ProtocolBundleCard
-
-**`src/components/supplements/ProtocolBundleCard.tsx`**
-
-- Importiert `LayoutGroup` von framer-motion
-- Ersetzt `<button>` mit `<ExpandableSupplementChip>`
-- Uebergibt `onSave`, `onDelete`, `brands` Props
-
-### 3. Neuer Hook: useUpdateSupplement
-
-**`src/hooks/useSupplementLibrary.ts`**
-
-```typescript
-export function useUpdateSupplement() {
-  // Updates user_supplements row
-  // Fires 'supplement-stack-changed' event
-  // Haptic feedback on success
-}
-
-export function useDeleteSupplement() {
-  // Sets is_active = false
-  // Fires 'supplement-stack-changed' event
-}
-```
-
-### 4. Brands Hook
-
-**`src/hooks/useSupplementBrands.ts`**
-
-```typescript
-export function useSupplementBrands() {
-  // Fetches supplement_brands table
-  // Returns { brands, isLoading }
-}
-```
-
----
-
-## Formular-Felder im Expanded State
-
-| Feld | Typ | Quelle | Editierbar |
-|------|-----|--------|------------|
-| Dosierung | Input + Unit Select | `dosage`, `unit` | ✅ |
-| Timing | Radio Buttons | `preferred_timing` | ✅ |
-| Constraint | Badge (readonly) | `supplement.timing_constraint` | ❌ |
-| Hersteller | Select | `supplement_brands` | ✅ |
-| Zyklus | Toggle + Inputs | `schedule` | ✅ |
-| Notizen | Textarea | `notes` | ✅ |
-
----
-
-## Zyklus-Konfiguration
-
-Fuer Supplements wie Ashwagandha die Pausen brauchen:
+**Nachher:** Absolut positionierter gruener Kreis mit Haken:
 
 ```tsx
-{scheduleType === 'cycle' && (
-  <div className="flex items-center gap-2">
-    <NumericInput value={cycleOnDays} onChange={...} />
-    <span>Tage an,</span>
-    <NumericInput value={cycleOffDays} onChange={...} />
-    <span>Tage Pause</span>
+{isCustomized && (
+  <div className="absolute -top-1.5 -right-1.5 z-10">
+    <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center shadow-sm ring-2 ring-background">
+      <Check className="h-2.5 w-2.5 text-white" />
+    </div>
   </div>
 )}
 ```
 
+**Visuelles Ergebnis:**
+```text
+                                              ✓  (gruener Kreis)
++--------------------------------------------------+
+| 💧 Vitamin D3 | 5000IU | 🥑 Mit Fett              |
++--------------------------------------------------+
+```
+
 ---
 
-## "Angepasst" Badge
+## Code-Aenderungen
 
-Wenn User etwas aendert (Dosis, Hersteller, etc.), erscheint ein Badge:
+### Datei: `src/components/supplements/ExpandableSupplementChip.tsx`
+
+1. **Neuer Import:** `Pill`, `Disc` von lucide-react
+2. **Neue Funktion:** `getFormIcon(unit: string)`
+3. **Collapsed State Layout:**
+   - Container bekommt `relative` Position
+   - Checkmark als absolutes Element oben rechts
+   - Content Area mit `flex-wrap` und `pr-8`
+   - Name ohne `truncate max-w-[100px]` Limit
+4. **Entfernen:** Das `angepasst` Badge
+
+### Collapsed State Struktur (neu):
 
 ```tsx
-{isCustomized && (
-  <Badge variant="outline" className="text-[10px] text-muted-foreground">
-    angepasst
-  </Badge>
-)}
+<motion.div className="relative group ...">
+  {/* Gruener Checkmark oben rechts */}
+  {isCustomized && (
+    <div className="absolute -top-1.5 -right-1.5 z-10">
+      <div className="w-4 h-4 rounded-full bg-green-500 ...">
+        <Check className="h-2.5 w-2.5 text-white" />
+      </div>
+    </div>
+  )}
+  
+  {/* Content mit flex-wrap */}
+  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 pr-8">
+    {/* Form Icon */}
+    <div className="shrink-0">{getFormIcon(unit)}</div>
+    
+    {/* Name (kein truncate mehr) */}
+    <span className="text-sm font-medium">{item.name}</span>
+    
+    {/* Dosierung */}
+    <span className="text-xs text-muted-foreground">{dosage}{unit}</span>
+    
+    {/* Constraint Badge */}
+    {constraint !== 'any' && <ConstraintBadge />}
+  </div>
+  
+  {/* Edit/Delete Buttons */}
+</motion.div>
 ```
-
-Logik: Vergleich `dosage !== supplement.default_dosage`
 
 ---
 
-## Accessibility & Touch
+## Ergebnis
 
-- Minimum Tap Target: 44x44px
-- Keyboard: Tab Navigation, Escape schliesst Edit
-- Focus Visible: Ring um aktiven Chip
-- Haptic: `haptics.medium()` bei Save, `haptics.error()` bei Delete
-
----
-
-## Erwartetes Verhalten
-
-1. User sieht Morning Protocol mit 3 Chips
-2. Jeder Chip zeigt: Name + Dosis + Timing Badge (🥑 Mit Fett)
-3. Hover auf Chip → Edit/Delete Icons erscheinen
-4. Klick auf Edit:
-   - Chip expandiert mit Spring-Animation
-   - Andere Chips gleiten nach unten (Liquid Shift)
-   - Formular mit allen Optionen erscheint
-5. Aenderungen machen (z.B. Dosis auf 10.000 IU)
-6. Speichern klicken:
-   - Animation zurueck zum Collapsed State
-   - Chip zeigt "[angepasst]" Badge
-   - Toast: "Aenderungen gespeichert"
-7. Delete klicken:
-   - Confirmation Dialog
-   - Supplement wird deaktiviert
-   - Chip verschwindet mit Animation
-
----
-
-## Technische Details
-
-### Animation Config
-
-```typescript
-const SPRING_CONFIG = {
-  type: 'spring',
-  stiffness: 300,
-  damping: 30,
-};
-
-<motion.div
-  layout
-  initial={{ opacity: 0, scale: 0.95 }}
-  animate={{ opacity: 1, scale: 1 }}
-  exit={{ opacity: 0, scale: 0.95 }}
-  transition={SPRING_CONFIG}
->
-```
-
-### Database Update
-
-```typescript
-await supabase
-  .from('user_supplements')
-  .update({
-    dosage,
-    unit,
-    preferred_timing,
-    schedule: { type: scheduleType, cycle_on_days, cycle_off_days },
-    notes,
-    // brand_id: brandId (wenn vorhanden)
-  })
-  .eq('id', supplement.id);
-```
+| Vorher | Nachher |
+|--------|---------|
+| 💊 Omega-... 3g 🥑 [angepasst] | 💊 Omega-3 3g 🥑 Mit Fett ✓ |
+| 💊 Magn... 400mg 🌙 | 💊 Magnesium Glycinat 400mg ✓<br>🌙 Vor Schlaf |
+| 💊 Kreatin 5g | 🥄 Kreatin 5g (Pulver-Icon) |
+| 💊 D3 Tropfen | 💧 D3 Tropfen (Tropfen-Icon) |
 
 ---
 
 ## Zusammenfassung
 
-| Datei | Aktion |
-|-------|--------|
-| `src/components/supplements/ExpandableSupplementChip.tsx` | **NEU** |
-| `src/components/supplements/ProtocolBundleCard.tsx` | **UPDATE** |
-| `src/hooks/useSupplementLibrary.ts` | **EXTEND** |
-| `src/hooks/useSupplementBrands.ts` | **NEU** |
-
-Das Ergebnis: **Pro-Level UX** mit Liquid Animations, inline Editing, und maximaler Kontrolle ohne Modals.
+| Aenderung | Datei |
+|-----------|-------|
+| `getFormIcon()` Helper | `ExpandableSupplementChip.tsx` |
+| `flex-wrap` Layout | `ExpandableSupplementChip.tsx` |
+| Gruener Checkmark | `ExpandableSupplementChip.tsx` |
+| Pill/Disc Icons Import | `ExpandableSupplementChip.tsx` |
