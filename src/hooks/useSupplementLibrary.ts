@@ -277,9 +277,41 @@ export const useUserStackByCategory = () => {
   return { groupedByCategory, stack, ...rest };
 };
 
-// Group user stack by preferred timing for timeline
+// Intake Log Types for today's taken supplements
+interface TodayIntake {
+  user_supplement_id: string;
+  timing: string;
+  taken: boolean;
+}
+
+// Group user stack by preferred timing for timeline + fetch today's intake logs
 export const useUserStackByTiming = () => {
+  const { user } = useAuth();
   const { data: stack, ...rest } = useUserStack();
+  const today = new Date().toISOString().split('T')[0];
+
+  // Fetch today's intake logs from supplement_intake_log
+  const { data: todayIntakes, refetch: refetchIntakes } = useQuery({
+    queryKey: ['supplement-intakes-today', user?.id, today],
+    queryFn: async (): Promise<TodayIntake[]> => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('supplement_intake_log')
+        .select('user_supplement_id, timing, taken')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .eq('taken', true);
+      if (error) throw error;
+      return (data || []) as TodayIntake[];
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 seconds
+  });
+
+  // Set for fast lookup: "supplementId|timing"
+  const takenSet = new Set(
+    (todayIntakes || []).map(i => `${i.user_supplement_id}|${i.timing}`)
+  );
 
   const activeStack = (stack || []).filter(item => item.is_active);
 
@@ -292,7 +324,17 @@ export const useUserStackByTiming = () => {
     return acc;
   }, {} as Record<PreferredTiming, UserStackItem[]>);
 
-  return { groupedByTiming, activeStack, stack, ...rest };
+  return { 
+    groupedByTiming, 
+    activeStack, 
+    todayIntakes: todayIntakes || [],
+    stack, 
+    refetch: () => {
+      rest.refetch();
+      refetchIntakes();
+    },
+    ...rest 
+  };
 };
 
 // Group user stack by necessity tier for pyramid navigation

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Pill, Clock, Package, Sparkles, Plus, Beaker, CalendarClock } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Pill, Package, Sparkles, Plus, Beaker, CalendarClock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,9 @@ import {
 import { shouldShowSupplement } from '@/lib/schedule-utils';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { haptics } from '@/lib/haptics';
+import { toast } from 'sonner';
 import type { UserStackItem, SupplementLibraryItem, PreferredTiming } from '@/types/supplementLibrary';
 import type { SupplementSchedule } from '@/lib/schedule-utils';
 
@@ -58,10 +61,11 @@ export default function SupplementsPage() {
   // User's current phase (default to 0 = Foundation)
   const userPhase = 0;
 
-  // Fetch data
+  // Fetch data with today's intake logs
   const {
     groupedByTiming,
     activeStack,
+    todayIntakes,
     isLoading: timelineLoading,
     refetch: refetchTimeline,
   } = useUserStackByTiming();
@@ -137,8 +141,45 @@ export default function SupplementsPage() {
     await activateEssentials();
     refetchTimeline();
     refetchInventory();
-    window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
   };
+
+  // Log stack completion to DB
+  const handleLogStack = useCallback(async (timing: PreferredTiming, supplementIds: string[]) => {
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+
+    const logs = supplementIds.map(id => ({
+      user_id: user.id,
+      user_supplement_id: id,
+      timing,
+      taken: true,
+      date: today,
+    }));
+
+    const { error } = await supabase
+      .from('supplement_intake_log')
+      .upsert(logs, { onConflict: 'user_supplement_id,date,timing' });
+
+    if (error) {
+      console.error('Error logging stack:', error);
+      toast.error('Fehler beim Speichern');
+      return;
+    }
+
+    haptics.success();
+    refetchTimeline();
+    window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
+  }, [user, refetchTimeline]);
+
+  // Cross-layer sync: listen for changes from other layers
+  useEffect(() => {
+    const handleStackChanged = () => {
+      refetchTimeline();
+      refetchInventory();
+    };
+    window.addEventListener('supplement-stack-changed', handleStackChanged);
+    return () => window.removeEventListener('supplement-stack-changed', handleStackChanged);
+  }, [refetchTimeline, refetchInventory]);
 
   return (
     <div className="container max-w-2xl py-6 pb-24 space-y-5">
@@ -255,6 +296,8 @@ export default function SupplementsPage() {
           >
             <SupplementTimeline
               groupedByTiming={todaysGroupedByTiming}
+              todayIntakes={todayIntakes}
+              onLogStack={handleLogStack}
               onAutoActivateEssentials={handleAutoActivate}
               onRefetch={refetchTimeline}
               isActivating={isActivating}
