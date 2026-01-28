@@ -550,8 +550,8 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
                   </div>
                 )}
 
-                {/* RPE INTENSITY - For all workout types except rest */}
-                {selectedType && selectedType !== 'rest' && (
+                {/* RPE INTENSITY - For workouts only (not rest, sauna, movement) */}
+                {selectedType && !['rest', 'sauna', 'movement'].includes(selectedType) && (
                   <div className="space-y-3 pt-2">
                     <div className="text-sm font-medium text-muted-foreground">
                       Intensität (RPE)
