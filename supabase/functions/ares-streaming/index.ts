@@ -88,6 +88,16 @@ import {
   getPhaseCoachingRules,
 } from '../_shared/prompts/ares_protocol_knowledge.ts';
 
+// Phase 11: Situational Intelligence - Reality Audit System (Gummiband-Prinzip)
+import {
+  detectNarrative,
+  getExcuseTypeDescription,
+  getIdentityContext,
+  buildRealityAuditPrompt,
+  type NarrativeAnalysis,
+  type IdentityContext,
+} from '../_shared/coaching/index.ts';
+
 // Environment - Multiple AI Providers
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -297,7 +307,9 @@ function buildStreamingSystemPrompt(
   knowledgeContext: KnowledgeContext | null,
   bloodworkContext: BloodworkContext | null,
   userInsights: UserInsight[],
-  conversationHistory: ConversationMessage[]
+  conversationHistory: ConversationMessage[],
+  narrativeAnalysis?: NarrativeAnalysis,
+  identityContext?: IdentityContext
 ): string {
   const parts: string[] = [];
   
@@ -373,6 +385,68 @@ function buildStreamingSystemPrompt(
     parts.push('== KRITISCH: STIL-ANWEISUNG ==');
     parts.push('Nutze AUSSCHLIESSLICH den Stil aus deiner Persona-Definition.');
     parts.push('Kopiere NIEMALS den Sprachstil aus frueheren Nachrichten.');
+    parts.push('');
+    
+    // ═══════════════════════════════════════════════════════════════════
+    // GESPRAECHSFLUSS - Keine Begruessungen bei laufender Session
+    // ═══════════════════════════════════════════════════════════════════
+    parts.push('== KRITISCH: GESPRAECHSFLUSS ==');
+    parts.push('Dies ist KEINE neue Session - ihr seid bereits im Gespraech!');
+    parts.push('');
+    parts.push('VERBOTEN am Antwort-Anfang:');
+    parts.push('- Begruessungen: "Guten Morgen", "Hey", "Hallo", "Moin", "Hi"');
+    parts.push('- Anreden mit Name: "Also Mathias...", "Okay Mathias..."');
+    parts.push('- Session-Opener: "Schoen dass du fragst", "Gute Frage"');
+    parts.push('- Energie-Intros: "Schnall dich an", "Los gehts", "Lass uns..."');
+    parts.push('');
+    parts.push('STATTDESSEN - Starte direkt mit dem Inhalt:');
+    parts.push('- Bei Fragen: Direkt die Antwort');
+    parts.push('- Bei Statements: Direkte Reaktion ("Genau!", "Das stimmt...")');
+    parts.push('- Bei Follow-ups: Natuerliche Fortsetzung');
+    parts.push('');
+    
+    // Dynamische Vertrautheit basierend auf Konversationslaenge
+    const msgCount = conversationHistory.length;
+    if (msgCount >= 6) {
+      parts.push('KONVERSATIONS-TIEFE: Intensives Gespraech (6+ Nachrichten)');
+      parts.push('Sprich wie ein Freund der seit 10 Minuten mit dir redet.');
+      parts.push('Kurze, praegnante Antworten sind OK.');
+      parts.push('');
+    } else if (msgCount >= 2) {
+      parts.push('KONVERSATIONS-TIEFE: Laufendes Gespraech (2-5 Nachrichten)');
+      parts.push('Natuerlicher Flow, aber noch nicht ultra-kurz.');
+      parts.push('');
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // REALITY AUDIT - Gummiband-Prinzip (Buddy ↔ Auditor)
+  // ═══════════════════════════════════════════════════════════════════
+  if (narrativeAnalysis?.detected && !narrativeAnalysis?.isHonestAdmission) {
+    parts.push('== REALITY AUDIT AKTIV ==');
+    parts.push('');
+    parts.push('ERKANNTE NARRATIVE: ' + (narrativeAnalysis.excuseType || 'excuse'));
+    parts.push('USER-AUSSAGE: "' + narrativeAnalysis.originalClaim + '"');
+    if (identityContext) {
+      parts.push('USER IDENTITY: ' + identityContext.label + ' (' + identityContext.protocolMode + ')');
+    }
+    parts.push('');
+    parts.push('### DEINE REAKTION (genau diese Reihenfolge):');
+    parts.push('1. ERGEBNIS-CHECK: Nenne das konkrete Ergebnis (zB "Training verpasst")');
+    parts.push('2. STORY-BUST: Hinterfrage die Narrative sachlich');
+    parts.push('3. IDENTITAETS-REFERENZ: "Dein Protokoll ist nicht kompatibel mit..."');
+    parts.push('4. SYSTEM-FRAGE: Frage nach dem Prozess-Fix');
+    parts.push('5. BRUECKE ZURUECK: Beende mit aufmunterndem Closer + Emoji');
+    parts.push('');
+    parts.push('WICHTIG - DAS GUMMIBAND:');
+    parts.push('Nach dem Reality Check SOFORT zurueck zu warmem Friend-Modus!');
+    parts.push('Der Audit-Teil ist kurz und praezise, dann wieder aufmunternd.');
+    parts.push('');
+  } else if (narrativeAnalysis?.isVenting) {
+    parts.push('== EMPATHIE-MODUS ==');
+    parts.push('User vented Frustration (ohne Excuse). Sei empathisch!');
+    parts.push('Frag nach: "Was war los?" oder "Erzaehl mal."');
+    parts.push('KEIN Reality Audit, kein Challenge. Einfach zuhoeren.');
     parts.push('');
   }
   
@@ -763,7 +837,31 @@ Deno.serve(async (req) => {
           }
           
           // ═══════════════════════════════════════════════════════════════════
-          // PHASE 2b: Build system prompt with dynamic instructions
+          // PHASE 2c: Situational Intelligence - Narrative Detection
+          // ═══════════════════════════════════════════════════════════════════
+          const narrativeAnalysis = detectNarrative(text);
+          
+          // Protocol Mode aus Health Context ableiten
+          const currentPhase = healthContext?.protocolStatus?.currentPhase ?? 0;
+          const protocolMode = currentPhase === 0 
+            ? 'natural' 
+            : currentPhase >= 2 
+              ? 'clinical' 
+              : 'enhanced';
+          const identityContext = getIdentityContext(protocolMode);
+          
+          if (narrativeAnalysis.detected) {
+            console.log('[ARES-STREAM] Narrative detected: type=' + narrativeAnalysis.excuseType + 
+                        ', claim="' + narrativeAnalysis.originalClaim + '"');
+            enqueue({ type: 'thinking', step: 'audit', message: 'Reality Check aktiviert...', done: true });
+          } else if (narrativeAnalysis.isVenting) {
+            console.log('[ARES-STREAM] Venting detected (empathy mode)');
+          } else if (narrativeAnalysis.isHonestAdmission) {
+            console.log('[ARES-STREAM] Honest admission detected (no trigger)');
+          }
+
+          // ═══════════════════════════════════════════════════════════════════
+          // PHASE 2d: Build system prompt with dynamic instructions
           // ═══════════════════════════════════════════════════════════════════
           let baseSystemPrompt = buildStreamingSystemPrompt(
             persona,
@@ -772,7 +870,9 @@ Deno.serve(async (req) => {
             knowledgeContext as KnowledgeContext | null,
             bloodworkContext as BloodworkContext | null,
             insightsResult as UserInsight[],
-            conversationHistory
+            conversationHistory,
+            narrativeAnalysis,
+            identityContext
           );
           
           // Inject dynamic response length instructions based on semantic analysis
