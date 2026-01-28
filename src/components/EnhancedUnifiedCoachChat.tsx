@@ -1310,7 +1310,7 @@ chatInput={
                 headers: { 'x-trace-id': confirmSupplement.traceId || crypto.randomUUID(), 'x-source': 'chat' }
               });
               if (error) throw error;
-              window.dispatchEvent(new CustomEvent('supplement-recommendations-saved'));
+              window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
               toast.success('Supplement gespeichert');
             } catch (e) {
               console.error('supplement-save failed', e);

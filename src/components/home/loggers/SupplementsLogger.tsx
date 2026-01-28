@@ -4,15 +4,17 @@
  * Expert: Individual checkboxes, ungeplantes hinzufügen accordion
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Sunrise, Sun, Moon, Dumbbell, ChevronDown, Loader2 } from 'lucide-react';
+import { Check, Sunrise, Sun, Moon, Dumbbell, ChevronDown, Loader2, Search, Plus } from 'lucide-react';
 import { useSupplementData } from '@/hooks/useSupplementData';
+import { useAuth } from '@/hooks/useAuth';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SupplementsLoggerProps {
   onClose: () => void;
@@ -43,6 +45,7 @@ const getCurrentTiming = (): string => {
 };
 
 export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose }) => {
+  const { user } = useAuth();
   const {
     groupedSupplements,
     loading,
@@ -54,6 +57,9 @@ export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose })
   const [expandedTiming, setExpandedTiming] = useState<string | null>(null);
   const [adHocOpen, setAdHocOpen] = useState(false);
   const [adHocSearch, setAdHocSearch] = useState('');
+  const [adHocResults, setAdHocResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [loggingAdHoc, setLoggingAdHoc] = useState<string | null>(null);
 
   const currentTiming = getCurrentTiming();
   const timings = Object.keys(groupedSupplements);
@@ -76,6 +82,57 @@ export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose })
 
   const handleToggleSupplement = async (supplementId: string, timing: string, currentlyTaken: boolean) => {
     await markSupplementTaken(supplementId, timing, !currentlyTaken);
+  };
+
+  // Debounced search for ad-hoc supplements
+  useEffect(() => {
+    if (!adHocSearch.trim()) {
+      setAdHocResults([]);
+      return;
+    }
+    
+    const timer = setTimeout(async () => {
+      setSearchLoading(true);
+      const { data } = await supabase
+        .from('supplement_database')
+        .select('id, name, category, default_dosage, default_unit')
+        .ilike('name', `%${adHocSearch}%`)
+        .limit(5);
+      setAdHocResults(data || []);
+      setSearchLoading(false);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [adHocSearch]);
+
+  // Log ad-hoc supplement (one-time intake without adding to stack)
+  const handleLogAdHoc = async (supplement: any) => {
+    if (!user) return;
+    setLoggingAdHoc(supplement.id);
+    
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { error } = await supabase
+        .from('supplement_intake_log')
+        .insert({
+          user_id: user.id,
+          user_supplement_id: null, // Ad-hoc, not linked to user_supplements
+          timing: getCurrentTiming(),
+          taken: true,
+          date: today,
+          notes: `Ad-hoc: ${supplement.name} ${supplement.default_dosage || ''}${supplement.default_unit || ''}`
+        });
+      
+      if (error) throw error;
+      toast.success(`${supplement.name} geloggt`);
+      setAdHocSearch('');
+      setAdHocResults([]);
+    } catch (err) {
+      console.error('Error logging ad-hoc supplement:', err);
+      toast.error('Fehler beim Loggen');
+    } finally {
+      setLoggingAdHoc(null);
+    }
   };
 
   if (loading) {
@@ -221,12 +278,50 @@ export const SupplementsLogger: React.FC<SupplementsLoggerProps> = ({ onClose })
           )} />
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-3 space-y-3">
-          <Input
-            placeholder="Medikament oder Supplement suchen..."
-            value={adHocSearch}
-            onChange={(e) => setAdHocSearch(e.target.value)}
-            className="w-full"
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Medikament oder Supplement suchen..."
+              value={adHocSearch}
+              onChange={(e) => setAdHocSearch(e.target.value)}
+              className="w-full pl-9"
+            />
+          </div>
+          
+          {/* Search Results */}
+          {searchLoading ? (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : adHocResults.length > 0 ? (
+            <div className="space-y-1">
+              {adHocResults.map((supp) => (
+                <button
+                  key={supp.id}
+                  onClick={() => handleLogAdHoc(supp)}
+                  disabled={loggingAdHoc === supp.id}
+                  className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{supp.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {supp.default_dosage}{supp.default_unit} • {supp.category}
+                    </p>
+                  </div>
+                  {loggingAdHoc === supp.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Plus className="w-4 h-4 text-primary" />
+                  )}
+                </button>
+              ))}
+            </div>
+          ) : adHocSearch.trim() ? (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              Keine Ergebnisse für "{adHocSearch}"
+            </p>
+          ) : null}
+          
           <p className="text-xs text-muted-foreground px-1">
             Für einmalige Einnahmen (z.B. Kopfschmerztablette)
           </p>

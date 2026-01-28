@@ -131,8 +131,8 @@ export const SupplementPreviewCard: React.FC<SupplementPreviewCardProps> = ({
         }
       }
 
-      // Trigger refresh event for QuickSupplementInput
-      window.dispatchEvent(new CustomEvent('supplement-recommendations-saved'));
+      // Trigger unified refresh event for all supplement listeners
+      window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
       
       await onSave(supplementData);
       toast.success('Supplement-Empfehlungen erfolgreich gespeichert!');
