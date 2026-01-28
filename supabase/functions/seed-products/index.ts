@@ -235,10 +235,9 @@ Deno.serve(async (req) => {
             impact_score: supp.impact_score,
             necessity_tier: supp.necessity_tier,
             evidence_level: supp.evidence_level,
-            default_dose: supp.default_dose,
+            default_dosage: supp.default_dose ? `${supp.default_dose} ${supp.default_unit || ''}`.trim() : null,
             default_unit: supp.default_unit,
-            timing_recommendation: supp.timing_recommendation,
-            is_vegan: supp.is_vegan,
+            synergies: supp.synergies || [],
           });
 
         if (error) {
@@ -273,6 +272,20 @@ Deno.serve(async (req) => {
           // Trotzdem einfügen, supplement_id ist optional
         }
 
+        // Check if product already exists (no unique constraint, so manual check)
+        const { data: existingProduct } = await supabase
+          .from('supplement_products')
+          .select('id')
+          .eq('brand_id', brandId)
+          .eq('product_name', product.product_name)
+          .maybeSingle();
+
+        if (existingProduct) {
+          console.log(`Product exists: ${product.product_name}`);
+          results.products_skipped++;
+          continue;
+        }
+
         if (dryRun) {
           console.log(`[DRY RUN] Would insert product: ${product.product_name}`);
           results.products_inserted++;
@@ -281,7 +294,7 @@ Deno.serve(async (req) => {
 
         const { error } = await supabase
           .from('supplement_products')
-          .upsert({
+          .insert({
             brand_id: brandId,
             supplement_id: suppId || null,
             product_name: product.product_name,
@@ -295,8 +308,6 @@ Deno.serve(async (req) => {
             form: product.form,
             is_vegan: product.is_vegan ?? false,
             is_verified: true,
-          }, {
-            onConflict: 'brand_id,product_name',
           });
 
         if (error) {
