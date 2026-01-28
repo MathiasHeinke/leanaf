@@ -3,11 +3,12 @@
  * Extended: Bedtime/wake time, interruptions, screen time, libido, motivation
  * 
  * UI Polish: Morphing hero, exclusive accordions, 5-point quality scale, sticky save
+ * v2: Shows "Already Logged" state with edit button when sleep is already tracked
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Check, ChevronDown, Minus, Plus } from 'lucide-react';
+import { Check, ChevronDown, Minus, Plus, Pencil, Moon, Clock, Sparkles } from 'lucide-react';
 import { useAresEvents } from '@/hooks/useAresEvents';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { Slider } from '@/components/ui/slider';
@@ -64,8 +65,15 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
   const { trackEvent } = useAresEvents();
   const { data: metrics } = useDailyMetrics();
   
-  // Core fields
-  const [hours, setHours] = useState(metrics?.sleep?.lastHours || 7.5);
+  // Check if sleep is already logged today (has lastHours = data exists)
+  const existingSleep = metrics?.sleep;
+  const hasExistingLog = existingSleep?.lastHours != null;
+  
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false);
+  
+  // Core fields - initialize from existing data if available
+  const [hours, setHours] = useState(existingSleep?.lastHours || 7.5);
   const [quality, setQuality] = useState(3); // 1-5 scale
   const [isSaving, setIsSaving] = useState(false);
   
@@ -83,6 +91,17 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
   // Exclusive accordion state
   const [openSection, setOpenSection] = useState<OpenSection>(null);
   const isExpanded = openSection !== null;
+
+  // Initialize values from existing sleep data
+  useEffect(() => {
+    if (existingSleep?.lastHours) {
+      setHours(existingSleep.lastHours);
+    }
+    if (existingSleep?.lastQuality) {
+      // Convert DB quality (2-10) back to 1-5 scale
+      setQuality(Math.round(existingSleep.lastQuality / 2));
+    }
+  }, [existingSleep]);
 
   const toggleSection = (section: OpenSection) => {
     setOpenSection(current => current === section ? null : section);
@@ -111,10 +130,107 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
     setIsSaving(false);
   };
 
+  // Get quality info for display
+  const getQualityInfo = (qualityValue: number) => {
+    return QUALITY_SCALE.find(q => q.value === qualityValue) || QUALITY_SCALE[2];
+  };
+
+  // ALREADY LOGGED VIEW
+  if (hasExistingLog && !isEditing) {
+    const qualityInfo = getQualityInfo(quality);
+    
+    return (
+      <div className="flex flex-col min-h-[300px]">
+        <div className="flex-1 space-y-6 py-4">
+          {/* Success Header */}
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-2">
+              <Moon className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground">Schlaf geloggt</h3>
+            <p className="text-sm text-muted-foreground">Heute bereits erfasst</p>
+          </div>
+
+          {/* Logged Data Summary */}
+          <div className="bg-muted/50 rounded-2xl p-4 space-y-4">
+            {/* Duration */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Schlafdauer</div>
+                  <div className="text-xl font-bold text-foreground">{hours.toFixed(1)}h</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quality */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl">
+                  {qualityInfo.emoji}
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">Schlafqualität</div>
+                  <div className="text-lg font-semibold text-foreground">{qualityInfo.label}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Deep Sleep (if logged) */}
+            {deepSleep > 0 && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-indigo-400" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-muted-foreground">Tiefschlaf</div>
+                    <div className="text-lg font-semibold text-foreground">
+                      {deepSleep >= 60 
+                        ? `${Math.floor(deepSleep / 60)}h ${deepSleep % 60 > 0 ? `${deepSleep % 60}min` : ''}`
+                        : `${deepSleep}min`
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Edit Button */}
+        <div className="sticky bottom-0 pt-4 mt-4 bg-gradient-to-t from-background via-background to-transparent">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setIsEditing(true)}
+            className={cn(
+              "w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-colors",
+              "bg-muted hover:bg-muted/80 text-foreground"
+            )}
+          >
+            <Pencil className="w-5 h-5" />
+            Bearbeiten
+          </motion.button>
+        </div>
+      </div>
+    );
+  }
+
+  // EDIT/NEW LOG VIEW
   return (
     <div className="flex flex-col min-h-[300px]">
       {/* SCROLLABLE CONTENT */}
       <div className="flex-1 space-y-4 overflow-y-auto pb-24">
+        {/* Edit Mode Indicator */}
+        {isEditing && (
+          <div className="text-center text-sm text-muted-foreground py-1">
+            ✏️ Bearbeiten
+          </div>
+        )}
+
         {/* MORPHING HERO - HOURS DISPLAY */}
         <motion.div
           variants={heroContainerVariants}
@@ -359,7 +475,7 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
           ) : (
             <>
               <Check className="w-5 h-5" />
-              Schlaf speichern
+              {isEditing ? 'Änderungen speichern' : 'Schlaf speichern'}
             </>
           )}
         </motion.button>
