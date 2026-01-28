@@ -59,7 +59,8 @@ const navigationItems = [
   { title: "Blutwerte", url: "/bloodwork", icon: TestTube },
   { title: "History", url: "/history", icon: HistoryIcon },
   { title: "Analyse", url: "/analyse", icon: BarChart3 },
-  { title: "Erfolge", url: "/achievements", icon: Trophy },
+  // UNTER BEOBACHTUNG: Erfolge temporär ausgeblendet
+  // { title: "Erfolge", url: "/achievements", icon: Trophy },
   { title: "Profil", url: "/profile", icon: UserIcon, key: "header.profile" },
 ];
 
@@ -207,7 +208,7 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"}>
-      {/* Header with Level Badge */}
+      {/* UNTER BEOBACHTUNG: Level-Anzeige temporär ausgeblendet
       <SidebarHeader className="border-b border-border/40 pb-4">
         {userPoints && (
           <>
@@ -244,13 +245,14 @@ export function AppSidebar() {
           </>
         )}
       </SidebarHeader>
+      */}
 
       <SidebarContent className="gap-2">
         {/* Main Navigation with ARES/FREYA integrated */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* ARES/FREYA - hervorgehoben aber in der Navigation */}
+              {/* UNTER BEOBACHTUNG: ARES/FREYA temporär ausgeblendet
               {user && (
                 <SidebarMenuItem>
                   <SidebarMenuButton 
@@ -274,6 +276,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+              */}
 
               {/* Rest der Navigation */}
               {navigationItems.map((item) => (
