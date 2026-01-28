@@ -1,67 +1,106 @@
 
-# Supplement Layer 2: Chronologische Sortierung mit Hervorhebung
+# Bug Fix: Action Card und Widget zeigen falsche/fehlende Supplements
 
-## Problem
+## Gefundene Probleme
 
-1. **Keine Sortierung**: Timing-Gruppen werden in zufaelliger Object-Key-Reihenfolge angezeigt
-2. **Unvollstaendige Zeiterkennung**: `getCurrentTiming()` kennt nur morning/noon/evening, aber nicht `bedtime`
-3. **Keine visuelle Hervorhebung** des aktuellen Zeitslots
+### Problem 1: Action Card zeigt "bedtime" nicht (Screenshot 1)
+
+**Ursache:** Die `SupplementTimingCircles.tsx` verwendet eine veraltete `TIMING_ORDER`:
+
+```typescript
+// AKTUELL (falsch):
+const TIMING_ORDER = ['morning', 'noon', 'evening', 'pre_workout', 'post_workout', 'before_bed']
+
+// TIMING_CONFIG hat auch nur 'before_bed', nicht 'bedtime'
+```
+
+Layer 3 speichert aber `preferred_timing: 'bedtime'` (nicht `before_bed`). Deshalb werden Supplements mit Timing "bedtime" komplett ignoriert.
+
+### Problem 2: Action Card zeigt max. 4-5 Icons
+
+Es gibt kein hartes Limit in der Komponente - das Problem ist, dass nur die Timings angezeigt werden, die in `TIMING_ORDER` und `TIMING_CONFIG` definiert sind. "bedtime" fehlt dort, deshalb erscheint es nicht.
+
+### Problem 3: Widget "1/13" ist falsch berechnet (Screenshot 2)
+
+**Ursache:** In `SupplementsWidget.tsx`:
+
+```typescript
+// Zeile 67: Nur die ersten 4 Supplements werden geholt
+const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({...}));
+
+// Zeile 72: takenCount wird nur aus diesen 4 berechnet
+const takenCount = items.filter(i => i.taken).length;
+
+// Zeile 74-77: Aber total kommt von allen Supplements
+return {
+  taken: takenCount,  // <- Nur aus 4 Items
+  total: activeSupps.length,  // <- Alle 13
+};
+```
+
+Das bedeutet: Wenn Supplement #5-13 taken sind, zeigt das Widget trotzdem nur den Status der ersten 4.
 
 ---
 
 ## Loesung
 
-### 1. Chronologische Sortier-Reihenfolge definieren
+### Fix 1: SupplementTimingCircles.tsx - bedtime hinzufuegen
 
 ```typescript
-const TIMING_ORDER: string[] = [
-  'morning',      // 05:00 - 11:59
-  'noon',         // 12:00 - 16:59  
-  'evening',      // 17:00 - 20:59
-  'bedtime',      // 21:00 - 04:59
-  'pre_workout',  // Dynamisch
-  'post_workout', // Dynamisch
-];
-```
+// TIMING_ORDER: bedtime statt before_bed (Layer 3 Standard)
+const TIMING_ORDER = ['morning', 'noon', 'evening', 'bedtime', 'pre_workout', 'post_workout'] as const;
 
-### 2. getCurrentTiming() erweitern
-
-```typescript
-const getCurrentTiming = (): string => {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return 'morning';
-  if (hour >= 12 && hour < 17) return 'noon';
-  if (hour >= 17 && hour < 21) return 'evening';
-  return 'bedtime'; // 21:00 - 04:59
+// TIMING_CONFIG: bedtime ergaenzen
+const TIMING_CONFIG: Record<string, { icon: LucideIcon; label: string }> = {
+  morning: { icon: Sunrise, label: 'Morgens' },
+  noon: { icon: Sun, label: 'Mittags' },
+  evening: { icon: Moon, label: 'Abends' },
+  bedtime: { icon: BedDouble, label: 'Vor Schlaf' },  // NEU
+  pre_workout: { icon: Dumbbell, label: 'Pre-WO' },
+  post_workout: { icon: Dumbbell, label: 'Post-WO' },
+  // Legacy fallback fuer alte Daten
+  before_bed: { icon: BedDouble, label: 'Vor Schlaf' },
 };
 ```
 
-### 3. Timings sortieren vor Anzeige
+Ausserdem muss `getCurrentTimingPhase()` aktualisiert werden:
 
 ```typescript
-const sortedTimings = Object.keys(groupedSupplements).sort(
-  (a, b) => TIMING_ORDER.indexOf(a) - TIMING_ORDER.indexOf(b)
-);
+const getCurrentTimingPhase = (): string => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) return 'morning';
+  if (hour >= 11 && hour < 14) return 'noon';
+  if (hour >= 14 && hour < 17) return 'pre_workout';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'bedtime';  // 21:00 - 04:59 (statt before_bed)
+};
 ```
 
-### 4. Aktuelle Zeit visuell hervorheben
-
-Der aktuelle Zeitslot bekommt einen farbigen Rand und "Jetzt"-Badge:
+### Fix 2: SupplementsWidget.tsx - korrekte Zaehlung
 
 ```typescript
-const isCurrent = timing === currentTiming;
+// VORHER (falsch):
+const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({
+  name: supp.custom_name || supp.name || 'Supplement',
+  taken: takenMap.has(supp.id)
+}));
+const takenCount = items.filter(i => i.taken).length;
 
-// Im JSX:
-<div className={cn(
-  "...",
-  isCurrent && !isComplete && "ring-2 ring-primary/50"
-)}>
-  {isCurrent && !isComplete && (
-    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-      Jetzt
-    </span>
-  )}
-</div>
+// NACHHER (korrekt):
+// Zuerst korrekte Gesamtzaehlung aus ALLEN Supplements
+const takenCount = activeSupps.filter(supp => takenMap.has(supp.id)).length;
+
+// Dann nur Display-Items fuer die UI (max 4)
+const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({
+  name: supp.custom_name || supp.name || 'Supplement',
+  taken: takenMap.has(supp.id)
+}));
+
+return {
+  taken: takenCount,  // <- Jetzt aus allen Supplements
+  total: activeSupps.length,
+  items
+};
 ```
 
 ---
@@ -70,26 +109,18 @@ const isCurrent = timing === currentTiming;
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/home/loggers/SupplementsLogger.tsx` | TIMING_ORDER hinzufuegen, getCurrentTiming() erweitern, sortedTimings verwenden, "Jetzt"-Badge hinzufuegen |
+| `src/components/home/cards/SupplementTimingCircles.tsx` | `TIMING_ORDER` auf `bedtime` umstellen, `TIMING_CONFIG` mit `bedtime` ergaenzen, `getCurrentTimingPhase()` fixen |
+| `src/components/home/widgets/SupplementsWidget.tsx` | `takenCount` aus allen Supplements berechnen (nicht nur aus slice(0,4)) |
 
 ---
 
-## Resultat
+## Erwartetes Resultat
 
-```text
-+----------------------------------+
-| [ring] Morgens ← "Jetzt" Badge   |  (wenn 06:00-11:59)
-|        2/3                       |
-+----------------------------------+
-| Mittags                          |
-|        0/4                       |
-+----------------------------------+
-| Abends                           |
-|        0/2                       |
-+----------------------------------+
-| Vor dem Schlafen                 |
-|        0/1                       |
-+----------------------------------+
-```
+**Action Card:**
+- Zeigt jetzt alle 6 Timing-Icons: Morgens, Mittags, Abends, Vor Schlaf, Pre-WO, Post-WO
+- Um 20:58 Uhr ist "Abends" (evening) als aktuell hervorgehoben
+- Ab 21:00 Uhr wechselt die Hervorhebung auf "Vor Schlaf" (bedtime)
 
-Die Reihenfolge ist immer chronologisch. Der aktuelle Zeitslot ist visuell hervorgehoben mit einem Ring und "Jetzt"-Badge, sofern er noch nicht komplett erledigt ist.
+**Widget:**
+- "X/13" zeigt die korrekte Anzahl eingenommener Supplements
+- Die Liste zeigt weiterhin nur 4 Items (UI-Platzersparnis), aber der Zaehler ist akkurat
