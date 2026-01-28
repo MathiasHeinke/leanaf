@@ -1,102 +1,198 @@
 
-# Natürlicher Gesprächsfluss: Keine Begrüßungen bei laufender Konversation
 
-## Das Problem
+# Training Logger: RPE-Intensität + Verstecktes Volumen
 
-ARES beginnt JEDE Antwort mit einer Begrüßung wie "Guten Morgen, Mathias!" - selbst wenn ihr schon seit mehreren Nachrichten miteinander chattet. Das wirkt:
-- Unnatürlich und roboterhaft
-- Als ob jede Antwort eine neue Session wäre
-- Nervig bei intensiven Gesprächen
+## Zusammenfassung
 
-## Die Lösung: "Conversation Flow" Regel
+Der TrainingLogger braucht:
+1. **RPE-Eingabe (1-10)**: Wie hart war das Training? Wichtig für Auswertungen und Recovery-Empfehlungen
+2. **Volumen-Feld verstecken**: Für Kraft-Training weiterhin möglich, aber als "Profi-Option" einklappbar
 
-Im `intelligentPromptBuilder.ts` fügen wir eine dynamische Regel hinzu, die:
-1. Bei `conversationHistory.length > 0` erkennt, dass es ein laufendes Gespräch ist
-2. Eine explizite "KEINE BEGRÜSSUNG"-Anweisung injiziert
-3. Je nach Konversationslänge den Ton anpasst (längeres Gespräch = vertrauter)
+## Aktuelle Situation
+
+Der TrainingLogger hat:
+- Workout-Typ-Auswahl (Kraft, Zone 2, VO2max, Sauna, Bewegung, Ruhetag)
+- Splits-Auswahl bei Kraft
+- Volumen-Eingabe bei Kraft (sichtbar)
+- Dauer-Eingabe bei Cardio/Sauna
+- **Keine RPE-Eingabe**
+
+Die `training_sessions` Tabelle speichert Daten in `session_data` (JSONB) - dort kann RPE abgelegt werden.
+
+## Die Lösung
+
+### 1. RPE-Slider/Buttons für alle Workout-Typen (außer Ruhetag)
+
+Nach der Typ-spezifischen Detail-Sektion kommt eine RPE-Eingabe:
+- **Design**: Horizontale Buttons 1-10 im Apple Health Stil (wie Sauna-Temperatur)
+- **Farbverlauf**: 1-5 grün/blau → 6-8 gelb/orange → 9-10 rot
+- **Labels**: Unter den Buttons "Leicht" links, "Maximum" rechts
+- **Default**: Kein Default (User muss auswählen, aber optional)
+
+### 2. Volumen als eingeklappte "Profi-Option"
+
+Das bestehende Volumen-Feld bei Kraft wird:
+- Standardmäßig eingeklappt in einem Collapsible
+- "Profi-Optionen" oder "Mehr Details" Label
+- Enthält: Volumen (kg), später auch Sätze/Wiederholungen
 
 ## Technische Umsetzung
 
-### Neue Sektion im Prompt Builder
+### Datei: `src/components/home/loggers/TrainingLogger.tsx`
 
-Nach der `== KRITISCH: STIL-ANWEISUNG ==` Sektion (Zeile 222-236) fügen wir hinzu:
-
+#### Neue State-Variable
 ```typescript
-// ═══════════════════════════════════════════════════════════════════════════════
-// ABSCHNITT 5B: GESPRÄCHSFLUSS - Keine Begrüßung bei laufender Session
-// ═══════════════════════════════════════════════════════════════════════════════
-if (conversationHistory.length > 0) {
-  sections.push('');
-  sections.push('== KRITISCH: GESPRAECHSFLUSS ==');
-  sections.push('Dies ist KEINE neue Session - ihr seid bereits im Gespraech!');
-  sections.push('');
-  sections.push('VERBOTEN am Antwort-Anfang:');
-  sections.push('- Begruessungen: "Guten Morgen", "Hey", "Hallo", "Moin", "Hi"');
-  sections.push('- Anreden mit Name: "Also Mathias...", "Okay Mathias..."');
-  sections.push('- Session-Opener: "Schoen dass du fragst", "Gute Frage"');
-  sections.push('- Energie-Intros: "Schnall dich an", "Los gehts", "Lass uns..."');
-  sections.push('');
-  sections.push('STATTDESSEN - Starte direkt mit dem Inhalt:');
-  sections.push('- Bei Fragen: Direkt die Antwort ("Die Frage nach dem Timing...")');
-  sections.push('- Bei Statements: Direkte Reaktion ("Genau so!", "Das stimmt...")');
-  sections.push('- Bei Follow-ups: Natuerliche Fortsetzung ("Und zusaetzlich...")');
-  
-  // Dynamische Vertrautheit basierend auf Konversationslänge
-  const msgCount = conversationHistory.length;
-  if (msgCount >= 6) {
-    sections.push('');
-    sections.push('KONVERSATIONS-TIEFE: Intensives Gespraech (6+ Nachrichten)');
-    sections.push('Ihr seid mitten in einer Diskussion - sprich wie ein Freund der seit 10 Minuten mit dir redet.');
-    sections.push('Kurze, praegnante Antworten sind OK. Kein formelles Aufplustern.');
-  } else if (msgCount >= 2) {
-    sections.push('');
-    sections.push('KONVERSATIONS-TIEFE: Laufendes Gespraech (2-5 Nachrichten)');
-    sections.push('Ihr habt gerade angefangen - natuerlicher Flow, aber noch nicht ultra-kurz.');
-  }
-}
+const [rpe, setRpe] = useState<number | null>(null);
+const [showAdvanced, setShowAdvanced] = useState(false);
 ```
 
-### Positionierung im Code
+#### RPE in handleSave() speichern
+```typescript
+// In session_data
+if (rpe) {
+  sessionData.rpe = rpe;
+}
 
-Die neue Sektion kommt direkt nach der Stil-Anweisung (Zeile 236), bevor der Mood-Detection Abschnitt beginnt. So ist die Reihenfolge:
-1. Konversationshistorie (Inhalt)
-2. Stil-Anweisung (kein Dialekt kopieren)
-3. **NEU: Gesprächsfluss (keine Begrüßung)**
-4. Mood Detection
+// Beim trackEvent
+const success = await trackEvent('workout', { 
+  training_type: selectedType,
+  // ... existing fields
+  session_data: {
+    ...sessionData,
+    rpe: rpe
+  }
+});
+```
+
+#### Neue UI-Komponente: RPE-Eingabe
+
+Nach den Typ-spezifischen Details (ca. Zeile 520, vor dem Duration-Block):
+
+```tsx
+{/* RPE INTENSITY - For all workout types except rest */}
+{selectedType && selectedType !== 'rest' && (
+  <div className="space-y-3">
+    <div className="text-sm font-medium text-muted-foreground">
+      Intensität (RPE)
+    </div>
+    <div className="flex gap-1.5 justify-between">
+      {Array.from({ length: 10 }, (_, i) => i + 1).map((value) => (
+        <motion.button
+          key={value}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setRpe(rpe === value ? null : value)}
+          className={cn(
+            "flex-1 h-10 rounded-lg text-sm font-semibold transition-all",
+            rpe === value
+              ? value <= 5 
+                ? "bg-emerald-500 text-white ring-2 ring-emerald-400"
+                : value <= 8 
+                  ? "bg-amber-500 text-white ring-2 ring-amber-400"
+                  : "bg-rose-500 text-white ring-2 ring-rose-400"
+              : "bg-muted hover:bg-muted/80 text-foreground"
+          )}
+        >
+          {value}
+        </motion.button>
+      ))}
+    </div>
+    <div className="flex justify-between text-xs text-muted-foreground px-1">
+      <span>Leicht</span>
+      <span>Mittel</span>
+      <span>Maximum</span>
+    </div>
+  </div>
+)}
+```
+
+#### Kraft: Volumen als Collapsible
+
+Das bestehende Volumen-Feld bei Kraft (Zeile 353-364) wird eingeklappt:
+
+```tsx
+{selectedType === 'rpt' && (
+  <>
+    {/* Splits dropdown - existing */}
+    <div className="text-sm font-medium text-muted-foreground">Trainierte Splits</div>
+    {/* ... existing popover ... */}
+    
+    {/* Collapsible Advanced Options */}
+    <button
+      onClick={() => setShowAdvanced(!showAdvanced)}
+      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <ChevronDown className={cn(
+        "w-3 h-3 transition-transform",
+        showAdvanced && "rotate-180"
+      )} />
+      Profi-Optionen
+    </button>
+    
+    <AnimatePresence>
+      {showAdvanced && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="overflow-hidden"
+        >
+          <div className="flex items-center gap-3 pt-2">
+            <label className="text-sm text-muted-foreground">Gesamtvolumen</label>
+            <NumericInput
+              placeholder="8500"
+              value={totalVolume}
+              onChange={setTotalVolume}
+              allowDecimals={false}
+              className="w-24"
+            />
+            <span className="text-sm text-muted-foreground">kg</span>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </>
+)}
+```
 
 ## Erwartetes Ergebnis
 
-### Vorher (aktuell):
+### Vor dem Update
+- Kraft-Training: Nur Splits + Volumen (immer sichtbar)
+- Kein Weg die Intensität zu erfassen
+
+### Nach dem Update
+- Alle Trainingsarten: RPE 1-10 Buttons mit Farbverlauf
+- Kraft-Training: Splits sichtbar, Volumen unter "Profi-Optionen"
+- RPE wird in `session_data.rpe` gespeichert
+
+### Beispiel: Kraft-Training loggen
+1. User wählt "Kraft" → Splits-Dropdown erscheint
+2. Wählt "Push" → Optional: "Profi-Optionen" für Volumen
+3. RPE-Buttons erscheinen → Wählt "7" (gelb/orange)
+4. Speichern → session_data: `{ splits: ['push'], rpe: 7 }`
+
+## Betroffene Dateien
+
+| Datei | Aktion | Änderungen |
+|-------|--------|------------|
+| `src/components/home/loggers/TrainingLogger.tsx` | **EDIT** | RPE-State + Buttons, Volumen als Collapsible |
+
+## Datenbank-Kompatibilität
+
+Die `training_sessions` Tabelle hat bereits `session_data` (JSONB) - dort wird RPE gespeichert:
+```json
+{
+  "splits": ["push", "pull"],
+  "rpe": 7
+}
 ```
-User: "ab wann am besten die ersten carbs?"
 
-ARES: "Guten Morgen, Mathias! Schnall dich an, wir gehen tief 
-in die Chronobiologie der Insulin-Sensitivität! 🧬⚡
+Keine Migration erforderlich.
 
-Die Frage nach dem Timing der ersten Kohlenhydrate..."
-```
+## Spätere Erweiterungen
 
-### Nachher (mit Fix):
-```
-User: "ab wann am besten die ersten carbs?"
+1. **RPE im TrainingDaySheet anzeigen**: Hero-Section zeigt RPE neben Dauer/Volumen
+2. **RPE-Auswertung**: Durchschnittliche Intensität pro Woche/Monat
+3. **Recovery-Empfehlungen**: Hohe RPE (9-10) → Mehr Erholung empfehlen
+4. **Volumen-Tracking**: Profi-Optionen erweitern um Sätze/Wiederholungen
 
-ARES: "Die Frage nach dem Timing der ersten Kohlenhydrate ist 
-kein bloßes 'Wann habe ich Hunger?', sondern eine strategische 
-Entscheidung über dein hormonelles Milieu. 🧬
-
-Der biochemische Kontext..."
-```
-
-## Betroffene Datei
-
-| Datei | Aktion | Änderung |
-|-------|--------|----------|
-| `supabase/functions/_shared/context/intelligentPromptBuilder.ts` | **EDIT** | Neue "GESPRÄCHSFLUSS" Sektion nach Zeile 236 |
-
-## Implementierungsdetails
-
-Die Änderung erfolgt in der `buildIntelligentSystemPrompt()` Funktion:
-- Nach der bestehenden Stil-Anweisung (Zeile 222-236)
-- Vor dem Mood-Detection Abschnitt (Zeile 239)
-- Nutzt die bereits vorhandene `conversationHistory.length` Prüfung
-- Keine neuen Abhängigkeiten nötig
