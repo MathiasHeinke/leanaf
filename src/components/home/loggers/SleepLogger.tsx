@@ -91,7 +91,7 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
     setIsSaving(true);
     const success = await trackEvent('sleep', { 
       sleep_hours: hours, 
-      sleep_quality: quality, // Now 1-5 directly
+      sleep_quality: quality * 2, // Convert 1-5 emoji scale → 2-10 for DB consistency
       bedtime: bedtime || undefined,
       wake_time: wakeTime || undefined,
       sleep_interruptions: interruptions > 0 ? interruptions : undefined,
