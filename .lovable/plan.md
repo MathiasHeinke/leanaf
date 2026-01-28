@@ -1,150 +1,216 @@
 
 
-# ARES Stack Architect: Phase 1 - Database Architecture
+# Fix: ARES Streaming - Fehlende Situational Intelligence
 
-## Übersicht
+## Diagnose
 
-Wir bauen den "Pharmacological Stack Architect" - ein Layer 3 Tool, das Chaos in Präzision verwandelt.
+Die `ares-streaming` Edge Function ist eine **abgespeckte Version** des `coach-orchestrator-enhanced`. Zwei kritische Features fehlen vollstaendig:
 
+### Problem 1: Greeting-Suppression fehlt
+
+**intelligentPromptBuilder.ts (Zeilen 240-267):**
 ```text
-Layer 2 (Dashboard):   "Morgens nehme ich irgendwann meine Pillen"
-Layer 3 (Architect):   "Zink nüchtern 6:30, Omega-3 mit Fett 12:00, Mg Glycinat 22:00"
+== KRITISCH: GESPRAECHSFLUSS ==
+Dies ist KEINE neue Session - ihr seid bereits im Gespraech!
+
+VERBOTEN am Antwort-Anfang:
+- Begruessungen: "Guten Morgen", "Hey", "Hallo", "Moin", "Hi"
+- Anreden mit Name: "Also Mathias...", "Okay Mathias..."
+- Session-Opener: "Schoen dass du fragst", "Gute Frage"
+- Energie-Intros: "Schnall dich an", "Los gehts"
 ```
 
-### Das Konzept: Timeline + Inventory
+**ares-streaming `buildStreamingSystemPrompt()` (Zeilen 293-407):**
+- Hat Conversation History ✓
+- Hat Style Override ✓  
+- Hat KEINE GESPRAECHSFLUSS-Regeln ✗
+- Keine dynamische Vertrautheit ✗
 
-| Zone | Funktion | Metapher |
-|------|----------|----------|
-| **Timeline (links)** | "Execution View" - Wann muss ich was nehmen? | Die Tagesschau |
-| **Inventory (rechts)** | "Management View" - Was habe ich im Schrank? | Das Lager |
+**Ergebnis:** ARES sagt "Guten Morgen, Mathias!" obwohl ihr bereits im Gespraech seid.
 
-**Das löst das größte Problem:** Mit der Timeline wird sofort klar: "Oh, ich nehme morgens 10 Pillen auf leeren Magen → Übelkeit vorprogrammiert."
+### Problem 2: Narrative Detection fehlt
+
+**coach-orchestrator-enhanced (Zeilen 111-119, 1153-1217):**
+```typescript
+import { detectNarrative, getIdentityContext, ... } from '../_shared/coaching/index.ts';
+
+const narrativeAnalysis = detectNarrative(text);
+const identityContext = getIdentityContext(protocolMode);
+
+if (narrativeAnalysis.detected) {
+  console.log('[NARRATIVE] Excuse detected: type=' + narrativeAnalysis.excuseType);
+}
+```
+- Importiert detectNarrative() ✓
+- Aktiviert Reality Audit bei Excuses ✓
+- Gummiband-Prinzip funktioniert ✓
+
+**ares-streaming:**
+- Keine Imports von `_shared/coaching/` ✗
+- Keine Narrative Detection ✗
+- Keine Identity Context ✗
+- Kein Reality Audit ✗
+
+**Ergebnis:** "training hat nicht geklappt" triggert keinen Auditor Mode. ARES reagiert als Friend statt Challenge.
 
 ---
 
-## Aktueller Stand (Was existiert)
+## Loesung
 
-### Datenbank
+### Datei: `supabase/functions/ares-streaming/index.ts`
 
-**supplement_database** (Master-Katalog):
-- `id`, `name`, `category`, `default_dosage`, `default_unit`
-- `common_timing[]`, `common_brands[]`, `description`, `recognition_keywords[]`
-- **Fehlt:** `timing_constraint`, `interaction_tags`, `brand_recommendation`
-
-**user_supplements** (User-Stack):
-- `id`, `user_id`, `supplement_id`, `custom_name`, `dosage`, `unit`, `timing[]`
-- `goal`, `notes`, `is_active`, `frequency_days`, `schedule` (JSONB)
-- **Fehlt:** `stock_count`, `schedule_type`, `preferred_timing`
-
-**Bereits geseedet:** Creatin, Vitamin D3, Omega-3, Magnesium, B12, Ashwagandha, Zink, BCAA, NMN, Curcumin, etc.
-
-### Code
-
-- `useSupplementData.tsx` - Vollständig implementiert mit Timing-Gruppen, Optimistic Updates
-- `SupplementsDaySheet.tsx` - Layer 2 Tages-Tracking mit Timeline-Ansatz
-- `SupplementsPage.tsx` - Nur Platzhalter "Coming Soon"
-
----
-
-## Phase 1: Database Architecture
-
-### 1. Schema-Erweiterung (Migration)
-
-**Tabelle: `supplement_database`**
-
-| Spalte | Typ | Default | Beschreibung |
-|--------|-----|---------|--------------|
-| `timing_constraint` | TEXT | 'any' | Optimale Einnahmezeit: `fasted`, `with_food`, `with_fats`, `pre_workout`, `post_workout`, `bedtime`, `any` |
-| `interaction_tags` | TEXT[] | '{}' | Interaktions-Hinweise: `needs_fat`, `blocks_zinc`, `blocks_copper`, `needs_piperine`, `avoid_caffeine` |
-| `brand_recommendation` | TEXT | NULL | Empfohlene Marke: "Thorne", "Momentous", etc. |
-
-**Tabelle: `user_supplements`**
-
-| Spalte | Typ | Default | Beschreibung |
-|--------|-----|---------|--------------|
-| `stock_count` | INTEGER | NULL | Anzahl verbleibender Pillen/Portionen |
-| `schedule_type` | TEXT | 'daily' | Einnahme-Schema: `daily`, `training_days`, `interval`, `cyclic` |
-| `preferred_timing` | TEXT | 'morning' | Primäre Zeitslot für Timeline-Visualisierung |
-
-### 2. Seed-Update (ARES Essentials)
-
-Bestehende Supplements mit erweiterten Daten anreichern:
-
-| Supplement | timing_constraint | interaction_tags |
-|------------|-------------------|------------------|
-| Vitamin D3 | `with_fats` | `['needs_fat']` |
-| Omega-3 | `with_fats` | `['needs_fat']` |
-| Magnesium | `bedtime` | `[]` |
-| Zink | `fasted` | `['blocks_copper']` |
-| Creatin | `any` | `[]` |
-| Curcumin | `with_fats` | `['needs_fat', 'needs_piperine']` |
-| Ashwagandha | `any` | `[]` |
-| Koffein | `any` | `['avoid_evening']` |
-| NMN | `fasted` | `[]` |
-| Eisen | `fasted` | `['blocks_zinc', 'needs_vitamin_c']` |
-
-### 3. TypeScript-Typen
-
-**Neue Datei: `src/types/supplementLibrary.ts`**
+#### Aenderung 1: Imports hinzufuegen (nach Zeile 89)
 
 ```typescript
-// Timing Constraints für optimale Einnahme
-export type TimingConstraint = 
-  | 'fasted'       // Auf nüchternen Magen
-  | 'with_food'    // Mit Mahlzeit
-  | 'with_fats'    // Mit Fett für Absorption
-  | 'pre_workout'  // 30-60 Min vor Training
-  | 'post_workout' // Nach dem Training
-  | 'bedtime'      // Vor dem Schlafengehen
-  | 'any';         // Flexibel
+// Phase 11: Situational Intelligence - Reality Audit System (Gummiband-Prinzip)
+import {
+  detectNarrative,
+  getExcuseTypeDescription,
+  getIdentityContext,
+  buildRealityAuditPrompt,
+  type NarrativeAnalysis,
+  type IdentityContext,
+} from '../_shared/coaching/index.ts';
+```
 
-// Interaktions-Tags für Warnungen
-export type InteractionTag = 
-  | 'needs_fat'      // Braucht Fett für Absorption
-  | 'blocks_zinc'    // Hemmt Zink-Aufnahme
-  | 'blocks_copper'  // Hemmt Kupfer-Aufnahme
-  | 'needs_piperine' // Braucht Piperin (schwarzer Pfeffer)
-  | 'avoid_caffeine' // Nicht mit Koffein
-  | 'avoid_evening'  // Nicht abends
-  | 'needs_vitamin_c'; // Braucht Vitamin C
+#### Aenderung 2: Narrative Detection aktivieren (nach Zeile 762, nach Semantic Analysis)
 
-// Schedule Types für Zyklen
-export type ScheduleType = 
-  | 'daily'         // Jeden Tag
-  | 'training_days' // Nur an Trainingstagen
-  | 'interval'      // Alle X Tage
-  | 'cyclic';       // X Wochen on, Y Wochen off
+Nach der Semantic Analysis wird die Narrative Detection aktiviert:
 
-// Supplement Library Item (Master-Katalog)
-export interface SupplementLibraryItem {
-  id: string;
-  name: string;
-  category: string;
-  default_dosage: string | null;
-  default_unit: string;
-  common_timing: string[];
-  timing_constraint: TimingConstraint;
-  interaction_tags: InteractionTag[];
-  brand_recommendation: string | null;
-  description: string | null;
+```typescript
+// ═══════════════════════════════════════════════════════════════════
+// PHASE 2c: Situational Intelligence - Narrative Detection
+// ═══════════════════════════════════════════════════════════════════
+const narrativeAnalysis = detectNarrative(text);
+
+// Protocol Mode aus Health Context ableiten
+const currentPhase = healthContext?.protocolStatus?.currentPhase ?? 0;
+const protocolMode = currentPhase === 0 
+  ? 'natural' 
+  : currentPhase >= 2 
+    ? 'clinical' 
+    : 'enhanced';
+const identityContext = getIdentityContext(protocolMode);
+
+if (narrativeAnalysis.detected) {
+  console.log('[ARES-STREAM] Narrative detected: type=' + narrativeAnalysis.excuseType + 
+              ', claim="' + narrativeAnalysis.originalClaim + '"');
+  enqueue({ type: 'thinking', step: 'audit', message: 'Reality Check aktiviert...', done: true });
+} else if (narrativeAnalysis.isVenting) {
+  console.log('[ARES-STREAM] Venting detected (empathy mode)');
+} else if (narrativeAnalysis.isHonestAdmission) {
+  console.log('[ARES-STREAM] Honest admission detected (no trigger)');
 }
+```
 
-// User Stack Item (persönlicher Stack)
-export interface UserStackItem {
-  id: string;
-  user_id: string;
-  supplement_id: string | null;
-  name: string;
-  dosage_amount: number;
-  dosage_unit: string;
-  timing: string[];
-  schedule_type: ScheduleType;
-  preferred_timing: string;
-  stock_count: number | null;
-  is_active: boolean;
-  goal?: string;
-  notes?: string;
+#### Aenderung 3: buildStreamingSystemPrompt erweitern (Zeilen 293-407)
+
+Die Funktion `buildStreamingSystemPrompt` muss zwei neue Parameter bekommen:
+
+```typescript
+function buildStreamingSystemPrompt(
+  persona: CoachPersona | ResolvedPersona,
+  personaPrompt: string,
+  healthContext: UserHealthContext | null,
+  knowledgeContext: KnowledgeContext | null,
+  bloodworkContext: BloodworkContext | null,
+  userInsights: UserInsight[],
+  conversationHistory: ConversationMessage[],
+  narrativeAnalysis?: NarrativeAnalysis,    // NEU
+  identityContext?: IdentityContext          // NEU
+): string {
+```
+
+#### Aenderung 4: Greeting-Suppression Block einfuegen (nach Zeile 376)
+
+Nach dem Style Override Block kommt die Greeting-Suppression:
+
+```typescript
+// ═══════════════════════════════════════════════════════════════════
+// GESPRAECHSFLUSS - Keine Begruessungen bei laufender Session
+// ═══════════════════════════════════════════════════════════════════
+if (conversationHistory.length > 0) {
+  parts.push('');
+  parts.push('== KRITISCH: GESPRAECHSFLUSS ==');
+  parts.push('Dies ist KEINE neue Session - ihr seid bereits im Gespraech!');
+  parts.push('');
+  parts.push('VERBOTEN am Antwort-Anfang:');
+  parts.push('- Begruessungen: "Guten Morgen", "Hey", "Hallo", "Moin", "Hi"');
+  parts.push('- Anreden mit Name: "Also Mathias...", "Okay Mathias..."');
+  parts.push('- Session-Opener: "Schoen dass du fragst", "Gute Frage"');
+  parts.push('- Energie-Intros: "Schnall dich an", "Los gehts", "Lass uns..."');
+  parts.push('');
+  parts.push('STATTDESSEN - Starte direkt mit dem Inhalt:');
+  parts.push('- Bei Fragen: Direkt die Antwort');
+  parts.push('- Bei Statements: Direkte Reaktion ("Genau!", "Das stimmt...")');
+  parts.push('- Bei Follow-ups: Natuerliche Fortsetzung');
+  
+  // Dynamische Vertrautheit basierend auf Konversationslaenge
+  const msgCount = conversationHistory.length;
+  if (msgCount >= 6) {
+    parts.push('');
+    parts.push('KONVERSATIONS-TIEFE: Intensives Gespraech (6+ Nachrichten)');
+    parts.push('Sprich wie ein Freund der seit 10 Minuten mit dir redet.');
+    parts.push('Kurze, praegnante Antworten sind OK.');
+  } else if (msgCount >= 2) {
+    parts.push('');
+    parts.push('KONVERSATIONS-TIEFE: Laufendes Gespraech (2-5 Nachrichten)');
+    parts.push('Natuerlicher Flow, aber noch nicht ultra-kurz.');
+  }
 }
+```
+
+#### Aenderung 5: Reality Audit Block einfuegen (nach Greeting-Suppression)
+
+```typescript
+// ═══════════════════════════════════════════════════════════════════
+// REALITY AUDIT - Gummiband-Prinzip (Buddy ↔ Auditor)
+// ═══════════════════════════════════════════════════════════════════
+if (narrativeAnalysis?.detected && !narrativeAnalysis?.isHonestAdmission) {
+  parts.push('');
+  parts.push('== REALITY AUDIT AKTIV ==');
+  parts.push('');
+  parts.push('ERKANNTE NARRATIVE: ' + (narrativeAnalysis.excuseType || 'excuse'));
+  parts.push('USER-AUSSAGE: "' + narrativeAnalysis.originalClaim + '"');
+  if (identityContext) {
+    parts.push('USER IDENTITY: ' + identityContext.label + ' (' + identityContext.protocolMode + ')');
+  }
+  parts.push('');
+  parts.push('### DEINE REAKTION (genau diese Reihenfolge):');
+  parts.push('1. ERGEBNIS-CHECK: Nenne das konkrete Ergebnis (zB "Training verpasst")');
+  parts.push('2. STORY-BUST: Hinterfrage die Narrative sachlich');
+  parts.push('3. IDENTITAETS-REFERENZ: "Dein Protokoll ist nicht kompatibel mit..."');
+  parts.push('4. SYSTEM-FRAGE: Frage nach dem Prozess-Fix');
+  parts.push('5. BRUECKE ZURUECK: Beende mit aufmunterndem Closer + Emoji');
+  parts.push('');
+  parts.push('WICHTIG - DAS GUMMIBAND:');
+  parts.push('Nach dem Reality Check SOFORT zurueck zu warmem Friend-Modus!');
+  parts.push('Der Audit-Teil ist kurz und praezise, dann wieder aufmunternd.');
+} else if (narrativeAnalysis?.isVenting) {
+  parts.push('');
+  parts.push('== EMPATHIE-MODUS ==');
+  parts.push('User vented Frustration (ohne Excuse). Sei empathisch!');
+  parts.push('Frag nach: "Was war los?" oder "Erzaehl mal."');
+  parts.push('KEIN Reality Audit, kein Challenge. Einfach zuhoeren.');
+}
+```
+
+#### Aenderung 6: Funktionsaufruf aktualisieren (ca. Zeile 768)
+
+Der Aufruf von `buildStreamingSystemPrompt` muss die neuen Parameter enthalten:
+
+```typescript
+let baseSystemPrompt = buildStreamingSystemPrompt(
+  persona,
+  personaPrompt,
+  healthContext as UserHealthContext | null,
+  knowledgeContext as KnowledgeContext | null,
+  bloodworkContext as BloodworkContext | null,
+  insightsResult as UserInsight[],
+  conversationHistory,
+  narrativeAnalysis,    // NEU
+  identityContext       // NEU
+);
 ```
 
 ---
@@ -153,111 +219,56 @@ export interface UserStackItem {
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `supabase/migrations/XXXX_supplement_architect_schema.sql` | **CREATE** | Schema-Erweiterung + Seed-Update |
-| `src/types/supplementLibrary.ts` | **CREATE** | TypeScript-Typen für Library & Stack |
-
----
-
-## SQL Migration (Vollständig)
-
-```sql
--- =====================================================
--- ARES Stack Architect: Schema-Erweiterung Phase 1
--- =====================================================
-
--- 1. Erweiterung supplement_database (Master-Katalog)
-ALTER TABLE public.supplement_database 
-  ADD COLUMN IF NOT EXISTS timing_constraint TEXT DEFAULT 'any',
-  ADD COLUMN IF NOT EXISTS interaction_tags TEXT[] DEFAULT '{}',
-  ADD COLUMN IF NOT EXISTS brand_recommendation TEXT;
-
--- 2. Erweiterung user_supplements (User-Stack)
-ALTER TABLE public.user_supplements
-  ADD COLUMN IF NOT EXISTS stock_count INTEGER DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS schedule_type TEXT DEFAULT 'daily',
-  ADD COLUMN IF NOT EXISTS preferred_timing TEXT DEFAULT 'morning';
-
--- 3. Seed-Update: ARES Essentials mit erweiterten Daten
-UPDATE public.supplement_database SET 
-  timing_constraint = 'with_fats',
-  interaction_tags = ARRAY['needs_fat']
-WHERE name ILIKE '%Vitamin D%' OR name ILIKE '%D3%';
-
-UPDATE public.supplement_database SET 
-  timing_constraint = 'with_fats',
-  interaction_tags = ARRAY['needs_fat']
-WHERE name ILIKE '%Omega%';
-
-UPDATE public.supplement_database SET 
-  timing_constraint = 'bedtime'
-WHERE name ILIKE '%Magnesium%';
-
-UPDATE public.supplement_database SET 
-  timing_constraint = 'fasted',
-  interaction_tags = ARRAY['blocks_copper']
-WHERE name ILIKE '%Zink%' OR name ILIKE '%Zinc%';
-
-UPDATE public.supplement_database SET 
-  timing_constraint = 'any'
-WHERE name ILIKE '%Creatin%' OR name ILIKE '%Creatine%';
-
-UPDATE public.supplement_database SET 
-  timing_constraint = 'with_fats',
-  interaction_tags = ARRAY['needs_fat', 'needs_piperine']
-WHERE name ILIKE '%Curcumin%' OR name ILIKE '%Kurkuma%';
-
-UPDATE public.supplement_database SET 
-  timing_constraint = 'any',
-  interaction_tags = ARRAY['avoid_evening']
-WHERE name ILIKE '%Koffein%' OR name ILIKE '%Caffeine%';
-
-UPDATE public.supplement_database SET 
-  timing_constraint = 'fasted'
-WHERE name ILIKE '%NMN%';
-
-UPDATE public.supplement_database SET 
-  timing_constraint = 'fasted',
-  interaction_tags = ARRAY['blocks_zinc', 'needs_vitamin_c']
-WHERE name ILIKE '%Eisen%' OR name ILIKE '%Iron%';
-
--- 4. Index für schnelle Abfragen
-CREATE INDEX IF NOT EXISTS idx_supplement_database_timing_constraint 
-ON public.supplement_database(timing_constraint);
-
-CREATE INDEX IF NOT EXISTS idx_user_supplements_schedule_type 
-ON public.user_supplements(schedule_type);
-```
-
----
-
-## Nächste Schritte (Phase 2)
-
-Nach Phase 1 folgt:
-1. **UI-Gerüst** - SupplementsPage mit 2-Spalten-Layout
-2. **Timeline-Komponente** - Vertikaler Zeitstrahl 06:00-23:00
-3. **Inventory-Komponente** - Gruppierte Liste mit Stock-Tracking
-4. **Add Wizard** - Standardisierte Eingabe via Library-Suche
+| `supabase/functions/ares-streaming/index.ts` | **EDIT** | Imports + Narrative Detection + Greeting-Suppression + Reality Audit |
 
 ---
 
 ## Erwartetes Ergebnis
 
-### Vorher (supplement_database)
+### Vorher (Screenshot)
+
 ```
-name: "Omega-3"
-category: "Fettsäuren"
-default_dosage: "1000"
+User: "training hat nicht geklappt"
+
+ARES: "Guten Morgen, Mathias! ☕ Okay, tief durchatmen..."
+      [Lange wissenschaftliche Erklaerung ohne Challenge]
 ```
 
-### Nachher (supplement_database)
+### Nachher
+
 ```
-name: "Omega-3"
-category: "Fettsäuren"
-default_dosage: "1000"
-timing_constraint: "with_fats"      ← NEU
-interaction_tags: ["needs_fat"]     ← NEU
-brand_recommendation: null          ← NEU (später befüllbar)
+User: "training hat nicht geklappt"
+
+ARES: "Okay, Training nicht geschafft - was ist konkret passiert?
+       Das ist jetzt der zweite Tag diese Woche ohne mechanischen Reiz.
+       Dein Fundament-Protokoll braucht den Trainingsreiz fuer MPS.
+       Was muessen wir aendern, damit das morgen klappt? 💪"
 ```
 
-Das Fundament für den "Pharmacological Architect" steht damit bereit.
+**Kein Greeting, direkter Einstieg, kurzer Reality Check, dann Bruecke zurueck.**
+
+---
+
+## Technische Details
+
+### Narrative Detection Logik
+
+Die `detectNarrative()` Funktion erkennt:
+
+| Typ | Trigger | Beispiel | ARES Reaktion |
+|-----|---------|----------|---------------|
+| `excuse_time` | "weil" + Zeit-Keywords | "Konnte nicht, weil keine Zeit" | Reality Audit |
+| `excuse_energy` | "weil" + Energie-Keywords | "War zu muede" | Reality Audit |
+| `excuse_external` | "weil" + Externe Faktoren | "Chef war schuld" | Reality Audit |
+| `rationalization` | Rechtfertigungs-Patterns | "Muss auch mal leben" | Reality Audit |
+| `isVenting` | Frustration ohne Excuse | "Mann, war das stressig!" | Empathie |
+| `isHonestAdmission` | Ehrliches Eingestaendnis | "Hab's verkackt" | High-Five |
+
+### Identity Context (Gummiband-Kalibrierung)
+
+| Protocol Mode | Challenge Baseline | Beispiel |
+|---------------|-------------------|----------|
+| `natural` | 5 (moderat) | "Fundament-Builder - Gewohnheiten aufbauen" |
+| `enhanced` | 7 (streng) | "GLP-1/Peptide - hoehere Investition = hoehere Erwartung" |
+| `clinical` | 9 (Elite) | "TRT/HRT - keine Ausreden, Elite-Standards" |
 
