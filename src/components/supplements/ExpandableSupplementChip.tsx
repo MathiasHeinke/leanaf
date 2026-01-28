@@ -223,7 +223,7 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
             className={cn(
               'group relative flex items-start gap-2 px-3 py-2 rounded-xl',
               'bg-background/80 border border-border/50',
-              'hover:border-primary/30 hover:bg-background',
+              'hover:border-primary/30',
               'transition-colors duration-200 cursor-pointer',
               'min-h-[44px]' // Touch-friendly
             )}
@@ -232,14 +232,21 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && handleExpand()}
           >
-            {/* Green Checkmark for customized (top-right) */}
-            {isCustomized && (
-              <div className="absolute -top-1.5 -right-1.5 z-10">
-                <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center shadow-sm ring-2 ring-background">
-                  <Check className="h-2.5 w-2.5 text-white" />
-                </div>
+            {/* Delete X - top right inside (visible on hover) */}
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+              className="absolute top-1.5 right-1.5 z-20 p-1 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+              aria-label="Entfernen"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+            
+            {/* Hover Overlay - grayed out with centered edit icon */}
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/60 backdrop-blur-[1px] rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+              <div className="p-2 rounded-full bg-background shadow-sm border border-border">
+                <Pencil className="h-4 w-4 text-muted-foreground" />
               </div>
-            )}
+            </div>
             
             {/* Form Icon */}
             <div className="shrink-0 mt-0.5">
@@ -247,8 +254,8 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
             </div>
             
             {/* Content with flex-wrap for two-line support */}
-            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1 pr-8">
-              {/* Name (no truncate limit) */}
+            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1">
+              {/* Name */}
               <span className="text-sm font-medium">
                 {item.name}
               </span>
@@ -271,24 +278,6 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
                   <span className="hidden sm:inline">{constraintBadge.label}</span>
                 </Badge>
               )}
-            </div>
-            
-            {/* Action Icons (visible on hover) - absolute positioned */}
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
-              <button
-                onClick={(e) => { e.stopPropagation(); handleExpand(); }}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-                aria-label="Bearbeiten"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                aria-label="Entfernen"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
             </div>
           </motion.div>
         ) : (
