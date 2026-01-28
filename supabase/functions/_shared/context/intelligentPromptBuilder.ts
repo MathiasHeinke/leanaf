@@ -234,6 +234,37 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
       sections.push('Du sprichst HOCHDEUTSCH - KEIN Dialekt, keine regionalen Ausdruecke!');
     }
     sections.push('Kopiere NIEMALS den Sprachstil aus frueheren Nachrichten.');
+    
+    // ═══════════════════════════════════════════════════════════════════════════════
+    // ABSCHNITT 5B: GESPRÄCHSFLUSS - Keine Begrüßung bei laufender Session
+    // ═══════════════════════════════════════════════════════════════════════════════
+    sections.push('');
+    sections.push('== KRITISCH: GESPRAECHSFLUSS ==');
+    sections.push('Dies ist KEINE neue Session - ihr seid bereits im Gespraech!');
+    sections.push('');
+    sections.push('VERBOTEN am Antwort-Anfang:');
+    sections.push('- Begruessungen: "Guten Morgen", "Hey", "Hallo", "Moin", "Hi"');
+    sections.push('- Anreden mit Name: "Also Mathias...", "Okay Mathias..."');
+    sections.push('- Session-Opener: "Schoen dass du fragst", "Gute Frage"');
+    sections.push('- Energie-Intros: "Schnall dich an", "Los gehts", "Lass uns..."');
+    sections.push('');
+    sections.push('STATTDESSEN - Starte direkt mit dem Inhalt:');
+    sections.push('- Bei Fragen: Direkt die Antwort ("Die Frage nach dem Timing...")');
+    sections.push('- Bei Statements: Direkte Reaktion ("Genau so!", "Das stimmt...")');
+    sections.push('- Bei Follow-ups: Natuerliche Fortsetzung ("Und zusaetzlich...")');
+    
+    // Dynamische Vertrautheit basierend auf Konversationslänge
+    const msgCount = conversationHistory.length;
+    if (msgCount >= 6) {
+      sections.push('');
+      sections.push('KONVERSATIONS-TIEFE: Intensives Gespraech (6+ Nachrichten)');
+      sections.push('Ihr seid mitten in einer Diskussion - sprich wie ein Freund der seit 10 Minuten mit dir redet.');
+      sections.push('Kurze, praegnante Antworten sind OK. Kein formelles Aufplustern.');
+    } else if (msgCount >= 2) {
+      sections.push('');
+      sections.push('KONVERSATIONS-TIEFE: Laufendes Gespraech (2-5 Nachrichten)');
+      sections.push('Ihr habt gerade angefangen - natuerlicher Flow, aber noch nicht ultra-kurz.');
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
