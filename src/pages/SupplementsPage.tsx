@@ -108,7 +108,6 @@ export default function SupplementsPage() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-2xl font-bold">Stack Architect</h1>
-              <Badge variant="outline" className="text-xs">Layer 3</Badge>
             </div>
             <p className="text-muted-foreground text-sm">
               Optimiere dein Supplement-Timing für maximale Absorption
@@ -118,12 +117,8 @@ export default function SupplementsPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" disabled>
-            <Sparkles className="h-4 w-4" />
-          </Button>
-          <Button onClick={handleAdd}>
-            <Plus className="h-4 w-4 mr-2" />
-            Hinzufügen
+          <Button onClick={handleAdd} size="icon">
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
       </div>
