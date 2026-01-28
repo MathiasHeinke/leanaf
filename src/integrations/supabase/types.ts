@@ -4783,6 +4783,66 @@ export type Database = {
         }
         Relationships: []
       }
+      peptide_compounds: {
+        Row: {
+          administration_route: string | null
+          category: string
+          created_at: string | null
+          cycle_protocol: string | null
+          description: string | null
+          dosage_research: string | null
+          frequency: string | null
+          id: string
+          impact_score: number | null
+          legal_status: string | null
+          mechanism: string | null
+          name: string
+          protocol_phase: number | null
+          synergies: string[] | null
+          timing_notes: string | null
+          updated_at: string | null
+          warnings: string[] | null
+        }
+        Insert: {
+          administration_route?: string | null
+          category: string
+          created_at?: string | null
+          cycle_protocol?: string | null
+          description?: string | null
+          dosage_research?: string | null
+          frequency?: string | null
+          id?: string
+          impact_score?: number | null
+          legal_status?: string | null
+          mechanism?: string | null
+          name: string
+          protocol_phase?: number | null
+          synergies?: string[] | null
+          timing_notes?: string | null
+          updated_at?: string | null
+          warnings?: string[] | null
+        }
+        Update: {
+          administration_route?: string | null
+          category?: string
+          created_at?: string | null
+          cycle_protocol?: string | null
+          description?: string | null
+          dosage_research?: string | null
+          frequency?: string | null
+          id?: string
+          impact_score?: number | null
+          legal_status?: string | null
+          mechanism?: string | null
+          name?: string
+          protocol_phase?: number | null
+          synergies?: string[] | null
+          timing_notes?: string | null
+          updated_at?: string | null
+          warnings?: string[] | null
+        }
+        Relationships: []
+      }
       peptide_intake_log: {
         Row: {
           created_at: string | null
@@ -4914,6 +4974,84 @@ export type Database = {
           vial_remaining_doses?: number | null
           vial_started_at?: string | null
           vial_total_doses?: number | null
+        }
+        Relationships: []
+      }
+      peptide_stacks: {
+        Row: {
+          category: string
+          created_at: string | null
+          critical_rules: string[] | null
+          duration_weeks: number | null
+          expected_effects: string[] | null
+          goal: string
+          id: string
+          name: string
+          peptides: Json
+          protocol_phase: number | null
+          updated_at: string | null
+          warning: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          critical_rules?: string[] | null
+          duration_weeks?: number | null
+          expected_effects?: string[] | null
+          goal: string
+          id?: string
+          name: string
+          peptides: Json
+          protocol_phase?: number | null
+          updated_at?: string | null
+          warning?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          critical_rules?: string[] | null
+          duration_weeks?: number | null
+          expected_effects?: string[] | null
+          goal?: string
+          id?: string
+          name?: string
+          peptides?: Json
+          protocol_phase?: number | null
+          updated_at?: string | null
+          warning?: string | null
+        }
+        Relationships: []
+      }
+      peptide_suppliers: {
+        Row: {
+          country: string | null
+          created_at: string | null
+          id: string
+          name: string
+          notes: string | null
+          quality_tier: string | null
+          shipping_to_de: boolean | null
+          website: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          quality_tier?: string | null
+          shipping_to_de?: boolean | null
+          website?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          quality_tier?: string | null
+          shipping_to_de?: boolean | null
+          website?: string | null
         }
         Relationships: []
       }
@@ -6086,19 +6224,68 @@ export type Database = {
         }
         Relationships: []
       }
+      supplement_brands: {
+        Row: {
+          country: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          price_tier: string | null
+          quality_certifications: string[] | null
+          slug: string
+          specialization: string[] | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          price_tier?: string | null
+          quality_certifications?: string[] | null
+          slug: string
+          specialization?: string[] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          price_tier?: string | null
+          quality_certifications?: string[] | null
+          slug?: string
+          specialization?: string[] | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
       supplement_database: {
         Row: {
           amazon_de_asin: string | null
+          blockers: string[] | null
           brand_recommendation: string | null
           category: string
           common_brands: string[] | null
           common_timing: string[] | null
           cost_per_day_eur: number | null
           created_at: string
+          cycling_protocol: string | null
+          cycling_required: boolean | null
           default_dosage: string | null
           default_unit: string
           description: string | null
           evidence_level: string | null
+          form_quality: string | null
           hallmarks_addressed: string[] | null
           id: string
           image_url: string | null
@@ -6109,21 +6296,28 @@ export type Database = {
           priority_score: number | null
           protocol_phase: number | null
           recognition_keywords: string[] | null
+          synergies: string[] | null
           timing_constraint: string | null
+          underrated_score: number | null
           updated_at: string
+          warnung: string | null
         }
         Insert: {
           amazon_de_asin?: string | null
+          blockers?: string[] | null
           brand_recommendation?: string | null
           category: string
           common_brands?: string[] | null
           common_timing?: string[] | null
           cost_per_day_eur?: number | null
           created_at?: string
+          cycling_protocol?: string | null
+          cycling_required?: boolean | null
           default_dosage?: string | null
           default_unit?: string
           description?: string | null
           evidence_level?: string | null
+          form_quality?: string | null
           hallmarks_addressed?: string[] | null
           id?: string
           image_url?: string | null
@@ -6134,21 +6328,28 @@ export type Database = {
           priority_score?: number | null
           protocol_phase?: number | null
           recognition_keywords?: string[] | null
+          synergies?: string[] | null
           timing_constraint?: string | null
+          underrated_score?: number | null
           updated_at?: string
+          warnung?: string | null
         }
         Update: {
           amazon_de_asin?: string | null
+          blockers?: string[] | null
           brand_recommendation?: string | null
           category?: string
           common_brands?: string[] | null
           common_timing?: string[] | null
           cost_per_day_eur?: number | null
           created_at?: string
+          cycling_protocol?: string | null
+          cycling_required?: boolean | null
           default_dosage?: string | null
           default_unit?: string
           description?: string | null
           evidence_level?: string | null
+          form_quality?: string | null
           hallmarks_addressed?: string[] | null
           id?: string
           image_url?: string | null
@@ -6159,8 +6360,11 @@ export type Database = {
           priority_score?: number | null
           protocol_phase?: number | null
           recognition_keywords?: string[] | null
+          synergies?: string[] | null
           timing_constraint?: string | null
+          underrated_score?: number | null
           updated_at?: string
+          warnung?: string | null
         }
         Relationships: []
       }
@@ -6249,6 +6453,102 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      supplement_products: {
+        Row: {
+          allergens: string[] | null
+          amazon_asin: string | null
+          brand_id: string | null
+          created_at: string | null
+          dose_per_serving: number
+          dose_unit: string
+          form: string | null
+          id: string
+          ingredients: Json | null
+          is_organic: boolean | null
+          is_recommended: boolean | null
+          is_vegan: boolean | null
+          is_verified: boolean | null
+          pack_size: number
+          pack_unit: string | null
+          popularity_score: number | null
+          price_eur: number | null
+          price_per_serving: number | null
+          product_name: string
+          product_sku: string | null
+          product_url: string | null
+          servings_per_pack: number | null
+          supplement_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allergens?: string[] | null
+          amazon_asin?: string | null
+          brand_id?: string | null
+          created_at?: string | null
+          dose_per_serving: number
+          dose_unit: string
+          form?: string | null
+          id?: string
+          ingredients?: Json | null
+          is_organic?: boolean | null
+          is_recommended?: boolean | null
+          is_vegan?: boolean | null
+          is_verified?: boolean | null
+          pack_size: number
+          pack_unit?: string | null
+          popularity_score?: number | null
+          price_eur?: number | null
+          price_per_serving?: number | null
+          product_name: string
+          product_sku?: string | null
+          product_url?: string | null
+          servings_per_pack?: number | null
+          supplement_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allergens?: string[] | null
+          amazon_asin?: string | null
+          brand_id?: string | null
+          created_at?: string | null
+          dose_per_serving?: number
+          dose_unit?: string
+          form?: string | null
+          id?: string
+          ingredients?: Json | null
+          is_organic?: boolean | null
+          is_recommended?: boolean | null
+          is_vegan?: boolean | null
+          is_verified?: boolean | null
+          pack_size?: number
+          pack_unit?: string | null
+          popularity_score?: number | null
+          price_eur?: number | null
+          price_per_serving?: number | null
+          product_name?: string
+          product_sku?: string | null
+          product_url?: string | null
+          servings_per_pack?: number | null
+          supplement_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplement_products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "supplement_brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplement_products_supplement_id_fkey"
+            columns: ["supplement_id"]
+            isOneToOne: false
+            referencedRelation: "supplement_database"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       supplement_recognition_log: {
         Row: {
