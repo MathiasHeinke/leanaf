@@ -249,21 +249,29 @@ export const useAresEvents = () => {
 
       // === JOURNAL (NEW) ===
       if (category === 'journal' && payload.content) {
-        const { error } = await supabase.from('diary_entries').insert({
+        console.log('[AresEvents] Attempting journal insert:', { 
+          userId: auth.user.id, 
+          contentLength: payload.content.length,
+          mood: payload.mood,
+          date: payload.date || today
+        });
+        
+        const { data, error } = await supabase.from('diary_entries').insert({
           user_id: auth.user.id,
           date: payload.date || today,
           content: payload.content,
           mood: payload.mood || null,
           entry_type: payload.entry_type || 'text',
           prompt_used: payload.prompt_used || null
-        });
+        }).select('id').single();
         
         if (error) {
-          console.error('[AresEvents] Journal insert failed:', error);
+          console.error('[AresEvents] Journal insert failed:', error.message, error.code, error.details);
           throw error;
         }
         
-        console.log(`[AresEvents] ✓ Logged journal entry (${payload.mood})`);
+        console.log(`[AresEvents] ✓ Logged journal entry (${payload.mood}), id: ${data?.id}`);
+        toast.success('Tagebuch gespeichert ✨');
       }
       
       // === C. IMMEDIATE CACHE INVALIDATION ===

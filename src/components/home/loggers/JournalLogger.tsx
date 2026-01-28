@@ -117,6 +117,7 @@ export const JournalLogger: React.FC<JournalLoggerProps> = ({ onClose }) => {
     }
     
     setIsSaving(true);
+    console.log('[JournalLogger] Saving entry:', { category, contentLength: content.trim().length });
     
     try {
       const success = await trackEvent('journal', {
@@ -133,7 +134,13 @@ export const JournalLogger: React.FC<JournalLoggerProps> = ({ onClose }) => {
           detail: { cardType: 'journal' }
         }));
         onClose();
+      } else {
+        console.error('[JournalLogger] trackEvent returned false');
+        // useAresEvents already shows error toast
       }
+    } catch (err) {
+      console.error('[JournalLogger] Unexpected error:', err);
+      toast.error('Unerwarteter Fehler beim Speichern');
     } finally {
       setIsSaving(false);
     }
@@ -279,13 +286,14 @@ export const JournalLogger: React.FC<JournalLoggerProps> = ({ onClose }) => {
         )}
       </div>
       
-      {/* PHOTO PLACEHOLDER */}
+      {/* PHOTO PLACEHOLDER - Coming Soon */}
       <motion.button
         whileTap={{ scale: 0.98 }}
-        className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-dashed border-border/50 text-muted-foreground hover:border-border hover:text-foreground transition-colors"
+        disabled
+        className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-dashed border-border/30 text-muted-foreground/50 cursor-not-allowed"
       >
         <Camera className="w-5 h-5" />
-        <span className="text-sm font-medium">Foto hinzufügen</span>
+        <span className="text-sm font-medium">Foto hinzufügen (bald)</span>
       </motion.button>
       
       {/* STICKY SAVE BUTTON */}
