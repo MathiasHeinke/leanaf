@@ -54,10 +54,24 @@ import {
   updateTopicStats,
   findPrimaryTopic,
   buildTopicExpertiseSection,
+  buildTokenBudgetedHistory,
+  formatConversationContext,
   type UserHealthContext,
   type ConversationMessage,
+  type ConversationPair,
+  type WindowResult,
   type TopicContext,
 } from '../_shared/context/index.ts';
+
+// Phase B: Mood Detection System
+import {
+  detectMood,
+  getResponseGuidelines,
+  buildMoodPromptSection,
+  applyMoodToDials,
+  type MoodResult,
+  type ResponseGuidelines,
+} from '../_shared/mood/index.ts';
 
 // Phase 11b: Response Budget Calculator (Topic Expertise Awareness)
 import {
@@ -317,7 +331,8 @@ function detectTopic(text: string): string | undefined {
 }
 
 /**
- * Build system prompt for streaming (simplified version)
+ * Build system prompt for streaming (FULL PARITY with Orchestrator)
+ * Phase B: Token-Budgeted History, Mood Detection, Evidence Requirements
  */
 function buildStreamingSystemPrompt(
   persona: CoachPersona | ResolvedPersona,
@@ -330,7 +345,9 @@ function buildStreamingSystemPrompt(
   narrativeAnalysis?: NarrativeAnalysis,
   identityContext?: IdentityContext,
   topicContexts?: Map<string, TopicContext>,
-  responseBudget?: BudgetResult | null
+  responseBudget?: BudgetResult | null,
+  userText?: string,
+  rollingSummary?: string | null
 ): string {
   const parts: string[] = [];
   
@@ -492,6 +509,58 @@ function buildStreamingSystemPrompt(
     parts.push('KEIN Reality Audit, kein Challenge. Einfach zuhoeren.');
     parts.push('');
   }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE B: MOOD DETECTION (ARES 3.0 Emotional Intelligence)
+  // ═══════════════════════════════════════════════════════════════════
+  if (userText) {
+    const moodResult = detectMood(userText);
+    const moodGuidelines = getResponseGuidelines(moodResult);
+    const moodSection = buildMoodPromptSection(moodResult, moodGuidelines);
+    
+    if (moodSection) {
+      parts.push(moodSection);
+      parts.push('');
+    }
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE B: ROLLING SUMMARY (Token-Budgeted Elephant Memory)
+  // ═══════════════════════════════════════════════════════════════════
+  if (rollingSummary) {
+    parts.push('== ZUSAMMENFASSUNG BISHERIGER GESPRAECHE ==');
+    parts.push('**Komprimierte aeltere Gespraeche - ARES erinnert sich an diese Themen:**');
+    parts.push(rollingSummary);
+    parts.push('');
+  }
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // PHASE B: EVIDENCE REQUIREMENTS (Scientific Rigor)
+  // ═══════════════════════════════════════════════════════════════════
+  parts.push('== EVIDENZ-ANFORDERUNGEN ==');
+  parts.push('1. Bei Supplement-Empfehlungen: Nenne Wirkstoff + typische Dosierung');
+  parts.push('2. Bei Training: Beziehe dich auf Volumen (Saetze/Woche pro Muskelgruppe)');
+  parts.push('3. Bei Ernaehrung: Nutze kcal und Makro-Zahlen wenn verfuegbar');
+  parts.push('4. Bei Peptiden/Hormonen: Erwaehne bekannte Studien wenn relevant');
+  parts.push('5. KEINE generischen Tipps ohne Zahlen - sei immer konkret');
+  parts.push('');
+  
+  // ═══════════════════════════════════════════════════════════════════
+  // COACHING-REGELN (Parity mit Orchestrator)
+  // ═══════════════════════════════════════════════════════════════════
+  parts.push('== COACHING-REGELN ==');
+  parts.push('1. NUTZE DIE DATEN AKTIV:');
+  parts.push('   - Beziehe dich auf konkrete Zahlen wenn du sie hast');
+  parts.push('   - Wenn User X Workouts hatte, erwaehne das konkret');
+  parts.push('');
+  parts.push('2. KEINE GENERISCHEN TIPPS:');
+  parts.push('   - NICHT: "Du solltest zum Arzt gehen" (zu allgemein)');
+  parts.push('   - STATTDESSEN: Konkrete, datenbasierte Empfehlungen');
+  parts.push('');
+  parts.push('3. PROAKTIV ABER NICHT AUFDRINGLICH:');
+  parts.push('   - Schlage naechste Schritte vor basierend auf den Daten');
+  parts.push('   - Frage EINE Sache pro Nachricht, nicht alles auf einmal');
+  parts.push('');
   
   // Response rules
   parts.push('== ANTWORT-REGELN ==');
@@ -772,19 +841,35 @@ Deno.serve(async (req) => {
               console.warn('[ARES-STREAM] Insights load failed:', e);
               return [] as UserInsight[];
             }),
-            // Conversation history
-            supaSvc
-              .from('coach_conversations')
-              .select('message_content, message_role, created_at')
-              .eq('user_id', userId)
-              .eq('coach_personality', coachId)
-              .order('created_at', { ascending: false })
-              .limit(12)
-              .then(r => {
-                if (r.data?.length) enqueue({ type: 'thinking', step: 'history', message: 'Gesprächsverlauf geladen', done: true });
-                return r.data || [];
-              })
-              .catch(() => [])
+            // Conversation history - PHASE B: Token-Budgeted with Rolling Summary
+            (async () => {
+              // Load more messages for token-budgeting (will be trimmed intelligently)
+              const { data: convData } = await supaSvc
+                .from('coach_conversations')
+                .select('message_content, message_role, created_at')
+                .eq('user_id', userId)
+                .eq('coach_personality', coachId)
+                .order('created_at', { ascending: false })
+                .limit(50); // Load more, will be token-budgeted
+              
+              // Load rolling summary from memory
+              const { data: memoryData } = await supaSvc
+                .from('coach_chat_memory')
+                .select('rolling_summary, message_count')
+                .eq('user_id', userId)
+                .eq('coach_id', coachId)
+                .maybeSingle();
+              
+              if (convData?.length || memoryData?.rolling_summary) {
+                enqueue({ type: 'thinking', step: 'history', message: 'Gesprächsverlauf geladen', done: true });
+              }
+              
+              return {
+                conversations: convData || [],
+                rollingSummary: memoryData?.rolling_summary || null,
+                totalMessages: memoryData?.message_count || convData?.length || 0
+              };
+            })().catch(() => ({ conversations: [], rollingSummary: null, totalMessages: 0 }))
           ]);
 
           // Extract results
@@ -793,21 +878,60 @@ Deno.serve(async (req) => {
           const knowledgeContext = results[2].status === 'fulfilled' ? results[2].value : null;
           const bloodworkContext = results[3].status === 'fulfilled' ? results[3].value : null;
           const insightsResult = results[4].status === 'fulfilled' ? results[4].value : [];
-          const conversationsResult = results[5].status === 'fulfilled' ? results[5].value : [];
+          const historyResult = results[5].status === 'fulfilled' 
+            ? results[5].value as { conversations: any[]; rollingSummary: string | null; totalMessages: number }
+            : { conversations: [], rollingSummary: null, totalMessages: 0 };
 
           // Mark thinking complete
           enqueue({ type: 'thinking', step: 'start', message: 'Formuliere Antwort...', done: true });
 
-          // Convert conversations to proper format
+          // ═══════════════════════════════════════════════════════════════════
+          // PHASE B: Token-Budgeted Conversation History ("Elefantengedächtnis 2.0")
+          // ═══════════════════════════════════════════════════════════════════
+          const rawConvs = (historyResult.conversations as any[]).reverse(); // Chronological order
+          
+          // Convert to ConversationPair format for token-budgeting
+          const conversationPairs: ConversationPair[] = [];
+          for (let i = 0; i < rawConvs.length - 1; i += 2) {
+            const userMsg = rawConvs[i];
+            const assistantMsg = rawConvs[i + 1];
+            if (userMsg?.message_role === 'user' && assistantMsg?.message_role === 'assistant') {
+              conversationPairs.push({
+                message: userMsg.message_content || '',
+                response: assistantMsg.message_content || '',
+                created_at: userMsg.created_at
+              });
+            }
+          }
+          
+          // Apply token-budgeted history (newest messages within 2500 tokens)
+          const windowResult: WindowResult = buildTokenBudgetedHistory(
+            conversationPairs,
+            historyResult.rollingSummary,
+            2500 // Total token budget
+          );
+          
+          // Convert back to ConversationMessage format for prompt building
           const conversationHistory: ConversationMessage[] = [];
-          const rawConvs = (conversationsResult as any[]).reverse(); // Chronological order
-          for (const msg of rawConvs) {
+          for (const pair of windowResult.pairs) {
             conversationHistory.push({
-              role: msg.message_role as 'user' | 'assistant',
-              content: msg.message_content || '',
-              timestamp: msg.created_at
+              role: 'user',
+              content: pair.message,
+              timestamp: pair.created_at
+            });
+            conversationHistory.push({
+              role: 'assistant',
+              content: pair.response,
+              timestamp: pair.created_at
             });
           }
+          
+          console.log('[ARES-STREAM] Token-Budgeted History:', {
+            pairsIncluded: windowResult.pairs.length,
+            tokensUsed: windowResult.totalTokens,
+            trimmed: windowResult.trimmedCount,
+            hasRollingSummary: !!windowResult.rollingSummary
+          });
 
           // Resolve persona with context
           let persona = personaResult || { id: 'ares', name: 'ARES' } as CoachPersona;
@@ -970,7 +1094,9 @@ Deno.serve(async (req) => {
             narrativeAnalysis,
             identityContext,
             topicContexts,
-            responseBudget
+            responseBudget,
+            text, // Phase B: For mood detection
+            windowResult.rollingSummary // Phase B: Token-budgeted summary
           );
           
           // Inject dynamic response length instructions based on semantic analysis
