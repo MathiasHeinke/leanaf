@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useParams, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { CoachSelection } from "@/components/CoachSelection";
 import { useAuth } from "@/hooks/useAuth";
 import AresChat from '@/components/ares/AresChat';
@@ -23,6 +23,19 @@ const coachProfiles = Object.values(COACH_REGISTRY).map(coach => ({
 const CoachPage = () => {
   const { coachId } = useParams<{ coachId: string }>();
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Extract autoStartPrompt from navigation state
+  const autoStartPrompt = (location.state as { autoStartPrompt?: string })?.autoStartPrompt;
+  
+  // Clear the state after reading to prevent re-triggering on refresh
+  useEffect(() => {
+    if (autoStartPrompt) {
+      // Replace current history entry without the state
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [autoStartPrompt, navigate, location.pathname]);
 
   // Show loading while checking auth
   if (loading) {
@@ -55,12 +68,13 @@ const CoachPage = () => {
       );
     }
     
-    // ARES uses the new streaming chat component
+    // ARES uses the new streaming chat component with autoStartPrompt support
     return (
       <div className="h-screen relative">
         <AresChat 
           userId={user.id}
           coachId="ares"
+          autoStartPrompt={autoStartPrompt}
         />
       </div>
     );

@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Pencil, Trash2, X, Check, Droplets, Utensils, Moon, Sun, 
-  Dumbbell, Clock, AlertCircle, RotateCcw, Sparkles, Pill, Disc
+  Dumbbell, Clock, AlertCircle, RotateCcw, Sparkles, Pill, Disc,
+  Star, Zap, MessageSquare, Package
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -19,8 +21,40 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { haptics } from '@/lib/haptics';
+import { useSupplementProducts } from '@/hooks/useSupplementLibrary';
 import type { UserStackItem, PreferredTiming, TimingConstraint, SupplementBrand } from '@/types/supplementLibrary';
-import { TIMING_CONSTRAINT_LABELS, TIMING_CONSTRAINT_ICONS, PREFERRED_TIMING_LABELS } from '@/types/supplementLibrary';
+import { TIMING_CONSTRAINT_LABELS, TIMING_CONSTRAINT_ICONS, PREFERRED_TIMING_LABELS, NECESSITY_TIER_CONFIG } from '@/types/supplementLibrary';
+
+// Quality stars based on price tier
+const getQualityStars = (priceTier: string | null | undefined): number => {
+  switch (priceTier) {
+    case 'luxury': return 5;
+    case 'premium': return 4;
+    case 'mid': return 3;
+    case 'budget': return 2;
+    default: return 3;
+  }
+};
+
+// Star rating component
+const QualityStars = ({ tier }: { tier: string | null | undefined }) => {
+  const count = getQualityStars(tier);
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <Star
+          key={i}
+          className={cn(
+            'h-3 w-3',
+            i <= count 
+              ? 'fill-amber-400 text-amber-400' 
+              : 'fill-muted text-muted'
+          )}
+        />
+      ))}
+    </div>
+  );
+};
 
 // Form-specific icon based on unit
 const getFormIcon = (unit: string): React.ReactNode => {
@@ -112,8 +146,14 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
   onDelete,
   className,
 }) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Fetch products for this supplement (only when expanded for performance)
+  const { data: products = [], isLoading: productsLoading } = useSupplementProducts(
+    isExpanded ? item.supplement_id || undefined : undefined
+  );
   
   // Form state
   const [dosage, setDosage] = useState(item.dosage || '');
@@ -127,6 +167,16 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
   const [cycleOffDays, setCycleOffDays] = useState<number>(
     (item.schedule as any)?.cycle_off_days || 2
   );
+
+  // Handle ARES navigation with pre-filled prompt
+  const handleAskAres = useCallback(() => {
+    const prompt = `Analysiere "${item.name}" in meinem Stack:
+- Aktuelle Dosis: ${dosage}${unit}
+- Timing: ${PREFERRED_TIMING_LABELS[preferredTiming]}
+Passt das zu meinen Zielen? Gibt es bessere Alternativen oder Synergie-Effekte?`;
+    
+    navigate('/coach/ares', { state: { autoStartPrompt: prompt } });
+  }, [item.name, dosage, unit, preferredTiming, navigate]);
 
   // Get constraint badge info
   const constraint = item.supplement?.timing_constraint || 'any';
@@ -430,10 +480,108 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
                   className="min-h-[60px] text-sm resize-none"
                 />
               </div>
+              
+              {/* =============== NEW: Impact Score Badge =============== */}
+              {item.supplement?.impact_score && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="p-2 rounded-full bg-primary/10">
+                    <Zap className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-foreground">
+                        {item.supplement.impact_score.toFixed(1)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">Impact Score</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
+                      <div 
+                        className="h-full bg-primary rounded-full transition-all duration-300" 
+                        style={{ width: `${Math.min(item.supplement.impact_score * 10, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  {item.supplement.necessity_tier && (
+                    <Badge 
+                      variant="outline" 
+                      className={cn(
+                        'text-[10px] shrink-0',
+                        item.supplement.necessity_tier === 'essential' && 'border-primary text-primary',
+                        item.supplement.necessity_tier === 'optimizer' && 'border-amber-500 text-amber-600',
+                        item.supplement.necessity_tier === 'specialist' && 'border-muted-foreground text-muted-foreground'
+                      )}
+                    >
+                      {NECESSITY_TIER_CONFIG[item.supplement.necessity_tier]?.shortLabel || item.supplement.necessity_tier}
+                    </Badge>
+                  )}
+                </div>
+              )}
+              
+              {/* =============== NEW: Product Marketplace =============== */}
+              {products.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <Package className="h-3.5 w-3.5" />
+                    Verfügbare Produkte
+                  </Label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {products.slice(0, 5).map((product) => (
+                      <div 
+                        key={product.id}
+                        className={cn(
+                          'p-3 rounded-lg border transition-all',
+                          product.is_recommended 
+                            ? 'bg-primary/5 border-primary/30' 
+                            : 'bg-muted/30 border-border/50 hover:border-border'
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium truncate">
+                                {product.brand?.name || 'Unbekannt'}
+                              </span>
+                              <QualityStars tier={product.brand?.price_tier} />
+                            </div>
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {product.brand?.quality_certifications?.slice(0, 3).map((cert) => (
+                                <Badge 
+                                  key={cert} 
+                                  variant="secondary" 
+                                  className="text-[9px] px-1.5 py-0 h-4"
+                                >
+                                  {cert}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {product.price_per_serving != null && (
+                              <span className="text-sm font-semibold text-primary">
+                                €{product.price_per_serving.toFixed(2)}/Tag
+                              </span>
+                            )}
+                            {product.is_recommended && (
+                              <Badge className="mt-1 text-[9px] px-1.5 py-0 h-4 bg-primary">
+                                Empfohlen
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {productsLoading && (
+                    <div className="text-xs text-muted-foreground text-center py-2">
+                      Lade Produkte...
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             
-            {/* Footer Actions */}
-            <div className="flex items-center justify-between p-4 pt-2 border-t border-border/50 bg-muted/30">
+            {/* Footer Actions - Updated with ARES Button */}
+            <div className="flex items-center justify-between gap-2 p-4 pt-2 border-t border-border/50 bg-muted/30">
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
@@ -444,14 +592,27 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
                 {isSaving ? 'Speichert...' : 'Speichern'}
               </Button>
               
-              <Button
-                onClick={handleDelete}
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* ARES Button */}
+                <Button
+                  onClick={handleAskAres}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  <span className="hidden sm:inline">Frag ARES</span>
+                </Button>
+                
+                <Button
+                  onClick={handleDelete}
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </motion.div>
         )}
