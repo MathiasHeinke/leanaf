@@ -6088,52 +6088,76 @@ export type Database = {
       }
       supplement_database: {
         Row: {
+          amazon_de_asin: string | null
           brand_recommendation: string | null
           category: string
           common_brands: string[] | null
           common_timing: string[] | null
+          cost_per_day_eur: number | null
           created_at: string
           default_dosage: string | null
           default_unit: string
           description: string | null
+          evidence_level: string | null
+          hallmarks_addressed: string[] | null
           id: string
           image_url: string | null
+          impact_score: number | null
           interaction_tags: string[] | null
           name: string
+          necessity_tier: string | null
+          priority_score: number | null
+          protocol_phase: number | null
           recognition_keywords: string[] | null
           timing_constraint: string | null
           updated_at: string
         }
         Insert: {
+          amazon_de_asin?: string | null
           brand_recommendation?: string | null
           category: string
           common_brands?: string[] | null
           common_timing?: string[] | null
+          cost_per_day_eur?: number | null
           created_at?: string
           default_dosage?: string | null
           default_unit?: string
           description?: string | null
+          evidence_level?: string | null
+          hallmarks_addressed?: string[] | null
           id?: string
           image_url?: string | null
+          impact_score?: number | null
           interaction_tags?: string[] | null
           name: string
+          necessity_tier?: string | null
+          priority_score?: number | null
+          protocol_phase?: number | null
           recognition_keywords?: string[] | null
           timing_constraint?: string | null
           updated_at?: string
         }
         Update: {
+          amazon_de_asin?: string | null
           brand_recommendation?: string | null
           category?: string
           common_brands?: string[] | null
           common_timing?: string[] | null
+          cost_per_day_eur?: number | null
           created_at?: string
           default_dosage?: string | null
           default_unit?: string
           description?: string | null
+          evidence_level?: string | null
+          hallmarks_addressed?: string[] | null
           id?: string
           image_url?: string | null
+          impact_score?: number | null
           interaction_tags?: string[] | null
           name?: string
+          necessity_tier?: string | null
+          priority_score?: number | null
+          protocol_phase?: number | null
           recognition_keywords?: string[] | null
           timing_constraint?: string | null
           updated_at?: string

@@ -39,7 +39,121 @@ export type PreferredTiming =
   | 'pre_workout'  // Dynamisch vor Training
   | 'post_workout'; // Dynamisch nach Training
 
-// Supplement Library Item (Master-Katalog)
+// =====================================================
+// ARES Impact Score System
+// =====================================================
+
+// Evidenz-Level für wissenschaftliche Qualität
+export type EvidenceLevel = 'stark' | 'moderat' | 'anekdotisch';
+
+// Necessity Tier für Priorisierung
+export type NecessityTier = 'essential' | 'optimizer' | 'specialist';
+
+// Evidenz-Level Konfiguration für UI
+export const EVIDENCE_LEVEL_CONFIG: Record<EvidenceLevel, { 
+  label: string; 
+  color: string; 
+  description: string;
+  bgClass: string;
+  textClass: string;
+}> = {
+  stark: { 
+    label: 'Starke Evidenz', 
+    color: 'green',
+    description: 'Meta-Analysen & RCTs bestätigen Wirkung',
+    bgClass: 'bg-green-500/10',
+    textClass: 'text-green-600'
+  },
+  moderat: { 
+    label: 'Moderate Evidenz', 
+    color: 'yellow',
+    description: 'Einzelne RCTs oder starke mechanistische Daten',
+    bgClass: 'bg-yellow-500/10',
+    textClass: 'text-yellow-600'
+  },
+  anekdotisch: { 
+    label: 'Anekdotisch', 
+    color: 'orange',
+    description: 'Tierstudien oder N=1 Erfahrungsberichte',
+    bgClass: 'bg-orange-500/10',
+    textClass: 'text-orange-600'
+  }
+};
+
+// Necessity Tier Konfiguration für UI
+export const NECESSITY_TIER_CONFIG: Record<NecessityTier, {
+  label: string;
+  description: string;
+  icon: string;
+  impactRange: string;
+  bgClass: string;
+  borderClass: string;
+}> = {
+  essential: {
+    label: 'THE ESSENTIALS',
+    description: 'Non-Negotiables. Jeder sollte diese nehmen.',
+    icon: '🚨',
+    impactRange: '9.0 - 10.0',
+    bgClass: 'bg-primary/5',
+    borderClass: 'border-primary/30'
+  },
+  optimizer: {
+    label: 'TARGETED OPTIMIZERS',
+    description: 'Für spezifische Ziele oder Mängel.',
+    icon: '🚀',
+    impactRange: '7.0 - 8.9',
+    bgClass: 'bg-muted/50',
+    borderClass: 'border-muted-foreground/20'
+  },
+  specialist: {
+    label: 'ADVANCED/EXPERIMENTAL',
+    description: 'Nische, teuer oder experimentell.',
+    icon: '🧪',
+    impactRange: '< 7.0',
+    bgClass: 'bg-muted/30',
+    borderClass: 'border-muted-foreground/10'
+  }
+};
+
+// ARES Protocol Phase Konfiguration
+export const PHASE_CONFIG: Record<number, {
+  label: string;
+  description: string;
+  icon: string;
+  subtitle: string;
+  color: string;
+}> = {
+  0: { 
+    label: 'Fundament', 
+    description: 'Natural Stack für alle',
+    icon: '🌱',
+    subtitle: 'Phase 0',
+    color: 'green'
+  },
+  1: { 
+    label: 'Rekomposition', 
+    description: 'TRT/GLP-1 Support',
+    icon: '💪',
+    subtitle: 'Phase 1',
+    color: 'blue'
+  },
+  2: { 
+    label: 'Fine-tuning', 
+    description: 'Peptid-Synergie',
+    icon: '🔬',
+    subtitle: 'Phase 2',
+    color: 'purple'
+  },
+  3: { 
+    label: 'Longevity', 
+    description: 'Advanced Stack',
+    icon: '🧬',
+    subtitle: 'Phase 3',
+    color: 'amber'
+  }
+};
+
+// Supplement Library Item (Master-Katalog) - erweitert
 export interface SupplementLibraryItem {
   id: string;
   name: string;
@@ -53,6 +167,15 @@ export interface SupplementLibraryItem {
   description: string | null;
   common_brands?: string[];
   recognition_keywords?: string[];
+  // ARES Impact Score System
+  protocol_phase: number;
+  impact_score: number;
+  necessity_tier: NecessityTier;
+  priority_score: number;
+  evidence_level: EvidenceLevel;
+  hallmarks_addressed: string[];
+  cost_per_day_eur?: number | null;
+  amazon_de_asin?: string | null;
 }
 
 // User Stack Item (persönlicher Stack)

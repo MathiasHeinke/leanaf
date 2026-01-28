@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pill, Clock, Package, Sparkles, Settings2, Plus } from 'lucide-react';
+import { Pill, Clock, Package, Sparkles, Lightbulb, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,17 +7,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SupplementTimeline } from '@/components/supplements/SupplementTimeline';
 import { SupplementInventory } from '@/components/supplements/SupplementInventory';
+import { PhasedSupplementBrowser } from '@/components/supplements/PhasedSupplementBrowser';
 import { SupplementTrackingModal } from '@/components/SupplementTrackingModal';
-import { useUserStackByTiming, useUserStackByCategory } from '@/hooks/useSupplementLibrary';
+import { useUserStackByTiming, useUserStackByCategory, useMissingEssentials } from '@/hooks/useSupplementLibrary';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import type { UserStackItem } from '@/types/supplementLibrary';
+import type { UserStackItem, SupplementLibraryItem } from '@/types/supplementLibrary';
 
 export default function SupplementsPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'timeline' | 'inventory'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'inventory' | 'recommendations'>('timeline');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedRecommendation, setSelectedRecommendation] = useState<SupplementLibraryItem | null>(null);
+
+  // User's current phase (default to 0 = Foundation)
+  const userPhase = 0; // TODO: Get from user profile/protocol status
   
   // Fetch data with both groupings
   const { 
@@ -32,6 +37,9 @@ export default function SupplementsPage() {
     isLoading: inventoryLoading,
     refetch: refetchInventory 
   } = useUserStackByCategory();
+
+  // Missing essentials indicator
+  const { missingCount, totalEssentials } = useMissingEssentials(userPhase);
 
   const isLoading = timelineLoading || inventoryLoading;
 
@@ -65,14 +73,21 @@ export default function SupplementsPage() {
 
   // Handle add button click
   const handleAdd = () => {
+    setSelectedRecommendation(null);
+    setIsAddModalOpen(true);
+  };
+
+  // Handle add from recommendation
+  const handleAddFromRecommendation = (supplement: SupplementLibraryItem) => {
+    setSelectedRecommendation(supplement);
     setIsAddModalOpen(true);
   };
 
   const handleAddComplete = () => {
     setIsAddModalOpen(false);
+    setSelectedRecommendation(null);
     refetchTimeline();
     refetchInventory();
-    // Dispatch unified event for all listeners
     window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
   };
 
@@ -145,66 +160,25 @@ export default function SupplementsPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-500/10">
-                <Sparkles className="h-4 w-4 text-amber-500" />
+                <Lightbulb className="h-4 w-4 text-amber-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">—</p>
-                <p className="text-xs text-muted-foreground">ARES Score</p>
+                <p className="text-2xl font-bold">
+                  {missingCount > 0 ? missingCount : '✓'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {missingCount > 0 ? 'Essentials fehlen' : 'Essentials komplett'}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content - Desktop: 2 columns, Mobile: Tabs */}
-      <div className="hidden lg:grid lg:grid-cols-5 lg:gap-6">
-        {/* Timeline (60%) */}
-        <Card className="lg:col-span-3">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Tages-Timeline
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <TimelineSkeleton />
-            ) : (
-              <SupplementTimeline
-                groupedByTiming={groupedByTiming}
-                onSupplementClick={handleSupplementClick}
-              />
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Inventory (40%) */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
-              Inventar
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <InventorySkeleton />
-            ) : (
-              <SupplementInventory
-                groupedByCategory={groupedByCategory}
-                onToggleActive={handleToggleActive}
-                onEdit={handleSupplementClick}
-                onAdd={handleAdd}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Mobile: Tabs */}
-      <div className="lg:hidden">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'timeline' | 'inventory')}>
-          <TabsList className="grid w-full grid-cols-2">
+      {/* Desktop: Tab Layout */}
+      <div className="hidden lg:block">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'timeline' | 'inventory' | 'recommendations')}>
+          <TabsList className="mb-6">
             <TabsTrigger value="timeline" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Timeline
@@ -212,6 +186,127 @@ export default function SupplementsPage() {
             <TabsTrigger value="inventory" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               Inventar
+            </TabsTrigger>
+            <TabsTrigger value="recommendations" className="flex items-center gap-2">
+              <Lightbulb className="h-4 w-4" />
+              Empfehlungen
+              {missingCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                  {missingCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="timeline">
+            <div className="grid lg:grid-cols-5 lg:gap-6">
+              {/* Timeline (60%) */}
+              <Card className="lg:col-span-3">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Clock className="h-5 w-5 text-primary" />
+                    Tages-Timeline
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <TimelineSkeleton />
+                  ) : (
+                    <SupplementTimeline
+                      groupedByTiming={groupedByTiming}
+                      onSupplementClick={handleSupplementClick}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Quick Inventory (40%) */}
+              <Card className="lg:col-span-2">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Package className="h-5 w-5 text-primary" />
+                    Inventar
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? (
+                    <InventorySkeleton />
+                  ) : (
+                    <SupplementInventory
+                      groupedByCategory={groupedByCategory}
+                      onToggleActive={handleToggleActive}
+                      onEdit={handleSupplementClick}
+                      onAdd={handleAdd}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="inventory">
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  Vollständiges Inventar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <InventorySkeleton />
+                ) : (
+                  <SupplementInventory
+                    groupedByCategory={groupedByCategory}
+                    onToggleActive={handleToggleActive}
+                    onEdit={handleSupplementClick}
+                    onAdd={handleAdd}
+                  />
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="recommendations">
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-primary" />
+                  ARES Empfehlungen
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PhasedSupplementBrowser
+                  initialPhase={userPhase}
+                  userPhase={userPhase}
+                  onAddSupplement={handleAddFromRecommendation}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Mobile: Tabs */}
+      <div className="lg:hidden">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'timeline' | 'inventory' | 'recommendations')}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="timeline" className="flex items-center gap-1 text-xs">
+              <Clock className="h-3 w-3" />
+              Timeline
+            </TabsTrigger>
+            <TabsTrigger value="inventory" className="flex items-center gap-1 text-xs">
+              <Package className="h-3 w-3" />
+              Inventar
+            </TabsTrigger>
+            <TabsTrigger value="recommendations" className="flex items-center gap-1 text-xs">
+              <Lightbulb className="h-3 w-3" />
+              Tipps
+              {missingCount > 0 && (
+                <Badge variant="destructive" className="ml-0.5 h-4 w-4 p-0 flex items-center justify-center text-[10px]">
+                  {missingCount}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -243,6 +338,18 @@ export default function SupplementsPage() {
                     onAdd={handleAdd}
                   />
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="recommendations" className="mt-4">
+            <Card>
+              <CardContent className="pt-6">
+                <PhasedSupplementBrowser
+                  initialPhase={userPhase}
+                  userPhase={userPhase}
+                  onAddSupplement={handleAddFromRecommendation}
+                />
               </CardContent>
             </Card>
           </TabsContent>
