@@ -7,7 +7,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { X, Droplets, GlassWater, Check, Pencil, Coffee } from 'lucide-react';
+import { X, Droplets, GlassWater, Check, Pencil, Coffee, Wine } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
 import { useTodaysFluids } from '@/hooks/useTodaysFluids';
@@ -138,8 +138,10 @@ const QuickAddButton: React.FC<{
         </>
       ) : (
         <>
-          {isCoffee ? <Coffee className="w-5 h-5" /> : <GlassWater className="w-5 h-5" />}
-          <span>+{amount}ml</span>
+          {isCoffee && <Coffee className="w-5 h-5" />}
+          {!isCoffee && variant === 'outline' && <GlassWater className="w-5 h-5" />}
+          {!isCoffee && variant === 'solid' && <Wine className="w-5 h-5" />}
+          <span>+{(amount / 1000).toFixed(2).replace('.', ',')}l</span>
         </>
       )}
     </motion.button>
