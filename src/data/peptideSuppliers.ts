@@ -68,13 +68,31 @@ export const PEPTIDE_SUPPLIERS: PeptideSupplier[] = [
     notes: 'Breites Sortiment. EU-Shipping.'
   },
   {
+    name: 'Beyond Peptides',
+    country: 'EU',
+    website: 'beyond-peptides.com',
+    shipping_to_de: true,
+    quality_tier: 'verified',
+    specialization: ['BPC-157', 'TB-500', 'GHK-Cu', 'Allgemein'],
+    notes: 'EU-Shop. Sehr gute Nutzererfahrungen. Empfohlen.'
+  },
+  {
+    name: 'Primal Peptides',
+    country: 'EU',
+    website: 'primalpeptides.nl',
+    shipping_to_de: true,
+    quality_tier: 'verified',
+    specialization: ['BPC-157', 'TB-500', 'Ipamorelin', 'Allgemein'],
+    notes: 'Niederlande. Sehr gute Nutzererfahrungen. Empfohlen.'
+  },
+  {
     name: 'Biowell Labs',
     country: 'EU',
     website: 'biowelllabs.com',
     shipping_to_de: true,
-    quality_tier: 'standard',
+    quality_tier: 'unknown',
     specialization: ['Retatrutide', 'GHK-Cu', 'Metabolic'],
-    notes: 'EU-Lab. Spezialisiert auf neuere Compounds.'
+    notes: 'EU-Lab. Negative Nutzererfahrungen gemeldet. Vorsicht empfohlen.'
   },
   {
     name: 'DN Research',
