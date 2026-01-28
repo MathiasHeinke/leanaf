@@ -79,6 +79,17 @@ export interface UserHealthContext {
     knownConditions: string[];
   };
 
+  // Bio-Age & Longevity
+  bioAge: {
+    chronologicalAge: number | null;
+    biologicalAge: number | null;
+    ageDelta: number | null; // positive = older, negative = younger
+    agingPace: number | null; // 1.0 = normal, <1 = slower, >1 = faster
+    measurementType: 'dunedin_pace' | 'proxy_calculation' | null;
+    lastMeasurementDate: string | null;
+    paceStatus: 'elite' | 'excellent' | 'good' | 'average' | 'accelerated' | null;
+  };
+
   // Aktive Pläne
   activePlans: {
     hasWorkoutPlan: boolean;
@@ -217,6 +228,15 @@ export async function loadUserHealthContext(
     .eq('user_id', userId)
     .maybeSingle();
 
+  // 13. Bio-Age Tracking laden (neueste Messung)
+  const { data: bioAgeData } = await supabase
+    .from('bio_age_tracking')
+    .select('calculated_bio_age, chronological_age, dunedin_pace, measurement_type, measured_at, age_difference')
+    .eq('user_id', userId)
+    .order('measured_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   // Aggregationen berechnen
   const mealCount = meals?.length || 0;
   const avgCalories = mealCount > 0 ? Math.round(meals!.reduce((sum: number, m: any) => sum + (m.calories || 0), 0) / mealCount) : null;
@@ -342,6 +362,9 @@ export async function loadUserHealthContext(
     knownConditions: profile?.medical_conditions || [],
   };
 
+  // Bio-Age parsen
+  const bioAge = parseBioAgeData(bioAgeData, age);
+
   const activePlans = {
     hasWorkoutPlan: (workoutPlans.data?.length || 0) > 0,
     hasNutritionPlan: (nutritionPlans.data?.length || 0) > 0,
@@ -355,10 +378,10 @@ export async function loadUserHealthContext(
   // Wissenslücken identifizieren
   const knowledgeGaps = identifyKnowledgeGaps(basics, recentActivity, medical);
 
-  // Zusammenfassung für Prompt generieren (inkl. Protocol)
-  const summaryForPrompt = generatePromptSummary(basics, recentActivity, dailyTargets, journalInsights, medical, activePlans, knowledgeGaps, protocolStatus);
+  // Zusammenfassung für Prompt generieren (inkl. Protocol und Bio-Age)
+  const summaryForPrompt = generatePromptSummary(basics, recentActivity, dailyTargets, journalInsights, medical, activePlans, knowledgeGaps, protocolStatus, bioAge);
 
-  console.log(`[USER-CONTEXT] Loaded: Weight=${currentWeight}kg, Meals=${mealCount}, Workouts=${workoutCount}, Sleep=${sleepCount}, Journal=${journalEntries?.length || 0}, DailyGoals=${dailyGoals ? 'yes' : 'no'}, Gaps=${knowledgeGaps.length}, Protocol=${protocolStatus ? 'Phase ' + protocolStatus.currentPhase : 'none'}`);
+  console.log(`[USER-CONTEXT] Loaded: Weight=${currentWeight}kg, Meals=${mealCount}, Workouts=${workoutCount}, Sleep=${sleepCount}, Journal=${journalEntries?.length || 0}, DailyGoals=${dailyGoals ? 'yes' : 'no'}, Gaps=${knowledgeGaps.length}, Protocol=${protocolStatus ? 'Phase ' + protocolStatus.currentPhase : 'none'}, BioAge=${bioAge.biologicalAge || 'none'}`);
 
   return {
     basics,
@@ -366,6 +389,7 @@ export async function loadUserHealthContext(
     recentActivity,
     journalInsights,
     medical,
+    bioAge,
     activePlans,
     protocolStatus,
     knowledgeGaps,
@@ -534,6 +558,47 @@ function parseProtocolStatus(data: any): UserHealthContext['protocolStatus'] {
 }
 
 /**
+ * Parse Bio-Age Data from DB into structured format
+ */
+function parseBioAgeData(data: any, chronoAge: number | null): UserHealthContext['bioAge'] {
+  if (!data) {
+    return {
+      chronologicalAge: chronoAge,
+      biologicalAge: null,
+      ageDelta: null,
+      agingPace: null,
+      measurementType: null,
+      lastMeasurementDate: null,
+      paceStatus: null,
+    };
+  }
+  
+  const bioAge = data.calculated_bio_age || null;
+  const pace = data.dunedin_pace || null;
+  const delta = data.age_difference || (bioAge && chronoAge ? bioAge - chronoAge : null);
+  
+  // Determine pace status
+  let paceStatus: 'elite' | 'excellent' | 'good' | 'average' | 'accelerated' | null = null;
+  if (pace !== null) {
+    if (pace <= 0.65) paceStatus = 'elite';
+    else if (pace <= 0.80) paceStatus = 'excellent';
+    else if (pace <= 0.95) paceStatus = 'good';
+    else if (pace <= 1.05) paceStatus = 'average';
+    else paceStatus = 'accelerated';
+  }
+  
+  return {
+    chronologicalAge: data.chronological_age || chronoAge,
+    biologicalAge: bioAge,
+    ageDelta: delta,
+    agingPace: pace,
+    measurementType: data.measurement_type || null,
+    lastMeasurementDate: data.measured_at?.split('T')[0] || null,
+    paceStatus,
+  };
+}
+
+/**
  * Generiert eine strukturierte Zusammenfassung für den System Prompt
  */
 function generatePromptSummary(
@@ -544,7 +609,8 @@ function generatePromptSummary(
   medical: UserHealthContext['medical'],
   activePlans: UserHealthContext['activePlans'],
   knowledgeGaps: UserHealthContext['knowledgeGaps'],
-  protocolStatus: UserHealthContext['protocolStatus']
+  protocolStatus: UserHealthContext['protocolStatus'],
+  bioAge?: UserHealthContext['bioAge']
 ): string {
   const lines: string[] = [];
 
@@ -690,6 +756,51 @@ function generatePromptSummary(
     }
   }
 
+  // == BIO-AGE & LONGEVITY ==
+  if (bioAge?.biologicalAge !== null && bioAge?.biologicalAge !== undefined) {
+    lines.push('');
+    lines.push('== BIO-AGE & ALTERUNGSGESCHWINDIGKEIT ==');
+    lines.push('Chronologisches Alter: ' + (bioAge.chronologicalAge || basics.age || 'unbekannt') + ' Jahre');
+    lines.push('Biologisches Alter: ' + bioAge.biologicalAge.toFixed(1) + ' Jahre');
+    
+    if (bioAge.ageDelta !== null) {
+      const deltaSign = bioAge.ageDelta < 0 ? '' : '+';
+      const deltaDesc = bioAge.ageDelta < 0 ? '(juenger als chronologisch!)' : bioAge.ageDelta > 0 ? '(aelter als chronologisch)' : '(entspricht chronologischem Alter)';
+      lines.push('Delta: ' + deltaSign + bioAge.ageDelta.toFixed(1) + ' Jahre ' + deltaDesc);
+    }
+    
+    if (bioAge.agingPace !== null) {
+      const paceStatusMap = {
+        'elite': 'ELITE - Aussergewoehnlich langsam',
+        'excellent': 'Exzellent - Sehr langsam',
+        'good': 'Gut - Leicht verlangsamt',
+        'average': 'Durchschnittlich',
+        'accelerated': 'ACHTUNG - Beschleunigt'
+      };
+      const paceDesc = bioAge.paceStatus ? paceStatusMap[bioAge.paceStatus] : '';
+      lines.push('Alterungstempo (Pace): ' + bioAge.agingPace.toFixed(2) + ' (' + paceDesc + ')');
+      lines.push('  -> Pace < 1.0 = altert langsamer als normal');
+      lines.push('  -> Pace > 1.0 = altert schneller als normal');
+    }
+    
+    if (bioAge.measurementType) {
+      const typeDesc = bioAge.measurementType === 'dunedin_pace' ? 'DunedinPACE Epigenetik-Test' : 'Proxy-Berechnung (Blutwerte)';
+      lines.push('Messart: ' + typeDesc);
+    }
+    if (bioAge.lastMeasurementDate) {
+      lines.push('Letzte Messung: ' + bioAge.lastMeasurementDate);
+    }
+    
+    // Coaching-Hinweis basierend auf Status
+    if (bioAge.paceStatus === 'accelerated') {
+      lines.push('');
+      lines.push('COACHING-FOKUS: Alterungstempo ist beschleunigt! Priorisiere Schlaf, Stressmanagement, Entzuendungsmarker.');
+    } else if (bioAge.paceStatus === 'elite' || bioAge.paceStatus === 'excellent') {
+      lines.push('');
+      lines.push('COACHING-HINWEIS: User hat exzellente Bio-Age Werte - Longevity-Strategien funktionieren!');
+    }
+  }
+
   // Aktive Pläne
   const plans: string[] = [];
   if (activePlans.hasWorkoutPlan) plans.push('Trainingsplan');
@@ -768,4 +879,4 @@ function generatePromptSummary(
   return lines.join('\n');
 }
 
-export { identifyKnowledgeGaps, generatePromptSummary, parseProtocolStatus };
+export { identifyKnowledgeGaps, generatePromptSummary, parseProtocolStatus, parseBioAgeData };
