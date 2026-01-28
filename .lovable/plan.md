@@ -1,502 +1,317 @@
 
-# ARES Supplement Master-Katalog: Kuratierte Empfehlungen mit Impact-Score
+# ARES Supplement-Datenbank v3.0: Massive Erweiterung
 
-## Executive Summary
+## Uebersicht
 
-Dieses Update transformiert Layer 3 Supplements vom "Katalog" zum "strategischen Berater". Wir kombinieren:
-1. **80+ deutsche Premium-Supplements** mit Markenempfehlungen
-2. **ARES Protocol Phasen (0-3)** fuer kontextuelle Relevanz
-3. **Impact-Score System (0-10)** fuer klare Priorisierung
-4. **Necessity Tiers** (Essential/Optimizer/Specialist) gegen Supplement-Overload
-5. **UI mit visueller Hierarchie** - Essentials first, Advanced hidden by default
+Das PDF enthaelt eine **revolutionaere Erweiterung** der bestehenden Supplement- und Peptid-Datenbank mit:
+- 200+ konkreten Produkten mit deutschen Marken und Preisen
+- 30+ Peptide mit Anbietern, Dosierungen und Protokollen
+- 8 fertige Peptid-Stacks
+- Neue Datenbank-Tabellen fuer Marken und Produkte
+- Erweiterte Felder fuer Synergien, Blocker, Bioformen
 
 ---
 
-## Teil 1: Datenbank-Migration
+## Teil 1: Neue Datenbank-Tabellen
 
-**Neue Spalten fuer `supplement_database`:**
+### 1.1 Tabelle: `supplement_brands` (NEU)
+
+Speichert Hersteller-Informationen fuer "empfohlene Marken".
 
 ```text
-+------------------------+---------------+--------------------------------------------+
-| Spalte                 | Typ           | Beschreibung                               |
-+------------------------+---------------+--------------------------------------------+
-| protocol_phase         | integer       | 0=Natural, 1=TRT, 2=Peptid, 3=Longevity   |
-| impact_score           | decimal(3,1)  | ARES Impact Score 0.0-10.0                 |
-| necessity_tier         | text          | 'essential' / 'optimizer' / 'specialist'  |
-| priority_score         | integer       | 1-100 fuer Sortierung innerhalb Tier       |
-| evidence_level         | text          | 'stark' / 'moderat' / 'anekdotisch'       |
-| hallmarks_addressed    | text[]        | ['sleep','testosterone','energy',...]     |
-| cost_per_day_eur       | decimal(5,2)  | Kosten pro Tag fuer Bang-for-Buck          |
-| amazon_de_asin         | text          | Optional: Amazon DE Produktlink            |
-+------------------------+---------------+--------------------------------------------+
++---------------------------+--------------+----------------------------------------+
+| Spalte                    | Typ          | Beschreibung                           |
++---------------------------+--------------+----------------------------------------+
+| id                        | UUID (PK)    | Eindeutige ID                          |
+| name                      | TEXT         | "Sunday Natural", "MoleQlar", etc.     |
+| slug                      | TEXT UNIQUE  | URL-freundlicher Name                  |
+| country                   | TEXT         | 'DE', 'US', 'EU'                       |
+| website                   | TEXT         | sunday.de, moleqlar.com                |
+| price_tier                | TEXT         | 'budget' / 'mid' / 'premium' / 'luxury'|
+| specialization            | TEXT[]       | ['longevity', 'sport', 'vegan']        |
+| quality_certifications    | TEXT[]       | ['GMP', 'ISO', 'organic']              |
+| description               | TEXT         | Kurzbeschreibung                       |
+| logo_url                  | TEXT         | Logo-Bild URL                          |
++---------------------------+--------------+----------------------------------------+
 ```
 
-**SQL Migration:**
-```sql
-ALTER TABLE supplement_database 
-ADD COLUMN IF NOT EXISTS protocol_phase integer DEFAULT 0,
-ADD COLUMN IF NOT EXISTS impact_score decimal(3,1) DEFAULT 5.0,
-ADD COLUMN IF NOT EXISTS necessity_tier text DEFAULT 'optimizer',
-ADD COLUMN IF NOT EXISTS priority_score integer DEFAULT 50,
-ADD COLUMN IF NOT EXISTS evidence_level text DEFAULT 'moderat',
-ADD COLUMN IF NOT EXISTS hallmarks_addressed text[] DEFAULT '{}',
-ADD COLUMN IF NOT EXISTS cost_per_day_eur decimal(5,2),
-ADD COLUMN IF NOT EXISTS amazon_de_asin text;
+**Seed-Daten: 16 deutsche/EU Marken**
+- Tier 1 Premium: Sunday Natural, MoleQlar, Naturtreu, Lebenskraft-pur
+- Tier 2 Sport: ESN, More Nutrition, ProFuel, Bulk
+- Tier 3 Apotheke: Doppelherz, Orthomol, Nature Love
+- Tier 4 International: Now Foods, Life Extension, Thorne, Nordic Naturals, Doctor's Best
 
--- Constraints
-ALTER TABLE supplement_database 
-ADD CONSTRAINT check_impact_score CHECK (impact_score >= 0 AND impact_score <= 10),
-ADD CONSTRAINT check_necessity_tier CHECK (necessity_tier IN ('essential', 'optimizer', 'specialist'));
+### 1.2 Tabelle: `supplement_products` (NEU)
 
--- Indexes fuer schnelle Filterung
-CREATE INDEX IF NOT EXISTS idx_supps_phase ON supplement_database(protocol_phase);
-CREATE INDEX IF NOT EXISTS idx_supps_tier ON supplement_database(necessity_tier);
-CREATE INDEX IF NOT EXISTS idx_supps_impact ON supplement_database(impact_score DESC);
-
--- Kommentare
-COMMENT ON COLUMN supplement_database.impact_score IS 'ARES Impact Score: 9-10 Essential, 7-8 Optimizer, <7 Specialist';
-COMMENT ON COLUMN supplement_database.necessity_tier IS 'essential = Must-have, optimizer = Should-have, specialist = Nice-to-have';
-```
-
----
-
-## Teil 2: ARES Impact Score System
-
-### Die Philosophie
-
-Der Impact Score basiert auf zwei Faktoren:
-- **Evidenz-Qualitaet** (40%): Meta-Analysen > RCTs > Ratten-Studien
-- **Effektstaerke** (60%): Wie gross ist der messbare Hebel?
-
-### Tier-Hierarchie
+Speichert **konkrete Produkte** mit Preisen und Specs.
 
 ```text
-+----------------------+-------------+------------------------------------------+
-| Tier                 | Impact      | Beschreibung                             |
-+----------------------+-------------+------------------------------------------+
-| THE ESSENTIALS       | 9.0 - 10.0  | Non-Negotiables. Jeder sollte nehmen.    |
-| THE OPTIMIZERS       | 7.0 - 8.9   | Spezifisch fuer Probleme/Ziele.          |
-| THE SPECIALISTS      | < 7.0       | Nische/Teuer/Experimentell.              |
-+----------------------+-------------+------------------------------------------+
++---------------------------+--------------+----------------------------------------+
+| Spalte                    | Typ          | Beschreibung                           |
++---------------------------+--------------+----------------------------------------+
+| id                        | UUID (PK)    | Eindeutige ID                          |
+| brand_id                  | UUID (FK)    | Referenz auf supplement_brands         |
+| supplement_id             | UUID (FK)    | Referenz auf supplement_database       |
+| product_name              | TEXT         | "Omega-3 Algae Oil EPA+DHA"            |
+| product_sku               | TEXT         | Artikelnummer                          |
+| pack_size                 | INTEGER      | 60, 90, 120, etc.                      |
+| pack_unit                 | TEXT         | 'capsules', 'tablets', 'ml', 'g'       |
+| servings_per_pack         | INTEGER      | Anzahl Portionen                       |
+| dose_per_serving          | DECIMAL      | z.B. 1000                              |
+| dose_unit                 | TEXT         | 'mg', 'mcg', 'IU', 'g'                 |
+| ingredients               | JSONB        | Fuer Kombis: [{name, amount, unit}]    |
+| price_eur                 | DECIMAL      | Preis in EUR                           |
+| price_per_serving         | DECIMAL      | Berechnet: price / servings            |
+| form                      | TEXT         | 'softgel', 'capsule', 'powder', etc.   |
+| is_vegan                  | BOOLEAN      | Vegan-Kennzeichnung                    |
+| is_organic                | BOOLEAN      | Bio-Zertifiziert                       |
+| allergens                 | TEXT[]       | Allergene                              |
+| product_url               | TEXT         | Link zur Produktseite                  |
+| amazon_asin               | TEXT         | Amazon DE ASIN                         |
+| is_verified               | BOOLEAN      | Von ARES verifiziert                   |
+| is_recommended            | BOOLEAN      | ARES-Empfehlung                        |
+| popularity_score          | INTEGER      | Basierend auf User-Auswahl             |
++---------------------------+--------------+----------------------------------------+
 ```
 
-### Beispiel-Bewertungen (Phase 0 - Fundament)
-
-**THE ESSENTIALS (Impact 9-10):**
-| Supplement | Impact | Evidenz | Begruendung |
-|------------|--------|---------|-------------|
-| Creatin Monohydrat | 9.8 | stark | 1000+ Studien, kognitive + physische Benefits, guenstig |
-| Magnesium Glycinat | 9.5 | stark | 75% mangelhaft, Schlaf + Muskeln + Herz |
-| Omega-3 (EPA/DHA) | 9.2 | stark | Meta-Analysen bestaetigen anti-inflammatorisch |
-| Vitamin D3+K2 | 9.0 | stark | Hormon-Vorstufe, 60%+ defizitaer in DACH |
-
-**THE OPTIMIZERS (Impact 7-8.9):**
-| Supplement | Impact | Evidenz | Begruendung |
-|------------|--------|---------|-------------|
-| Ashwagandha KSM-66 | 7.8 | stark | Cortisol-Reduktion, aber nur bei Stress relevant |
-| Zink Bisglycinat | 7.5 | stark | Wichtig bei Testo-Mangel, sonst weniger relevant |
-| CoQ10 Ubiquinol | 7.2 | moderat | Ab 40+ oder Statin-User besonders relevant |
-
-**THE SPECIALISTS (Impact <7):**
-| Supplement | Impact | Evidenz | Begruendung |
-|------------|--------|---------|-------------|
-| NMN sublingual | 5.5 | moderat | Teuer (3-5 EUR/Tag), mixed human data |
-| Tongkat Ali | 6.5 | moderat | Funktioniert, aber Nische |
-| Rapamycin | 6.0 | moderat | Nur Phase 3, Rx required |
-
 ---
 
-## Teil 3: Supplement-Katalog (80+ Eintraege)
+## Teil 2: Erweiterung supplement_database
 
-### Phase 0: Fundament (Natural Stack) - 35 Supplements
+### 2.1 Neue Spalten
 
-**Kategorie: Schlaf (5 Supplements)**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Magnesium Glycinat | 400mg | bedtime | Sunday Natural | 9.5 | essential |
-| L-Theanin | 200mg | bedtime | Now Foods | 7.5 | optimizer |
-| Apigenin | 50mg | bedtime | Double Wood | 7.0 | optimizer |
-| Glycin | 3g | bedtime | Bulk | 7.2 | optimizer |
-| Taurin | 2g | bedtime | ESN | 6.8 | specialist |
-
-**Kategorie: Testosteron-Optimierung (6 Supplements)**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Vitamin D3+K2 | 5000 IU + 200mcg | with_fats | Sunday Natural | 9.0 | essential |
-| Zink Bisglycinat | 25mg | fasted | Sunday Natural | 7.5 | optimizer |
-| Bor | 10mg | morning | Now Foods | 7.0 | optimizer |
-| Tongkat Ali | 400mg | morning | Double Wood | 6.5 | specialist |
-| Fadogia Agrestis | 600mg | morning | Double Wood | 6.0 | specialist |
-| Shilajit | 500mg | morning | Primavie | 6.2 | specialist |
-
-**Kategorie: Energie & Mitochondrien (4 Supplements)**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Creatine Monohydrat | 5g | any | ESN | 9.8 | essential |
-| CoQ10 Ubiquinol | 100mg | with_fats | Kaneka | 7.2 | optimizer |
-| PQQ | 20mg | morning | Now Foods | 6.5 | specialist |
-| Alpha-Liponsaeure | 600mg | fasted | Sunday Natural | 6.8 | specialist |
-
-**Kategorie: Darm & Entzuendung (4 Supplements)**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Omega-3 (EPA/DHA) | 3g | with_fats | Nordic Naturals | 9.2 | essential |
-| Curcumin Longvida | 500mg | with_fats | ProHealth | 7.0 | optimizer |
-| Probiotika Multi-Strain | 50B CFU | fasted | Garden of Life | 7.3 | optimizer |
-| L-Glutamin | 5g | fasted | Bulk | 6.5 | specialist |
-
-**Kategorie: Stress & Adaptogene (3 Supplements)**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Ashwagandha KSM-66 | 600mg | evening | Sunday Natural | 7.8 | optimizer |
-| Rhodiola Rosea | 400mg | morning | Now Foods | 7.0 | optimizer |
-| Bacopa Monnieri | 300mg | morning | Synapsa | 6.8 | specialist |
-
----
-
-### Phase 1: Rekomposition (TRT/GLP-1 Support) - 20 Supplements
-
-**TRT-Support (6 Supplements):**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Citrus Bergamot | 1000mg | morning | ProHealth | 8.5 | essential |
-| TUDCA | 500mg | fasted | Double Wood | 8.0 | essential |
-| DIM | 200mg | evening | Thorne | 7.5 | optimizer |
-| Taurin (Herz) | 3g | morning | Bulk | 7.8 | optimizer |
-| DHEA | 25mg | morning | Life Extension | 6.5 | specialist |
-| Pregnenolon | 50mg | morning | Life Extension | 6.0 | specialist |
-
-**GLP-1 Support (4 Supplements):**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Elektrolyte | 3g | any | LMNT | 9.0 | essential |
-| Digestive Enzymes | 2 Kaps | with_food | NOW | 7.2 | optimizer |
-| Lipase + Ox Bile | 500mg | with_fats | Seeking Health | 7.0 | optimizer |
-| Psyllium Husk | 5g | evening | NOW | 6.8 | optimizer |
-
-**Muskelerhalt (4 Supplements):**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| EAA Komplex | 10g | pre_workout | ESN | 8.0 | essential |
-| HMB | 3g | with_food | Bulk | 7.5 | optimizer |
-| Citrullin Malat | 6g | pre_workout | Bulk | 7.2 | optimizer |
-| Beta-Alanin | 3g | pre_workout | ESN | 6.8 | optimizer |
-
----
-
-### Phase 2: Fine-tuning (Peptid-Synergie) - 12 Supplements
-
-**Peptid-Optimierung:**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Vitamin C (liposomal) | 2g | morning | LivOn Labs | 8.0 | essential |
-| MSM | 3g | morning | Doctor's Best | 7.0 | optimizer |
-| Kollagen Peptide | 10g | morning | Great Lakes | 7.5 | optimizer |
-| Silizium (OSA) | 10mg | morning | Biosil | 6.5 | specialist |
-| Hyaluronsaeure | 200mg | morning | Now Foods | 6.2 | specialist |
-
-**NAD+ Stack:**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| NMN sublingual | 500mg | fasted | ProHealth | 5.5 | specialist |
-| Trans-Resveratrol | 500mg | fasted | Thorne | 6.0 | specialist |
-| Quercetin | 500mg | fasted | Thorne | 6.5 | specialist |
-| Fisetin | 500mg | fasted | Doctor's Best | 6.0 | specialist |
-
----
-
-### Phase 3: Longevity (Advanced) - 10 Supplements
-
-**Rapamycin-Synergie:**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Rapamycin | 6mg/week | weekly | Rx | 6.0 | specialist |
-| Metformin | 500-1000mg | evening | Rx | 6.5 | specialist |
-| Acarbose | 50mg | with_food | Rx | 5.5 | specialist |
-| Ca-AKG | 1g | fasted | Rejuvant | 6.0 | specialist |
-
-**Senolytika (Pulsed):**
-| Name | Dosierung | Timing | Marke | Impact | Tier |
-|------|-----------|--------|-------|--------|------|
-| Dasatinib | 100mg | pulsed | Rx | 5.0 | specialist |
-| Fisetin Mega-Dose | 1500mg | pulsed | Doctor's Best | 5.5 | specialist |
-
----
-
-## Teil 4: Neue UI-Komponenten
-
-### 4.1 PhasedSupplementBrowser.tsx
-
-**Datei:** `src/components/supplements/PhasedSupplementBrowser.tsx`
-
-**Layout:**
 ```text
-+---------------------------------------------------------------+
-| [Phase 0] [Phase 1] [Phase 2] [Phase 3]    [x] Nur Essentials |
-+---------------------------------------------------------------+
-| Phase 0: Fundament                         Deine aktuelle Phase |
-+---------------------------------------------------------------+
-|                                                                 |
-| THE ESSENTIALS (Non-Negotiables)                               |
-| ┌─────────────────────────────────────────────────────────────┐|
-| │ ⚡ 9.8   Creatine Monohydrat              [+ Hinzufuegen]  │|
-| │         5g täglich • ESN                                    │|
-| │         📚 Starke Evidenz                                   │|
-| ├─────────────────────────────────────────────────────────────┤|
-| │ ⚡ 9.5   Magnesium Glycinat               [+ Hinzufuegen]  │|
-| │         400mg bedtime • Sunday Natural                      │|
-| │         📚 Starke Evidenz                                   │|
-| └─────────────────────────────────────────────────────────────┘|
-|                                                                 |
-| TARGETED OPTIMIZERS (Wenn relevant)                            |
-| ┌─────────────────────────────────────────────────────────────┐|
-| │ ⚡ 7.8   Ashwagandha KSM-66               [+ Hinzufuegen]  │|
-| │         600mg evening • Sunday Natural    Stress-Reduktion  │|
-| └─────────────────────────────────────────────────────────────┘|
-|                                                                 |
-| ▼ ADVANCED/EXPERIMENTAL (5 Supplements)         [Ausklappen]   |
-|                                                                 |
-+---------------------------------------------------------------+
++----------------------+--------------+----------------------------------------+
+| Spalte               | Typ          | Beschreibung                           |
++----------------------+--------------+----------------------------------------+
+| form_quality         | TEXT         | 'schlecht' / 'gut' / 'optimal'         |
+| synergies            | TEXT[]       | Wirkstoffe die zusammen besser wirken  |
+| blockers             | TEXT[]       | Substanzen die Aufnahme blockieren     |
+| cycling_required     | BOOLEAN      | Muss zyklisch genommen werden?         |
+| cycling_protocol     | TEXT         | '5 on/2 off', '2 weeks on/1 off'       |
+| underrated_score     | INTEGER      | 1-10 (wie unterschaetzt)               |
+| warnung              | TEXT         | Wichtige Warnhinweise                  |
++----------------------+--------------+----------------------------------------+
 ```
 
-**Features:**
-- Tab-Navigation fuer Phasen 0-3
-- User's aktuelle Phase (aus `useProtocolStatus`) hervorgehoben
-- Toggle: "Nur Essentials anzeigen" (Default: ON fuer Anfaenger)
-- 3 Sektionen: Essentials (gross) > Optimizers (mittel) > Specialists (collapsed)
-- Impact-Badge mit Score (z.B. "⚡ 9.8")
-- Evidenz-Badge (gruen=stark, gelb=moderat, orange=anekdotisch)
-- Markenempfehlung als Chip
-- "Hinzufuegen" Button oeffnet Modal mit Pre-Fill
-- Locked-State fuer hoehere Phasen (Phase 2/3 ausgegraut wenn User in Phase 0/1)
+### 2.2 Massive Daten-Erweiterung
 
-### 4.2 SupplementRecommendationCard.tsx
+**Aktuelle Datenbank**: 80 Supplements (53 im Katalog, weitere durch User)
+**Nach Update**: 120+ Wirkstoffe mit vollstaendigen Daten
 
-**Datei:** `src/components/supplements/SupplementRecommendationCard.tsx`
-
-**Features:**
-- Kompakte Karte fuer ein empfohlenes Supplement
-- Zeigt: Name, Impact-Score, Dosierung, Timing-Icon, Marke, Evidenz
-- Visual Hierarchy:
-  - Essential: Volle Breite, grosser Impact-Badge
-  - Optimizer: Kompakter, normaler Badge
-  - Specialist: Minimal, grau-out
-- "+" Button zum schnellen Hinzufuegen
-
-### 4.3 Erweiterung SupplementsPage.tsx
-
-**Aenderungen:**
-- Neuer Tab "Empfehlungen" hinzufuegen (3 Tabs total):
-  - Timeline (Execution) - besteht
-  - Inventar (Management) - besteht
-  - Empfehlungen (Discovery) - NEU
-- Integration mit `useProtocolStatus` fuer aktuelle Phase
-- Stats-Row erweitern: Zeige User-Phase + "X Essentials fehlen"
+**Neue Kategorien aus PDF:**
+- Nootropics: Lion's Mane, Alpha-GPC, Phosphatidylserin, Huperzine A
+- Metabolismus: Berberin, R-ALA, Chrom Picolinat
+- Gut: L-Glutamin, Bovine Colostrum, Butyrat
+- Joints: Kollagen, Glucosamin, Chondroitin, MSM, Boswellia
+- Performance: Citrullin, Betain/TMG, Glycerol
+- Longevity: Urolithin A/Mitopure, Fisetin, Spermidin, NMN (erweitert)
 
 ---
 
-## Teil 5: Neue Types & Hooks
+## Teil 3: Peptid-Datenbank (Neu)
 
-### 5.1 Erweiterung Types
+### 3.1 Tabelle: `peptide_compounds` (NEU)
 
-**Datei:** `src/types/supplementLibrary.ts`
+Speichert alle Peptide und Research Compounds.
 
-```typescript
-// Neue Typen
-export type EvidenceLevel = 'stark' | 'moderat' | 'anekdotisch';
-export type NecessityTier = 'essential' | 'optimizer' | 'specialist';
-
-export interface SupplementLibraryItem {
-  // ... bestehende Felder
-  protocol_phase: number;
-  impact_score: number;
-  necessity_tier: NecessityTier;
-  priority_score: number;
-  evidence_level: EvidenceLevel;
-  hallmarks_addressed: string[];
-  cost_per_day_eur?: number;
-  amazon_de_asin?: string;
-}
-
-export const EVIDENCE_LEVEL_CONFIG: Record<EvidenceLevel, { 
-  label: string; 
-  color: string; 
-  description: string 
-}> = {
-  stark: { 
-    label: 'Starke Evidenz', 
-    color: 'green',
-    description: 'Meta-Analysen & RCTs bestaetigen Wirkung'
-  },
-  moderat: { 
-    label: 'Moderate Evidenz', 
-    color: 'yellow',
-    description: 'Einzelne RCTs oder starke mechanistische Daten'
-  },
-  anekdotisch: { 
-    label: 'Anekdotisch', 
-    color: 'orange',
-    description: 'Tierstudien oder N=1 Erfahrungsberichte'
-  }
-};
-
-export const NECESSITY_TIER_CONFIG: Record<NecessityTier, {
-  label: string;
-  description: string;
-  icon: string;
-  impactRange: string;
-}> = {
-  essential: {
-    label: 'THE ESSENTIALS',
-    description: 'Non-Negotiables. Jeder sollte diese nehmen.',
-    icon: '🚨',
-    impactRange: '9.0 - 10.0'
-  },
-  optimizer: {
-    label: 'TARGETED OPTIMIZERS',
-    description: 'Fuer spezifische Ziele oder Maengel.',
-    icon: '🚀',
-    impactRange: '7.0 - 8.9'
-  },
-  specialist: {
-    label: 'ADVANCED/EXPERIMENTAL',
-    description: 'Nische, teuer oder experimentell.',
-    icon: '🧪',
-    impactRange: '< 7.0'
-  }
-};
-
-export const PHASE_CONFIG: Record<number, {
-  label: string;
-  description: string;
-  icon: string;
-  subtitle: string;
-}> = {
-  0: { 
-    label: 'Fundament', 
-    description: 'Natural Stack fuer alle',
-    icon: '🌱',
-    subtitle: 'Phase 0'
-  },
-  1: { 
-    label: 'Rekomposition', 
-    description: 'TRT/GLP-1 Support',
-    icon: '💪',
-    subtitle: 'Phase 1'
-  },
-  2: { 
-    label: 'Fine-tuning', 
-    description: 'Peptid-Synergie',
-    icon: '🔬',
-    subtitle: 'Phase 2'
-  },
-  3: { 
-    label: 'Longevity', 
-    description: 'Advanced Stack',
-    icon: '🧬',
-    subtitle: 'Phase 3'
-  }
-};
+```text
++---------------------------+--------------+----------------------------------------+
+| Spalte                    | Typ          | Beschreibung                           |
++---------------------------+--------------+----------------------------------------+
+| id                        | UUID (PK)    | Eindeutige ID                          |
+| name                      | TEXT         | "BPC-157", "Epitalon", "Retatrutide"   |
+| category                  | TEXT         | 'healing', 'gh_secretagogue', etc.     |
+| description               | TEXT         | Wirkungsbeschreibung                   |
+| mechanism                 | TEXT         | Wirkungsmechanismus                    |
+| impact_score              | DECIMAL      | ARES Impact Score 0-10                 |
+| protocol_phase            | INTEGER      | 2 oder 3                               |
+| dosage_research           | TEXT         | "250-500mcg/Tag"                       |
+| frequency                 | TEXT         | "2x taeglich", "2x/Woche"              |
+| administration_route      | TEXT         | 'subcutaneous', 'nasal', 'oral'        |
+| cycle_protocol            | TEXT         | "4 Wochen on, 4 off"                   |
+| timing_notes              | TEXT         | "Nuechtern", "Vor Schlaf"              |
+| synergies                 | TEXT[]       | ["TB-500", "GH-Stack"]                 |
+| warnings                  | TEXT[]       | Warnhinweise                           |
+| legal_status              | TEXT         | 'research_only', 'rx_required', etc.   |
++---------------------------+--------------+----------------------------------------+
 ```
 
-### 5.2 Neue Queries
+**30+ Peptide aus PDF:**
 
-**Datei:** `src/hooks/useSupplementLibrary.ts`
+| Kategorie | Peptide |
+|-----------|---------|
+| Regeneration | BPC-157, TB-500, GHK-Cu |
+| Longevity | Epitalon, MOTS-c, SS-31 |
+| Nootropics | Semax, Selank, Pinealon |
+| GH-Secretagogues | Ipamorelin, CJC-1295 no DAC |
+| Metabolisch | Retatrutide, ARA-290 |
+| Immunsystem | KPV, Thymosin Alpha 1, Thymalin, FOXO4-DRI |
+| Testo-Stack | IGF-1 LR3, Kisspeptin-10, Testagen |
 
-```typescript
-// Fetch supplements by phase with tier grouping
-export const useSupplementsByPhase = (phase: number) => {
-  return useQuery({
-    queryKey: [...SUPPLEMENT_LIBRARY_KEYS.library, 'phase', phase],
-    queryFn: async (): Promise<{
-      essentials: SupplementLibraryItem[];
-      optimizers: SupplementLibraryItem[];
-      specialists: SupplementLibraryItem[];
-    }> => {
-      const { data, error } = await supabase
-        .from('supplement_database')
-        .select('*')
-        .eq('protocol_phase', phase)
-        .order('impact_score', { ascending: false });
+### 3.2 Tabelle: `peptide_suppliers` (NEU)
 
-      if (error) throw error;
+Speichert Bezugsquellen fuer Peptide.
 
-      const supplements = (data || []).map(mapToLibraryItem);
-      
-      return {
-        essentials: supplements.filter(s => s.necessity_tier === 'essential'),
-        optimizers: supplements.filter(s => s.necessity_tier === 'optimizer'),
-        specialists: supplements.filter(s => s.necessity_tier === 'specialist'),
-      };
-    },
-    staleTime: 1000 * 60 * 10,
-  });
-};
-
-// Get user's missing essentials
-export const useMissingEssentials = (userPhase: number) => {
-  const { data: stack } = useUserStack();
-  const { data: phaseSupplements } = useSupplementsByPhase(userPhase);
-
-  const userSupplementNames = new Set(
-    (stack || []).map(s => s.name.toLowerCase())
-  );
-
-  const missingEssentials = (phaseSupplements?.essentials || []).filter(
-    s => !userSupplementNames.has(s.name.toLowerCase())
-  );
-
-  return {
-    missingEssentials,
-    missingCount: missingEssentials.length,
-    totalEssentials: phaseSupplements?.essentials?.length || 0,
-  };
-};
+```text
++---------------------------+--------------+----------------------------------------+
+| Spalte                    | Typ          | Beschreibung                           |
++---------------------------+--------------+----------------------------------------+
+| id                        | UUID (PK)    | Eindeutige ID                          |
+| name                      | TEXT         | "BPS Pharma", "Verified Peptides"      |
+| country                   | TEXT         | 'DE', 'EU', 'US'                       |
+| website                   | TEXT         | URL                                    |
+| shipping_to_de            | BOOLEAN      | Lieferung nach DE                      |
+| quality_tier              | TEXT         | 'verified' / 'standard'                |
+| notes                     | TEXT         | Besonderheiten                         |
++---------------------------+--------------+----------------------------------------+
 ```
+
+### 3.3 Tabelle: `peptide_stacks` (NEU)
+
+Speichert die 8 Peptid-Stack-Protokolle.
+
+```text
++---------------------------+--------------+----------------------------------------+
+| Spalte                    | Typ          | Beschreibung                           |
++---------------------------+--------------+----------------------------------------+
+| id                        | UUID (PK)    | Eindeutige ID                          |
+| name                      | TEXT         | "Clean Gains", "Wolverine", etc.       |
+| goal                      | TEXT         | Ziel des Stacks                        |
+| category                  | TEXT         | 'muscle', 'healing', 'nootropic', etc. |
+| protocol_phase            | INTEGER      | 2 oder 3                               |
+| peptides                  | JSONB        | [{id, dosage, frequency, timing}]      |
+| duration_weeks            | INTEGER      | Dauer des Protokolls                   |
+| critical_rules            | TEXT[]       | Wichtige Regeln (z.B. "Nuechtern!")    |
+| expected_effects          | TEXT[]       | Erwartete Wirkungen                    |
+| warning                   | TEXT         | Allgemeine Warnung                     |
++---------------------------+--------------+----------------------------------------+
+```
+
+**8 Stacks aus PDF:**
+1. **Clean Gains** (Muskelaufbau): Ipamorelin + CJC-1295
+2. **Natural Testo-Boost**: IGF-1 LR3 + Kisspeptin-10
+3. **Fettleber-Reset**: Retatrutide + ARA-290
+4. **Autoimmun-Reset**: KPV + Thymosin Alpha 1 + FOXO4-DRI
+5. **Perfekter Schlaf**: Epitalon + Pinealon
+6. **Nootropics**: Semax + Selank
+7. **Wolverine (Healing)**: BPC-157 + TB-500
+8. **Looksmaxxing**: GHK-Cu + Epitalon + MOTS-c + SS-31
 
 ---
 
-## Teil 6: Daten-Seeding
+## Teil 4: Produkt-Daten (200+ Eintraege)
 
-### 6.1 Katalog-Datei
+### 4.1 Supplement-Produkte pro Kategorie
 
-**Datei:** `src/data/aresSupplementCatalog.ts`
+Aus dem PDF extrahiert mit **konkreten Marken und Preisen**:
 
-Enthaelt alle 80+ Supplements mit vollstaendigen Daten:
-- Name, Kategorie, Dosierung, Einheit
-- Timing-Constraint, Interaction-Tags
-- Markenempfehlung, Beschreibung
-- protocol_phase, impact_score, necessity_tier
-- evidence_level, hallmarks_addressed
-- cost_per_day_eur (optional)
+| Wirkstoff | Anzahl Produkte | Beispiel-Marken |
+|-----------|-----------------|-----------------|
+| Creatine | 4 | ESN, Bulk, More Nutrition |
+| Magnesium | 4 | Sunday Natural, Naturtreu, MoleQlar, Now Foods |
+| Omega-3 | 4 | Sunday Natural, Nordic Naturals, Naturtreu, MoleQlar |
+| D3+K2 | 4 | Sunday Natural, Naturtreu, MoleQlar, ProFuel |
+| Ashwagandha | 4 | Sunday Natural, Naturtreu, MoleQlar, Now Foods |
+| Zink | 3 | Sunday Natural, Naturtreu, Nature Love |
+| CoQ10 | 3 | MoleQlar, Sunday Natural, Life Extension |
+| NMN | 3 | MoleQlar (3 Varianten), Sunday, ProHealth |
+| ... | ... | ... |
 
-### 6.2 Seed Edge Function
+**Total: 80+ Supplement-Produkte mit Preis/Tag**
 
-**Datei:** `supabase/functions/seed-supplement-catalog/index.ts`
+### 4.2 Peptid-Produkte
 
-**Features:**
-- Nimmt Katalog-Array als Request Body
-- Upsert-Logik (Update bei Name-Match, Insert bei neu)
-- Validierung aller Felder
-- Returns: `{ added: X, updated: Y, errors: [] }`
+| Peptid | Anbieter | Preis-Range |
+|--------|----------|-------------|
+| BPC-157 + TB-500 | BPS Pharma, Verified Peptides, Core Peptides | 49-89 EUR |
+| GHK-Cu | Peptide Power EU, Biowell Labs, Synthagen Labs | 29-89 EUR |
+| Epitalon | PharmaLabGlobal, BPS Pharma, UK-Peptides | 23-149 EUR |
+| MOTS-c | Cell Peptides, Peptide Sciences, Core Peptides | 79-99 EUR |
+| SS-31 | Cell Peptides, Peptide Regenesis | 79-189 EUR |
+| Semax/Selank | Cosmic Nootropic | 25-45 EUR |
+| Ipamorelin+CJC | Peptide Power EU, Core Peptides, Verified Peptides | 49-89 EUR |
+| Retatrutide | 24Peptides, DN Research, Biowell Labs | 79-299 EUR |
 
 ---
 
-## Teil 7: Implementierungsreihenfolge
+## Teil 5: Intelligenz-Features (Datenfelder)
 
-| Schritt | Datei/Aktion | Beschreibung | Prioritaet |
-|---------|--------------|--------------|------------|
-| 1 | **DB Migration** | Neue Spalten + Constraints + Indexes | HOCH |
-| 2 | `src/types/supplementLibrary.ts` | Types erweitern (EvidenceLevel, NecessityTier, etc.) | HOCH |
-| 3 | `src/data/aresSupplementCatalog.ts` | Katalog mit 80+ Eintraegen erstellen | HOCH |
-| 4 | `supabase/functions/seed-supplement-catalog/` | Edge Function fuer Import | HOCH |
-| 5 | **Seed ausfuehren** | Katalog in DB importieren | HOCH |
-| 6 | `src/hooks/useSupplementLibrary.ts` | Neue Queries (useSupplementsByPhase, useMissingEssentials) | MITTEL |
-| 7 | `src/components/supplements/SupplementRecommendationCard.tsx` | Einzelne Empfehlungs-Karte | MITTEL |
-| 8 | `src/components/supplements/PhasedSupplementBrowser.tsx` | Phasen-Browser mit Tier-Hierarchie | MITTEL |
-| 9 | `src/pages/SupplementsPage.tsx` | 3. Tab "Empfehlungen" integrieren | MITTEL |
-| 10 | **Update bestehende Supplements** | Vorhandene 45 Supplements mit Impact Scores aktualisieren | MITTEL |
-| 11 | **Testing** | End-to-End Test des kompletten Flows | HOCH |
+### 5.1 Synergien-Matrix
+
+**Neue synergies[] Feld-Daten:**
+
+| Kombination | Warum? |
+|-------------|--------|
+| D3 + K2 + Magnesium | K2 leitet Kalzium in Knochen, Mg aktiviert D3 |
+| NMN + TMG | NMN verbraucht Methylgruppen, TMG liefert nach |
+| Curcumin + Piperin/Fett | Sonst 0% Aufnahme |
+| PQQ + CoQ10 | Regenerieren sich gegenseitig |
+| Zink + Kupfer | 8:1 Ratio bei Langzeiteinnahme |
+| Kollagen + Vitamin C | C ist Kofaktor fuer Kollagen-Synthese |
+| Lion's Mane + Alpha-GPC | Beide erhoehen Acetylcholin |
+
+### 5.2 Blocker-Matrix
+
+**Neue blockers[] Feld-Daten:**
+
+| Nicht kombinieren | Grund |
+|-------------------|-------|
+| Eisen + Kaffee/Tee/Milch | Blockiert Eisenaufnahme komplett |
+| Zink + Phytate (Vollkorn) | Phytate binden Zink |
+| Kalzium + Eisen | Konkurrieren um Aufnahme |
+| 5-HTP + SSRIs | Serotonin-Syndrom Gefahr! |
+| Berberin + Metformin | Beide AMPK-Aktivatoren |
+
+### 5.3 Form-Qualitaet
+
+**Neue form_quality Feld-Daten:**
+
+| Wirkstoff | Schlechte Form | Optimale Form |
+|-----------|----------------|---------------|
+| Magnesium | Oxid (geringe Aufnahme) | Glycinat, L-Threonat |
+| B12 | Cyanocobalamin | Methylcobalamin, Adenosylcobalamin |
+| CoQ10 | Ubiquinon (oxidiert) | Ubiquinol (reduziert/aktiv) |
+| Curcumin | Standard (0% Aufnahme) | Mizellen, Longvida, + Piperin |
+| Alpha-Liponsaeure | S-ALA | R-ALA (natuerlich, stabil) |
+
+---
+
+## Teil 6: Implementierungs-Reihenfolge
+
+| Schritt | Aktion | Prioritaet | Beschreibung |
+|---------|--------|------------|--------------|
+| 1 | **DB Migration: Neue Tabellen** | HOCH | supplement_brands, supplement_products erstellen |
+| 2 | **DB Migration: Neue Spalten** | HOCH | form_quality, synergies, blockers, cycling_* |
+| 3 | **DB Migration: Peptid-Tabellen** | HOCH | peptide_compounds, peptide_suppliers, peptide_stacks |
+| 4 | **Seed: 16 Marken** | HOCH | supplement_brands befuellen |
+| 5 | **Seed: 80+ Produkte** | HOCH | supplement_products befuellen |
+| 6 | **Update: 120+ Wirkstoffe** | HOCH | supplement_database erweitern |
+| 7 | **Seed: 30+ Peptide** | MITTEL | peptide_compounds befuellen |
+| 8 | **Seed: 8 Stacks** | MITTEL | peptide_stacks befuellen |
+| 9 | **Update: Synergien/Blocker** | MITTEL | Alle Supplements mit Interaktionsdaten |
+| 10 | **UI: Produkt-Auswahl** | NIEDRIG | Modal fuer konkrete Produktwahl |
+| 11 | **UI: Peptid-Stack-Browser** | NIEDRIG | Stack-Protokolle anzeigen |
+
+---
+
+## Teil 7: Daten-Dateien erstellen
+
+### Neue Dateien:
+
+1. **`src/data/supplementBrands.ts`** - 16 deutsche/EU Marken
+2. **`src/data/supplementProducts.ts`** - 80+ konkrete Produkte mit Preisen
+3. **`src/data/peptideCompounds.ts`** - 30+ Peptide mit Dosierungen
+4. **`src/data/peptideSuppliers.ts`** - Bezugsquellen
+5. **`src/data/peptideStacks.ts`** - 8 fertige Stack-Protokolle
+6. **`src/data/supplementInteractions.ts`** - Synergien & Blocker Matrix
+
+### Erweiterung bestehender Datei:
+
+**`src/data/aresSupplementCatalog.ts`** erweitern um:
+- 40+ neue Wirkstoffe (Nootropics, Metabolismus, Gut, Joints, etc.)
+- form_quality, synergies, blockers fuer alle Eintraege
+- Aktualisierte Impact-Scores basierend auf PDF
 
 ---
 
@@ -504,21 +319,17 @@ Enthaelt alle 80+ Supplements mit vollstaendigen Daten:
 
 Nach Umsetzung:
 
-1. **80+ deutsche Supplements** mit Markenempfehlungen in der DB
-2. **Impact-Score System** schuetzt vor Supplement-Overload
-3. **Visuelle Hierarchie**: Essentials sofort sichtbar, Specialists versteckt
-4. **Phasen-Awareness**: User sieht nur relevante Supplements
-5. **"X Essentials fehlen"** Indikator motiviert zur Vervollstaendigung
-6. **Ein-Klick Hinzufuegen** mit Pre-Fill aus dem Katalog
+1. **200+ konkrete Produkte** mit deutschen Marken und Tagespreisen
+2. **30+ Peptide** mit vollstaendigen Protokollen und Bezugsquellen
+3. **8 fertige Peptid-Stacks** fuer verschiedene Ziele
+4. **Synergien-Engine** weiss welche Supplements zusammen gehoeren
+5. **Blocker-Warnungen** bei problematischen Kombinationen
+6. **Form-Qualitaet** zeigt optimale Bioverfuegbarkeit
+7. **Verbrauchsprognose** berechnet Nachbestelldatum
+8. **Preis-Optimierung** schlaegt guenstigere Alternativen vor
 
-**Differenzierung von anderen Apps:**
-- Nicht "Was gibt es?", sondern "Was brauche ich wirklich?"
-- Deutsche Marken statt US-only
-- ARES Protocol Integration
-- Wissenschaftliche Evidenz transparent
-- Kosten/Nutzen sichtbar (Bang for Buck)
-
-**User Experience:**
-- Anfaenger: Sieht nur 4-5 Essentials, nicht ueberfordert
-- Fortgeschrittene: Kann Optimizers erkunden
-- Biohacker: Kann Specialists freischalten
+**Differenzierung:**
+- Nicht nur "Was soll ich nehmen?" sondern "Welches Produkt genau?"
+- Deutsche Marken mit deutschen Preisen
+- Peptid-Stacks mit vollstaendigen Protokollen
+- Intelligente Interaktions-Warnungen
