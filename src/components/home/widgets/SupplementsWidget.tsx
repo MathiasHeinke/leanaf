@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Pill, Check, X, ChevronRight } from 'lucide-react';
+import { Pill, Check, X, ChevronRight, Sunrise, Sun, Moon, BedDouble, Dumbbell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
 import { useQuery } from '@tanstack/react-query';
@@ -13,15 +13,39 @@ interface SupplementsWidgetProps {
   onOpenSheet?: () => void;
 }
 
-interface SupplementItem {
-  name: string;
-  taken: boolean;
+interface TimingGroup {
+  timing: string;
+  label: string;
+  icon: React.ElementType;
+  taken: number;
+  total: number;
 }
+
+// Timing order and config
+const TIMING_ORDER = ['morning', 'noon', 'evening', 'bedtime', 'pre_workout', 'post_workout'];
+const TIMING_CONFIG: Record<string, { icon: React.ElementType; label: string }> = {
+  morning: { icon: Sunrise, label: 'Morgens' },
+  noon: { icon: Sun, label: 'Mittags' },
+  evening: { icon: Moon, label: 'Abends' },
+  bedtime: { icon: BedDouble, label: 'Vor Schlaf' },
+  pre_workout: { icon: Dumbbell, label: 'Pre-WO' },
+  post_workout: { icon: Dumbbell, label: 'Post-WO' },
+  before_bed: { icon: BedDouble, label: 'Vor Schlaf' },
+};
+
+// Get current timing
+const getCurrentTiming = (): string => {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 11) return 'morning';
+  if (hour >= 11 && hour < 14) return 'noon';
+  if (hour >= 14 && hour < 17) return 'pre_workout';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'bedtime';
+};
 
 export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size, onOpenSheet }) => {
   const navigate = useNavigate();
 
-  // Click handler: prefer sheet, fallback to navigation
   const handleClick = () => {
     if (onOpenSheet) {
       onOpenSheet();
@@ -30,52 +54,74 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size, onOp
     }
   };
 
-  // Fetch ACTIVE supplements and check which were taken today
+  // Fetch supplements grouped by timing
   const { data: supplementsData } = useQuery({
     queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { taken: 0, total: 0, items: [] as SupplementItem[] };
+      if (!user) return { taken: 0, total: 0, timingGroups: [] as TimingGroup[] };
       
       const today = new Date().toISOString().slice(0, 10);
       
-      // 1. Get ALL active user supplements
+      // Get ALL active user supplements with their preferred_timing
       const { data: activeSupps } = await supabase
         .from('user_supplements')
-        .select('id, name, custom_name')
+        .select('id, name, custom_name, preferred_timing')
         .eq('user_id', user.id)
         .eq('is_active', true);
       
       if (!activeSupps || activeSupps.length === 0) {
-        return { taken: 0, total: 0, items: [] as SupplementItem[] };
+        return { taken: 0, total: 0, timingGroups: [] as TimingGroup[] };
       }
       
-      // 2. Get today's intake logs
+      // Get today's intake logs
       const { data: logs } = await supabase
         .from('supplement_intake_log')
         .select('user_supplement_id, taken')
         .eq('user_id', user.id)
         .eq('date', today);
       
-      // Create a map of taken supplements
       const takenMap = new Map<string, boolean>();
       logs?.forEach(log => {
         if (log.taken) takenMap.set(log.user_supplement_id, true);
       });
       
-      // Count taken from ALL supplements (not just display items)
-      const takenCount = activeSupps.filter(supp => takenMap.has(supp.id)).length;
+      // Group supplements by timing
+      const timingCounts: Record<string, { taken: number; total: number }> = {};
       
-      // Build items list for display (max 4)
-      const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({
-        name: supp.custom_name || supp.name || 'Supplement',
-        taken: takenMap.has(supp.id)
-      }));
+      activeSupps.forEach(supp => {
+        const timings = supp.preferred_timing || ['morning'];
+        const timingArray = Array.isArray(timings) ? timings : [timings];
+        const isTaken = takenMap.has(supp.id);
+        
+        timingArray.forEach((timing: string) => {
+          // Normalize before_bed to bedtime
+          const normalizedTiming = timing === 'before_bed' ? 'bedtime' : timing;
+          if (!timingCounts[normalizedTiming]) {
+            timingCounts[normalizedTiming] = { taken: 0, total: 0 };
+          }
+          timingCounts[normalizedTiming].total++;
+          if (isTaken) timingCounts[normalizedTiming].taken++;
+        });
+      });
+      
+      // Build sorted timing groups
+      const timingGroups: TimingGroup[] = TIMING_ORDER
+        .filter(timing => timingCounts[timing]?.total > 0)
+        .map(timing => ({
+          timing,
+          label: TIMING_CONFIG[timing]?.label || timing,
+          icon: TIMING_CONFIG[timing]?.icon || Sun,
+          taken: timingCounts[timing].taken,
+          total: timingCounts[timing].total,
+        }));
+      
+      const totalTaken = activeSupps.filter(supp => takenMap.has(supp.id)).length;
       
       return {
-        taken: takenCount,
+        taken: totalTaken,
         total: activeSupps.length,
-        items
+        timingGroups
       };
     },
     staleTime: 10000
@@ -83,10 +129,11 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size, onOp
 
   const taken = supplementsData?.taken || 0;
   const total = supplementsData?.total || 0;
-  const items = supplementsData?.items || [];
+  const timingGroups = supplementsData?.timingGroups || [];
   const allTaken = total > 0 && taken === total;
   const hasSupplements = total > 0;
   const progressPercent = total > 0 ? Math.min((taken / total) * 100, 100) : 0;
+  const currentTiming = getCurrentTiming();
 
   // FLAT: Horizontal compact strip with dots
   if (size === 'flat') {
@@ -194,27 +241,55 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size, onOp
           </span>
         </div>
         
-        {/* Supplement Items */}
+        {/* Timing Groups */}
         {hasSupplements ? (
           <div className="space-y-1.5 mt-3">
-            {items.map((item, i) => (
-              <div 
-                key={i}
-                className="flex items-center justify-between py-1"
-              >
-                <span className="text-sm text-foreground truncate flex-1">
-                  {item.name}
-                </span>
-                <div className={cn(
-                  "w-5 h-5 rounded-full flex items-center justify-center",
-                  item.taken 
-                    ? "bg-emerald-500 text-white" 
-                    : "bg-muted"
-                )}>
-                  {item.taken && <Check className="w-3 h-3" />}
+            {timingGroups.slice(0, 4).map((group) => {
+              const Icon = group.icon;
+              const isComplete = group.taken >= group.total;
+              const isCurrent = group.timing === currentTiming && !isComplete;
+              
+              return (
+                <div 
+                  key={group.timing}
+                  className={cn(
+                    "flex items-center justify-between py-1.5 px-2 rounded-lg transition-colors",
+                    isCurrent && "bg-primary/10 ring-1 ring-primary/30"
+                  )}
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon className={cn(
+                      "w-4 h-4",
+                      isComplete ? "text-emerald-500" : isCurrent ? "text-primary" : "text-muted-foreground"
+                    )} />
+                    <span className={cn(
+                      "text-sm truncate",
+                      isComplete ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      {group.label}
+                    </span>
+                    {isCurrent && (
+                      <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
+                        Jetzt
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={cn(
+                      "text-xs font-medium",
+                      isComplete ? "text-emerald-500" : "text-muted-foreground"
+                    )}>
+                      {group.taken}/{group.total}
+                    </span>
+                    {isComplete && (
+                      <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-white" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center py-4">
