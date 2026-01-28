@@ -1,244 +1,128 @@
 
 
-# Protokoll-Tab Ueberarbeitung: Wirkebenen, Info-Sheet & bessere Labels
+# Bug Fix: Fehlender Mittags-Button in SmartFocusCard
 
-## Zusammenfassung
+## Problem-Analyse
 
-Der Protokoll-Tab wird von einer flachen Liste zu einem strukturierten, kategorisierten System umgebaut mit:
-1. **Meta-Kategorien-System** - 29 DB-Kategorien werden in 7 logische Wirkebenen gruppiert
-2. **Info-Sheet** - Klick auf Info-Icon oeffnet Detail-Sheet mit allen Supplement-Informationen
-3. **Bessere Labels** - "Empfohlen: 600" wird zu "600mg | Morgens | Starke Evidenz"
+Die QuickAction Card auf dem Homescreen zeigt nicht dynamisch alle Timing-Buttons basierend auf dem, was in Layer 3 (Supplement Architect) konfiguriert ist. Konkret fehlt der "Mittag"-Button.
+
+### Ursache
+
+Beim Aktivieren eines Supplements im Layer 3 wird das `timing`-Array falsch befuellt:
+
+```typescript
+// useSupplementLibrary.ts, Zeile 493
+timing: (item.common_timing?.length) ? item.common_timing : ['morning'],
+```
+
+Das Problem:
+1. `common_timing` aus der DB enthaelt Werte wie `['morning', 'evening']` oder `['with_meals']`
+2. `timing_constraint` (z.B. `with_food`, `with_fats`) wird nur fuer `preferred_timing` ausgewertet
+3. Das `timing`-Array wird **nicht** intelligent gemappt
+
+**Beispiel:**
+- Omega-3 hat `timing_constraint: with_fats` und `common_timing: ['evening']`
+- `preferred_timing` wird korrekt auf `noon` gesetzt (mit Fett = Mahlzeit = Mittag)
+- Aber `timing` wird auf `['evening']` gesetzt → User sieht keinen Mittags-Button!
 
 ---
 
-## 1. Meta-Kategorien (Wirkebenen-Mapping)
+## Loesung
 
-Statt 29 technischer Kategorien sieht der User 7 verstaendliche Wirkebenen:
+Das `timing`-Array muss ebenfalls aus dem `preferred_timing` abgeleitet werden, anstatt `common_timing` direkt zu verwenden.
 
-| Meta-Kategorie | Icon | DB-Kategorien |
-|----------------|------|---------------|
-| Basis & Gesundheit | Shield | Vitamine, Mineralien, Wellness |
-| Longevity & Zellschutz | Dna | Longevity, Anti-Aging, NAD+, Antioxidantien |
-| Mental & Fokus | Brain | Nootropics, Adaptogene, Schlaf, Stress |
-| Performance & Sport | Zap | Aminosaeuren, Muskelaufbau, Muskelerhalt, Performance, Proteine, Energie, Stimulanzien |
-| Hormone & Balance | Scale | Hormone, Testosteron, TRT-Support, GLP-1 Support |
-| Darm & Verdauung | Heart | Darm, Darmgesundheit, Entzuendung |
-| Spezial & Sonstiges | Sparkles | Fettsaeuren, Beauty, Superfoods, Peptid-Synergie |
+### Aenderung in `useSupplementLibrary.ts`
 
-### Neue Datei: `src/lib/categoryMapping.ts`
+**Zeile 485-498 (toggleSupplement Funktion):**
 
 ```typescript
-export const META_CATEGORIES = {
-  health: {
-    id: 'health',
-    label: 'Basis & Gesundheit',
-    icon: 'Shield',
-    color: 'blue',
-    categories: ['Vitamine', 'Mineralien', 'Wellness']
+// VORHER:
+const { error } = await supabase.from('user_supplements').upsert(
+  {
+    user_id: user.id,
+    supplement_id: item.id,
+    name: item.name,
+    dosage: item.default_dosage || '',
+    unit: item.default_unit || 'mg',
+    preferred_timing: preferredTiming,
+    timing: (item.common_timing?.length) ? item.common_timing : ['morning'],  // ❌ Falsch
+    schedule: schedule as any,
+    is_active: true,
   },
-  longevity: {
-    id: 'longevity',
-    label: 'Longevity',
-    icon: 'Dna',
-    color: 'purple',
-    categories: ['Longevity', 'Anti-Aging', 'NAD+', 'Antioxidantien']
-  },
-  mental: {
-    id: 'mental',
-    label: 'Mental & Fokus',
-    icon: 'Brain',
-    color: 'cyan',
-    categories: ['Nootropics', 'Adaptogene', 'Schlaf', 'Stress']
-  },
-  performance: {
-    id: 'performance',
-    label: 'Performance',
-    icon: 'Zap',
-    color: 'yellow',
-    categories: ['Aminosäuren', 'Muskelaufbau', 'Muskelerhalt', 
-                 'Performance', 'Proteine', 'Energie', 'Stimulanzien']
-  },
-  hormones: {
-    id: 'hormones',
-    label: 'Hormone',
-    icon: 'Scale',
-    color: 'pink',
-    categories: ['Hormone', 'Testosteron', 'TRT-Support', 'GLP-1 Support']
-  },
-  gut: {
-    id: 'gut',
-    label: 'Verdauung',
-    icon: 'Heart',
-    color: 'green',
-    categories: ['Darm', 'Darmgesundheit', 'Entzündung']
-  },
-  other: {
-    id: 'other',
-    label: 'Sonstiges',
-    icon: 'Sparkles',
-    color: 'gray',
-    categories: ['Fettsäuren', 'Beauty', 'Superfoods', 'Peptid-Synergie']
-  }
-} as const;
+  { onConflict: 'user_id,supplement_id' }
+);
 
-// Helper: Finde Meta-Kategorie fuer eine DB-Kategorie
-export function getMetaCategory(dbCategory: string): keyof typeof META_CATEGORIES {
-  for (const [key, meta] of Object.entries(META_CATEGORIES)) {
-    if (meta.categories.includes(dbCategory)) {
-      return key as keyof typeof META_CATEGORIES;
-    }
-  }
-  return 'other';
+// NACHHER:
+const { error } = await supabase.from('user_supplements').upsert(
+  {
+    user_id: user.id,
+    supplement_id: item.id,
+    name: item.name,
+    dosage: item.default_dosage || '',
+    unit: item.default_unit || 'mg',
+    preferred_timing: preferredTiming,
+    timing: [preferredTiming],  // ✅ Konsistent mit preferred_timing
+    schedule: schedule as any,
+    is_active: true,
+  },
+  { onConflict: 'user_id,supplement_id' }
+);
+```
+
+### Gleiche Aenderung in `activateEssentials` (Zeile 550):
+
+```typescript
+// VORHER:
+timing: (item.common_timing?.length) ? item.common_timing : ['morning'],
+
+// NACHHER:
+timing: [mapTimingToPreferred(item.timing_constraint, item.common_timing)],
+```
+
+---
+
+## Technische Details
+
+### Warum `[preferredTiming]`?
+
+Die `preferred_timing` wird bereits intelligent berechnet:
+
+```typescript
+function mapTimingToPreferred(timingConstraint, commonTiming) {
+  // 1. timing_constraint hat Prioritaet
+  if (timingConstraint === 'with_food' || timingConstraint === 'with_fats') return 'noon';
+  if (timingConstraint === 'bedtime') return 'bedtime';
+  if (timingConstraint === 'fasted') return 'morning';
+  // ...
+  
+  // 2. Fallback auf common_timing
+  if (commonTiming?.[0]?.includes('mittag')) return 'noon';
+  // ...
+  
+  return 'morning'; // Default
 }
 ```
 
----
+Diese Logik stellt sicher:
+- `with_fats` Supplements → `noon` (Mahlzeit)
+- `bedtime` Supplements → `bedtime`
+- `fasted` Supplements → `morning`
 
-## 2. Supplement Detail Sheet
+### Auswirkung
 
-Neue Komponente die beim Klick auf das Info-Icon erscheint.
-
-### Neue Datei: `src/components/supplements/SupplementDetailSheet.tsx`
-
-Zeigt:
-- **Header**: Name + Kategorie-Badge
-- **Beschreibung**: Aus DB (`description`)
-- **Empfohlene Dosis**: `default_dosage` + `default_unit` (z.B. "600 mg")
-- **Optimales Timing**: Aus `common_timing` / `timing_constraint`
-- **Evidenz-Level**: Badge mit Farbe (stark/moderat/anekdotisch)
-- **Zyklus**: Falls `cycling_protocol` vorhanden
-- **Synergien**: Liste falls vorhanden
-- **Blocker**: Liste falls vorhanden
-- **Warnung**: Rot hervorgehoben falls vorhanden
-
-```text
-+------------------------------------------+
-|  X                                       |
-|  Ashwagandha                             |
-|  [Adaptogene] [Optimizer]                |
-|  ----------------------------------------|
-|  Stressreduktion und Schlafqualitaet     |
-|                                          |
-|  Empfohlen                               |
-|  +--------------------------------------+|
-|  | 600 mg  |  Abends  |  Moderat        ||
-|  +--------------------------------------+|
-|                                          |
-|  Zyklus                                  |
-|  5 Tage on / 2 Tage off                  |
-|                                          |
-|  Synergien                               |
-|  Magnesium, L-Theanin                    |
-|                                          |
-|  Blocker                                 |
-|  Koffein abends                          |
-+------------------------------------------+
-```
+Nach dem Fix wird z.B. Omega-3 mit `timing: ['noon']` gespeichert statt `['evening']`, und der Mittags-Button erscheint in der SmartFocusCard.
 
 ---
 
-## 3. UI-Aenderungen in SupplementInventory
+## Dateien
 
-### Zweite Filter-Zeile: Meta-Kategorien
-
-Unter den Tier-Pills (Essential/Optimizer/Specialist) kommt eine zweite Zeile mit Meta-Kategorie-Filter:
-
-```text
-TIER-PILLS:
-[Essential 8/12] [Optimizer 5/24] [Specialist 2/15]
-
-META-PILLS (horizontal scrollbar):
-[Alle] [Basis] [Mental] [Performance] [Longevity] [Hormone] [Verdauung] [Sonstiges]
-```
-
-### Neuer State:
-```typescript
-const [activeMetaCategory, setActiveMetaCategory] = 
-  useState<keyof typeof META_CATEGORIES | 'all'>('all');
-```
-
-### Filter-Logik erweitern:
-```typescript
-const filteredSupplements = useMemo(() => {
-  let items = groupedByTier[activeTier] || [];
-  
-  // Meta-Kategorie-Filter
-  if (activeMetaCategory !== 'all') {
-    const allowedCategories = META_CATEGORIES[activeMetaCategory].categories;
-    items = items.filter(item => 
-      allowedCategories.includes(item.category || '')
-    );
-  }
-  
-  // Such-Filter
-  if (searchQuery.trim()) {
-    const query = searchQuery.toLowerCase();
-    items = items.filter(item => 
-      item.name.toLowerCase().includes(query) || ...
-    );
-  }
-  
-  return items;
-}, [groupedByTier, activeTier, activeMetaCategory, searchQuery]);
-```
+| Datei | Zeilen | Aenderung |
+|-------|--------|-----------|
+| `src/hooks/useSupplementLibrary.ts` | 493, 550 | `timing` Array von `[preferredTiming]` statt `common_timing` |
 
 ---
 
-## 4. SupplementToggleRow verbessern
+## Wichtig: Bestehende Daten
 
-### Aktuelles Problem (Zeile 73-76):
-```tsx
-<Info className="h-3 w-3 shrink-0" />
-<span>Empfohlen: {item.default_dosage || 'Nach Bedarf'}</span>
-// FEHLT: default_unit, Timing, Evidenz
-```
-
-### Loesung:
-
-**a) Info-Icon wird klickbar und oeffnet Sheet:**
-```tsx
-<button onClick={() => setDetailItem(item)}>
-  <Info className="h-3 w-3 hover:text-primary cursor-pointer" />
-</button>
-```
-
-**b) Label-Format verbessern:**
-```tsx
-// Inaktive Supplements:
-<span className="truncate">
-  {item.default_dosage}{item.default_unit} | {getTimingLabel()} | 
-  <EvidenceBadge level={item.evidence_level} />
-</span>
-
-// Aktive Supplements bleiben wie sie sind:
-<Check /> Morgens | 600mg
-```
-
-### Beispiel vorher/nachher:
-
-| Vorher | Nachher |
-|--------|---------|
-| `Empfohlen: 600` | `600mg | Abends | Moderat` |
-| `Empfohlen: 5` | `5g | Morgens | Stark` |
-| `Empfohlen: Nach Bedarf` | `Nach Bedarf | Flexibel` |
-
----
-
-## Dateien die geaendert werden
-
-| Datei | Aenderung |
-|-------|-----------|
-| `src/lib/categoryMapping.ts` | NEU: Meta-Kategorie-Konstanten und Helper |
-| `src/components/supplements/SupplementDetailSheet.tsx` | NEU: Detail-Sheet Komponente |
-| `src/components/supplements/SupplementInventory.tsx` | Meta-Filter-Pills hinzufuegen |
-| `src/components/supplements/SupplementToggleRow.tsx` | Info-Icon klickbar, Label-Format fixen |
-
----
-
-## Implementierungs-Reihenfolge
-
-1. `categoryMapping.ts` erstellen - Mapping-Logik
-2. `SupplementDetailSheet.tsx` erstellen - Info-Sheet
-3. `SupplementToggleRow.tsx` anpassen - Info-Icon + Labels
-4. `SupplementInventory.tsx` anpassen - Meta-Filter integrieren
+Fuer bereits aktivierte Supplements muss der User das Timing manuell anpassen oder das Supplement deaktivieren und wieder aktivieren. Alternativ koennte ein Migrations-Script geschrieben werden, das alle `user_supplements` mit `timing_constraint: with_food/with_fats` auf `timing: ['noon']` aktualisiert.
 
