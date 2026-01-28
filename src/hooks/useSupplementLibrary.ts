@@ -427,21 +427,41 @@ export const useSupplementsByCategoryInPhase = (phase: number) => {
 // Toggle & Auto-Activate Hooks (Blueprint & Flow)
 // =====================================================
 
-// Mapping function: common_timing -> preferred_timing
+// Mapping function: timing_constraint + common_timing -> preferred_timing
+// PRIORITY: timing_constraint > common_timing (constraint is more specific)
+function mapTimingToPreferred(
+  timingConstraint: string | null | undefined, 
+  commonTiming: string[] | null | undefined
+): PreferredTiming {
+  // 1. Check timing_constraint first (most specific)
+  if (timingConstraint) {
+    const constraint = timingConstraint.toLowerCase();
+    if (constraint === 'bedtime') return 'bedtime';
+    if (constraint === 'fasted') return 'morning';
+    if (constraint === 'with_food' || constraint === 'with_fats') return 'noon'; // With meals
+    if (constraint === 'pre_workout') return 'pre_workout';
+    if (constraint === 'post_workout') return 'post_workout';
+    // 'any' falls through to common_timing
+  }
+
+  // 2. Fall back to common_timing
+  if (commonTiming?.length) {
+    const first = commonTiming[0]?.toLowerCase();
+    if (first?.includes('morgen') || first?.includes('nüchtern') || first === 'morning') return 'morning';
+    if (first?.includes('mittag') || first === 'noon') return 'noon';
+    if (first?.includes('nachmittag') || first === 'afternoon') return 'afternoon';
+    if (first?.includes('abend') || first?.includes('nacht') || first === 'evening') return 'evening';
+    if (first?.includes('schlaf') || first === 'bedtime') return 'bedtime';
+    if (first?.includes('vor training') || first === 'pre_workout') return 'pre_workout';
+    if (first?.includes('nach training') || first === 'post_workout') return 'post_workout';
+  }
+
+  return 'morning'; // Default fallback
+}
+
+// Legacy wrapper for backward compatibility
 function mapCommonTimingToPreferred(commonTiming: string[]): PreferredTiming {
-  if (!commonTiming?.length) return 'morning';
-
-  const first = commonTiming[0]?.toLowerCase();
-
-  if (first?.includes('morgen') || first?.includes('nüchtern')) return 'morning';
-  if (first?.includes('mittag')) return 'noon';
-  if (first?.includes('nachmittag')) return 'afternoon';
-  if (first?.includes('abend') || first?.includes('nacht')) return 'evening';
-  if (first?.includes('schlaf')) return 'bedtime';
-  if (first?.includes('vor training')) return 'pre_workout';
-  if (first?.includes('nach training')) return 'post_workout';
-
-  return 'morning';
+  return mapTimingToPreferred(null, commonTiming);
 }
 
 // Toggle supplement activation (add/remove from user stack)
@@ -456,8 +476,8 @@ export const useSupplementToggle = () => {
     setIsToggling(true);
     try {
       if (activate) {
-        // Magic: Auto-fill with defaults from library
-        const timing = mapCommonTimingToPreferred(item.common_timing || []);
+        // Smart timing: Use timing_constraint (most specific) with common_timing fallback
+        const preferredTiming = mapTimingToPreferred(item.timing_constraint, item.common_timing);
         const schedule = item.cycling_required
           ? parseScheduleFromProtocol(item.cycling_protocol)
           : { type: 'daily' as const };
@@ -469,7 +489,7 @@ export const useSupplementToggle = () => {
             name: item.name,
             dosage: item.default_dosage || '',
             unit: item.default_unit || 'mg',
-            preferred_timing: timing,
+            preferred_timing: preferredTiming,
             timing: (item.common_timing?.length) ? item.common_timing : ['morning'],
             schedule: schedule as any,
             is_active: true,
@@ -526,7 +546,7 @@ export const useAutoActivateEssentials = () => {
         name: item.name,
         dosage: item.default_dosage || '',
         unit: item.default_unit || 'mg',
-        preferred_timing: mapCommonTimingToPreferred(item.common_timing || []),
+        preferred_timing: mapTimingToPreferred(item.timing_constraint, item.common_timing),
         timing: (item.common_timing?.length) ? item.common_timing : ['morning'],
         schedule: { type: 'daily' as const } as any,
         is_active: true,
