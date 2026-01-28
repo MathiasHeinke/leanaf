@@ -571,3 +571,80 @@ export const useAutoActivateEssentials = () => {
 
   return { activateEssentials, isActivating, essentialsCount: phaseSupplements?.essentials?.length || 0 };
 };
+
+// =====================================================
+// Update & Delete Supplement Hooks
+// =====================================================
+
+// Update a user's supplement
+export const useUpdateSupplement = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const updateSupplement = async (
+    supplementId: string, 
+    updates: {
+      dosage?: string;
+      unit?: string;
+      preferred_timing?: PreferredTiming;
+      notes?: string | null;
+      schedule?: { type: string; cycle_on_days?: number; cycle_off_days?: number; start_date?: string };
+    }
+  ): Promise<void> => {
+    if (!user?.id) throw new Error('Not authenticated');
+
+    // Cast schedule to Json-compatible type
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+    
+    if (updates.dosage !== undefined) updateData.dosage = updates.dosage;
+    if (updates.unit !== undefined) updateData.unit = updates.unit;
+    if (updates.preferred_timing !== undefined) updateData.preferred_timing = updates.preferred_timing;
+    if (updates.notes !== undefined) updateData.notes = updates.notes;
+    if (updates.schedule !== undefined) updateData.schedule = updates.schedule;
+
+    const { error } = await supabase
+      .from('user_supplements')
+      .update(updateData)
+      .eq('id', supplementId)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+
+    // Invalidate queries
+    queryClient.invalidateQueries({ queryKey: SUPPLEMENT_LIBRARY_KEYS.userStack(user.id) });
+    window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
+    toast.success('Änderungen gespeichert');
+  };
+
+  return { updateSupplement };
+};
+
+// Delete (deactivate) a user's supplement
+export const useDeleteSupplement = () => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const deleteSupplement = async (supplementId: string): Promise<void> => {
+    if (!user?.id) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('user_supplements')
+      .update({ 
+        is_active: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', supplementId)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
+
+    // Invalidate queries
+    queryClient.invalidateQueries({ queryKey: SUPPLEMENT_LIBRARY_KEYS.userStack(user.id) });
+    window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
+    toast.success('Supplement entfernt');
+  };
+
+  return { deleteSupplement };
+};
