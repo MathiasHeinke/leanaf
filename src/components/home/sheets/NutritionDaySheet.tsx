@@ -3,14 +3,14 @@
  * Premium bottom sheet showing today's nutrition details and meal timeline
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { X, Trash2, Plus, BarChart3, Utensils } from 'lucide-react';
+import { X, Trash2, Plus, BarChart3, Utensils, Pencil, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDailyMetrics } from '@/hooks/useDailyMetrics';
-import { useTodaysMeals } from '@/hooks/useTodaysMeals';
+import { useTodaysMeals, type TodayMeal } from '@/hooks/useTodaysMeals';
 import { Button } from '@/components/ui/button';
 import { MealAdvisorSection } from '@/components/nutrition/MealAdvisorSection';
 import type { MealSuggestion, MealEvaluation } from '@/hooks/useMealAdvisor';
@@ -61,16 +61,11 @@ const MacroBar: React.FC<{
 
 // Meal Timeline Item
 const MealItem: React.FC<{
-  meal: {
-    id: string;
-    text: string | null;
-    title: string | null;
-    calories: number;
-    protein: number;
-    ts: string;
-  };
+  meal: TodayMeal;
   onDelete: (id: string) => void;
-}> = ({ meal, onDelete }) => {
+  onEdit: (meal: TodayMeal) => void;
+  onDuplicate: (meal: TodayMeal) => void;
+}> = ({ meal, onDelete, onEdit, onDuplicate }) => {
   const displayText = meal.text || meal.title || 'Mahlzeit';
   const time = format(new Date(meal.ts), 'HH:mm');
   
@@ -92,20 +87,38 @@ const MealItem: React.FC<{
         <p className="font-medium text-sm truncate text-foreground">
           {displayText}
         </p>
-        <p className="text-xs text-muted-foreground">
-          {Math.round(meal.calories)} kcal • P{Math.round(meal.protein)}g
+        <p className="text-xs text-muted-foreground tabular-nums">
+          {Math.round(meal.calories)} kcal · P{Math.round(meal.protein)}g · F{Math.round(meal.fats)}g · C{Math.round(meal.carbs)}g
         </p>
       </div>
       
-      {/* Delete */}
-      <motion.button
-        whileTap={{ scale: 0.9 }}
-        onClick={() => onDelete(meal.id)}
-        className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
-        aria-label="Mahlzeit löschen"
-      >
-        <Trash2 className="w-4 h-4" />
-      </motion.button>
+      {/* Actions */}
+      <div className="flex items-center gap-1">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onEdit(meal)}
+          className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-primary/10"
+          aria-label="Mahlzeit bearbeiten"
+        >
+          <Pencil className="w-4 h-4" />
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onDuplicate(meal)}
+          className="p-2 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-primary/10"
+          aria-label="Mahlzeit duplizieren"
+        >
+          <Copy className="w-4 h-4" />
+        </motion.button>
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => onDelete(meal.id)}
+          className="p-2 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+          aria-label="Mahlzeit löschen"
+        >
+          <Trash2 className="w-4 h-4" />
+        </motion.button>
+      </div>
     </motion.div>
   );
 };
@@ -135,6 +148,37 @@ export const NutritionDaySheet: React.FC<NutritionDaySheetProps> = ({
     if (info.offset.y > 100 || info.velocity.y > 500) {
       onClose();
     }
+  };
+
+  // Edit meal: prefill data and open dialog
+  const handleEditMeal = (meal: TodayMeal) => {
+    const prefillData = {
+      id: meal.id, // Include ID for update mode
+      title: meal.text || meal.title || '',
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fats: meal.fats,
+      mode: 'edit' as const
+    };
+    localStorage.setItem('prefill_meal', JSON.stringify(prefillData));
+    onClose();
+    onAddMeal();
+  };
+
+  // Duplicate meal: same data but no ID (creates new)
+  const handleDuplicateMeal = (meal: TodayMeal) => {
+    const prefillData = {
+      title: meal.text || meal.title || '',
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fats: meal.fats,
+      mode: 'duplicate' as const
+    };
+    localStorage.setItem('prefill_meal', JSON.stringify(prefillData));
+    onClose();
+    onAddMeal();
   };
 
   return (
@@ -297,6 +341,8 @@ export const NutritionDaySheet: React.FC<NutritionDaySheetProps> = ({
                         key={meal.id} 
                         meal={meal} 
                         onDelete={deleteMeal}
+                        onEdit={handleEditMeal}
+                        onDuplicate={handleDuplicateMeal}
                       />
                     ))}
                   </AnimatePresence>
