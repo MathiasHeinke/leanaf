@@ -1,106 +1,180 @@
 
-# Bug Fix: Action Card und Widget zeigen falsche/fehlende Supplements
 
-## Gefundene Probleme
+# Fix: Layer 3 Supplement-Synchronisation mit Intake-Logs
 
-### Problem 1: Action Card zeigt "bedtime" nicht (Screenshot 1)
+## Problem
 
-**Ursache:** Die `SupplementTimingCircles.tsx` verwendet eine veraltete `TIMING_ORDER`:
+Layer 3 (Stack Architect → Tagesablauf) zeigt immer "0/3 erledigt" an, auch wenn in Layer 1 oder 2 bereits Supplements abgehakt wurden.
 
-```typescript
-// AKTUELL (falsch):
-const TIMING_ORDER = ['morning', 'noon', 'evening', 'pre_workout', 'post_workout', 'before_bed']
-
-// TIMING_CONFIG hat auch nur 'before_bed', nicht 'bedtime'
-```
-
-Layer 3 speichert aber `preferred_timing: 'bedtime'` (nicht `before_bed`). Deshalb werden Supplements mit Timing "bedtime" komplett ignoriert.
-
-### Problem 2: Action Card zeigt max. 4-5 Icons
-
-Es gibt kein hartes Limit in der Komponente - das Problem ist, dass nur die Timings angezeigt werden, die in `TIMING_ORDER` und `TIMING_CONFIG` definiert sind. "bedtime" fehlt dort, deshalb erscheint es nicht.
-
-### Problem 3: Widget "1/13" ist falsch berechnet (Screenshot 2)
-
-**Ursache:** In `SupplementsWidget.tsx`:
+**Ursache:** Die Komponente `SupplementTimeline.tsx` verwendet nur lokalen State:
 
 ```typescript
-// Zeile 67: Nur die ersten 4 Supplements werden geholt
-const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({...}));
-
-// Zeile 72: takenCount wird nur aus diesen 4 berechnet
-const takenCount = items.filter(i => i.taken).length;
-
-// Zeile 74-77: Aber total kommt von allen Supplements
-return {
-  taken: takenCount,  // <- Nur aus 4 Items
-  total: activeSupps.length,  // <- Alle 13
-};
+// AKTUELL (Problem):
+const [completedStacks, setCompletedStacks] = useState<Set<PreferredTiming>>(new Set());
 ```
 
-Das bedeutet: Wenn Supplement #5-13 taken sind, zeigt das Widget trotzdem nur den Status der ersten 4.
+Dieser State ist komplett von der `supplement_intake_log`-Datenbanktabelle entkoppelt.
 
 ---
 
 ## Loesung
 
-### Fix 1: SupplementTimingCircles.tsx - bedtime hinzufuegen
+### 1. Intake-Logs in useUserStackByTiming laden
+
+Die Hook `useUserStackByTiming()` muss zusaetzlich die heutigen Intake-Logs abfragen:
 
 ```typescript
-// TIMING_ORDER: bedtime statt before_bed (Layer 3 Standard)
-const TIMING_ORDER = ['morning', 'noon', 'evening', 'bedtime', 'pre_workout', 'post_workout'] as const;
+// src/hooks/useSupplementLibrary.ts
 
-// TIMING_CONFIG: bedtime ergaenzen
-const TIMING_CONFIG: Record<string, { icon: LucideIcon; label: string }> = {
-  morning: { icon: Sunrise, label: 'Morgens' },
-  noon: { icon: Sun, label: 'Mittags' },
-  evening: { icon: Moon, label: 'Abends' },
-  bedtime: { icon: BedDouble, label: 'Vor Schlaf' },  // NEU
-  pre_workout: { icon: Dumbbell, label: 'Pre-WO' },
-  post_workout: { icon: Dumbbell, label: 'Post-WO' },
-  // Legacy fallback fuer alte Daten
-  before_bed: { icon: BedDouble, label: 'Vor Schlaf' },
+export const useUserStackByTiming = () => {
+  const { user } = useAuth();
+  const { data: stack, ...rest } = useUserStack();
+  const today = new Date().toISOString().split('T')[0];
+
+  // NEU: Heutige Intake-Logs laden
+  const { data: todayIntakes } = useQuery({
+    queryKey: ['supplement-intakes-today', user?.id, today],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('supplement_intake_log')
+        .select('user_supplement_id, timing, taken')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .eq('taken', true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 30, // 30 Sekunden
+  });
+
+  // Set fuer schnellen Lookup
+  const takenSet = new Set(
+    (todayIntakes || []).map(i => `${i.user_supplement_id}|${i.timing}`)
+  );
+
+  const activeStack = (stack || []).filter(item => item.is_active);
+
+  const groupedByTiming = activeStack.reduce((acc, item) => {
+    const timing = item.preferred_timing || 'morning';
+    if (!acc[timing]) acc[timing] = [];
+    acc[timing].push({
+      ...item,
+      isTakenToday: takenSet.has(`${item.id}|${timing}`) // NEU: Taken-Status
+    });
+    return acc;
+  }, {} as Record<PreferredTiming, UserStackItem[]>);
+
+  return { groupedByTiming, activeStack, todayIntakes, stack, ...rest };
 };
 ```
 
-Ausserdem muss `getCurrentTimingPhase()` aktualisiert werden:
+### 2. ProtocolBundleCard: Log-Funktion und Status
+
+Die Karte muss:
+- Den "bereits genommen"-Status anzeigen (individuelle Items)
+- Beim "Stack abschliessen" alle Items in die DB schreiben
 
 ```typescript
-const getCurrentTimingPhase = (): string => {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11) return 'morning';
-  if (hour >= 11 && hour < 14) return 'noon';
-  if (hour >= 14 && hour < 17) return 'pre_workout';
-  if (hour >= 17 && hour < 21) return 'evening';
-  return 'bedtime';  // 21:00 - 04:59 (statt before_bed)
+// src/components/supplements/ProtocolBundleCard.tsx
+
+interface ProtocolBundleCardProps {
+  // ... bestehende Props
+  takenIds?: Set<string>; // NEU: IDs der bereits genommenen Supplements
+  onLogStack?: (timing: PreferredTiming, supplementIds: string[]) => Promise<void>; // NEU
+}
+
+// Im Footer:
+<Button onClick={() => onLogStack?.(timing, supplements.map(s => s.id))}>
+  Stack abschliessen
+</Button>
+```
+
+### 3. SupplementTimeline: Completion-Berechnung aus Daten
+
+Statt lokalem State die Completion aus den Intake-Daten berechnen:
+
+```typescript
+// src/components/supplements/SupplementTimeline.tsx
+
+export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
+  groupedByTiming,
+  todayIntakes,  // NEU: von Parent uebergeben
+  onLogStack,    // NEU: Callback zum Loggen
+  // ...
+}) => {
+  // Berechne completed stacks aus Datenbank-Daten
+  const completedStacks = useMemo(() => {
+    const completed = new Set<PreferredTiming>();
+    const takenMap = new Map<string, Set<string>>(); // timing -> Set<supplementId>
+
+    // Gruppiere Intakes nach Timing
+    (todayIntakes || []).forEach(intake => {
+      if (!takenMap.has(intake.timing)) {
+        takenMap.set(intake.timing, new Set());
+      }
+      takenMap.get(intake.timing)!.add(intake.user_supplement_id);
+    });
+
+    // Pruefe ob alle Supplements eines Timings genommen wurden
+    Object.entries(groupedByTiming).forEach(([timing, supplements]) => {
+      if (supplements.length > 0) {
+        const takenInTiming = takenMap.get(timing) || new Set();
+        const allTaken = supplements.every(s => takenInTiming.has(s.id));
+        if (allTaken) {
+          completed.add(timing as PreferredTiming);
+        }
+      }
+    });
+
+    return completed;
+  }, [groupedByTiming, todayIntakes]);
+
+  // Kein useState mehr noetig!
 };
 ```
 
-### Fix 2: SupplementsWidget.tsx - korrekte Zaehlung
+### 4. SupplementsPage: Log-Handler und Event-Listener
 
 ```typescript
-// VORHER (falsch):
-const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({
-  name: supp.custom_name || supp.name || 'Supplement',
-  taken: takenMap.has(supp.id)
-}));
-const takenCount = items.filter(i => i.taken).length;
+// src/pages/SupplementsPage.tsx
 
-// NACHHER (korrekt):
-// Zuerst korrekte Gesamtzaehlung aus ALLEN Supplements
-const takenCount = activeSupps.filter(supp => takenMap.has(supp.id)).length;
+const handleLogStack = async (timing: PreferredTiming, supplementIds: string[]) => {
+  if (!user) return;
+  const today = new Date().toISOString().split('T')[0];
 
-// Dann nur Display-Items fuer die UI (max 4)
-const items: SupplementItem[] = activeSupps.slice(0, 4).map(supp => ({
-  name: supp.custom_name || supp.name || 'Supplement',
-  taken: takenMap.has(supp.id)
-}));
+  const logs = supplementIds.map(id => ({
+    user_id: user.id,
+    user_supplement_id: id,
+    timing,
+    taken: true,
+    date: today,
+  }));
 
-return {
-  taken: takenCount,  // <- Jetzt aus allen Supplements
-  total: activeSupps.length,
-  items
+  const { error } = await supabase
+    .from('supplement_intake_log')
+    .upsert(logs, { onConflict: 'user_supplement_id,date,timing' });
+
+  if (error) {
+    toast.error('Fehler beim Speichern');
+    return;
+  }
+
+  haptics.success();
+  refetchTimeline();
+  window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
 };
+
+// Event-Listener fuer Cross-Layer Sync
+useEffect(() => {
+  const handleStackChanged = () => {
+    refetchTimeline();
+    refetchInventory();
+  };
+  window.addEventListener('supplement-stack-changed', handleStackChanged);
+  return () => window.removeEventListener('supplement-stack-changed', handleStackChanged);
+}, [refetchTimeline, refetchInventory]);
 ```
 
 ---
@@ -109,18 +183,17 @@ return {
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/components/home/cards/SupplementTimingCircles.tsx` | `TIMING_ORDER` auf `bedtime` umstellen, `TIMING_CONFIG` mit `bedtime` ergaenzen, `getCurrentTimingPhase()` fixen |
-| `src/components/home/widgets/SupplementsWidget.tsx` | `takenCount` aus allen Supplements berechnen (nicht nur aus slice(0,4)) |
+| `src/hooks/useSupplementLibrary.ts` | `useUserStackByTiming()` um Intake-Log-Query erweitern, `todayIntakes` zurueckgeben |
+| `src/components/supplements/SupplementTimeline.tsx` | `completedStacks` aus Props berechnen statt lokalem State; `onLogStack` Callback aufrufen |
+| `src/components/supplements/ProtocolBundleCard.tsx` | `takenIds` und `onLogStack` Props hinzufuegen; Visual State fuer bereits genommene Items |
+| `src/pages/SupplementsPage.tsx` | `handleLogStack` implementieren; Event-Listener fuer Cross-Layer Sync |
 
 ---
 
 ## Erwartetes Resultat
 
-**Action Card:**
-- Zeigt jetzt alle 6 Timing-Icons: Morgens, Mittags, Abends, Vor Schlaf, Pre-WO, Post-WO
-- Um 20:58 Uhr ist "Abends" (evening) als aktuell hervorgehoben
-- Ab 21:00 Uhr wechselt die Hervorhebung auf "Vor Schlaf" (bedtime)
+1. Layer 3 zeigt den korrekten Status ("2/3 erledigt") basierend auf echten DB-Daten
+2. Wenn in Layer 1/2 ein Supplement abgehakt wird, aktualisiert sich Layer 3 automatisch
+3. "Stack abschliessen" in Layer 3 schreibt in dieselbe `supplement_intake_log`-Tabelle
+4. Alle Layer sind vollstaendig synchronisiert
 
-**Widget:**
-- "X/13" zeigt die korrekte Anzahl eingenommener Supplements
-- Die Liste zeigt weiterhin nur 4 Items (UI-Platzersparnis), aber der Zaehler ist akkurat
