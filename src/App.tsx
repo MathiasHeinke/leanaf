@@ -30,6 +30,7 @@ import NotFound from "./pages/NotFound";
 import { AdminPage } from "./pages/Admin";
 import { PersonaEditor } from "./pages/Admin/PersonaEditor";
 import ConversationAnalytics from "./pages/Admin/ConversationAnalytics";
+import AdminSeedPage from "./pages/AdminSeedPage";
 import TransformationJourneyPage from "./pages/TransformationJourney";
 import Bloodwork from "./pages/Bloodwork";
 import ProtocolPage from "./pages/Protocol";
@@ -97,6 +98,7 @@ const App = () => (
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/admin/personas" element={<PersonaEditor />} />
                       <Route path="/admin/conversation-analytics" element={<ConversationAnalytics />} />
+                      <Route path="/admin/seed-supplements" element={<AdminSeedPage />} />
                       {/* Redirect old subscription route */}
                       <Route path="/subscription" element={<Navigate to="/credits" replace />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
