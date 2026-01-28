@@ -13,6 +13,18 @@ export interface SupplementBrand {
 }
 
 export const SUPPLEMENT_BRANDS: SupplementBrand[] = [
+  // Tier 0: Pharmacy Premium (Neu hinzugefügt)
+  {
+    name: 'Biogena',
+    slug: 'biogena',
+    country: 'EU',
+    website: 'biogena.com',
+    price_tier: 'luxury',
+    specialization: ['longevity', 'premium', 'reinsubstanzen'],
+    quality_certifications: ['GMP', 'ISO22000', 'HACCP'],
+    description: 'Salzburger Premium-Hersteller. Reinsubstanzen ohne Zusätze.'
+  },
+  
   // Tier 1: Premium Longevity & Qualität
   {
     name: 'Sunday Natural',
