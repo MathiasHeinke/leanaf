@@ -1,263 +1,180 @@
 
-# ARES "Situational Intelligence" - Der Freund mit Biss (Gummiband-Prinzip)
+# Tiefschlaf-Tracking: Widget + Layer 2 Input
 
-## Die Philosophie
+## Übersicht
 
-ARES ist und bleibt dein **lockerer Kumpel** in der Bar. Er lacht mit dir, macht Witze, redet über alles.
-
-**Aber:** Wenn du ihm erzählst, dass du deine Träume aufgibst weil du "keine Zeit" hast, verändert er kurz den Tonfall, schaut dir in die Augen und sagt: *"Hör auf, dir was vorzumachen."*
-
-Danach bestellt er das nächste Bier und ist wieder locker.
-
-**Das ist das Gummiband-Prinzip:**
-- ARES spannt sich an wenn nötig
-- ARES entspannt sich sofort wieder
-- Kein permanenter Persönlichkeitswechsel
+Das ARES Protocol definiert ≥1.5h Tiefschlaf als kritischen Marker (Phase 0 Checklist), aber aktuell gibt es:
+- **Keine Datenbank-Spalte** für `deep_sleep_minutes`
+- **Keine Eingabemöglichkeit** im SleepLogger
+- **Keine Anzeige** im SleepWidget oder SleepDaySheet
 
 ---
 
-## Der kritische Unterschied: Venting vs. Excuses
-
-| Situation | Trigger? | ARES Reaktion |
-|-----------|----------|---------------|
-| "Mann, heute war stressig!" | ❌ NEIN (Venting) | Kumpel bleibt Kumpel: "Uff, kenn ich. Was ist passiert?" |
-| "Hab zu viel gegessen, war lecker." | ❌ NEIN (Ehrlich) | "Haha, war's das wert? 😄 Morgen gleichen wir aus." |
-| "Hab's verkackt, sorry." | ❌ NEIN (Ehrlich) | "Respekt für die Ehrlichkeit. Haken dran, weiter." |
-| "Ich konnte nicht trainieren WEIL Stress." | ✅ JA (Excuse) | Reality Audit aktiviert |
-| "Brauchte Nervennahrung WEIL Chef doof." | ✅ JA (Excuse) | Reality Audit aktiviert |
-
-**Der Trigger ist die KAUSALITÄT:** "weil", "musste", "konnte nicht" + Negativ-Keyword + Ziel-Verfehlung
-
----
-
-## Architektur: Elastische Dials
+## Architektur
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         BASE PERSONALITY (Der Kumpel)                        │
+│                         DATENBANK MIGRATION                                  │
 │                                                                              │
-│         warmth: 8  |  directness: 6  |  humor: 7  |  challenge: 5           │
+│     sleep_tracking                                                          │
+│     ├── ... (bestehende Felder)                                             │
+│     └── + deep_sleep_minutes INTEGER (NEW)  ← Tiefschlaf in Minuten         │
+│                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
-                    Narrative + Failure detected?
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         SLEEP LOGGER (Layer 2 Input)                         │
+│                                                                              │
+│     SleepLogger.tsx                                                          │
+│     └── Schlaf-Details Accordion                                            │
+│         ├── Eingeschlafen (besteht)                                         │
+│         ├── Aufgewacht (besteht)                                            │
+│         ├── Unterbrechungen (besteht)                                       │
+│         └── + TIEFSCHLAF SLIDER (NEU)                                       │
+│             └── 0 - 180 min, Step 5, Default 60                             │
+└─────────────────────────────────────────────────────────────────────────────┘
                                     │
-              ┌─────────────────────┴─────────────────────┐
-              │ NEIN                                      │ JA
-              ▼                                           ▼
-┌──────────────────────────────┐         ┌──────────────────────────────┐
-│     FRIEND MODE (Default)    │         │    AUDITOR MODE (Temporary)  │
-│                              │         │                              │
-│  warmth: 8                   │         │  warmth: 4  (−4)             │
-│  directness: 6               │         │  directness: 9 (+3)          │
-│  humor: 7                    │         │  humor: 0  (−7)              │
-│  challenge: 5                │         │  challenge: 8 (+3)           │
-│                              │         │                              │
-│  "Locker, witzig, kumpelhaft"│         │  "Präzise, strategisch"      │
-└──────────────────────────────┘         └──────────────────────────────┘
-                                                         │
-                                         User akzeptiert?
-                                         ("Hast recht")
-                                                         │
-                                                         ▼
-                              ╔══════════════════════════════════════════════╗
-                              ║           SNAP-BACK (Im selben Turn!)        ║
-                              ║                                              ║
-                              ║  "Das war ne Ausrede. [AUDIT]                ║
-                              ║   ...                                        ║
-                              ║   Aber hey, morgen packen wir's. [FRIEND]"   ║
-                              ╚══════════════════════════════════════════════╝
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         ANZEIGE KOMPONENTEN                                  │
+│                                                                              │
+│  SleepWidget.tsx (flat/medium/large)                                        │
+│  └── Zeigt Tiefschlaf als Secondary Value                                   │
+│      z.B. "7.5h · 1.5h Tief" oder Mini-Progress zur 1.5h-Zielmarke         │
+│                                                                              │
+│  SleepDaySheet.tsx (Layer 2)                                                │
+│  └── Hero Section erweitern um Tiefschlaf-Anzeige                          │
+│  └── Neuer Badge in Einflussfaktoren: "1h 30m Tiefschlaf"                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 1: Narrative Detector (Der Trigger)
+## Phase 1: Datenbank-Migration
 
-### Neue Datei: `_shared/coaching/narrativeDetector.ts`
+Neue Spalte in `sleep_tracking`:
 
-**Strikte Trigger-Logik (Venting vs. Excuse):**
+| Spalte | Typ | Default | Beschreibung |
+|--------|-----|---------|--------------|
+| `deep_sleep_minutes` | INTEGER | NULL | Tiefschlaf in Minuten (optional) |
 
-```text
-EXCUSE = Causality Pattern + Negative Keyword + (optional: Ziel-Verfehlung)
-
-Causality Patterns:
-- "weil", "aber", "eigentlich", "musste", "konnte nicht", "hatte keine"
-- "deswegen", "darum", "deshalb"
-
-Negative Keywords:
-- "stress", "müde", "zeit", "erschöpft", "überfordert"
-- "chef", "arbeit", "partner", "freunde" (external blame)
-
-VENTING = Negative Expression OHNE Causality
-- "Mann, war das stressig!" → Kein "weil/aber" → Kein Trigger
-- "Bin so müde heute" → Venting, kein Trigger
-
-HONEST ADMISSION = Ziel-Verfehlung OHNE Excuse
-- "Hab zu viel gegessen" → Kein "weil" → Kein Trigger
-- "Hab's verkackt" → Ehrlich → Kein Trigger
+**Migration SQL:**
+```sql
+ALTER TABLE sleep_tracking 
+ADD COLUMN deep_sleep_minutes INTEGER;
 ```
 
-**Output:**
+---
 
+## Phase 2: SleepLogger erweitern
+
+### 2.1 Neuer State
 ```typescript
-interface NarrativeAnalysis {
-  detected: boolean;          // Wurde eine Excuse erkannt?
-  isVenting: boolean;         // Nur Venting (kein Trigger)
-  isHonestAdmission: boolean; // Ehrliche Admission (kein Trigger)
-  excuseType: ExcuseType | null;
-  originalClaim: string;
-  confidence: number;
-}
-
-type ExcuseType = 
-  | 'excuse_time'      // "keine Zeit", "kam nicht dazu"
-  | 'excuse_energy'    // "müde", "erschöpft"
-  | 'excuse_emotional' // "brauchte das", "Nervennahrung"
-  | 'excuse_external'  // "Chef", "Partner", "Wetter"
-  | 'rationalization'; // "muss auch mal", "ist ja okay"
+const [deepSleep, setDeepSleep] = useState<number>(0); // in Minuten
 ```
 
----
+### 2.2 Neuer Slider im "Schlaf-Details" Accordion
 
-## Phase 2: Identity Checker (Protocol Mode als Standard)
+Position: Nach "Unterbrechungen", vor Ende des Accordion-Contents
 
-### Neue Datei: `_shared/coaching/identityChecker.ts`
+**Design:**
+- Label: "Tiefschlaf"
+- Slider: 0 - 180 min (3h max)
+- Step: 5 min
+- Anzeige: "X h Y min" Format
+- Farbe: Indigo (passend zum Schlaf-Thema)
+- Optional: Zielmarke bei 90 min (1.5h) als visueller Hinweis
 
-Nutzt den `protocol_mode` des Users als Identitäts-Ankerpunkt:
-
-| Protocol Mode | Identity Label | Challenge Baseline |
-|---------------|----------------|-------------------|
-| `natural` | "Fundament-Builder" | Moderate (5) |
-| `enhanced` | "Advanced Protocol" | Höher (7) |
-| `clinical` | "Elite Athlete" | Maximum (9) |
-| `enhanced,clinical` | "Peak Performance" | Maximum (9) |
-
-**Im Audit-Modus referenziert ARES diesen Standard:**
-- "Du hast Clinical Mode gewählt. Das ist Elite-Protokoll."
-- "Dein Advanced-Protokoll erwartet mehr von dir."
-
----
-
-## Phase 3: Elastic Persona Resolver
-
-### Änderungen in `_shared/persona/promptBuilder.ts`
-
-**NEUE Logik in `resolvePersonaWithContext`:**
-
-Die entscheidende Änderung: Der Reality Audit Override kommt **VOR** den normalen Mood-Anpassungen und überschreibt die Sozialarbeiter-Logik.
-
+### 2.3 trackEvent erweitern
 ```typescript
-// ═══════════════════════════════════════════════════════════════════════════
-// SITUATIONAL INTELLIGENCE: Reality Audit Override
-// Kommt VOR den Mood-Anpassungen!
-// ═══════════════════════════════════════════════════════════════════════════
-if (context.narrativeDetected && !context.isHonestAdmission) {
-  // ELASTIC DIAL MODIFIERS (temporary for this response only)
-  baseDials.warmth = Math.min(baseDials.warmth, 4);      // Cap at 4
-  baseDials.directness = Math.max(baseDials.directness, 9); // Floor at 9
-  baseDials.humor = Math.min(baseDials.humor, 1);        // Nearly disable
-  baseDials.challenge = Math.max(baseDials.challenge, 8);  // Floor at 8
-  appliedModifiers.push('reality_audit_active');
-  
-  // WICHTIG: Skip die normale empathy_mode Logik!
-  // Wir wollen NICHT warmth +30% bei frustrated + excuse
-}
-
-// Die normale Mood-Logik (Zeile 307-312) läuft nur wenn KEIN Audit aktiv
-if (!appliedModifiers.includes('reality_audit_active')) {
-  if (context.mood === 'frustrated' || context.mood === 'overwhelmed') {
-    baseDials.warmth = Math.min(10, Math.round(baseDials.warmth * 1.3));
-    // ... normale Empathie-Logik
-  }
-}
+await trackEvent('sleep', { 
+  // ... bestehende Felder
+  deep_sleep_minutes: deepSleep > 0 ? deepSleep : undefined
+});
 ```
 
 ---
 
-## Phase 4: Situational Awareness Prompt Section
+## Phase 3: useAresEvents anpassen
 
-### Änderungen in `_shared/context/intelligentPromptBuilder.ts`
-
-**NEUE Sektion nach Mood Detection (nach Zeile 236):**
-
-```text
-== SITUATIONAL AWARENESS ==
-CURRENT MODE: [FRIEND / AUDITOR]
-
-### IF FRIEND (Default):
-- Sei locker, nutze Emojis, "Lockerroom Talk"
-- Wenn der User ehrlich einen Fehler zugibt ("Hab's verkackt"):
-  → High-Five für Ehrlichkeit, dann Lösung
-  → NICHT schimpfen!
-- Venting ("War stressig!") → Mitfühlen, KEIN Audit
-
-### IF AUDITOR (Nur bei Excuse + Failure):
-- Drop the fluff. Sprich wie ein Stratege.
-- Referenziere die User-Identität (Clinical/Natural Mode)
-- ZIEL: Kurzer Schock → Awareness → Dann Hand reichen
-
-### KRITISCH - DAS GUMMIBAND:
-Sobald du den Reality Check gemacht hast, wechsle SOFORT zurück zu Friend.
-Beende den Audit-Teil mit einem Brücken-Satz:
-"[Audit-Inhalt]... Aber hey, wir fixen das morgen. Du packst das. [Friend]"
-
-### VERBOTEN:
-- "Ist schon okay" bei echten Ausreden
-- "Ich verstehe" ohne Korrektur
-- Therapeuten-Sprache ("Wie fühlst du dich?")
-- Ausreden als valide Gründe akzeptieren
-```
-
-**ERSETZEN der alten Frustrations-Logik (Zeile 334-340):**
-
+In `useAresEvents.ts`, Zeile ~226, das Sleep-Payload erweitern:
 ```typescript
-// ALT:
-if (frustrationWords.some(w => lowerMessage.includes(w))) {
-  instructions.push('Sei besonders empathisch...');  // ❌ Immer empathisch
-}
-
-// NEU:
-if (frustrationWords.some(w => lowerMessage.includes(w))) {
-  // Nur empathisch wenn KEINE Excuse detected!
-  if (!narrativeAnalysis?.detected) {
-    instructions.push(
-      'Der User klingt frustriert, ist aber ehrlich. ' +
-      'Zeige Verständnis und biete einen konkreten nächsten Schritt.'
-    );
-  }
-  // Wenn Excuse → Reality Audit Section übernimmt
+if (category === 'sleep' && payload.sleep_hours) {
+  const { error } = await supabase.from('sleep_tracking').upsert({
+    // ... bestehende Felder
+    deep_sleep_minutes: payload.deep_sleep_minutes || null,
+  });
 }
 ```
 
 ---
 
-## Phase 5: Der "Snap-Back" im selben Turn
+## Phase 4: SleepDaySheet Anzeige
 
-Die Magie des Gummibands: ARES kann in **derselben Nachricht** vom Auditor zum Freund zurückwechseln.
+### 4.1 Query erweitern
+Die Query holt bereits `*`, also alle Felder - keine Änderung nötig.
 
-**Beispiel-Antwort-Struktur:**
+### 4.2 Hero Section erweitern
 
-```text
-[AUDIT-TEIL]
-"Ergebnis-Check: 500kcal über Ziel.
-Die 'Nervennahrung'-Story ist ein biochemischer Irrtum – Zucker erhöht Cortisol.
-Du hast Clinical Mode gewählt. Elite-Protokoll = Elite-Disziplin."
-
-[BRÜCKE]
-"Was ist der Algorithmus für den nächsten Stress-Moment?"
-
-[FRIEND-TEIL]
-"Aber hey, Haken dran. Morgen ist neu. 💪"
+Im Hero-Bereich (nach der Qualitäts-Anzeige) optional Tiefschlaf anzeigen:
+```tsx
+{todayEntry?.deep_sleep_minutes > 0 && (
+  <p className="text-sm text-muted-foreground mt-1">
+    💤 {Math.floor(todayEntry.deep_sleep_minutes / 60)}h {todayEntry.deep_sleep_minutes % 60}m Tiefschlaf
+  </p>
+)}
 ```
 
-**Prompt-Anweisung:**
-```text
-RESPONSE STRUCTURE bei Reality Audit:
-1. Ergebnis-Check (nüchtern, 1 Satz)
-2. Story-Bust (sachlich, 1-2 Sätze)
-3. Identitäts-Referenz (kurz)
-4. System-Frage (Was ändern wir?)
-5. BRÜCKE ZURÜCK: "Aber..." + aufmunternder Closer + Emoji
+### 4.3 Einflussfaktoren-Badge
+
+Neuer Badge in der "Einflussfaktoren"-Sektion:
+```tsx
+{deepSleepMinutes > 0 && (
+  <div className={cn(
+    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm",
+    deepSleepMinutes >= 90 
+      ? "bg-indigo-500/10 text-indigo-500"  // Ziel erreicht
+      : "bg-orange-500/10 text-orange-500"   // Unter Ziel
+  )}>
+    <Moon className="w-3.5 h-3.5" />
+    <span>{formatDeepSleep(deepSleepMinutes)} Tiefschlaf</span>
+  </div>
+)}
 ```
+
+---
+
+## Phase 5: SleepWidget erweitern
+
+### 5.1 Query erweitern
+```typescript
+const { data: sleepRecords } = await supabase
+  .from('sleep_tracking')
+  .select('date, sleep_hours, deep_sleep_minutes')  // + deep_sleep_minutes
+  .eq('user_id', user.id)
+  .in('date', dates);
+```
+
+### 5.2 Flat Size Anzeige
+Zeige Tiefschlaf als sekundären Wert:
+```tsx
+{/* Value */}
+<div className="relative z-10 flex items-center gap-2 shrink-0">
+  <span className="text-sm font-bold text-foreground">
+    {sleepHours > 0 ? `${sleepHours.toFixed(1)}h` : '--'}
+  </span>
+  {deepSleep > 0 && (
+    <span className="text-xs text-indigo-400">
+      💤 {formatDeepSleep(deepSleep)}
+    </span>
+  )}
+</div>
+```
+
+### 5.3 Medium/Large Size
+Erweitere die Detail-Anzeige um Tiefschlaf-Info.
 
 ---
 
@@ -265,81 +182,55 @@ RESPONSE STRUCTURE bei Reality Audit:
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `_shared/coaching/narrativeDetector.ts` | **CREATE** | Venting vs. Excuse Detection |
-| `_shared/coaching/identityChecker.ts` | **CREATE** | Protocol Mode → Identity |
-| `_shared/coaching/index.ts` | **CREATE** | Exports |
-| `_shared/persona/promptBuilder.ts` | **EDIT** | Elastic Dial Override (VOR Mood-Logik) |
-| `_shared/persona/types.ts` | **EDIT** | Neue Felder in PersonaResolutionContext |
-| `_shared/context/intelligentPromptBuilder.ts` | **EDIT** | Situational Awareness Section |
-| `coach-orchestrator-enhanced/index.ts` | **EDIT** | Narrative + Identity in Context laden |
+| Supabase Migration | **CREATE** | Neue Spalte `deep_sleep_minutes` |
+| `src/components/home/loggers/SleepLogger.tsx` | **EDIT** | +Tiefschlaf-Slider im Accordion |
+| `src/hooks/useAresEvents.ts` | **EDIT** | +deep_sleep_minutes in Payload |
+| `src/components/home/sheets/SleepDaySheet.tsx` | **EDIT** | +Tiefschlaf-Anzeige in Hero + Badge |
+| `src/components/home/widgets/SleepWidget.tsx` | **EDIT** | +Tiefschlaf in Query + Display |
 
 ---
 
-## Beispiel-Transformationen
+## UI-Design Details
 
-### Szenario A: Venting (KEIN Trigger)
+### Tiefschlaf-Slider im Logger
 
-**User:** "Mann, heute war echt stressig!"
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  Tiefschlaf                                           1h 30min  │
+│  ○━━━━━━━━━━━━━━━━●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━○  │
+│  0 min         ▲ Ziel: 1.5h                              3h     │
+│                │                                                 │
+│                └── Optionale Ziel-Markierung                     │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-**ARES (Freund-Modus):**
-> "Uff, kenn ich. 😮‍💨 Was war los? Chef-Drama oder generelles Chaos?"
+### Widget Display (Flat)
 
-### Szenario B: Ehrliche Admission (KEIN Trigger)
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  🌙  Schlaf  │▋▌▍▎▏│  7.5h  💤 1h 30m                           │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-**User:** "Hab zu viel gegessen, war lecker." (500kcal über Ziel)
+### Day Sheet Badge
 
-**ARES (Freund-Modus):**
-> "Haha, war's das wert? 😄 Okay, 500kcal drüber, passiert. Morgen gleichen wir das aus – vielleicht ein längerer Walk? Deal?"
-
-### Szenario C: Excuse (TRIGGER!)
-
-**User:** "Hab zu viel gegessen WEIL es stressig war." (500kcal über Ziel)
-
-**ARES (Auditor → Freund):**
-> "Ergebnis-Check: 500kcal über Ziel – das sabotiert die Woche.
->
-> Die 'Stress-Essen'-Story ist ein biochemischer Irrtum: Zucker erhöht Cortisol langfristig, nicht umgekehrt.
->
-> Du hast Clinical Mode gewählt. Das ist Elite-Protokoll.
->
-> Was ist der neue Algorithmus für den nächsten Stress-Moment? Spazieren? Kalt duschen?
->
-> Aber hey – Haken dran für heute. Morgen rocken wir. 💪"
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  🌙 1h 30m Tiefschlaf    (Indigo, wenn ≥90min)                  │
+│  🌙 45m Tiefschlaf       (Orange, wenn <90min)                  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Implementierungsreihenfolge
 
-1. **narrativeDetector.ts** erstellen
-   - Pattern-Matching für Causality + Negative Keywords
-   - Unterscheidung Venting vs. Excuse vs. Honest Admission
-   
-2. **identityChecker.ts** erstellen
-   - Protocol Mode → Identity Label Mapping
-   - Challenge-Baseline pro Modus
-
-3. **coaching/index.ts** erstellen
-   - Exports für die neuen Module
-
-4. **persona/types.ts** erweitern
-   - `narrativeDetected`, `isHonestAdmission`, `excuseType` in `PersonaResolutionContext`
-
-5. **promptBuilder.ts** erweitern
-   - Reality Audit Override **VOR** Mood-Anpassungen
-   - Skip `empathy_mode` wenn Audit aktiv
-
-6. **intelligentPromptBuilder.ts** erweitern
-   - Narrative Detection aufrufen
-   - Situational Awareness Section
-   - Alte Frustrations-Empathie konditionieren
-
-7. **coach-orchestrator-enhanced/index.ts** integrieren
-   - Protocol Mode laden
-   - Narrative Analysis in Context
-
-8. **Deploy Edge Functions**
-
-9. **Testen** mit den drei Szenarien (Venting, Honest, Excuse)
+1. **Datenbank-Migration** - Neue Spalte `deep_sleep_minutes`
+2. **useAresEvents.ts** - Payload erweitern für deep_sleep_minutes
+3. **SleepLogger.tsx** - Tiefschlaf-Slider im Accordion
+4. **SleepDaySheet.tsx** - Anzeige in Hero + Einflussfaktoren
+5. **SleepWidget.tsx** - Anzeige in allen Größen
+6. **Testen** - Eingabe → Speicherung → Anzeige
 
 ---
 
@@ -347,16 +238,6 @@ RESPONSE STRUCTURE bei Reality Audit:
 
 | Metrik | Beschreibung |
 |--------|--------------|
-| **Excuse Detection Rate** | Werden echte Ausreden erkannt? |
-| **False Positive Rate** | Werden ehrliche Statements fälschlich getriggert? |
-| **Snap-Back Quality** | Wechselt ARES im selben Turn zurück zu Freund? |
-| **User Acceptance** | Fühlt sich ARES "zu hart" an? |
-
----
-
-## Sicherheits-Garantien
-
-1. **Nur bei echten Excuses:** Venting und ehrliche Admissions triggern NICHT
-2. **Snap-Back:** Sofortige Rückkehr zum Freund-Modus im selben Turn
-3. **Protocol-Mode-Sensibel:** Natural Mode ist sanfter als Clinical Mode
-4. **Fallback:** Bei Unsicherheit → Freund-Modus (kein Audit)
+| **Eingabe-Rate** | Wie oft wird Tiefschlaf erfasst? |
+| **Ziel-Erreichung** | % der Tage mit ≥90min Tiefschlaf |
+| **Widget-Nutzung** | Wird die neue Info wahrgenommen? |
