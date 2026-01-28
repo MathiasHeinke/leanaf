@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Pencil, Trash2, X, Check, Droplets, Utensils, Moon, Sun, 
-  Dumbbell, Clock, AlertCircle, RotateCcw, Sparkles
+  Dumbbell, Clock, AlertCircle, RotateCcw, Sparkles, Pill, Disc
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,25 @@ import {
 import { haptics } from '@/lib/haptics';
 import type { UserStackItem, PreferredTiming, TimingConstraint, SupplementBrand } from '@/types/supplementLibrary';
 import { TIMING_CONSTRAINT_LABELS, TIMING_CONSTRAINT_ICONS, PREFERRED_TIMING_LABELS } from '@/types/supplementLibrary';
+
+// Form-specific icon based on unit
+const getFormIcon = (unit: string): React.ReactNode => {
+  const u = unit?.toLowerCase() || '';
+  if (u.includes('tropfen') || u === 'ml' || u === 'hub') {
+    return <Droplets className="h-4 w-4 text-blue-500" />;
+  }
+  if (u === 'g' || u.includes('löffel') || u.includes('scoop') || u.includes('pulver')) {
+    return <span className="text-sm">🥄</span>;
+  }
+  if (u.includes('kapsel')) {
+    return <Pill className="h-4 w-4 text-amber-500" />;
+  }
+  if (u.includes('tabl')) {
+    return <Disc className="h-4 w-4 text-slate-500" />;
+  }
+  // IU, mg, mcg => default pill
+  return <Pill className="h-4 w-4 text-muted-foreground" />;
+};
 
 // Spring animation config
 const SPRING_CONFIG = {
@@ -202,7 +221,7 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.15 }}
             className={cn(
-              'group flex items-center gap-2 px-3 py-2 rounded-xl',
+              'group relative flex items-start gap-2 px-3 py-2 rounded-xl',
               'bg-background/80 border border-border/50',
               'hover:border-primary/30 hover:bg-background',
               'transition-colors duration-200 cursor-pointer',
@@ -213,45 +232,49 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && handleExpand()}
           >
-            {/* Pill icon */}
-            <span className="text-base shrink-0">💊</span>
+            {/* Green Checkmark for customized (top-right) */}
+            {isCustomized && (
+              <div className="absolute -top-1.5 -right-1.5 z-10">
+                <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center shadow-sm ring-2 ring-background">
+                  <Check className="h-2.5 w-2.5 text-white" />
+                </div>
+              </div>
+            )}
             
-            {/* Name + Dosage */}
-            <div className="flex-1 min-w-0 flex items-center gap-2">
-              <span className="text-sm font-medium truncate max-w-[100px]">
-                {item.name}
-              </span>
-              <span className="text-xs text-muted-foreground shrink-0">
-                {dosage}{unit}
-              </span>
+            {/* Form Icon */}
+            <div className="shrink-0 mt-0.5">
+              {getFormIcon(unit)}
             </div>
             
-            {/* Timing Constraint Badge */}
-            {constraint !== 'any' && constraintBadge && (
-              <Badge 
-                variant="secondary" 
-                className={cn(
-                  'shrink-0 text-[10px] px-1.5 py-0.5 gap-1',
-                  constraintBadge.className
-                )}
-              >
-                {constraintBadge.icon}
-                <span className="hidden sm:inline">{constraintBadge.label}</span>
-              </Badge>
-            )}
+            {/* Content with flex-wrap for two-line support */}
+            <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1 pr-8">
+              {/* Name (no truncate limit) */}
+              <span className="text-sm font-medium">
+                {item.name}
+              </span>
+              
+              {/* Dosage */}
+              <span className="text-xs text-muted-foreground">
+                {dosage}{unit}
+              </span>
+              
+              {/* Timing Constraint Badge */}
+              {constraint !== 'any' && constraintBadge && (
+                <Badge 
+                  variant="secondary" 
+                  className={cn(
+                    'text-[10px] px-1.5 py-0.5 gap-1',
+                    constraintBadge.className
+                  )}
+                >
+                  {constraintBadge.icon}
+                  <span className="hidden sm:inline">{constraintBadge.label}</span>
+                </Badge>
+              )}
+            </div>
             
-            {/* Customized Badge */}
-            {isCustomized && (
-              <Badge 
-                variant="outline" 
-                className="shrink-0 text-[10px] px-1.5 py-0.5 text-muted-foreground border-muted-foreground/30"
-              >
-                angepasst
-              </Badge>
-            )}
-            
-            {/* Action Icons (visible on hover) */}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+            {/* Action Icons (visible on hover) - absolute positioned */}
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
               <button
                 onClick={(e) => { e.stopPropagation(); handleExpand(); }}
                 className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
