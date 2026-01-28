@@ -33,6 +33,11 @@ import ConversationAnalytics from "./pages/Admin/ConversationAnalytics";
 import TransformationJourneyPage from "./pages/TransformationJourney";
 import Bloodwork from "./pages/Bloodwork";
 import ProtocolPage from "./pages/Protocol";
+import RoutinesPage from "./pages/RoutinesPage";
+import NutritionPlannerPage from "./pages/NutritionPlannerPage";
+import SupplementsPage from "./pages/SupplementsPage";
+import PeptidesPage from "./pages/PeptidesPage";
+import BioDataPage from "./pages/BioDataPage";
 import DashboardPage from "./pages/DashboardPage";
 import TrainingPage from "./pages/TrainingPage";
 import IntakePage from "./pages/IntakePage";
@@ -76,6 +81,11 @@ const App = () => (
                       <Route path="/backupanalyse" element={<BackupAnalysePage />} />
                       <Route path="/bloodwork" element={<Bloodwork />} />
                       <Route path="/protocol" element={<ProtocolPage />} />
+                      <Route path="/routines" element={<RoutinesPage />} />
+                      <Route path="/nutrition-planner" element={<NutritionPlannerPage />} />
+                      <Route path="/supplements" element={<SupplementsPage />} />
+                      <Route path="/peptides" element={<PeptidesPage />} />
+                      <Route path="/biodata" element={<BioDataPage />} />
                       <Route path="/protocol/dashboard" element={<DashboardPage />} />
                       <Route path="/protocol/training" element={<TrainingPage />} />
                       <Route path="/protocol/intake" element={<IntakePage />} />
