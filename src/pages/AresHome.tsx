@@ -10,6 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { usePointsSystem } from '@/hooks/usePointsSystem';
 import { useBioAge } from '@/hooks/useBioAge';
+import { useAresBioAge } from '@/hooks/useAresBioAge';
 import { usePlusData } from '@/hooks/usePlusData';
 import { useAresGreeting } from '@/hooks/useAresGreeting';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -108,6 +109,7 @@ export default function AresHome() {
   // Data hooks
   const { userPoints } = usePointsSystem();
   const { latestMeasurement } = useBioAge();
+  const { proxyBioAge, agingPace, chronoAge, loading: bioAgeLoading } = useAresBioAge();
   const plusData = usePlusData();
   const { userName, streak } = useAresGreeting();
   const { profileData } = useUserProfile();
@@ -340,9 +342,15 @@ export default function AresHome() {
   const level = userPoints?.current_level || 1;
   const maxXP = currentXP + pointsToNext;
 
-  // Bio age values
-  const bioAge = latestMeasurement?.calculated_bio_age || null;
-  const realAge = latestMeasurement?.chronological_age || null;
+  // Bio age values - Prioritize DunedinPACE over proxy calculation
+  const hasDunedin = latestMeasurement?.measurement_type === 'dunedin_pace';
+  const displayBioAge = hasDunedin 
+    ? latestMeasurement?.calculated_bio_age 
+    : proxyBioAge || null;
+  const displayChronoAge = chronoAge || profileData?.age || null;
+  const displayAgingPace = hasDunedin 
+    ? latestMeasurement?.dunedin_pace 
+    : agingPace || null;
 
   // Calculate progress percentage for stats popover
   const getMinPointsForLevel = (lvl: number): number => {
@@ -490,12 +498,14 @@ export default function AresHome() {
         <main className="relative z-10 max-w-md mx-auto px-5 pt-14 pb-36 space-y-5">
           
           {/* Header: Greeting + Bio Age */}
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-center">
             <AresGreeting userName={userName} streak={streak || undefined} />
             <BioAgeBadge 
-              bioAge={bioAge} 
-              realAge={realAge} 
-              chronologicalAge={profileData?.age}
+              bioAge={displayBioAge} 
+              realAge={displayChronoAge}
+              chronologicalAge={displayChronoAge}
+              agingPace={displayAgingPace}
+              loading={bioAgeLoading}
             />
           </div>
 
