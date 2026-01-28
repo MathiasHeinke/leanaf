@@ -1,169 +1,244 @@
 
-# Chip UX Improvements: Form Icons, Two-Line Layout & Green Checkmark
 
-## Aenderungen
-
-### 1. Form-Spezifische Icons (statt generisches 💊)
-
-**Neue `getFormIcon` Funktion:**
-
-| Unit | Icon | Beispiel |
-|------|------|----------|
-| `Tropfen`, `ml`, `Hub` | 💧 `Droplets` (blau) | Vitamin D Tropfen |
-| `g`, `Scoop`, `Loeffel` | 🥄 Emoji | Kreatin Pulver |
-| `Kapseln`, `Kapsel` | 💊 `Pill` (amber) | Omega-3 Kapseln |
-| `Tabletten`, `Tabl` | ⚪ `Disc` (slate) | Tabletten |
-| `IU`, `mg`, `mcg` | 🥚 `Egg` (Softgel) | Vitamin D3 Softgels |
-| Fallback | 💊 `Pill` (muted) | Alles andere |
-
-```typescript
-const getFormIcon = (unit: string): React.ReactNode => {
-  const u = unit?.toLowerCase() || '';
-  if (u.includes('tropfen') || u === 'ml' || u === 'hub') {
-    return <Droplets className="h-4 w-4 text-blue-500" />;
-  }
-  if (u === 'g' || u.includes('löffel') || u.includes('scoop')) {
-    return <span className="text-sm">🥄</span>;
-  }
-  if (u.includes('kapsel')) {
-    return <Pill className="h-4 w-4 text-amber-500" />;
-  }
-  if (u.includes('tabl')) {
-    return <Disc className="h-4 w-4 text-slate-500" />;
-  }
-  // IU, mg, mcg => Softgel style
-  return <Pill className="h-4 w-4 text-muted-foreground" />;
-};
-```
-
----
-
-### 2. Flexible Zwei-Zeilen Layout
-
-**Problem:** Bei langen Namen wie "Magnesium Glycinat" wird Text abgeschnitten.
-
-**Loesung:** `flex-wrap` erlaubt automatischen Umbruch:
-
-```text
-EINZEILIG (wenn Platz):
-+--------------------------------------------------+
-| 💧 Vitamin D3 | 5000IU | 🥑 Mit Fett         | ✓ |
-+--------------------------------------------------+
-
-ZWEIZEILIG (wenn zu lang):
-+--------------------------------------------------+
-| 💊 Magnesium Glycinat | 400mg              | ✓  |
-| 🌙 Vor Schlaf                                    |
-+--------------------------------------------------+
-```
-
-**CSS Approach:**
-```tsx
-<div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-8">
-  {/* Icon + Name + Dosierung + Constraint Badge */}
-</div>
-```
-
-- `flex-wrap`: Erlaubt Zeilenumbruch
-- `gap-x-2 gap-y-1`: Horizontaler und vertikaler Abstand
-- `pr-8`: Platz fuer den Checkmark rechts oben
-
----
-
-### 3. Gruener Checkmark statt "[angepasst]" Badge
-
-**Vorher:**
-```tsx
-<Badge variant="outline" className="text-[10px]">
-  angepasst
-</Badge>
-```
-
-**Nachher:** Absolut positionierter gruener Kreis mit Haken:
-
-```tsx
-{isCustomized && (
-  <div className="absolute -top-1.5 -right-1.5 z-10">
-    <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center shadow-sm ring-2 ring-background">
-      <Check className="h-2.5 w-2.5 text-white" />
-    </div>
-  </div>
-)}
-```
-
-**Visuelles Ergebnis:**
-```text
-                                              ✓  (gruener Kreis)
-+--------------------------------------------------+
-| 💧 Vitamin D3 | 5000IU | 🥑 Mit Fett              |
-+--------------------------------------------------+
-```
-
----
-
-## Code-Aenderungen
-
-### Datei: `src/components/supplements/ExpandableSupplementChip.tsx`
-
-1. **Neuer Import:** `Pill`, `Disc` von lucide-react
-2. **Neue Funktion:** `getFormIcon(unit: string)`
-3. **Collapsed State Layout:**
-   - Container bekommt `relative` Position
-   - Checkmark als absolutes Element oben rechts
-   - Content Area mit `flex-wrap` und `pr-8`
-   - Name ohne `truncate max-w-[100px]` Limit
-4. **Entfernen:** Das `angepasst` Badge
-
-### Collapsed State Struktur (neu):
-
-```tsx
-<motion.div className="relative group ...">
-  {/* Gruener Checkmark oben rechts */}
-  {isCustomized && (
-    <div className="absolute -top-1.5 -right-1.5 z-10">
-      <div className="w-4 h-4 rounded-full bg-green-500 ...">
-        <Check className="h-2.5 w-2.5 text-white" />
-      </div>
-    </div>
-  )}
-  
-  {/* Content mit flex-wrap */}
-  <div className="flex flex-wrap items-center gap-x-2 gap-y-1 flex-1 pr-8">
-    {/* Form Icon */}
-    <div className="shrink-0">{getFormIcon(unit)}</div>
-    
-    {/* Name (kein truncate mehr) */}
-    <span className="text-sm font-medium">{item.name}</span>
-    
-    {/* Dosierung */}
-    <span className="text-xs text-muted-foreground">{dosage}{unit}</span>
-    
-    {/* Constraint Badge */}
-    {constraint !== 'any' && <ConstraintBadge />}
-  </div>
-  
-  {/* Edit/Delete Buttons */}
-</motion.div>
-```
-
----
-
-## Ergebnis
-
-| Vorher | Nachher |
-|--------|---------|
-| 💊 Omega-... 3g 🥑 [angepasst] | 💊 Omega-3 3g 🥑 Mit Fett ✓ |
-| 💊 Magn... 400mg 🌙 | 💊 Magnesium Glycinat 400mg ✓<br>🌙 Vor Schlaf |
-| 💊 Kreatin 5g | 🥄 Kreatin 5g (Pulver-Icon) |
-| 💊 D3 Tropfen | 💧 D3 Tropfen (Tropfen-Icon) |
-
----
+# Protokoll-Tab Ueberarbeitung: Wirkebenen, Info-Sheet & bessere Labels
 
 ## Zusammenfassung
 
-| Aenderung | Datei |
-|-----------|-------|
-| `getFormIcon()` Helper | `ExpandableSupplementChip.tsx` |
-| `flex-wrap` Layout | `ExpandableSupplementChip.tsx` |
-| Gruener Checkmark | `ExpandableSupplementChip.tsx` |
-| Pill/Disc Icons Import | `ExpandableSupplementChip.tsx` |
+Der Protokoll-Tab wird von einer flachen Liste zu einem strukturierten, kategorisierten System umgebaut mit:
+1. **Meta-Kategorien-System** - 29 DB-Kategorien werden in 7 logische Wirkebenen gruppiert
+2. **Info-Sheet** - Klick auf Info-Icon oeffnet Detail-Sheet mit allen Supplement-Informationen
+3. **Bessere Labels** - "Empfohlen: 600" wird zu "600mg | Morgens | Starke Evidenz"
+
+---
+
+## 1. Meta-Kategorien (Wirkebenen-Mapping)
+
+Statt 29 technischer Kategorien sieht der User 7 verstaendliche Wirkebenen:
+
+| Meta-Kategorie | Icon | DB-Kategorien |
+|----------------|------|---------------|
+| Basis & Gesundheit | Shield | Vitamine, Mineralien, Wellness |
+| Longevity & Zellschutz | Dna | Longevity, Anti-Aging, NAD+, Antioxidantien |
+| Mental & Fokus | Brain | Nootropics, Adaptogene, Schlaf, Stress |
+| Performance & Sport | Zap | Aminosaeuren, Muskelaufbau, Muskelerhalt, Performance, Proteine, Energie, Stimulanzien |
+| Hormone & Balance | Scale | Hormone, Testosteron, TRT-Support, GLP-1 Support |
+| Darm & Verdauung | Heart | Darm, Darmgesundheit, Entzuendung |
+| Spezial & Sonstiges | Sparkles | Fettsaeuren, Beauty, Superfoods, Peptid-Synergie |
+
+### Neue Datei: `src/lib/categoryMapping.ts`
+
+```typescript
+export const META_CATEGORIES = {
+  health: {
+    id: 'health',
+    label: 'Basis & Gesundheit',
+    icon: 'Shield',
+    color: 'blue',
+    categories: ['Vitamine', 'Mineralien', 'Wellness']
+  },
+  longevity: {
+    id: 'longevity',
+    label: 'Longevity',
+    icon: 'Dna',
+    color: 'purple',
+    categories: ['Longevity', 'Anti-Aging', 'NAD+', 'Antioxidantien']
+  },
+  mental: {
+    id: 'mental',
+    label: 'Mental & Fokus',
+    icon: 'Brain',
+    color: 'cyan',
+    categories: ['Nootropics', 'Adaptogene', 'Schlaf', 'Stress']
+  },
+  performance: {
+    id: 'performance',
+    label: 'Performance',
+    icon: 'Zap',
+    color: 'yellow',
+    categories: ['Aminosäuren', 'Muskelaufbau', 'Muskelerhalt', 
+                 'Performance', 'Proteine', 'Energie', 'Stimulanzien']
+  },
+  hormones: {
+    id: 'hormones',
+    label: 'Hormone',
+    icon: 'Scale',
+    color: 'pink',
+    categories: ['Hormone', 'Testosteron', 'TRT-Support', 'GLP-1 Support']
+  },
+  gut: {
+    id: 'gut',
+    label: 'Verdauung',
+    icon: 'Heart',
+    color: 'green',
+    categories: ['Darm', 'Darmgesundheit', 'Entzündung']
+  },
+  other: {
+    id: 'other',
+    label: 'Sonstiges',
+    icon: 'Sparkles',
+    color: 'gray',
+    categories: ['Fettsäuren', 'Beauty', 'Superfoods', 'Peptid-Synergie']
+  }
+} as const;
+
+// Helper: Finde Meta-Kategorie fuer eine DB-Kategorie
+export function getMetaCategory(dbCategory: string): keyof typeof META_CATEGORIES {
+  for (const [key, meta] of Object.entries(META_CATEGORIES)) {
+    if (meta.categories.includes(dbCategory)) {
+      return key as keyof typeof META_CATEGORIES;
+    }
+  }
+  return 'other';
+}
+```
+
+---
+
+## 2. Supplement Detail Sheet
+
+Neue Komponente die beim Klick auf das Info-Icon erscheint.
+
+### Neue Datei: `src/components/supplements/SupplementDetailSheet.tsx`
+
+Zeigt:
+- **Header**: Name + Kategorie-Badge
+- **Beschreibung**: Aus DB (`description`)
+- **Empfohlene Dosis**: `default_dosage` + `default_unit` (z.B. "600 mg")
+- **Optimales Timing**: Aus `common_timing` / `timing_constraint`
+- **Evidenz-Level**: Badge mit Farbe (stark/moderat/anekdotisch)
+- **Zyklus**: Falls `cycling_protocol` vorhanden
+- **Synergien**: Liste falls vorhanden
+- **Blocker**: Liste falls vorhanden
+- **Warnung**: Rot hervorgehoben falls vorhanden
+
+```text
++------------------------------------------+
+|  X                                       |
+|  Ashwagandha                             |
+|  [Adaptogene] [Optimizer]                |
+|  ----------------------------------------|
+|  Stressreduktion und Schlafqualitaet     |
+|                                          |
+|  Empfohlen                               |
+|  +--------------------------------------+|
+|  | 600 mg  |  Abends  |  Moderat        ||
+|  +--------------------------------------+|
+|                                          |
+|  Zyklus                                  |
+|  5 Tage on / 2 Tage off                  |
+|                                          |
+|  Synergien                               |
+|  Magnesium, L-Theanin                    |
+|                                          |
+|  Blocker                                 |
+|  Koffein abends                          |
++------------------------------------------+
+```
+
+---
+
+## 3. UI-Aenderungen in SupplementInventory
+
+### Zweite Filter-Zeile: Meta-Kategorien
+
+Unter den Tier-Pills (Essential/Optimizer/Specialist) kommt eine zweite Zeile mit Meta-Kategorie-Filter:
+
+```text
+TIER-PILLS:
+[Essential 8/12] [Optimizer 5/24] [Specialist 2/15]
+
+META-PILLS (horizontal scrollbar):
+[Alle] [Basis] [Mental] [Performance] [Longevity] [Hormone] [Verdauung] [Sonstiges]
+```
+
+### Neuer State:
+```typescript
+const [activeMetaCategory, setActiveMetaCategory] = 
+  useState<keyof typeof META_CATEGORIES | 'all'>('all');
+```
+
+### Filter-Logik erweitern:
+```typescript
+const filteredSupplements = useMemo(() => {
+  let items = groupedByTier[activeTier] || [];
+  
+  // Meta-Kategorie-Filter
+  if (activeMetaCategory !== 'all') {
+    const allowedCategories = META_CATEGORIES[activeMetaCategory].categories;
+    items = items.filter(item => 
+      allowedCategories.includes(item.category || '')
+    );
+  }
+  
+  // Such-Filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    items = items.filter(item => 
+      item.name.toLowerCase().includes(query) || ...
+    );
+  }
+  
+  return items;
+}, [groupedByTier, activeTier, activeMetaCategory, searchQuery]);
+```
+
+---
+
+## 4. SupplementToggleRow verbessern
+
+### Aktuelles Problem (Zeile 73-76):
+```tsx
+<Info className="h-3 w-3 shrink-0" />
+<span>Empfohlen: {item.default_dosage || 'Nach Bedarf'}</span>
+// FEHLT: default_unit, Timing, Evidenz
+```
+
+### Loesung:
+
+**a) Info-Icon wird klickbar und oeffnet Sheet:**
+```tsx
+<button onClick={() => setDetailItem(item)}>
+  <Info className="h-3 w-3 hover:text-primary cursor-pointer" />
+</button>
+```
+
+**b) Label-Format verbessern:**
+```tsx
+// Inaktive Supplements:
+<span className="truncate">
+  {item.default_dosage}{item.default_unit} | {getTimingLabel()} | 
+  <EvidenceBadge level={item.evidence_level} />
+</span>
+
+// Aktive Supplements bleiben wie sie sind:
+<Check /> Morgens | 600mg
+```
+
+### Beispiel vorher/nachher:
+
+| Vorher | Nachher |
+|--------|---------|
+| `Empfohlen: 600` | `600mg | Abends | Moderat` |
+| `Empfohlen: 5` | `5g | Morgens | Stark` |
+| `Empfohlen: Nach Bedarf` | `Nach Bedarf | Flexibel` |
+
+---
+
+## Dateien die geaendert werden
+
+| Datei | Aenderung |
+|-------|-----------|
+| `src/lib/categoryMapping.ts` | NEU: Meta-Kategorie-Konstanten und Helper |
+| `src/components/supplements/SupplementDetailSheet.tsx` | NEU: Detail-Sheet Komponente |
+| `src/components/supplements/SupplementInventory.tsx` | Meta-Filter-Pills hinzufuegen |
+| `src/components/supplements/SupplementToggleRow.tsx` | Info-Icon klickbar, Label-Format fixen |
+
+---
+
+## Implementierungs-Reihenfolge
+
+1. `categoryMapping.ts` erstellen - Mapping-Logik
+2. `SupplementDetailSheet.tsx` erstellen - Info-Sheet
+3. `SupplementToggleRow.tsx` anpassen - Info-Icon + Labels
+4. `SupplementInventory.tsx` anpassen - Meta-Filter integrieren
+
