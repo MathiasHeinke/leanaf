@@ -65,6 +65,19 @@ export interface IntelligentPromptConfig {
   // ARES 3.0 Response Intelligence
   topicContexts?: Map<string, TopicContext>;
   responseBudget?: BudgetResult;
+  // ARES 3.0 Situational Intelligence
+  narrativeAnalysis?: {
+    detected: boolean;
+    isVenting: boolean;
+    isHonestAdmission: boolean;
+    excuseType: string | null;
+    originalClaim: string;
+  };
+  identityContext?: {
+    protocolMode: string;
+    label: string;
+    promptFragment: string;
+  };
 }
 
 // Re-export für externe Nutzung
@@ -252,9 +265,60 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
   }
 
   // ═══════════════════════════════════════════════════════════════════════════════
+  // ABSCHNITT 6D: SITUATIONAL INTELLIGENCE - Reality Audit (ARES 3.0 Gummiband)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  const { narrativeAnalysis, identityContext } = config;
+  
+  if (narrativeAnalysis?.detected && !narrativeAnalysis?.isHonestAdmission) {
+    // Reality Audit Mode aktiv!
+    sections.push('');
+    sections.push('== REALITY AUDIT AKTIV ==');
+    sections.push('');
+    sections.push(`ERKANNTE NARRATIVE: ${narrativeAnalysis.excuseType || 'excuse'}`);
+    sections.push(`USER-AUSSAGE: "${narrativeAnalysis.originalClaim}"`);
+    if (identityContext) {
+      sections.push(`USER IDENTITY: ${identityContext.label} (${identityContext.protocolMode})`);
+    }
+    sections.push('');
+    sections.push('### DEINE REAKTION (genau diese Reihenfolge):');
+    sections.push('1. ERGEBNIS-CHECK: Nenne das konkrete Ergebnis (z.B. "500kcal über Ziel", "Training verpasst")');
+    sections.push('2. STORY-BUST: Hinterfrage die Narrative sachlich und mit Fakten');
+    if (identityContext) {
+      sections.push(`3. IDENTITÄTS-REFERENZ: "Dein ${identityContext.label}-Protokoll ist nicht kompatibel mit [Verhalten]"`);
+    }
+    sections.push('4. SYSTEM-FRAGE: Frage nach dem Prozess-Fix für das nächste Mal');
+    sections.push('5. BRÜCKE ZURÜCK: Beende mit aufmunterndem Closer + Emoji ("Aber hey, Haken dran. Morgen rocken wir. 💪")');
+    sections.push('');
+    sections.push('### VERBOTEN in diesem Modus:');
+    sections.push('- "Ist schon okay", "Sei nicht so hart zu dir", "Ich verstehe das"');
+    sections.push('- Gefühle validieren OHNE sofortige Korrektur');
+    sections.push('- Therapeuten-Sprache ("Wie fühlst du dich dabei?")');
+    sections.push('- Ausreden als valide Gründe akzeptieren');
+    sections.push('');
+    sections.push('### DAS GUMMIBAND (kritisch!):');
+    sections.push('Nach dem Reality Check SOFORT zurück zu warmem Friend-Modus!');
+    sections.push('Der Audit-Teil ist kurz und präzise, dann wieder aufmunternd.');
+  } else if (narrativeAnalysis?.isVenting) {
+    // Venting erkannt: Mitfühlen, kein Audit
+    sections.push('');
+    sections.push('== SITUATIONAL AWARENESS: VENTING ==');
+    sections.push('Der User drückt Frustration aus, macht aber KEINE Ausrede.');
+    sections.push('Sei empathisch und frag nach: "Was war los?" oder "Erzähl mal."');
+    sections.push('KEIN Reality Audit, kein Challenge. Einfach zuhören und verstehen.');
+  } else if (narrativeAnalysis?.isHonestAdmission) {
+    // Ehrliche Admission: High-Five, kein Audit
+    sections.push('');
+    sections.push('== SITUATIONAL AWARENESS: EHRLICHE ADMISSION ==');
+    sections.push('Der User gibt ehrlich einen Fehler zu ohne Ausreden.');
+    sections.push('RESPEKTIERE die Ehrlichkeit! Kein Audit, kein Schimpfen.');
+    sections.push('Sag sowas wie: "Respekt für die Ehrlichkeit. Haken dran, weiter geht\'s."');
+    sections.push('Dann biete einen konstruktiven nächsten Schritt an.');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
   // ABSCHNITT 7: Dynamische Anweisungen basierend auf Situation
   // ═══════════════════════════════════════════════════════════════════════════════
-  const situationalInstructions = generateSituationalInstructions(userContext, currentMessage);
+  const situationalInstructions = generateSituationalInstructions(userContext, currentMessage, narrativeAnalysis);
   if (situationalInstructions) {
     sections.push('');
     sections.push('== SITUATIONSBEZOGENE ANWEISUNG ==');
@@ -269,13 +333,15 @@ export function buildIntelligentSystemPrompt(config: IntelligentPromptConfig): s
 
   return sections.join('\n');
 }
-
 /**
  * Generiert situationsbezogene Anweisungen basierend auf User-Kontext und Nachricht
+ * 
+ * ARES 3.0: Integriert Narrative Analysis für konditionierte Empathie
  */
 function generateSituationalInstructions(
   userContext: UserHealthContext,
-  currentMessage: string
+  currentMessage: string,
+  narrativeAnalysis?: { detected: boolean; isVenting: boolean; isHonestAdmission: boolean; excuseType: string | null; originalClaim: string }
 ): string | null {
   const lowerMessage = currentMessage.toLowerCase();
   const instructions: string[] = [];
@@ -330,13 +396,20 @@ function generateSituationalInstructions(
     );
   }
 
-  // Wenn User frustriert klingt
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // KONDITIONIERTE EMPATHIE: Nur wenn KEINE Excuse detected wurde!
+  // Das ist das Herzstück des "Gummiband-Prinzips"
+  // ═══════════════════════════════════════════════════════════════════════════════
   const frustrationWords = ['frustriert', 'genervt', 'aufgeben', 'keine lust', 'schwer', 'schaffe'];
   if (frustrationWords.some(w => lowerMessage.includes(w))) {
-    instructions.push(
-      'Der User klingt frustriert. Sei besonders empathisch, feiere kleine Erfolge, ' +
-      'und gib einen konkreten, machbaren nächsten Schritt.'
-    );
+    // Nur empathisch wenn KEINE Excuse detected!
+    if (!narrativeAnalysis?.detected) {
+      instructions.push(
+        'Der User klingt frustriert, ist aber ehrlich dabei. ' +
+        'Zeige Verständnis und biete einen konkreten, machbaren nächsten Schritt.'
+      );
+    }
+    // Wenn Excuse → Reality Audit Section übernimmt, hier nichts hinzufügen
   }
 
   return instructions.length > 0 ? instructions.join('\n') : null;
@@ -345,7 +418,7 @@ function generateSituationalInstructions(
 /**
  * Generiert aktuelles deutsches Datum
  */
-function getCurrentGermanDate(): string {
+export function getCurrentGermanDate(): string {
   const now = new Date();
   const germanDays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
   const germanMonths = [
@@ -399,4 +472,4 @@ function groupInsightsByCategory(insights: UserInsight[]): Record<string, UserIn
   return grouped;
 }
 
-export { generateSituationalInstructions, getCurrentGermanDate };
+export { generateSituationalInstructions };

@@ -134,6 +134,21 @@ export interface PersonaResolutionContext {
   detailLevel?: 'ultra_short' | 'concise' | 'moderate' | 'extensive';
   /** Intent vom Semantic Router */
   intent?: string;
+  
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // SITUATIONAL INTELLIGENCE: Reality Audit System
+  // ═══════════════════════════════════════════════════════════════════════════════
+  
+  /** Wurde eine Narrative/Excuse erkannt? (Trigger für Reality Audit) */
+  narrativeDetected?: boolean;
+  /** Ist es eine ehrliche Admission? (kein Trigger) */
+  isHonestAdmission?: boolean;
+  /** Typ der Excuse (wenn narrativeDetected = true) */
+  excuseType?: 'excuse_time' | 'excuse_energy' | 'excuse_emotional' | 'excuse_external' | 'rationalization';
+  /** Die erkannte Aussage für das Prompt */
+  originalClaim?: string;
+  /** Protocol Mode des Users (natural/enhanced/clinical) */
+  protocolMode?: string;
 }
 
 /**

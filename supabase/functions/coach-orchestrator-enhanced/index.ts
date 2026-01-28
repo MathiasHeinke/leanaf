@@ -108,6 +108,16 @@ import {
   type DetailLevel,
 } from '../_shared/ai/semanticRouter.ts';
 
+// Phase 11: Situational Intelligence - Reality Audit System (Gummiband-Prinzip)
+import {
+  detectNarrative,
+  getExcuseTypeDescription,
+  getIdentityContext,
+  buildRealityAuditPrompt,
+  type NarrativeAnalysis,
+  type IdentityContext,
+} from '../_shared/coaching/index.ts';
+
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SVC = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -1122,16 +1132,35 @@ async function loadUserPersonaWithContext(
   userId: string,
   moodContext: UserMoodContext,
   text: string,
-  lastBotMessage?: string | null
+  lastBotMessage?: string | null,
+  protocolMode?: string | null
 ): Promise<{ 
   persona: CoachPersona | ResolvedPersona; 
   personaPrompt: string;
   semanticAnalysis?: ConversationAnalysis;
+  narrativeAnalysis?: NarrativeAnalysis;
+  identityContext?: IdentityContext;
 }> {
   try {
     // Load user's selected persona (with STANDARD fallback)
     const persona = await loadUserPersona(userId);
     console.log('[PERSONA] Loaded persona for user ' + userId + ': ' + persona.name + ' (' + persona.id + ')');
+    
+    // ═══════════════════════════════════════════════════════════════════════════
+    // SITUATIONAL INTELLIGENCE: Narrative Detection (Gummiband-Prinzip)
+    // Detect if user is making excuses vs. venting vs. honest admission
+    // ═══════════════════════════════════════════════════════════════════════════
+    const narrativeAnalysis = detectNarrative(text);
+    const identityContext = getIdentityContext(protocolMode);
+    
+    if (narrativeAnalysis.detected) {
+      console.log('[NARRATIVE] Excuse detected: type=' + narrativeAnalysis.excuseType + 
+                  ', claim="' + narrativeAnalysis.originalClaim + '"');
+    } else if (narrativeAnalysis.isVenting) {
+      console.log('[NARRATIVE] Venting detected (no trigger)');
+    } else if (narrativeAnalysis.isHonestAdmission) {
+      console.log('[NARRATIVE] Honest admission detected (no trigger)');
+    }
     
     // ═══════════════════════════════════════════════════════════════════════════
     // AI-NATIVE COMPLEXITY DETECTION via Semantic Router
@@ -1155,7 +1184,7 @@ async function loadUserPersonaWithContext(
       console.log('[PERSONA-SEMANTIC] Skipped for long message (' + text.length + ' chars)');
     }
     
-    // Build resolution context WITH Semantic Router result
+    // Build resolution context WITH Semantic Router + Narrative Detection
     const resolutionContext: PersonaResolutionContext = {
       mood: detectMoodFromContext(moodContext, text),
       timeOfDay: getTimeOfDayForPersona(),
@@ -1164,29 +1193,36 @@ async function loadUserPersonaWithContext(
       // AI-Native: Semantic Router integration
       detailLevel: semanticAnalysis?.required_detail_level,
       intent: semanticAnalysis?.intent,
+      // Situational Intelligence: Narrative Detection
+      narrativeDetected: narrativeAnalysis.detected,
+      isHonestAdmission: narrativeAnalysis.isHonestAdmission,
+      excuseType: narrativeAnalysis.excuseType ?? undefined,
+      originalClaim: narrativeAnalysis.originalClaim,
+      protocolMode: protocolMode ?? undefined,
     };
     
-    // Resolve persona with context modifiers (now includes depth modulation!)
+    // Resolve persona with context modifiers (now includes Reality Audit override!)
     const resolvedPersona = resolvePersonaWithContext(persona, resolutionContext);
     console.log('[PERSONA] Applied modifiers: ' + (resolvedPersona.appliedModifiers.join(', ') || 'none'));
     
     // Log dial changes for debugging
-    if (semanticAnalysis && persona.dials) {
-      console.log('[PERSONA-DEPTH] Original depth=' + persona.dials.depth + 
-                  ' → Resolved depth=' + resolvedPersona.resolvedDials.depth +
-                  ' (detailLevel=' + semanticAnalysis.required_detail_level + ')');
+    if (narrativeAnalysis.detected && persona.dials) {
+      console.log('[PERSONA-AUDIT] Reality Audit Active! warmth=' + resolvedPersona.resolvedDials.warmth + 
+                  ', challenge=' + resolvedPersona.resolvedDials.challenge);
     }
     
     // Generate the persona prompt
     const personaPrompt = buildPersonaPrompt(resolvedPersona, resolutionContext);
     
-    return { persona: resolvedPersona, personaPrompt, semanticAnalysis };
+    return { persona: resolvedPersona, personaPrompt, semanticAnalysis, narrativeAnalysis, identityContext };
   } catch (error) {
     console.error('[PERSONA] Error loading user persona:', error);
     return { 
       persona: { id: 'STANDARD', name: 'ARES Standard' } as CoachPersona, 
       personaPrompt: '',
-      semanticAnalysis: undefined
+      semanticAnalysis: undefined,
+      narrativeAnalysis: undefined,
+      identityContext: undefined
     };
   }
 }
