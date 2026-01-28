@@ -7,8 +7,10 @@ export type FluidLegacy = {
   amount_ml: number;
   date: string;
   fluid_type?: string;
+  custom_name?: string;
   has_alcohol?: boolean;
   created_at?: string;
+  consumed_at?: string;
 };
 
 export type FluidModern = {
@@ -27,13 +29,18 @@ export const toLegacyFluid = (modern: FluidModern): FluidLegacy => ({
   created_at: modern.timestamp || new Date().toISOString()
 });
 
-export const toModernFluid = (legacy: FluidLegacy): FluidModern => ({
-  volume_ml: legacy.amount_ml,
-  intake_date: legacy.date,
-  fluid_type: legacy.fluid_type || 'water',
-  has_alcohol: legacy.has_alcohol || false,
-  timestamp: legacy.created_at || new Date().toISOString()
-});
+export const toModernFluid = (legacy: FluidLegacy): FluidModern => {
+  // Determine fluid type from custom_name (Kaffee -> coffee)
+  const fluidType = legacy.custom_name?.toLowerCase() === 'kaffee' ? 'coffee' : (legacy.fluid_type || 'water');
+  
+  return {
+    volume_ml: legacy.amount_ml,
+    intake_date: legacy.date,
+    fluid_type: fluidType,
+    has_alcohol: legacy.has_alcohol || false,
+    timestamp: legacy.consumed_at || legacy.created_at || new Date().toISOString()
+  };
+};
 
 // Unified fluid saving (with ARES tracing)
 export async function saveFluid(
