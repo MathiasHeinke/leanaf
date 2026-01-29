@@ -271,16 +271,22 @@ function normalizeForMatch(name: string): string {
     .trim();
 }
 
-function findMatch(ingredientId: string, ingredientName: string, dbSupplements: Array<{id: string, name: string}>): {dbId: string, dbName: string, matchType: string} | null {
-  // Try manual override first
+// NEW: Returns ALL matching DB entries instead of just the first one
+function findAllMatches(ingredientId: string, ingredientName: string, dbSupplements: Array<{id: string, name: string}>): Array<{dbId: string, dbName: string, matchType: string}> {
+  const matches: Array<{dbId: string, dbName: string, matchType: string}> = [];
+  const matchedIds = new Set<string>(); // Prevent duplicates
+  
+  // Try manual override first - find ALL matches for all patterns
   const patterns = MANUAL_OVERRIDES[ingredientId];
   if (patterns) {
     for (const pattern of patterns) {
       const normalizedPattern = normalizeForMatch(pattern);
       for (const supp of dbSupplements) {
+        if (matchedIds.has(supp.id)) continue; // Skip if already matched
         const normalizedDb = normalizeForMatch(supp.name);
         if (normalizedDb === normalizedPattern || normalizedDb.includes(normalizedPattern) || normalizedPattern.includes(normalizedDb)) {
-          return { dbId: supp.id, dbName: supp.name, matchType: 'manual' };
+          matches.push({ dbId: supp.id, dbName: supp.name, matchType: 'manual' });
+          matchedIds.add(supp.id);
         }
       }
     }
@@ -289,21 +295,25 @@ function findMatch(ingredientId: string, ingredientName: string, dbSupplements: 
   // Try exact match on ingredient name
   const normalizedImport = normalizeForMatch(ingredientName);
   for (const supp of dbSupplements) {
+    if (matchedIds.has(supp.id)) continue;
     const normalizedDb = normalizeForMatch(supp.name);
     if (normalizedDb === normalizedImport) {
-      return { dbId: supp.id, dbName: supp.name, matchType: 'exact' };
+      matches.push({ dbId: supp.id, dbName: supp.name, matchType: 'exact' });
+      matchedIds.add(supp.id);
     }
   }
   
   // Try fuzzy match
   for (const supp of dbSupplements) {
+    if (matchedIds.has(supp.id)) continue;
     const normalizedDb = normalizeForMatch(supp.name);
     if (normalizedDb.includes(normalizedImport) || normalizedImport.includes(normalizedDb)) {
-      return { dbId: supp.id, dbName: supp.name, matchType: 'fuzzy' };
+      matches.push({ dbId: supp.id, dbName: supp.name, matchType: 'fuzzy' });
+      matchedIds.add(supp.id);
     }
   }
   
-  return null;
+  return matches;
 }
 
 serve(async (req) => {
@@ -339,11 +349,13 @@ serve(async (req) => {
       errors: [] as string[],
     };
 
-    // Process each ingredient
+    const globalUpdatedIds = new Set<string>(); // Ensure each DB entry is only updated once globally
+
+    // Process each ingredient - now with multi-match support
     for (const ingredient of MATRIX_DATA) {
-      const match = findMatch(ingredient.ingredient_id, ingredient.ingredient_name, dbSupplements || []);
+      const matches = findAllMatches(ingredient.ingredient_id, ingredient.ingredient_name, dbSupplements || []);
       
-      if (!match) {
+      if (matches.length === 0) {
         results.skipped.push({
           importName: ingredient.ingredient_name,
           reason: 'No database match found',
@@ -351,7 +363,12 @@ serve(async (req) => {
         continue;
       }
 
-      // Build the relevance_matrix object
+      // Log multi-matches
+      if (matches.length > 1) {
+        console.log(`[Matrix Import] Multi-match for "${ingredient.ingredient_name}": ${matches.map(m => m.dbName).join(', ')}`);
+      }
+
+      // Build the relevance_matrix object once
       const matrix: Record<string, unknown> = {};
       if (ingredient.phase_modifiers) matrix.phase_modifiers = ingredient.phase_modifiers;
       if (ingredient.context_modifiers) matrix.context_modifiers = ingredient.context_modifiers;
@@ -363,20 +380,28 @@ serve(async (req) => {
       if (ingredient.compound_synergies) matrix.compound_synergies = ingredient.compound_synergies;
       if ((ingredient as any).warnings) matrix.explanation_templates = (ingredient as any).warnings;
 
-      // Update the database
-      const { error: updateError } = await supabase
-        .from('supplement_database')
-        .update({ relevance_matrix: matrix })
-        .eq('id', match.dbId);
-      
-      if (updateError) {
-        results.errors.push(`Update failed for ${ingredient.ingredient_name}: ${updateError.message}`);
-      } else {
-        results.updated.push({
-          dbName: match.dbName,
-          importName: ingredient.ingredient_name,
-          matchType: match.matchType,
-        });
+      // Update ALL matched supplements
+      for (const match of matches) {
+        // Skip if already updated in a previous ingredient loop
+        if (globalUpdatedIds.has(match.dbId)) {
+          continue;
+        }
+
+        const { error: updateError } = await supabase
+          .from('supplement_database')
+          .update({ relevance_matrix: matrix })
+          .eq('id', match.dbId);
+        
+        if (updateError) {
+          results.errors.push(`Update failed for ${match.dbName}: ${updateError.message}`);
+        } else {
+          results.updated.push({
+            dbName: match.dbName,
+            importName: ingredient.ingredient_name,
+            matchType: match.matchType,
+          });
+          globalUpdatedIds.add(match.dbId);
+        }
       }
     }
 
