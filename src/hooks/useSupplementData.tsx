@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useDataRefresh } from '@/hooks/useDataRefresh';
-import { runThrottled } from '@/lib/request-queue';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentDateString } from '@/utils/dateHelpers';
-import { useQueryClient } from '@tanstack/react-query';
-import { QUERY_KEYS } from '@/constants/queryKeys';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS, invalidateCategory } from '@/constants/queryKeys';
 
 export interface UserSupplement {
   id: string;
@@ -61,37 +59,6 @@ export const LEGACY_TIMING_MAP: Record<string, string> = {
   'after_workout': 'post_workout'
 };
 
-// Lightweight in-memory cache to avoid redundant reloads
-type CacheValue = {
-  supplements: UserSupplement[];
-  intakes: SupplementIntake[];
-  ts: number;
-  hash: string;
-};
-const SUPP_CACHE_TTL_MS = 5000;
-const suppCache = new Map<string, CacheValue>();
-const cacheKeyFor = (userId: string, dateStr: string) => `${userId}|${dateStr}`;
-const computeHash = (supps: UserSupplement[], intakes: SupplementIntake[]) => {
-  const s = [...supps]
-    .map(s => ({
-      id: s.id,
-      timing: s.timing,
-      supplement_name: s.supplement_name,
-      supplement_id: s.supplement_id,
-      is_active: s.is_active,
-    }))
-    .sort((a, b) => a.id.localeCompare(b.id));
-  const i = [...intakes]
-    .map(x => ({
-      user_supplement_id: x.user_supplement_id,
-      timing: x.timing,
-      taken: x.taken,
-      date: x.date,
-    }))
-    .sort((a, b) => (a.user_supplement_id + a.timing).localeCompare(b.user_supplement_id + b.timing));
-  return JSON.stringify({ s, i });
-};
-
 // Helper function to normalize and validate timing arrays
 const normalizeTimingArray = (timing: string[] | string | null | undefined): string[] => {
   if (!timing) return ['morning'];
@@ -138,51 +105,25 @@ export const getTimingOption = (timing: string) => {
   };
 };
 
+interface SupplementQueryData {
+  supplements: UserSupplement[];
+  intakes: SupplementIntake[];
+}
+
 export const useSupplementData = (currentDate?: Date) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [userSupplements, setUserSupplements] = useState<UserSupplement[]>([]);
-  const [todayIntakes, setTodayIntakes] = useState<SupplementIntake[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const dateStr = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
 
-  const lastFetchAtRef = useRef<number>(0);
-  const lastHashRef = useRef<string>('');
+  // React Query for automatic cache synchronization with Layer 1
+  const { data, isLoading, error, refetch } = useQuery<SupplementQueryData>({
+    queryKey: [...QUERY_KEYS.SUPPLEMENTS_DATA, dateStr],
+    queryFn: async () => {
+      if (!user?.id) return { supplements: [], intakes: [] };
 
-  const loadSupplementData = useCallback(async (opts?: { force?: boolean }) => {
-    const dateStr = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
-    const userId = user?.id;
-
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    const key = cacheKeyFor(userId, dateStr);
-    const now = Date.now();
-
-    try {
-      // Use cache if fresh and not forced
-      if (!opts?.force) {
-        const cached = suppCache.get(key);
-        if (cached && now - cached.ts < SUPP_CACHE_TTL_MS) {
-          setUserSupplements(cached.supplements);
-          setTodayIntakes(cached.intakes);
-          setLoading(false);
-          return;
-        }
-        // Prevent thrashing: ignore if a fetch ran very recently
-        if (now - lastFetchAtRef.current < 1000) {
-          return;
-        }
-      }
-
-      setLoading(true);
-      setError(null);
-
-      await runThrottled(async () => {
-        // Load user supplements
-        const { data: supplements, error: supplementsError } = await supabase
+      // Parallel fetch supplements + intakes
+      const [supplementsRes, intakesRes] = await Promise.all([
+        supabase
           .from('user_supplements')
           .select(`
             id,
@@ -200,126 +141,110 @@ export const useSupplementData = (currentDate?: Date) => {
             name,
             supplement_database(name, category)
           `)
-          .eq('user_id', userId)
-          .eq('is_active', true);
-
-        if (supplementsError) throw supplementsError;
-
-        const formattedSupplements: UserSupplement[] = (supplements || []).map((s: any) => ({
-          ...s,
-          // Use preferred_timing as the primary timing source for grouping
-          // This ensures consistency with Layer 3's mapTimingToPreferred logic
-          timing: s.preferred_timing ? [s.preferred_timing] : normalizeTimingArray(s.timing),
-          supplement_name: s.custom_name || s.name || s.supplement_database?.name || 'Supplement',
-          supplement_category: s.supplement_database?.category || 'Sonstige',
-        }));
-
-        // Load today's intake log
-        const { data: intakes, error: intakesError } = await supabase
+          .eq('user_id', user.id)
+          .eq('is_active', true),
+        supabase
           .from('supplement_intake_log')
           .select('*')
-          .eq('user_id', userId)
-          .eq('date', dateStr);
+          .eq('user_id', user.id)
+          .eq('date', dateStr)
+      ]);
 
-        if (intakesError) throw intakesError;
+      if (supplementsRes.error) throw supplementsRes.error;
+      if (intakesRes.error) throw intakesRes.error;
 
-        const intakesArr = (intakes || []) as SupplementIntake[];
-        const hash = computeHash(formattedSupplements, intakesArr);
+      const formattedSupplements: UserSupplement[] = (supplementsRes.data || []).map((s: any) => ({
+        ...s,
+        // Use preferred_timing as the primary timing source for grouping
+        timing: s.preferred_timing ? [s.preferred_timing] : normalizeTimingArray(s.timing),
+        supplement_name: s.custom_name || s.name || s.supplement_database?.name || 'Supplement',
+        supplement_category: s.supplement_database?.category || 'Sonstige',
+      }));
 
-        // Update cache
-        suppCache.set(key, { supplements: formattedSupplements, intakes: intakesArr, ts: now, hash });
-
-        // Only update state if content changed
-        if (hash !== lastHashRef.current) {
-          setUserSupplements(formattedSupplements);
-          setTodayIntakes(intakesArr);
-          lastHashRef.current = hash;
-        }
-      });
-    } catch (err) {
-      console.error('Error loading supplement data:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load supplement data');
-    } finally {
-      lastFetchAtRef.current = Date.now();
-      setLoading(false);
-    }
-  }, [user?.id, currentDate]);
-
-  useEffect(() => {
-    loadSupplementData();
-  }, [loadSupplementData]);
-
-  // Subscribe to global data refresh events; loader has TTL guard
-  useDataRefresh(loadSupplementData);
-
-  // Listen for unified supplement-stack-changed events
-  useEffect(() => {
-    const handleStackChange = () => loadSupplementData({ force: true });
-    window.addEventListener('supplement-stack-changed', handleStackChange);
-    return () => window.removeEventListener('supplement-stack-changed', handleStackChange);
-  }, [loadSupplementData]);
-
-
-  // Group supplements by timing with robust error handling
-  const groupedSupplements: TimeGroupedSupplements = userSupplements.reduce((acc, supplement) => {
-    // Ensure timing is always an array and normalized
-    const normalizedTiming = normalizeTimingArray(supplement.timing);
-    
-    normalizedTiming.forEach(timing => {
-      if (!acc[timing]) {
-        acc[timing] = {
-          supplements: [],
-          intakes: [],
-          taken: 0,
-          total: 0
-        };
-      }
-      
-      acc[timing].supplements.push({
-        ...supplement,
-        timing: normalizedTiming // Use normalized timing
-      });
-      acc[timing].total += 1;
-      
-      // Find intake for this supplement and timing
-      const intake = todayIntakes.find(i => 
-        i.user_supplement_id === supplement.id && 
-        i.timing === timing
-      );
-      
-      if (intake) {
-        acc[timing].intakes.push(intake);
-        if (intake.taken) {
-          acc[timing].taken += 1;
-        }
-      }
-    });
-    return acc;
-  }, {} as TimeGroupedSupplements);
-
-  // Calculate total stats
-  const totalScheduled = Object.values(groupedSupplements).reduce((sum, group) => sum + group.total, 0);
-  const totalTaken = Object.values(groupedSupplements).reduce((sum, group) => sum + group.taken, 0);
-  const completionPercent = totalScheduled > 0 ? (totalTaken / totalScheduled) * 100 : 0;
-
-  console.log('📈 useSupplementData: Final stats calculated:', {
-    totalScheduled,
-    totalTaken,
-    completionPercent,
-    groupedSupplements
+      return {
+        supplements: formattedSupplements,
+        intakes: (intakesRes.data || []) as SupplementIntake[]
+      };
+    },
+    enabled: !!user?.id,
+    staleTime: 10000, // 10 seconds
+    gcTime: 60000, // 1 minute
   });
 
-  // Mark supplement as taken with optimistic updates + cache sync
-  const markSupplementTaken = async (supplementId: string, timing: string, taken: boolean = true) => {
+  const userSupplements = data?.supplements || [];
+  const todayIntakes = data?.intakes || [];
+
+  // Group supplements by timing with robust error handling
+  const groupedSupplements: TimeGroupedSupplements = useMemo(() => {
+    return userSupplements.reduce((acc, supplement) => {
+      const normalizedTiming = normalizeTimingArray(supplement.timing);
+      
+      normalizedTiming.forEach(timing => {
+        if (!acc[timing]) {
+          acc[timing] = {
+            supplements: [],
+            intakes: [],
+            taken: 0,
+            total: 0
+          };
+        }
+        
+        acc[timing].supplements.push({
+          ...supplement,
+          timing: normalizedTiming
+        });
+        acc[timing].total += 1;
+        
+        // Find intake for this supplement and timing
+        const intake = todayIntakes.find(i => 
+          i.user_supplement_id === supplement.id && 
+          i.timing === timing
+        );
+        
+        if (intake) {
+          acc[timing].intakes.push(intake);
+          if (intake.taken) {
+            acc[timing].taken += 1;
+          }
+        }
+      });
+      return acc;
+    }, {} as TimeGroupedSupplements);
+  }, [userSupplements, todayIntakes]);
+
+  // Calculate total stats
+  const totalScheduled = useMemo(() => 
+    Object.values(groupedSupplements).reduce((sum, group) => sum + group.total, 0),
+    [groupedSupplements]
+  );
+  
+  const totalTaken = useMemo(() => 
+    Object.values(groupedSupplements).reduce((sum, group) => sum + group.taken, 0),
+    [groupedSupplements]
+  );
+  
+  const completionPercent = totalScheduled > 0 ? (totalTaken / totalScheduled) * 100 : 0;
+
+  // Invalidate all supplement-related queries
+  const invalidateSupplementQueries = useCallback(() => {
+    invalidateCategory(queryClient, 'supplements');
+  }, [queryClient]);
+
+  // Mark supplement as taken with optimistic updates
+  const markSupplementTaken = useCallback(async (supplementId: string, timing: string, taken: boolean = true) => {
     if (!user) return;
 
-    const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
-    const key = cacheKeyFor(user.id, today);
+    const today = dateStr;
+    const queryKey = [...QUERY_KEYS.SUPPLEMENTS_DATA, today];
 
-    const applyChange = (list: SupplementIntake[]) => {
-      const filtered = list.filter(i => !(i.user_supplement_id === supplementId && i.timing === timing));
+    // Optimistic update
+    queryClient.setQueryData<SupplementQueryData>(queryKey, (old) => {
+      if (!old) return old;
+      const newIntakes = old.intakes.filter(
+        i => !(i.user_supplement_id === supplementId && i.timing === timing)
+      );
       if (taken) {
-        filtered.push({
+        newIntakes.push({
           id: `temp-${Date.now()}`,
           user_supplement_id: supplementId,
           timing,
@@ -327,23 +252,11 @@ export const useSupplementData = (currentDate?: Date) => {
           date: today,
         });
       }
-      return filtered;
-    };
-
-    // Optimistic update - immediately update local state
-    setTodayIntakes(prev => applyChange(prev));
-
-    // Update cache so subsequent loads don't refetch unnecessarily
-    const cached = suppCache.get(key);
-    if (cached) {
-      const updatedIntakes = applyChange(cached.intakes);
-      const newHash = computeHash(cached.supplements, updatedIntakes);
-      suppCache.set(key, { ...cached, intakes: updatedIntakes, ts: Date.now(), hash: newHash });
-      lastHashRef.current = newHash;
-    }
+      return { ...old, intakes: newIntakes };
+    });
 
     try {
-      const { error } = await supabase
+      const { error: upsertError } = await supabase
         .from('supplement_intake_log')
         .upsert(
           {
@@ -358,31 +271,33 @@ export const useSupplementData = (currentDate?: Date) => {
           }
         );
 
-      if (error) throw error;
+      if (upsertError) throw upsertError;
       
-      // === IMMEDIATE WIDGET SYNC ===
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
+      // Invalidate all supplement-related queries for cross-layer sync
+      invalidateSupplementQueries();
     } catch (err) {
       console.error('Error marking supplement:', err);
-      // Rollback optimistic update on error
-      await loadSupplementData({ force: true });
-      setError(err instanceof Error ? err.message : 'Failed to update supplement');
+      // Rollback: refetch to restore correct state
+      refetch();
     }
-  };
+  }, [user, dateStr, queryClient, invalidateSupplementQueries, refetch]);
 
   // Mark entire timing group as taken with optimistic updates
-  const markTimingGroupTaken = async (timing: string, taken: boolean = true) => {
+  const markTimingGroupTaken = useCallback(async (timing: string, taken: boolean = true) => {
     if (!user) return;
 
     const group = groupedSupplements[timing];
     if (!group) return;
 
-    const today = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
-    
-    // Optimistic update - immediately update local state for all supplements in group
-    setTodayIntakes(prev => {
-      const filtered = prev.filter(i => !(i.timing === timing && group.supplements.some(s => s.id === i.user_supplement_id)));
+    const today = dateStr;
+    const queryKey = [...QUERY_KEYS.SUPPLEMENTS_DATA, today];
+
+    // Optimistic update
+    queryClient.setQueryData<SupplementQueryData>(queryKey, (old) => {
+      if (!old) return old;
+      const filtered = old.intakes.filter(
+        i => !(i.timing === timing && group.supplements.some(s => s.id === i.user_supplement_id))
+      );
       
       if (taken) {
         const newIntakes = group.supplements.map(supplement => ({
@@ -390,35 +305,12 @@ export const useSupplementData = (currentDate?: Date) => {
           user_supplement_id: supplement.id,
           timing,
           taken: true,
-          date: today
+          date: today,
         }));
         filtered.push(...newIntakes);
       }
-      return filtered;
+      return { ...old, intakes: filtered };
     });
-
-    // Update cache to keep it in sync with optimistic state
-    const key = cacheKeyFor(user.id, today);
-    const cached = suppCache.get(key);
-    if (cached) {
-      const base = cached.intakes.filter(i => !(i.timing === timing && group.supplements.some(s => s.id === i.user_supplement_id)));
-      const updatedIntakes = taken
-        ? [
-            ...base,
-            ...group.supplements.map(supplement => ({
-              id: `temp-${Date.now()}-${supplement.id}`,
-              user_supplement_id: supplement.id,
-              timing,
-              taken: true,
-              date: today,
-            })),
-          ]
-        : base;
-      const newHash = computeHash(cached.supplements, updatedIntakes);
-      suppCache.set(key, { ...cached, intakes: updatedIntakes, ts: Date.now(), hash: newHash });
-      lastHashRef.current = newHash;
-    }
-
 
     try {
       const upsertData = group.supplements.map(supplement => ({
@@ -429,24 +321,22 @@ export const useSupplementData = (currentDate?: Date) => {
         date: today
       }));
 
-      const { error } = await supabase
+      const { error: upsertError } = await supabase
         .from('supplement_intake_log')
         .upsert(upsertData, {
           onConflict: 'user_supplement_id,date,timing'
         });
 
-      if (error) throw error;
+      if (upsertError) throw upsertError;
       
-      // === IMMEDIATE WIDGET SYNC ===
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
+      // Invalidate all supplement-related queries for cross-layer sync
+      invalidateSupplementQueries();
     } catch (err) {
       console.error('Error marking timing group:', err);
-      // Rollback optimistic update on error
-      await loadSupplementData();
-      setError(err instanceof Error ? err.message : 'Failed to update timing group');
+      // Rollback: refetch to restore correct state
+      refetch();
     }
-  };
+  }, [user, dateStr, groupedSupplements, queryClient, invalidateSupplementQueries, refetch]);
 
   return {
     userSupplements,
@@ -455,10 +345,10 @@ export const useSupplementData = (currentDate?: Date) => {
     totalScheduled,
     totalTaken,
     completionPercent,
-    loading,
-    error,
+    loading: isLoading,
+    error: error?.message || null,
     markSupplementTaken,
     markTimingGroupTaken,
-    refetch: loadSupplementData
+    refetch
   };
 };
