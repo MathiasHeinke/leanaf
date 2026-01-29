@@ -198,57 +198,82 @@ export const MealConfirmationDialog = ({
         protein: Number(editableValues.protein) || 0,
         carbs: Number(editableValues.carbs) || 0,
         fats: Number(editableValues.fats) || 0,
-        date: mealDate.toISOString().split('T')[0] // Use selected date
+        date: mealDate.toISOString().split('T')[0]
       };
 
       secureLogger.debug('Meal payload prepared');
-      secureLogger.debug('About to insert meal');
       
-      // Insert meal with retry mechanism
       let mealData = null;
       let insertError = null;
+      const isEditMode = !!analyzedMealData?.id;
       
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          secureLogger.debug(`Insert attempt ${attempt}/3`);
+      if (isEditMode) {
+        // ========== UPDATE EXISTING MEAL ==========
+        secureLogger.debug('Updating existing meal', { mealId: analyzedMealData.id });
+        
+        const { data, error } = await supabase
+          .from('meals')
+          .update({
+            meal_type: mealPayload.meal_type,
+            text: mealPayload.text,
+            calories: mealPayload.calories,
+            protein: mealPayload.protein,
+            carbs: mealPayload.carbs,
+            fats: mealPayload.fats,
+            date: mealPayload.date
+          })
+          .eq('id', analyzedMealData.id)
+          .eq('user_id', user.id)
+          .select()
+          .single();
           
-          const { data, error } = await supabase
-            .from('meals')
-            .insert(mealPayload)
-            .select()
-            .maybeSingle();
-
-          if (error) {
-            secureLogger.error(`Insert error (attempt ${attempt})`, error);
-            insertError = error;
-            
-            if (attempt === 3) {
-              throw error;
-            }
-            
-            // Wait before retry
-            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            continue;
-          }
-
-          secureLogger.debug('Meal insert successful');
-          mealData = data;
-          break;
-          
-        } catch (networkError) {
-          secureLogger.error(`Network error (attempt ${attempt})`, networkError);
-          insertError = networkError;
-          
-          if (attempt === 3) {
-            throw networkError;
-          }
-          
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        if (error) {
+          secureLogger.error('Update error', error);
+          throw error;
         }
-      }
+        
+        mealData = data;
+        secureLogger.debug('Meal update successful', { mealId: mealData?.id });
+        
+      } else {
+        // ========== INSERT NEW MEAL ==========
+        secureLogger.debug('Inserting new meal');
+        
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            secureLogger.debug(`Insert attempt ${attempt}/3`);
+            
+            const { data, error } = await supabase
+              .from('meals')
+              .insert(mealPayload)
+              .select()
+              .maybeSingle();
 
-      if (!mealData) {
-        throw insertError || new Error('Failed to insert meal after retries');
+            if (error) {
+              secureLogger.error(`Insert error (attempt ${attempt})`, error);
+              insertError = error;
+              
+              if (attempt === 3) throw error;
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+              continue;
+            }
+
+            secureLogger.debug('Meal insert successful');
+            mealData = data;
+            break;
+            
+          } catch (networkError) {
+            secureLogger.error(`Network error (attempt ${attempt})`, networkError);
+            insertError = networkError;
+            
+            if (attempt === 3) throw networkError;
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          }
+        }
+
+        if (!mealData) {
+          throw insertError || new Error('Failed to insert meal after retries');
+        }
       }
 
       secureLogger.debug('Meal saved successfully', { mealId: mealData.id });
@@ -318,9 +343,10 @@ export const MealConfirmationDialog = ({
       invalidateCategory(queryClient, 'nutrition');
       
       secureLogger.debug('Showing success message');
+      const actionVerb = isEditMode ? 'aktualisiert' : 'gespeichert';
       const successMessage = uploadedImages.length > 0 
-        ? `Mahlzeit erfolgreich gespeichert mit ${uploadedImages.length} Bild(ern)` 
-        : 'Mahlzeit erfolgreich gespeichert';
+        ? `Mahlzeit erfolgreich ${actionVerb} mit ${uploadedImages.length} Bild(ern)` 
+        : `Mahlzeit erfolgreich ${actionVerb}`;
       
       toast.success(successMessage);
       
@@ -367,7 +393,9 @@ export const MealConfirmationDialog = ({
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-background/95 backdrop-blur-md border border-border/50 shadow-2xl z-[9999]">
         <AlertDialogHeader>
-          <AlertDialogTitle>{t('meal.confirm')}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {analyzedMealData?.mode === 'edit' ? 'Mahlzeit bearbeiten' : t('meal.confirm')}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             Überprüfe und bearbeite die erkannten Nährwerte deiner Mahlzeit, bevor du sie speicherst.
           </AlertDialogDescription>

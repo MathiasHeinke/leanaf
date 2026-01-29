@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { DAILY_METRICS_KEY } from '@/hooks/useDailyMetrics';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 import { toast } from 'sonner';
 
 export interface TodayMeal {
@@ -20,7 +21,7 @@ export interface TodayMeal {
   mealType: string | null;
 }
 
-export const TODAYS_MEALS_KEY = ['todays-meals'];
+export const TODAYS_MEALS_KEY = QUERY_KEYS.TODAYS_MEALS;
 
 export const useTodaysMeals = () => {
   const queryClient = useQueryClient();
