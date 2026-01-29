@@ -229,3 +229,40 @@ export const getLast7DaysWithLabels = (): { dates: string[], labels: string[] } 
   
   return { dates, labels };
 };
+
+/**
+ * Get current calendar week (Monday to Sunday) with labels
+ * Future days are included but marked as such via isFuture array
+ * 
+ * Example (if today is Thursday 29.01.2026):
+ * returns {
+ *   dates: ['2026-01-27', '2026-01-28', '2026-01-29', '2026-01-30', '2026-01-31', '2026-02-01', '2026-02-02'],
+ *   labels: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+ *   isFuture: [false, false, false, false, true, true, true]
+ * }
+ */
+export const getCurrentWeekDaysWithLabels = (): { 
+  dates: string[], 
+  labels: string[],
+  isFuture: boolean[]
+} => {
+  const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  const dates: string[] = [];
+  const isFuture: boolean[] = [];
+  
+  const today = new Date();
+  const todayStr = toDateString(today);
+  
+  // Get Monday of current week using date-fns
+  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+  
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    const dateStr = toDateString(d);
+    dates.push(dateStr);
+    isFuture.push(dateStr > todayStr);
+  }
+  
+  return { dates, labels: WEEKDAY_LABELS, isFuture };
+};

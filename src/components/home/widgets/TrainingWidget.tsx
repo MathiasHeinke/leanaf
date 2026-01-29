@@ -7,7 +7,7 @@ import { WidgetSize } from '@/types/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { QUERY_KEYS } from '@/constants/queryKeys';
-import { getLast7DaysWithLabels } from '@/utils/dateHelpers';
+import { getCurrentWeekDaysWithLabels } from '@/utils/dateHelpers';
 
 interface TrainingWidgetProps {
   size: WidgetSize;
@@ -17,15 +17,20 @@ interface TrainingWidgetProps {
 export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenSheet }) => {
   const navigate = useNavigate();
 
-  // Fetch training sessions for last 7 days (FIXED: uses training_sessions table)
+  // Fetch training sessions for current calendar week (Mo-So)
   const { data: weeklyData } = useQuery({
     queryKey: QUERY_KEYS.TRAINING_WEEKLY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { count: 0, days: [] as boolean[], labels: ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'] };
+      if (!user) return { 
+        count: 0, 
+        days: [] as boolean[], 
+        labels: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+        isFuture: [false, false, false, false, false, false, false]
+      };
       
-      // Use timezone-aware date helper with dynamic labels
-      const { dates, labels } = getLast7DaysWithLabels();
+      // Use calendar week helper (Monday to Sunday)
+      const { dates, labels, isFuture } = getCurrentWeekDaysWithLabels();
       
       const { data: sessions } = await supabase
         .from('training_sessions')
@@ -40,7 +45,8 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
       return {
         count: sessionDates.size,
         days: dates.map(d => sessionDates.has(d)),
-        labels
+        labels,
+        isFuture
       };
     },
     staleTime: 10000
@@ -48,7 +54,8 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
 
   const weeklyWorkouts = weeklyData?.count || 0;
   const weekDays = weeklyData?.days || [false, false, false, false, false, false, false];
-  const dayLabels = weeklyData?.labels || ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'];
+  const dayLabels = weeklyData?.labels || ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  const futureDays = weeklyData?.isFuture || [false, false, false, false, false, false, false];
   const workoutTarget = 4;
   const workoutStatus = weeklyWorkouts < 2 ? 'low' : 
                         weeklyWorkouts >= workoutTarget ? 'good' : 'ok';
@@ -112,22 +119,27 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
         
         {/* Week Days Dots */}
         <div className="relative z-10 flex-1 flex items-center justify-center gap-1.5">
-          {weekDays.map((done, i) => (
-            <motion.div 
-              key={i}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.2 + i * 0.05 }}
-              className={cn(
-                "w-4 h-4 rounded-full flex items-center justify-center text-[8px]",
-                done 
-                  ? "bg-emerald-500 text-white" 
-                  : "bg-muted/50 text-muted-foreground"
-              )}
-            >
-              {done && <Check className="w-2.5 h-2.5" />}
-            </motion.div>
-          ))}
+          {weekDays.map((done, i) => {
+            const isFutureDay = futureDays[i];
+            return (
+              <motion.div 
+                key={i}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2 + i * 0.05 }}
+                className={cn(
+                  "w-4 h-4 rounded-full flex items-center justify-center text-[8px]",
+                  done 
+                    ? "bg-emerald-500 text-white" 
+                    : isFutureDay
+                      ? "bg-muted/20 border border-dashed border-muted-foreground/30"
+                      : "bg-muted/50 text-muted-foreground"
+                )}
+              >
+                {done && <Check className="w-2.5 h-2.5" />}
+              </motion.div>
+            );
+          })}
         </div>
         
         {/* Value */}
@@ -167,24 +179,29 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
         
         {/* Week Days Visualization */}
         <div className="flex gap-2 mt-4">
-          {weekDays.map((done, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <motion.div 
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2 + i * 0.05 }}
-                className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center",
-                  done 
-                    ? "bg-emerald-500 text-white" 
-                    : "bg-muted/50 text-muted-foreground"
-                )}
-              >
-                {done ? <Check className="w-4 h-4" /> : null}
-              </motion.div>
-              <span className="text-[10px] text-muted-foreground">{dayLabels[i]}</span>
-            </div>
-          ))}
+          {weekDays.map((done, i) => {
+            const isFutureDay = futureDays[i];
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                <motion.div 
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2 + i * 0.05 }}
+                  className={cn(
+                    "w-8 h-8 rounded-full flex items-center justify-center",
+                    done 
+                      ? "bg-emerald-500 text-white" 
+                      : isFutureDay
+                        ? "bg-muted/20 border border-dashed border-muted-foreground/30"
+                        : "bg-muted/50 text-muted-foreground"
+                  )}
+                >
+                  {done ? <Check className="w-4 h-4" /> : null}
+                </motion.div>
+                <span className="text-[10px] text-muted-foreground">{dayLabels[i]}</span>
+              </div>
+            );
+          })}
         </div>
 
         {workoutStatus === 'low' && (
