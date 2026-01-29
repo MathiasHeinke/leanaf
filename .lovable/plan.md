@@ -1,164 +1,192 @@
 
 
-# Plan: Kalenderwochen-Ansicht für Training Widgets
+# Plan: Mehrere Sessions pro Tag mit Icon-Overlay
 
-## Problem-Analyse
+## Kontext
 
-Die aktuelle Implementierung zeigt die **letzten 7 Tage** (rolling window), aber du möchtest eine klassische **Kalenderwoche** (Mo-So):
+Im Screenshot siehst du die "Letzte Sessions" Liste, wo jeder Tag als eigene Zeile erscheint. Das Problem:
+- Wenn man an einem Tag **Krafttraining + Sauna + Zone2** macht, gibt es 3 separate Zeilen
+- Das wird schnell unübersichtlich
+
+## Design-Lösung
+
+Statt separater Zeilen pro Session → **gruppieren nach Datum** mit Icons:
 
 ```text
-AKTUELL (Rolling 7 Days - wenn heute Donnerstag 29.01. ist):
+VORHER (viele Zeilen):
 ┌─────────────────────────────────────────────────────────┐
-│   Fr      Sa      So      Mo      Di      Mi      Do   │
-│  23.01   24.01   25.01   26.01   27.01   28.01   29.01 │
-│   [ ]     [ ]     [ ]     [✓]     [✓]     [✓]     [✓]  │
+│  29.01  🏋️  Krafttraining    42min  3.012kg     ✓      │
+│  29.01  🔥  Sauna (≥80°C)    20min              ✓      │
+│  29.01  🚶  Zone 2           35min              ✓      │
+│  28.01  🚶  Bewegung                            ✓      │
 └─────────────────────────────────────────────────────────┘
 
-GEWÜNSCHT (Kalenderwoche Mo-So):
+NACHHER (gruppiert mit Icons):
 ┌─────────────────────────────────────────────────────────┐
-│   Mo      Di      Mi      Do      Fr      Sa      So   │
-│  27.01   28.01   29.01   30.01   31.01   01.02   02.02 │
-│   [✓]     [✓]     [✓]     [✓]    (leer)  (leer)  (leer)│
-│                           heute    ↑ Zukunft (noch nicht loggbar)
+│  29.01  🏋️ 🔥 🚶   ← Icons klickbar/hoverbar           │
+│         └→ Popover zeigt Details bei Interaktion       │
+│  28.01  🚶                                              │
+│  27.01  🏋️                                              │
 └─────────────────────────────────────────────────────────┘
 ```
 
----
+## Technische Umsetzung
 
-## Lösung
-
-### Neuer Helper: `getCurrentWeekDaysWithLabels()`
-
-Statt "letzte 7 Tage" → "aktuelle Kalenderwoche Mo-So":
+### 1. Query anpassen: Sessions nach Datum gruppieren
 
 ```typescript
-/**
- * Get current calendar week (Monday to Sunday) with labels
- * Future days are included but marked as such
- */
-export const getCurrentWeekDaysWithLabels = (): { 
-  dates: string[], 
-  labels: string[],
-  isFuture: boolean[] // NEU: Markiert Zukunftstage
-} => {
-  const WEEKDAY_LABELS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-  const dates: string[] = [];
-  const isFuture: boolean[] = [];
-  
-  const today = new Date();
-  const todayStr = toDateString(today);
-  
-  // Get Monday of current week
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-  
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    const dateStr = toDateString(d);
-    dates.push(dateStr);
-    isFuture.push(dateStr > todayStr); // Zukunftstag?
-  }
-  
-  return { dates, labels: WEEKDAY_LABELS, isFuture };
+// Statt einzelne Sessions, nach Datum gruppiert laden
+const { data } = await supabase
+  .from('training_sessions')
+  .select('*')
+  .eq('user_id', user.id)
+  .gte('session_date', startDate)
+  .order('session_date', { ascending: false });
+
+// Gruppieren in der Komponente
+const groupedByDate = data.reduce((acc, session) => {
+  const date = session.session_date;
+  if (!acc[date]) acc[date] = [];
+  acc[date].push(session);
+  return acc;
+}, {});
+```
+
+### 2. Neue Komponente: `SessionIconGroup`
+
+Eine Zeile pro Tag mit allen Session-Icons:
+
+```typescript
+interface SessionIconGroupProps {
+  date: string;
+  sessions: TrainingSession[];
+}
+
+const SessionIconGroup = ({ date, sessions }) => {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      {/* Datum */}
+      <span className="text-xs text-muted-foreground w-12">
+        {format(new Date(date), 'dd.MM')}
+      </span>
+      
+      {/* Icon-Reihe mit Popovers */}
+      <div className="flex gap-2">
+        {sessions.map((session) => (
+          <SessionIconPopover key={session.id} session={session} />
+        ))}
+      </div>
+      
+      {/* Aggregierte Daten */}
+      <div className="flex-1 text-right text-xs text-muted-foreground">
+        {totalMinutes}min • {totalVolumeKg}kg
+      </div>
+    </div>
+  );
 };
 ```
 
-### UI-Anpassung: Zukunftstage visuell anders darstellen
+### 3. Popover für Session-Details
 
-Zukunftstage werden **ausgegraut/deaktiviert** dargestellt (nicht als "nicht trainiert"):
+Beim **Klick oder Hover** auf ein Icon erscheint ein Overlay:
 
 ```typescript
-// In TrainingWidget & TrainingDaySheet
-weekDays.map((done, i) => {
-  const isFutureDay = futureFlags[i];
-  
+const SessionIconPopover = ({ session }) => {
   return (
-    <div className={cn(
-      "w-9 h-9 rounded-full flex items-center justify-center",
-      done 
-        ? "bg-emerald-500 text-white"           // Trainiert
-        : isFutureDay
-          ? "bg-muted/20 border border-dashed border-muted-foreground/30"  // Zukunft
-          : "bg-muted/50 text-muted-foreground" // Vergangenheit ohne Training
-    )}>
-      {done ? <Check className="w-4 h-4" /> : null}
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors">
+          <span className="text-lg">{getTypeIcon(session.training_type)}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-3">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xl">{getTypeIcon(session.training_type)}</span>
+          <span className="font-semibold">{getTypeLabel(session)}</span>
+        </div>
+        
+        {/* Metrics */}
+        <div className="space-y-1 text-sm text-muted-foreground">
+          {session.total_duration_minutes && (
+            <div className="flex justify-between">
+              <span>Dauer:</span>
+              <span>{session.total_duration_minutes} min</span>
+            </div>
+          )}
+          {session.total_volume_kg && (
+            <div className="flex justify-between">
+              <span>Volumen:</span>
+              <span>{session.total_volume_kg.toLocaleString('de-DE')} kg</span>
+            </div>
+          )}
+        </div>
+        
+        {/* Notizen falls vorhanden */}
+        {session.notes && (
+          <p className="text-xs text-muted-foreground mt-2 border-t pt-2">
+            {session.notes}
+          </p>
+        )}
+      </PopoverContent>
+    </Popover>
   );
-})
+};
 ```
 
----
+## Visual Design
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Letzte Sessions                                            │
+├─────────────────────────────────────────────────────────────┤
+│  29.01   (🏋️) (🔥) (🚶)           42min • 3.012kg    ✓    │
+│             ↓                                               │
+│  ┌─────────────────────────┐                                │
+│  │ 🏋️ Krafttraining (RPT) │  ← Popover bei Klick/Hover   │
+│  │ ─────────────────────── │                                │
+│  │ Dauer:    42 min        │                                │
+│  │ Volumen:  3.012 kg      │                                │
+│  │ Split:    Push          │                                │
+│  └─────────────────────────┘                                │
+│                                                              │
+│  28.01   (🚶)                      35min             ✓      │
+│  27.01   (🏋️)                      55min • 2.800kg  ✓      │
+│  26.01   (🔥)                      20min             ✓      │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## Datei-Änderungen
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `src/utils/dateHelpers.ts` | EDIT | Neuen Helper `getCurrentWeekDaysWithLabels()` hinzufügen |
-| `src/components/home/widgets/TrainingWidget.tsx` | EDIT | Neuen Helper verwenden + Zukunftstage-Styling |
-| `src/components/home/sheets/TrainingDaySheet.tsx` | EDIT | Gleiche Änderungen für das Sheet |
+| `src/components/training/SessionIconPopover.tsx` | CREATE | Icon mit Popover-Details Komponente |
+| `src/components/training/SessionDayRow.tsx` | CREATE | Gruppierte Tageszeile mit Icons |
+| `src/components/home/sheets/TrainingDaySheet.tsx` | EDIT | Query ändern + neue Komponenten nutzen |
+| `src/components/home/sheets/TrainingDaySheet.tsx` | EDIT | "Letzte Sessions" Section refactoren |
 
----
+## Mobile-Optimierung
+
+- Auf **Desktop**: Hover zeigt Popover (HoverCard)
+- Auf **Mobile**: Tap öffnet Popover (regulärer Click)
+- Icons sind groß genug (w-8 h-8) für Touch-Targets
 
 ## Erwartetes Ergebnis
 
-```text
-Donnerstag, 29. Januar 2026:
-
-┌─────────────────────────────────────────────────────────┐
-│   Mo      Di      Mi      Do      Fr      Sa      So   │
-│   [✓]     [✓]     [✓]     [✓]    [---]   [---]   [---] │
-│   ↑ Vergangene Tage mit Training    ↑ Zukunft (gestrichelt/ausgegraut)
-└─────────────────────────────────────────────────────────┘
-
-Legende:
-[✓] = Grüner Kreis mit Haken (Training geloggt)
-[ ] = Grauer Kreis (Vergangenheit ohne Training)
-[---] = Gestrichelter/dezenter Kreis (Zukunft - noch nicht loggbar)
-```
-
----
-
-## Technische Details
-
-### Query-Änderung
-
-```typescript
-// VORHER:
-const { dates, labels } = getLast7DaysWithLabels();
-
-// NACHHER:
-const { dates, labels, isFuture } = getCurrentWeekDaysWithLabels();
-
-return {
-  count: sessionDates.size,
-  days: dates.map(d => sessionDates.has(d)),
-  labels,
-  isFuture  // NEU
-};
-```
-
-### Count-Berechnung anpassen
-
-Der Workout-Count sollte nur vergangene/heutige Tage zählen (nicht 0/4 wenn die Woche gerade erst begonnen hat):
-
-```typescript
-// Nur vergangene + heute zählen für den Progress
-const completedDays = dates.filter((d, i) => !isFuture[i]);
-const possibleWorkouts = completedDays.length;
-const actualWorkouts = sessionDates.size;
-```
-
----
+- **Kompaktere Übersicht**: 1 Zeile pro Tag statt 3
+- **Alle Infos verfügbar**: Details bei Interaktion
+- **Schneller Überblick**: Icons zeigen sofort welche Aktivitäten
+- **Aggregierte Metriken**: Gesamtdauer/Volumen pro Tag sichtbar
 
 ## Aufwand
 
 | Task | Zeit |
 |------|------|
-| Helper `getCurrentWeekDaysWithLabels` | 10 min |
-| TrainingWidget.tsx anpassen | 15 min |
-| TrainingDaySheet.tsx anpassen | 15 min |
-| Styling für Zukunftstage | 5 min |
-| Testen | 5 min |
+| `SessionIconPopover` Komponente | 20 min |
+| `SessionDayRow` Komponente | 15 min |
+| TrainingDaySheet Query refactoring | 15 min |
+| Integration + Styling | 15 min |
+| Mobile Testing | 10 min |
 
-**Gesamt: ~50 Minuten**
+**Gesamt: ~1.25 Stunden**
 
