@@ -1,234 +1,103 @@
 
-# Enhanced Supplement Chip: Bearbeiten-Modus Redesign
 
-## Zusammenfassung
+# Fix: ActionCard-Kreise werden nicht aktualisiert nach Supplement-Logging
 
-Komplette Neugestaltung des Expanded-Modus im `ExpandableSupplementChip` mit drei neuen Subkomponenten und einem optimierten ARES-Prompt, der kurze, kontextbezogene Antworten liefert.
+## Problem-Analyse
+
+Das **SupplementsWidget** zeigt korrekt "Morgens 4/4 ✓", aber die **ActionCard** (Timing-Kreise) zeigt immer noch "0/4". Die Ursache ist eine **dreifache Daten-Inkonsistenz**:
+
+### 1. Cache-Architektur-Problem
+| Komponente | Datenquelle | Cache-Typ |
+|------------|-------------|-----------|
+| SupplementsWidget | React Query (`QUERY_KEYS.SUPPLEMENTS_TODAY`) | React Query Cache |
+| SupplementTimingCircles | `useSupplementData` Hook | Eigener In-Memory-Cache (5s TTL) |
+
+**Problem:** `invalidateCategory(queryClient, 'supplements')` invalidiert nur React Query Keys, aber `useSupplementData` nutzt einen **eigenen separaten Cache** der nicht invalidiert wird.
+
+### 2. Event-System nicht getriggert
+Der `useSupplementData` Hook hört auf `'supplement-stack-changed'` Events, aber:
+- `useQuickLogging.logSupplementsTaken` dispatcht dieses Event **nicht**
+- `markTimingGroupTaken` im Hook selbst invalidiert React Query, nicht den eigenen Cache
+
+### 3. Timing-Feld-Inkonsistenz (DB-Design-Problem)
+| Funktion | Filtert nach |
+|----------|--------------|
+| `useQuickLogging.logSupplementsTaken` | `.contains('timing', [timing])` (Array-Feld) |
+| `useSupplementData` Gruppierung | `preferred_timing` (Single-Value-Feld) |
+
+**Beispiel aus der DB:**
+- Astaxanthin: `timing = [noon]`, `preferred_timing = 'morning'`
+- Wird von `useQuickLogging` als Noon gezählt, aber von `useSupplementData` als Morning gruppiert!
 
 ---
 
-## Änderungsübersicht
+## Lösung
 
-| Komponente | Status | Beschreibung |
-|------------|--------|--------------|
-| `TimingCircleSelector.tsx` | **NEU** | Timing-Auswahl als Kreise (Layer 0 Design) |
-| `BrandSelector.tsx` | **NEU** | Dropdown mit [Brand, Quality, Preis] |
-| `SelectedProductCard.tsx` | **NEU** | Kompakte Produktkarte mit Info-Button |
-| `ExpandableSupplementChip.tsx` | **ÄNDERN** | Integration + neuer ARES-Prompt |
+### Fix 1: Event-Dispatch nach Quick-Logging
+**Datei:** `src/hooks/useQuickLogging.ts`
 
----
+Nach erfolgreichem Logging das `'supplement-stack-changed'` Event dispatchen:
 
-## 1. TimingCircleSelector (NEU)
-
-**Datei:** `src/components/supplements/TimingCircleSelector.tsx`
-
-Design basiert auf `SupplementTimingCircles` von Layer 0 (Home Dashboard):
-
-- **Layout:** Horizontale Kreisreihe
-- **Timings:** Morning, Noon, Evening, Bedtime, Pre-WO, Post-WO
-- **Aktiver Zustand:** Weißer Rand + Icon (ausgefüllt)
-- **Inaktiver Zustand:** Grauer transparenter Rand
-- **Single-Select:** Nur ein Timing gleichzeitig auswählbar
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  Einnahmezeitpunkt                                      │
-│                                                         │
-│    ○      ○      ●      ○      ○      ○                 │
-│   🌅     ☀️     🌙     🛏️     🏋️     💪                │
-│  Morgens Mittags Abends Bett  Pre-WO Post-WO           │
-│                    ↑                                    │
-│              (ausgewählt)                               │
-└─────────────────────────────────────────────────────────┘
+```typescript
+// Nach Zeile 111: invalidateCategory(queryClient, 'supplements');
+// HINZUFÜGEN:
+window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
 ```
 
----
+### Fix 2: useSupplementData Cache-Invalidierung bei React Query Invalidation
+**Datei:** `src/hooks/useSupplementData.tsx`
 
-## 2. BrandSelector (NEU)
+Option A: React Query statt eigenem Cache nutzen (bevorzugt)
+Option B: Auf React Query Cache-Events hören
 
-**Datei:** `src/components/supplements/BrandSelector.tsx`
+**Empfehlung: Option A** - Hook auf React Query migrieren für Konsistenz
 
-Dropdown-Komponente für Hersteller-Auswahl:
+### Fix 3: Timing-Feld-Konsistenz
+**Datei:** `src/hooks/useQuickLogging.ts`
 
-**Features:**
-- Gruppiert verfügbare Produkte nach Marke
-- Zeigt pro Option: `[Marke] · [★★★★☆] · [€0.12/Tag]`
-- Quality-Index basiert auf `price_tier`:
-  - `luxury` → ★★★★★ (5)
-  - `premium` → ★★★★☆ (4)
-  - `mid` → ★★★☆☆ (3)
-  - `budget` → ★★☆☆☆ (2)
-- Bei mehreren Produkten pro Marke: Empfohlenes oder günstigstes anzeigen
+Die `logSupplementsTaken` Funktion sollte nach `preferred_timing` filtern, nicht nach dem `timing` Array:
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│  Hersteller wählen                                      │
-│                                                         │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │ ▼  Sunday Natural  ·  ★★★★☆  ·  €0.12/Tag        │  │
-│  └───────────────────────────────────────────────────┘  │
-│                                                         │
-│  Dropdown-Options:                                      │
-│  ├─ MoleQlar · ★★★★★ · €0.18/Tag                       │
-│  ├─ Sunday Natural · ★★★★☆ · €0.12/Tag  ✓ Empfohlen    │
-│  ├─ Now Foods · ★★★☆☆ · €0.06/Tag                      │
-│  └─ Bulk · ★★☆☆☆ · €0.04/Tag                           │
-└─────────────────────────────────────────────────────────┘
-```
+```typescript
+// VORHER (Zeile 72-77):
+const { data: supplements, error: fetchError } = await supabase
+  .from('user_supplements')
+  .select('id, supplement_id, supplements(name)')
+  .eq('user_id', user.id)
+  .eq('is_active', true)
+  .contains('timing', [timing]);
 
----
-
-## 3. SelectedProductCard (NEU)
-
-**Datei:** `src/components/supplements/SelectedProductCard.tsx`
-
-Kompakte Produktkarte nach Hersteller-Auswahl:
-
-**Features:**
-- Zeigt gewähltes Produkt: Name, Dosis, Form, Preis/Tag
-- Quality-Zertifikate als kleine Badges (GMP, Vegan, Creapure)
-- **"i"-Button** (Info-Circle) öffnet `SupplementDetailSheet`
-- "Empfohlen"-Badge wenn `is_recommended`
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  ┌───────────────────────────────────────────────────┐  │
-│  │  Sunday Natural Magnesium-Glycinat            (i) │  │
-│  │  ─────────────────────────────────────────────────│  │
-│  │  400mg · 120 Kapseln · €0.12/Tag                  │  │
-│  │                                                   │  │
-│  │  🏅 GMP   🌱 Vegan   ✓ Empfohlen                  │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## 4. ARES-Prompt Update
-
-**Kern-Änderung:** Kurze, fokussierte Bewertung statt ausführlicher Analyse.
-
-**Neuer Prompt-Template:**
-
-```
-QUICK CHECK: [Supplement Name] ([Hersteller])
-- Dosis: [X] [Einheit]
-- Timing: [Gewähltes Timing]
-
-TASK:
-1. Timing optimal für mein Ziel?
-2. Interaktionen mit meinem Stack?
-3. Hersteller-Qualität/Preis-Bewertung?
-
-CONSTRAINT: Halte dich extrem kurz (max 3 Sätze). Nur auf Nachfrage tiefer!
-```
-
-**Beispiel-Antwort von ARES:**
-
-> "Dein Magnesium-Glycinat abends ist perfekt für Schlafqualität. Nicht gleichzeitig mit dem Zink am Morgen nehmen - mindestens 4h Abstand. Sunday Natural ist solide Qualität für den Preis. 👍"
-
----
-
-## 5. Kompletter Edit-Mode Flow
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  💊 Magnesium bearbeiten                           [X]  │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ── Dosierung ──                                        │
-│  Menge: [400    ]  Einheit: [mg ▼]                      │
-│                                                         │
-│  ── Einnahmezeitpunkt ──                                │
-│    ○ ○ ○ ● ○ ○                                         │
-│   🌅☀️🌙🛏️🏋️💪   → Abends ausgewählt                    │
-│                                                         │
-│  ── Hersteller ──                                       │
-│  [▼ Sunday Natural · ★★★★☆ · €0.12/Tag              ]   │
-│                                                         │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │  Sunday Natural Magnesium-Glycinat            (i) │  │
-│  │  400mg · Kapseln · Vegan                          │  │
-│  │  🏅 GMP  🌱 Vegan  ✓ Empfohlen    €0.12/Tag       │  │
-│  └───────────────────────────────────────────────────┘  │
-│                                                         │
-│  ── Zyklen (falls erforderlich) ──                      │
-│  [5] Tage an, [2] Tage Pause                            │
-│                                                         │
-│  ── Notizen ──                                          │
-│  [_________________________________]                    │
-│                                                         │
-├─────────────────────────────────────────────────────────┤
-│  [💾 Speichern]              [ARES fragen] [🗑️]         │
-└─────────────────────────────────────────────────────────┘
+// NACHHER:
+const { data: supplements, error: fetchError } = await supabase
+  .from('user_supplements')
+  .select('id, supplement_id, name, custom_name, preferred_timing')
+  .eq('user_id', user.id)
+  .eq('is_active', true)
+  .eq('preferred_timing', timing);
 ```
 
 ---
 
 ## Technische Details
 
-### Props-Interfaces
+### Betroffene Dateien
+| Datei | Änderung |
+|-------|----------|
+| `src/hooks/useQuickLogging.ts` | Filter auf `preferred_timing` ändern + Event dispatch |
+| `src/hooks/useSupplementData.tsx` | Cache-Sync mit React Query |
+| `src/components/home/cards/SupplementTimingCircles.tsx` | Refetch nach Logging triggern |
 
-**TimingCircleSelector:**
-```typescript
-interface TimingCircleSelectorProps {
-  value: PreferredTiming;
-  onChange: (timing: PreferredTiming) => void;
-  size?: 'sm' | 'md';
-  className?: string;
-}
-```
+### Datenbank-Analyse
+Aktuelle Supplement-Verteilung:
+- 17 Supplements mit `preferred_timing = 'morning'`
+- 5 mit `preferred_timing = 'bedtime'`
+- 3 mit `preferred_timing = 'noon'`
+- 2 mit `preferred_timing = 'pre_workout'`
+- 1 mit `preferred_timing = 'post_workout'`
 
-**BrandSelector:**
-```typescript
-interface BrandSelectorProps {
-  products: SupplementProduct[];
-  selectedBrandId: string | null;
-  onSelect: (brandId: string, product: SupplementProduct) => void;
-  loading?: boolean;
-  className?: string;
-}
-```
+**4 von 17 Morning-Supplements wurden heute geloggt** - daher zeigt das Widget korrekt 4/4 für die *genommenen*, aber die ActionCard zeigt 0/4 weil der Cache stale ist.
 
-**SelectedProductCard:**
-```typescript
-interface SelectedProductCardProps {
-  product: SupplementProduct;
-  supplementItem: SupplementLibraryItem | null;
-  onInfoClick: () => void;
-  className?: string;
-}
-```
+### Erwartetes Ergebnis nach Fix
+1. Logging über ActionCard-Kreise aktualisiert sofort alle UI-Komponenten
+2. Widget und ActionCard zeigen konsistente Zahlen
+3. Alle Loggins nutzen `preferred_timing` als Single Source of Truth
 
-### Daten-Flow
-
-1. **Products laden:** `useSupplementProducts(item.supplement_id)` - bereits implementiert
-2. **Brand-Gruppierung:** Produkte nach `brand_id` gruppieren, günstigstes/empfohlenes pro Brand
-3. **State Management:** Neuer State `selectedProduct` im Chip
-4. **ARES Navigation:** `navigate('/coach/ares', { state: { autoStartPrompt: prompt } })`
-
-### Entfernte Elemente
-
-- **Pill-Buttons** für Timing → ersetzt durch Timing-Kreise
-- **Produkt-Liste** (5 inline Karten) → ersetzt durch Dropdown + Einzelkarte
-- **Impact Score Badge** → bleibt unverändert (gut für Kontext)
-
----
-
-## Dateien die erstellt/geändert werden
-
-| Datei | Aktion | LOC (ca.) |
-|-------|--------|-----------|
-| `src/components/supplements/TimingCircleSelector.tsx` | NEU | ~120 |
-| `src/components/supplements/BrandSelector.tsx` | NEU | ~100 |
-| `src/components/supplements/SelectedProductCard.tsx` | NEU | ~80 |
-| `src/components/supplements/ExpandableSupplementChip.tsx` | ÄNDERN | ~50 Zeilen geändert |
-
----
-
-## Erwartetes Ergebnis
-
-- **Visuelle Konsistenz:** Layer 3 Edit-Mode nutzt dasselbe Timing-Design wie Layer 0 Dashboard
-- **Professionelles UX:** Supplement-Konfiguration fühlt sich an wie "Stack programmieren"
-- **Smarte ARES-Integration:** Kurze, knackige Antworten die Kompetenz zeigen
-- **Elefantengedächtnis-Synergie:** ARES kennt den Stack und gibt relevante Querverbindungen
