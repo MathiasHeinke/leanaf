@@ -1,18 +1,19 @@
 /**
  * TrainingDaySheet - Layer 2 Training Overlay
- * Shows today's training status, weekly overview, and recent sessions
+ * Shows today's training status, weekly overview, recent sessions, and quick logging
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { X, Dumbbell, Check, Settings, Calendar, TrendingUp } from 'lucide-react';
+import { X, Dumbbell, Check, Settings, Calendar, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { 
   TRAINING_TYPE_LABELS, 
   TRAINING_TYPE_ICONS, 
@@ -20,6 +21,8 @@ import {
   type TrainingType,
   type SplitType
 } from '@/types/training';
+import { TrainingNotesInput, type ParsedTrainingResult } from '@/components/training/TrainingNotesInput';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface TrainingDaySheetProps {
   isOpen: boolean;
@@ -33,12 +36,17 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
   onOpenLogger
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const todayStr = new Date().toISOString().slice(0, 10);
   const dayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   const workoutTarget = 4;
+  
+  // Quick log state
+  const [isQuickLogOpen, setIsQuickLogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Query: Today's session
-  const { data: todaySession } = useQuery({
+  const { data: todaySession, refetch: refetchToday } = useQuery({
     queryKey: ['training-session-today', todayStr],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -55,6 +63,53 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
     },
     enabled: isOpen
   });
+
+  // Handle quick log submission
+  const handleQuickLogSubmit = async (result: ParsedTrainingResult) => {
+    setIsSubmitting(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        toast.error('Nicht eingeloggt');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('training-ai-parser', {
+        body: {
+          raw_text: result.rawText,
+          training_type: result.trainingType,
+          persist: true
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Parsing fehlgeschlagen');
+      }
+
+      // Invalidate queries to refresh data
+      await queryClient.invalidateQueries({ queryKey: ['training-session-today'] });
+      await queryClient.invalidateQueries({ queryKey: ['training-week-overview'] });
+      await queryClient.invalidateQueries({ queryKey: ['training-recent-sessions'] });
+      
+      // Close the quick log panel
+      setIsQuickLogOpen(false);
+      
+      // Show success toast
+      toast.success(`${response.data.exercises?.length || 0} Übungen gespeichert`, {
+        description: `${(response.data.session_meta?.total_volume_kg || 0).toLocaleString('de-DE')} kg Volumen`
+      });
+
+      // Refetch today's session
+      await refetchToday();
+    } catch (error) {
+      console.error('[TrainingDaySheet] Quick log error:', error);
+      toast.error('Speichern fehlgeschlagen', {
+        description: error instanceof Error ? error.message : 'Unbekannter Fehler'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Query: Weekly overview (last 7 days)
   const { data: weekData } = useQuery({
@@ -232,7 +287,7 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
                 
                 {!todaySession && (
                   <Button
-                    onClick={onOpenLogger}
+                    onClick={() => setIsQuickLogOpen(true)}
                     className="w-full mt-4 h-11 rounded-xl"
                   >
                     <Dumbbell className="w-4 h-4 mr-2" />
@@ -240,6 +295,33 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
                   </Button>
                 )}
               </div>
+
+              {/* Quick Log Section */}
+              <Collapsible open={isQuickLogOpen} onOpenChange={setIsQuickLogOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full flex items-center justify-between py-3 px-4 h-auto rounded-xl bg-muted/20 border border-border/30 hover:bg-muted/40"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">📝</span>
+                      <span className="font-medium text-sm">Schnell loggen</span>
+                    </div>
+                    {isQuickLogOpen ? (
+                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-4">
+                  <TrainingNotesInput
+                    onSubmit={handleQuickLogSubmit}
+                    isLoading={isSubmitting}
+                    onCancel={() => setIsQuickLogOpen(false)}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
 
               {/* Weekly Overview */}
               <div className="space-y-3">
