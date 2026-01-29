@@ -6,16 +6,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Simplified ingredient matching with manual overrides
+// Extended ingredient matching with comprehensive manual overrides
 const MANUAL_OVERRIDES: Record<string, string[]> = {
-  'vit_d3': ['vitamin d3', 'vitamin d', 'cholecalciferol'],
-  'vit_k2': ['vitamin k2', 'k2 mk-7', 'k2'],
+  // Vitamins - EXTENDED
+  'vit_d3': ['vitamin d3', 'vitamin d', 'cholecalciferol', 'vitamin d3 + k2', 'vitamin d3 + k2 mk7 tropfen', 'vitamin d balance', 'd3 + k2'],
+  'vit_k2': ['vitamin k2', 'k2 mk-7', 'k2', 'k2 mk7'],
   'vit_b12': ['vitamin b12', 'b12', 'methylcobalamin'],
   'vit_b_complex': ['b-komplex', 'b komplex', 'vitamin b-komplex'],
-  'vit_c': ['vitamin c', 'ascorbinsäure'],
+  'vit_c': ['vitamin c', 'ascorbinsäure', 'vitamin c liposomal', 'vitamin c (liposomal)'],
   'vit_e': ['vitamin e', 'tocopherol'],
-  'magnesium': ['magnesium', 'magnesiumcitrat', 'magnesium glycinat'],
-  'zinc': ['zink'],
+  'folate': ['folat', 'folsaeure', 'methyl folate', '5-mthf', 'methylfolat'],
+  'multivitamin': ['multivitamin', 'a-z komplex', 'multi', 'a-z'],
+  
+  // Minerals - EXTENDED
+  'magnesium': ['magnesium', 'magnesiumcitrat', 'magnesium glycinat', 'magnesium bisglycinat', 'mg-glycinat', 'mg-citrat'],
+  'mg_threonate': ['magnesium-l-threonat', 'magtein', 'magnesium komplex 11 ultra', 'magnesium komplex'],
+  'zinc': ['zink', 'zink bisglycinat', 'zinc complex', 'zink-bisglycinat', 'zinkglycinat'],
   'iron': ['eisen'],
   'calcium': ['calcium', 'kalzium'],
   'selenium': ['selen'],
@@ -23,72 +29,99 @@ const MANUAL_OVERRIDES: Record<string, string[]> = {
   'copper': ['kupfer'],
   'chromium': ['chrom'],
   'boron': ['bor'],
+  
+  // Amino acids - EXTENDED
   'creatine': ['kreatin', 'creatine', 'creatin monohydrat', 'creatine monohydrat', 'creatin'],
   'carnitine': ['carnitin', 'l-carnitin', 'acetyl-l-carnitin'],
   'glutamine': ['glutamin', 'l-glutamin'],
   'arginine': ['arginin', 'l-arginin'],
   'citrulline': ['citrullin', 'l-citrullin', 'citrullin malat'],
-  'taurine': ['taurin'],
+  'taurine': ['taurin', 'taurin kardioprotektiv', 'taurin (kardioprotektiv)'],
   'glycine': ['glycin'],
   'theanine': ['theanin', 'l-theanin'],
   'tyrosine': ['tyrosin', 'l-tyrosin'],
   'beta_alanine': ['beta-alanin', 'beta alanin'],
   'hmb': ['hmb', 'hmb 3000'],
-  'eaa': ['eaa', 'eaa komplex'],
+  'eaa': ['eaa', 'eaa komplex', 'essential amino acids'],
   'bcaa': ['bcaa'],
   'nac': ['nac', 'n-acetyl-cystein', 'gly-nac', 'glynac'],
+  'glynac': ['glynac', 'gly-nac', 'glycin + nac'],
   'betaine': ['betain', 'tmg', 'trimethylglycin'],
-  'omega3_epa': ['omega-3', 'omega 3', 'omega-3 (epa/dha)'],
-  'ashwagandha': ['ashwagandha', 'ashwagandha ksm-66', 'ksm-66'],
+  
+  // Fatty acids - EXTENDED
+  'omega3_epa': ['omega-3', 'omega 3', 'omega-3 (epa/dha)', 'omega-3 epa/dha'],
+  
+  // Adaptogens - EXTENDED
+  'ashwagandha': ['ashwagandha', 'ashwagandha ksm-66', 'ksm-66', 'ksm66'],
   'rhodiola': ['rhodiola', 'rhodiola rosea'],
   'ginseng': ['ginseng', 'panax ginseng'],
   'maca': ['maca'],
   'curcumin': ['curcumin', 'kurkuma', 'curcumin longvida'],
   'egcg': ['grüntee extrakt', 'gruentee', 'green tea'],
-  'resveratrol': ['resveratrol', 'liposomales nad+ & trans-resveratrol'],
+  'resveratrol': ['resveratrol', 'trans-resveratrol', 'liposomales nad+ & trans-resveratrol'],
   'quercetin': ['quercetin'],
   'berberine': ['berberin'],
   'tongkat_ali': ['tongkat ali', 'tongkat'],
   'fisetin': ['fisetin'],
+  'shilajit': ['shilajit', 'mumijo'],
+  'turkesterone': ['turkesterone', 'turkesteron', 'turkesterone max'],
+  
+  // Mushrooms
   'lions_mane': ['lions mane', 'lion\'s mane', 'hericium'],
   'reishi': ['reishi'],
   'cordyceps': ['cordyceps'],
   'chaga': ['chaga'],
+  
+  // Longevity - EXTENDED
   'coq10': ['coq10', 'ubiquinol', 'coq10 ubiquinol', 'astaxanthin + coenzym q10'],
-  'ala': ['alpha-liponsäure', 'alpha liponsäure', 'ala'],
+  'ala': ['alpha-liponsäure', 'alpha liponsäure', 'alpha-liponsaeure', 'ala', 'r-ala'],
   'pqq': ['pqq'],
   'astaxanthin': ['astaxanthin'],
   'glutathione': ['glutathion'],
   'nmn': ['nmn', 'nmn sublingual', 'nicotinamid mononukleotid', 'nmn (nicotinamid mononukleotid)'],
   'nr': ['nr', 'nicotinamid ribosid'],
   'spermidine': ['spermidin'],
-  'probiotics': ['probiotika', 'probiona kulturen komplex'],
+  'urolithin_a': ['urolithin a', 'mitopure', 'urolithin'],
+  'tudca': ['tudca'],
+  'pterostilbene': ['pterostilben', 'pterostilbene'],
+  'akg': ['alpha-ketoglutarat', 'akg', 'ca-akg', 'caakg', 'alpha-ketoglutarat (akg)', 'rejuvant'],
+  
+  // Gut health - EXTENDED
+  'probiotics': ['probiotika', 'probiona kulturen komplex', 'probiotika multi-strain'],
+  'probiotics_lacto': ['probiotika', 'lactobacillus', 'probiona kulturen komplex', 'probiotika multi-strain'],
   'psyllium': ['flohsamenschalen', 'flohsamen', 'psyllium'],
+  
+  // Joints
   'glucosamine': ['glucosamin'],
   'chondroitin': ['chondroitin'],
   'msm': ['msm'],
   'collagen': ['kollagen', 'collagen', 'kollagen peptide'],
+  'collagen_peptides': ['kollagen-peptide', 'collagen peptides', 'kollagen peptide'],
   'hyaluronic_acid': ['hyaluronsäure', 'hyaluron', 'hyaluron & kollagen'],
+  
+  // Nootropics
   'citicoline': ['citicolin', 'cdp-cholin'],
   'alpha_gpc': ['alpha-gpc', 'alpha gpc'],
   'ps': ['phosphatidylserin'],
-  'mg_threonate': ['magnesium-l-threonat', 'magtein'],
-  'whey': ['whey', 'whey protein'],
+  
+  // Proteins - EXTENDED
+  'whey': ['whey', 'whey protein', 'protein pulver'],
   'casein': ['casein', 'kasein'],
+  
+  // Other - EXTENDED
   'caffeine': ['koffein', 'caffeine'],
   'melatonin': ['melatonin'],
   'bergamot': ['citrus bergamot', 'bergamot', 'bergamotte'],
-  'fadogia': ['fadogia agrestis'],
+  'electrolytes': ['elektrolyte', 'lmnt', 'elektrolyte (lmnt)'],
+  'milk_thistle': ['silymarin', 'mariendistel', 'milk thistle'],
+  'pine_bark': ['pinienrinden extrakt', 'opc', 'pycnogenol', 'pinienrinden'],
+  'black_seed_oil': ['schwarzkuemmeloel 1000', 'schwarzkuemmeloel', 'nigella sativa'],
+  'fadogia': ['fadogia agrestis', 'fadogia'],
   'dim': ['dim'],
   'apigenin': ['apigenin'],
-  'ca_akg': ['ca-akg', 'cakg', 'alpha-ketoglutarat'],
   'bacopa': ['bacopa monnieri', 'bacopa'],
-  'opc': ['opc', 'pinienrinden extrakt'],
   'gaba': ['gaba'],
   'lecithin': ['lecithin'],
-  'methyl_folate': ['methyl folate', 'folat', 'methylfolat'],
-  'methylenblau': ['methylenblau'],
-  'elektrolyte': ['elektrolyte (lmnt)', 'elektrolyte'],
   'chlorella': ['chlorella'],
   'spirulina': ['spirulina'],
 };
