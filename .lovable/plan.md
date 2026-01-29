@@ -1,78 +1,232 @@
 
-# Plan: Fix für Wochentag-Labels in Training Widgets
+# Plan: Cardio-Parsing für Training Logger
 
 ## Problem-Analyse
 
-Die Wochen-Bubbles zeigen falsche Tagesbezeichnungen, weil:
+Aktueller State aus dem Screenshot:
+```
+Input:  "laufband 10min. bei 9-12kmh"
+Output: "Laufband: 1×1×0kg (0kg)"
+```
 
-1. `getLast7Days()` gibt die **letzten 7 Tage** zurück (heute + 6 Tage zurück)
-2. Die Labels sind **statisch** `['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']`
-3. Die Labels müssen **dynamisch** zu den tatsächlichen Wochentagen passen
+Das System versucht Cardio wie Krafttraining zu parsen (Sets × Reps × Weight), was scheitert weil:
 
-**Beispiel (heute ist Donnerstag 29.01.2026):**
+1. **Regex erwartet** `4x10 80kg` Format
+2. **Datenstruktur** ist nur für `SetEntry { reps, weight, rpe }`
+3. **AI-Prompt** fragt nur nach `sets`, `reps`, `weight_kg`
+
+Cardio hat andere Metriken:
+- ⏱️ Dauer (10 min)
+- 📏 Distanz (optional, z.B. 5km)
+- 💨 Geschwindigkeit/Pace (9-12 km/h)
+- ❤️ Herzfrequenz (optional)
+
+---
+
+## Lösungsarchitektur
 
 ```text
-getLast7Days() = ['2026-01-23', '2026-01-24', '2026-01-25', '2026-01-26', '2026-01-27', '2026-01-28', '2026-01-29']
-                   Freitag      Samstag      Sonntag      Montag       Dienstag     Mittwoch     Donnerstag
-
-Statische Labels:    [Mo]        [Di]         [Mi]        [Do]         [Fr]         [Sa]         [So]
-                     ↑ FALSCH!   
-
-Korrekte Labels:     [Fr]        [Sa]         [So]        [Mo]         [Di]         [Mi]         [Do]
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         TRAINING PARSER V2                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Input: "Laufband 10min bei 9-12kmh"                                        │
+│                    ↓                                                        │
+│         ┌─────────────────────────┐                                         │
+│         │  Aktivitäts-Erkennung   │ ← Regex: laufband|joggen|radfahren|...  │
+│         └───────────┬─────────────┘                                         │
+│                     ↓                                                       │
+│         ┌─────────────────────────┐                                         │
+│         │ training_type = cardio? │                                         │
+│         └───────────┬─────────────┘                                         │
+│              ↙             ↘                                               │
+│     ┌─────────────┐    ┌─────────────┐                                      │
+│     │  Kraft-     │    │  Cardio-    │                                      │
+│     │  Parser     │    │  Parser     │                                      │
+│     │             │    │             │                                      │
+│     │ sets×reps   │    │ duration    │                                      │
+│     │ weight_kg   │    │ distance_km │                                      │
+│     │ rpe         │    │ speed_kmh   │                                      │
+│     └──────┬──────┘    │ avg_hr      │                                      │
+│            │           └──────┬──────┘                                      │
+│            ↓                  ↓                                             │
+│     ┌───────────────────────────────┐                                       │
+│     │     training_sessions         │                                       │
+│     │     session_data: JSONB       │ ← Speichert cardio_data oder sets     │
+│     └───────────────────────────────┘                                       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Lösung
+## Technische Änderungen
 
-### Neuen Helper in `dateHelpers.ts` hinzufügen
+### 1. Erweiterte Types (`src/types/training.ts`)
 
 ```typescript
-/**
- * Get the last N days with their weekday labels (timezone-aware)
- * Returns both date strings AND corresponding German weekday abbreviations
- */
-export const getLast7DaysWithLabels = (): { dates: string[], labels: string[] } => {
-  const WEEKDAY_LABELS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']; // getDay() returns 0=Sunday
-  const dates: string[] = [];
-  const labels: string[] = [];
-  const today = new Date();
+// Cardio-spezifische Datenstruktur
+export interface CardioEntry {
+  activity: CardioType;          // walking | running | cycling | ...
+  duration_minutes: number;      // 10
+  distance_km?: number;          // 1.5
+  speed_kmh?: number;           // 9
+  speed_max_kmh?: number;       // 12
+  pace_min_km?: number;         // 6:00 (als Dezimal: 6.0)
+  avg_hr?: number;              // 145
+  max_hr?: number;              // 165
+  incline_percent?: number;     // 2% Steigung
+  calories?: number;            // 150
+  notes?: string;               // "Intervalle"
+}
+```
+
+### 2. Client-seitiger Cardio-Parser (`src/tools/cardio-parser.ts`)
+
+```typescript
+export function parseCardioFromText(input: string): CardioEntry | null {
+  const lower = input.toLowerCase();
   
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(d.getDate() - i);
-    dates.push(toDateString(d));
-    labels.push(WEEKDAY_LABELS[d.getDay()]);
+  // Aktivitäts-Erkennung
+  const activityPatterns = {
+    running: /laufband|joggen|laufen|jogging|running|sprint/,
+    cycling: /rad|bike|cycling|ergometer|spinning/,
+    rowing: /rudern|rowing|ruderger/,
+    swimming: /schwimmen|swimming|bahnen/,
+    walking: /gehen|walking|spazier/,
+    stairmaster: /stepper|stairmaster|treppen/
+  };
+  
+  let activity: CardioType = 'other';
+  for (const [type, pattern] of Object.entries(activityPatterns)) {
+    if (pattern.test(lower)) { activity = type as CardioType; break; }
   }
   
-  return { dates, labels };
-};
+  // Dauer extrahieren: "10min", "30 minuten", "1h", "1.5 stunden"
+  const durationMatch = input.match(
+    /(\d+(?:[\.,]\d+)?)\s*(min|minuten?|h|stunden?)/i
+  );
+  
+  // Geschwindigkeit: "9-12kmh", "10 km/h", "bei 12kmh"
+  const speedMatch = input.match(
+    /(\d+(?:[\.,]\d+)?)\s*(?:-\s*(\d+(?:[\.,]\d+)?))?\s*(?:km\/h|kmh)/i
+  );
+  
+  // Distanz: "5km", "3.2 kilometer"
+  const distanceMatch = input.match(
+    /(\d+(?:[\.,]\d+)?)\s*(km|kilometer|m|meter)/i
+  );
+  
+  // Herzfrequenz: "HR 145", "Puls 150", "@140bpm"
+  const hrMatch = input.match(
+    /(?:hr|puls|bpm|herzfrequenz)\s*(\d+)/i
+  );
+  
+  // Mindestens Aktivität + Dauer muss vorhanden sein
+  if (!durationMatch) return null;
+  
+  const duration = parseFloat(durationMatch[1].replace(',', '.'));
+  const durationMinutes = durationMatch[2].startsWith('h') 
+    ? duration * 60 
+    : duration;
+  
+  return {
+    activity,
+    duration_minutes: Math.round(durationMinutes),
+    speed_kmh: speedMatch ? parseFloat(speedMatch[1].replace(',', '.')) : undefined,
+    speed_max_kmh: speedMatch?.[2] ? parseFloat(speedMatch[2].replace(',', '.')) : undefined,
+    distance_km: distanceMatch ? parseFloat(distanceMatch[1].replace(',', '.')) : undefined,
+    avg_hr: hrMatch ? parseInt(hrMatch[1]) : undefined
+  };
+}
 ```
 
-### Komponenten aktualisieren
+### 3. AI-Prompt Erweiterung (`training-ai-parser/index.ts`)
 
-**TrainingWidget.tsx:**
+Der AI-Prompt braucht eine zweite Tool-Definition für Cardio:
 
 ```typescript
-// VORHER:
-const dates = getLast7Days();
-const dayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-
-// NACHHER:
-import { getLast7DaysWithLabels } from '@/utils/dateHelpers';
-// In queryFn:
-const { dates, labels } = getLast7DaysWithLabels();
-// Return labels mit in weeklyData
-return {
-  count: sessionDates.size,
-  days: dates.map(d => sessionDates.has(d)),
-  labels
-};
-// Im Render:
-const dayLabels = weeklyData?.labels || ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'];
+tools: [
+  {
+    type: 'function',
+    function: {
+      name: 'parse_strength_log',
+      // ... bestehende Kraft-Tool Definition
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'parse_cardio_log',
+      description: 'Parse cardio/endurance training log',
+      parameters: {
+        type: 'object',
+        properties: {
+          activities: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                activity: { 
+                  type: 'string', 
+                  enum: ['running', 'cycling', 'rowing', 'swimming', 'walking', 'other'],
+                  description: 'Art der Cardio-Aktivität' 
+                },
+                duration_minutes: { type: 'number', description: 'Dauer in Minuten' },
+                distance_km: { type: 'number', description: 'Distanz in km (optional)' },
+                speed_kmh: { type: 'number', description: 'Geschwindigkeit in km/h (optional)' },
+                avg_hr: { type: 'number', description: 'Durchschnittliche Herzfrequenz (optional)' },
+                notes: { type: 'string', description: 'Zusätzliche Notizen' }
+              },
+              required: ['activity', 'duration_minutes']
+            }
+          }
+        },
+        required: ['activities']
+      }
+    }
+  }
+]
 ```
 
-**TrainingDaySheet.tsx:** Identische Änderung
+### 4. TrainingNotesInput UI Anpassung
+
+Preview für Cardio zeigt andere Metriken:
+
+```typescript
+// Bei Cardio-Typ
+{trainingType === 'cardio' && parsedCardio && (
+  <div className="flex items-center gap-2 text-sm">
+    <Check className="w-3.5 h-3.5 text-emerald-500" />
+    <span className="font-medium">{activityLabel}:</span>
+    <span className="text-muted-foreground">
+      {parsedCardio.duration_minutes} min
+      {parsedCardio.speed_kmh && ` @ ${parsedCardio.speed_kmh} km/h`}
+      {parsedCardio.distance_km && ` • ${parsedCardio.distance_km} km`}
+    </span>
+  </div>
+)}
+```
+
+### 5. Datenbank-Speicherung
+
+Cardio-Daten werden im bestehenden `session_data` JSONB-Feld gespeichert:
+
+```typescript
+// training_sessions.session_data für Cardio:
+{
+  training_type: 'zone2', // oder 'vo2max'
+  cardio_entries: [
+    {
+      activity: 'running',
+      duration_minutes: 10,
+      speed_kmh: 9,
+      speed_max_kmh: 12,
+      notes: 'Intervalle auf Laufband'
+    }
+  ]
+}
+```
 
 ---
 
@@ -80,53 +234,37 @@ const dayLabels = weeklyData?.labels || ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `src/utils/dateHelpers.ts` | EDIT | `getLast7DaysWithLabels()` Helper hinzufügen |
-| `src/components/home/widgets/TrainingWidget.tsx` | EDIT | Dynamische Labels aus Query verwenden |
-| `src/components/home/sheets/TrainingDaySheet.tsx` | EDIT | Dynamische Labels aus Query verwenden |
+| `src/types/training.ts` | EDIT | `CardioEntry` Interface hinzufügen |
+| `src/tools/cardio-parser.ts` | CREATE | Client-seitiger Cardio-Parser |
+| `src/tools/set-parser.ts` | EDIT | Export `isCardioInput()` Detection-Helper |
+| `src/components/training/TrainingNotesInput.tsx` | EDIT | Cardio-Preview und dualen Parser-Pfad |
+| `supabase/functions/training-ai-parser/index.ts` | EDIT | Cardio-Tool + Parsing-Logik |
 
 ---
 
 ## Erwartetes Ergebnis
 
 ```text
-VORHER (Bug):
-┌──────────────────────────────────────────────────────────┐
-│  Diese Woche                              4/4 Sessions   │
-│                                                          │
-│  [  ]  [  ]  [  ]  [✓]  [✓]  [✓]  [✓]                    │
-│   Mo    Di    Mi    Do   Fr   Sa   So  ← Statisch FALSCH │
-│                                                          │
-│  Training war am 29.01 (Do) aber zeigt am "Do" Position  │
-│  obwohl letzte 7 Tage bei Fr-Do enden!                   │
-└──────────────────────────────────────────────────────────┘
+VORHER:
+┌─────────────────────────────────────────┐
+│  Input: "laufband 10min. bei 9-12kmh"   │
+│                                         │
+│  📊 Erkannt:                            │
+│  ✓ Laufband: 1×1×0kg (0kg)  ← FALSCH    │
+│                                         │
+│  Gesamt: 0 kg   1 Sets                  │
+└─────────────────────────────────────────┘
 
-NACHHER (Fix):
-┌──────────────────────────────────────────────────────────┐
-│  Diese Woche                              4/4 Sessions   │
-│                                                          │
-│  [  ]  [  ]  [  ]  [✓]  [✓]  [✓]  [✓]                    │
-│   Fr    Sa    So    Mo   Di   Mi   Do  ← Dynamisch       │
-│                                                          │
-│  Training am 29.01 zeigt korrekt auf "Do" (letzter Tag)  │
-└──────────────────────────────────────────────────────────┘
+NACHHER:
+┌─────────────────────────────────────────┐
+│  Input: "laufband 10min. bei 9-12kmh"   │
+│                                         │
+│  📊 Erkannt (Cardio):                   │
+│  ✓ 🏃 Laufband: 10 min @ 9-12 km/h      │
+│                                         │
+│  Gesamt: 10 min Cardio                  │
+└─────────────────────────────────────────┘
 ```
-
----
-
-## Technische Details
-
-Die Query gibt jetzt auch die Labels zurück:
-
-```typescript
-// queryFn returns:
-{
-  count: 4,
-  days: [false, false, false, true, true, true, true],
-  labels: ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do']
-}
-```
-
-So bleiben Daten und Labels immer synchron.
 
 ---
 
@@ -134,9 +272,10 @@ So bleiben Daten und Labels immer synchron.
 
 | Task | Zeit |
 |------|------|
-| Helper in dateHelpers.ts | 5 min |
-| TrainingWidget.tsx | 10 min |
-| TrainingDaySheet.tsx | 10 min |
-| Testen | 5 min |
+| Types erweitern | 5 min |
+| `cardio-parser.ts` erstellen | 20 min |
+| `TrainingNotesInput` dual path | 25 min |
+| Edge Function erweitern | 30 min |
+| Testen | 15 min |
 
-**Gesamt: ~30 Minuten**
+**Gesamt: ~1.5 Stunden**
