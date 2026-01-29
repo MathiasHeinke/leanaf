@@ -185,3 +185,24 @@ export const getSleepDateString = (): string => {
   // 2 AM or later → use today's date
   return getCurrentDateString();
 };
+
+/**
+ * Get the last N days as YYYY-MM-DD strings (timezone-aware)
+ * Useful for weekly overviews and sparklines
+ */
+export const getLastNDays = (n: number = 7): string[] => {
+  const dates: string[] = [];
+  const today = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(toDateString(d));
+  }
+  return dates;
+};
+
+/**
+ * Get the last 7 days as YYYY-MM-DD strings (timezone-aware)
+ * Alias for getLastNDays(7)
+ */
+export const getLast7Days = (): string[] => getLastNDays(7);

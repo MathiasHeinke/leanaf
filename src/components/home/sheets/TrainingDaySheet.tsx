@@ -14,8 +14,9 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { getCurrentDateString } from '@/utils/dateHelpers';
+import { getCurrentDateString, getLast7Days } from '@/utils/dateHelpers';
 import { createTimezoneHeaders } from '@/utils/timezone-backend-helper';
+import { QUERY_KEYS, invalidateCategory } from '@/constants/queryKeys';
 import { 
   TRAINING_TYPE_LABELS, 
   TRAINING_TYPE_ICONS, 
@@ -89,9 +90,11 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
         throw new Error(response.error.message || 'Parsing fehlgeschlagen');
       }
 
-      // Invalidate queries to refresh data
+      // Invalidate all workout-related queries (including Home Screen widget)
+      invalidateCategory(queryClient, 'workout');
+      
+      // Also invalidate local sheet-specific queries
       await queryClient.invalidateQueries({ queryKey: ['training-session-today'] });
-      await queryClient.invalidateQueries({ queryKey: ['training-week-overview'] });
       await queryClient.invalidateQueries({ queryKey: ['training-recent-sessions'] });
       
       // Close the quick log panel
@@ -114,20 +117,15 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
     }
   };
 
-  // Query: Weekly overview (last 7 days)
+  // Query: Weekly overview (last 7 days) - uses unified query key for cache sync
   const { data: weekData } = useQuery({
-    queryKey: ['training-week-overview'],
+    queryKey: QUERY_KEYS.TRAINING_WEEKLY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { count: 0, days: [] as boolean[] };
       
-      const dates: string[] = [];
-      const today = new Date();
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        dates.push(d.toISOString().slice(0, 10));
-      }
+      // Use timezone-aware date helper
+      const dates = getLast7Days();
       
       const { data: sessions } = await supabase
         .from('training_sessions')

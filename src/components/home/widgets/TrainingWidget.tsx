@@ -7,6 +7,7 @@ import { WidgetSize } from '@/types/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { QUERY_KEYS } from '@/constants/queryKeys';
+import { getLast7Days } from '@/utils/dateHelpers';
 
 interface TrainingWidgetProps {
   size: WidgetSize;
@@ -23,13 +24,8 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { count: 0, days: [] as boolean[] };
       
-      const dates: string[] = [];
-      const today = new Date();
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(d.getDate() - i);
-        dates.push(d.toISOString().slice(0, 10));
-      }
+      // Use timezone-aware date helper
+      const dates = getLast7Days();
       
       const { data: sessions } = await supabase
         .from('training_sessions')
