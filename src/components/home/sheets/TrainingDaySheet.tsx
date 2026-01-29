@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { getCurrentDateString, getLast7Days } from '@/utils/dateHelpers';
+import { getCurrentDateString, getLast7DaysWithLabels } from '@/utils/dateHelpers';
 import { createTimezoneHeaders } from '@/utils/timezone-backend-helper';
 import { QUERY_KEYS, invalidateCategory } from '@/constants/queryKeys';
 import { 
@@ -41,7 +41,6 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const todayStr = getCurrentDateString();
-  const dayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   const workoutTarget = 4;
   
   // Quick log state
@@ -122,10 +121,10 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
     queryKey: QUERY_KEYS.TRAINING_WEEKLY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { count: 0, days: [] as boolean[] };
+      if (!user) return { count: 0, days: [] as boolean[], labels: ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'] };
       
-      // Use timezone-aware date helper
-      const dates = getLast7Days();
+      // Use timezone-aware date helper with dynamic labels
+      const { dates, labels } = getLast7DaysWithLabels();
       
       const { data: sessions } = await supabase
         .from('training_sessions')
@@ -137,7 +136,8 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
       
       return {
         count: sessionDates.size,
-        days: dates.map(d => sessionDates.has(d))
+        days: dates.map(d => sessionDates.has(d)),
+        labels
       };
     },
     enabled: isOpen
@@ -164,6 +164,7 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
 
   const weeklyCount = weekData?.count || 0;
   const weekDays = weekData?.days || [false, false, false, false, false, false, false];
+  const dayLabels = weekData?.labels || ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'];
 
   // Helper: Get display label for training type
   const getTypeLabel = (trainingType: TrainingType | null, splitType: SplitType | null): string => {
