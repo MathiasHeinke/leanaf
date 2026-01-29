@@ -6296,6 +6296,7 @@ export type Database = {
           priority_score: number | null
           protocol_phase: number | null
           recognition_keywords: string[] | null
+          relevance_matrix: Json | null
           synergies: string[] | null
           timing_constraint: string | null
           underrated_score: number | null
@@ -6328,6 +6329,7 @@ export type Database = {
           priority_score?: number | null
           protocol_phase?: number | null
           recognition_keywords?: string[] | null
+          relevance_matrix?: Json | null
           synergies?: string[] | null
           timing_constraint?: string | null
           underrated_score?: number | null
@@ -6360,6 +6362,7 @@ export type Database = {
           priority_score?: number | null
           protocol_phase?: number | null
           recognition_keywords?: string[] | null
+          relevance_matrix?: Json | null
           synergies?: string[] | null
           timing_constraint?: string | null
           underrated_score?: number | null

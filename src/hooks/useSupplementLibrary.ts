@@ -69,6 +69,8 @@ export const useSupplementLibrary = () => {
         cycling_protocol: item.cycling_protocol || null,
         underrated_score: item.underrated_score || null,
         warnung: item.warnung || null,
+        // ARES Matrix-Scoring
+        relevance_matrix: item.relevance_matrix || null,
       }));
     },
     staleTime: 1000 * 60 * 10, // 10 minutes - library rarely changes
@@ -196,7 +198,8 @@ export const useUserStack = () => {
             cycling_required,
             cycling_protocol,
             underrated_score,
-            warnung
+            warnung,
+            relevance_matrix
           )
         `)
         .eq('user_id', user.id)
@@ -252,6 +255,8 @@ export const useUserStack = () => {
             cycling_protocol: supplement.cycling_protocol || null,
             underrated_score: supplement.underrated_score || null,
             warnung: supplement.warnung || null,
+            // ARES Matrix-Scoring
+            relevance_matrix: supplement.relevance_matrix || null,
           } : null,
         };
       });
