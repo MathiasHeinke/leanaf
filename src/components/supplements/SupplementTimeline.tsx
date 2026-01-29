@@ -32,8 +32,7 @@ const TIMING_TITLES: Record<PreferredTiming, string> = {
   morning: 'Morning Protocol',
   noon: 'Midday Support',
   afternoon: 'Afternoon Boost',
-  evening: 'Evening Routine',
-  bedtime: 'Night Recovery',
+  evening: 'Evening & Night Routine',
   pre_workout: 'Pre-Workout Stack',
   post_workout: 'Post-Workout Recovery',
 };

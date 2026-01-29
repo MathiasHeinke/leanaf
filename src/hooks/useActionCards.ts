@@ -47,11 +47,10 @@ const getCurrentRelevantSupplementTimings = (
 ): string[] => {
   const relevant: string[] = [];
   
-  // Time-based phases
+  // Time-based phases (no more before_bed - evening covers it)
   if (hour >= 6 && hour < 11) relevant.push('morning');
   if (hour >= 11 && hour < 14) relevant.push('noon');
-  if (hour >= 14 && hour < 20) relevant.push('evening');
-  if (hour >= 20 && hour < 24) relevant.push('before_bed');
+  if (hour >= 14 && hour < 24) relevant.push('evening');
   
   // Workout-based phases (only on strength days)
   if (isStrengthDay) {
@@ -156,8 +155,7 @@ export const useActionCards = () => {
         noon: 'Mittags',
         evening: 'Abends',
         pre_workout: 'Pre-WO',
-        post_workout: 'Post-WO',
-        before_bed: 'Vor Schlaf'
+        post_workout: 'Post-WO'
       };
       
       const pendingText = incompleteRelevantTimings.length <= 2

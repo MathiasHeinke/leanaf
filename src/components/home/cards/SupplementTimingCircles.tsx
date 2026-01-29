@@ -22,8 +22,6 @@ const TIMING_CONFIG: Record<string, { icon: LucideIcon; label: string }> = {
   bedtime: { icon: BedDouble, label: 'Vor Schlaf' },
   pre_workout: { icon: Dumbbell, label: 'Pre-WO' },
   post_workout: { icon: Dumbbell, label: 'Post-WO' },
-  // Legacy fallback
-  before_bed: { icon: BedDouble, label: 'Vor Schlaf' },
 };
 
 // Get current timing based on hour

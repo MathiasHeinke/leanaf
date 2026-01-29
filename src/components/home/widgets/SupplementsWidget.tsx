@@ -30,7 +30,6 @@ const TIMING_CONFIG: Record<string, { icon: React.ElementType; label: string }> 
   bedtime: { icon: BedDouble, label: 'Vor Schlaf' },
   pre_workout: { icon: Dumbbell, label: 'Pre-WO' },
   post_workout: { icon: Dumbbell, label: 'Post-WO' },
-  before_bed: { icon: BedDouble, label: 'Vor Schlaf' },
 };
 
 // Get current timing
@@ -95,8 +94,8 @@ export const SupplementsWidget: React.FC<SupplementsWidgetProps> = ({ size, onOp
         const isTaken = takenMap.has(supp.id);
         
         timingArray.forEach((timing: string) => {
-          // Normalize before_bed to bedtime
-          const normalizedTiming = timing === 'before_bed' ? 'bedtime' : timing;
+          // Normalize before_bed and bedtime to evening
+          const normalizedTiming = (timing === 'before_bed' || timing === 'bedtime') ? 'evening' : timing;
           if (!timingCounts[normalizedTiming]) {
             timingCounts[normalizedTiming] = { taken: 0, total: 0 };
           }

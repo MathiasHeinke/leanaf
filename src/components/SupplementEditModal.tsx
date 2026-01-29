@@ -25,8 +25,7 @@ const timingOptions = [
   { value: 'noon', label: 'Mittags' },
   { value: 'evening', label: 'Abends' },
   { value: 'pre_workout', label: 'Vor dem Training' },
-  { value: 'post_workout', label: 'Nach dem Training' },
-  { value: 'before_bed', label: 'Vor dem Schlafengehen' }
+  { value: 'post_workout', label: 'Nach dem Training' }
 ];
 
 export const SupplementEditModal: React.FC<SupplementEditModalProps> = ({

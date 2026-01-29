@@ -2,14 +2,13 @@
 // ARES Stack Architect: TypeScript-Typen für Phase 1
 // =====================================================
 
-// Timing Constraints für optimale Einnahme
+// Timing Constraints für optimale Einnahme (bedtime removed - use evening)
 export type TimingConstraint = 
   | 'fasted'       // Auf nüchternen Magen
   | 'with_food'    // Mit Mahlzeit
   | 'with_fats'    // Mit Fett für Absorption
   | 'pre_workout'  // 30-60 Min vor Training
   | 'post_workout' // Nach dem Training
-  | 'bedtime'      // Vor dem Schlafengehen
   | 'any';         // Flexibel
 
 // Interaktions-Tags für Warnungen
@@ -29,13 +28,12 @@ export type ScheduleType =
   | 'interval'      // Alle X Tage
   | 'cyclic';       // X Wochen on, Y Wochen off
 
-// Preferred Timing für Timeline-Visualisierung
+// Preferred Timing für Timeline-Visualisierung (bedtime removed - evening covers it)
 export type PreferredTiming = 
   | 'morning'      // 06:00 - 10:00
   | 'noon'         // 11:00 - 14:00
   | 'afternoon'    // 14:00 - 18:00
-  | 'evening'      // 18:00 - 21:00
-  | 'bedtime'      // 21:00 - 23:00
+  | 'evening'      // 18:00 onwards (includes pre-sleep)
   | 'pre_workout'  // Dynamisch vor Training
   | 'post_workout'; // Dynamisch nach Training
 
@@ -261,14 +259,13 @@ export interface UserStackItem {
   supplement?: SupplementLibraryItem | null;
 }
 
-// Timing Constraint Labels für UI
+// Timing Constraint Labels für UI (bedtime removed)
 export const TIMING_CONSTRAINT_LABELS: Record<TimingConstraint, string> = {
   fasted: 'Nüchtern',
   with_food: 'Mit Mahlzeit',
   with_fats: 'Mit Fett',
   pre_workout: 'Vor Training',
   post_workout: 'Nach Training',
-  bedtime: 'Vor dem Schlaf',
   any: 'Flexibel',
 };
 
@@ -279,7 +276,6 @@ export const TIMING_CONSTRAINT_ICONS: Record<TimingConstraint, string> = {
   with_fats: '🥑',
   pre_workout: '🏋️',
   post_workout: '💪',
-  bedtime: '🌙',
   any: '⏰',
 };
 
@@ -302,18 +298,17 @@ export const SCHEDULE_TYPE_LABELS: Record<ScheduleType, string> = {
   cyclic: 'Zyklisch',
 };
 
-// Preferred Timing Labels für UI
+// Preferred Timing Labels für UI (bedtime removed - evening covers it)
 export const PREFERRED_TIMING_LABELS: Record<PreferredTiming, string> = {
   morning: 'Morgens',
   noon: 'Mittags',
   afternoon: 'Nachmittags',
   evening: 'Abends',
-  bedtime: 'Vor dem Schlaf',
   pre_workout: 'Vor Training',
   post_workout: 'Nach Training',
 };
 
-// Timeline Slots für Visualisierung
+// Timeline Slots für Visualisierung (bedtime merged into evening)
 export interface TimelineSlot {
   id: PreferredTiming;
   label: string;
@@ -326,8 +321,7 @@ export const TIMELINE_SLOTS: TimelineSlot[] = [
   { id: 'morning', label: 'Morgens', timeRange: '06:00 - 10:00', startHour: 6, endHour: 10 },
   { id: 'noon', label: 'Mittags', timeRange: '11:00 - 14:00', startHour: 11, endHour: 14 },
   { id: 'afternoon', label: 'Nachmittags', timeRange: '14:00 - 18:00', startHour: 14, endHour: 18 },
-  { id: 'evening', label: 'Abends', timeRange: '18:00 - 21:00', startHour: 18, endHour: 21 },
-  { id: 'bedtime', label: 'Vor dem Schlaf', timeRange: '21:00 - 23:00', startHour: 21, endHour: 23 },
+  { id: 'evening', label: 'Abends', timeRange: '18:00 - 23:00', startHour: 18, endHour: 23 },
 ];
 
 // Helper: Check if timing constraint matches preferred timing
@@ -341,8 +335,7 @@ export function isTimingOptimal(
     with_fats: ['noon', 'evening'],
     pre_workout: ['pre_workout', 'afternoon'],
     post_workout: ['post_workout', 'afternoon', 'evening'],
-    bedtime: ['bedtime', 'evening'],
-    any: ['morning', 'noon', 'afternoon', 'evening', 'bedtime', 'pre_workout', 'post_workout'],
+    any: ['morning', 'noon', 'afternoon', 'evening', 'pre_workout', 'post_workout'],
   };
   
   return optimalMappings[constraint]?.includes(preferredTiming) ?? false;

@@ -42,8 +42,7 @@ export const SupplementToggleRow: React.FC<SupplementToggleRowProps> = ({
     const timing = item.common_timing?.[0]?.toLowerCase() || '';
     if (timing.includes('morgen') || timing.includes('nüchtern')) return 'Morgens';
     if (timing.includes('mittag')) return 'Mittags';
-    if (timing.includes('abend') || timing.includes('nacht')) return 'Abends';
-    if (timing.includes('schlaf')) return 'Vor dem Schlaf';
+    if (timing.includes('abend') || timing.includes('nacht') || timing.includes('schlaf')) return 'Abends';
     if (timing.includes('vor training')) return 'Vor Training';
     if (timing.includes('nach training')) return 'Nach Training';
     return 'Flexibel';

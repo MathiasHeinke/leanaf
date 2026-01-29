@@ -19,14 +19,13 @@ const TIMING_CONFIG: Record<PreferredTiming, {
   noon: { icon: Sun, label: 'Mittags', shortLabel: 'Mi' },
   afternoon: { icon: CloudSun, label: 'Nachmittags', shortLabel: 'Na' },
   evening: { icon: Moon, label: 'Abends', shortLabel: 'Ab' },
-  bedtime: { icon: Moon, label: 'Vor Schlaf', shortLabel: 'Nacht' },
   pre_workout: { icon: Dumbbell, label: 'Pre-WO', shortLabel: 'Pre' },
   post_workout: { icon: Dumbbell, label: 'Post-WO', shortLabel: 'Post' },
 };
 
-// Default timing order
+// Default timing order (no bedtime)
 const DEFAULT_TIMINGS: PreferredTiming[] = [
-  'morning', 'noon', 'evening', 'bedtime', 'pre_workout', 'post_workout'
+  'morning', 'noon', 'evening', 'pre_workout', 'post_workout'
 ];
 
 interface TimingCircleProps {

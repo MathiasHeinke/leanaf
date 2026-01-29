@@ -478,7 +478,7 @@ function mapTimingToPreferred(
   // 1. Check timing_constraint first (most specific)
   if (timingConstraint) {
     const constraint = timingConstraint.toLowerCase();
-    if (constraint === 'bedtime') return 'bedtime';
+    if (constraint === 'bedtime') return 'evening'; // Map bedtime to evening
     if (constraint === 'fasted') return 'morning';
     if (constraint === 'with_food' || constraint === 'with_fats') return 'noon'; // With meals
     if (constraint === 'pre_workout') return 'pre_workout';
@@ -491,9 +491,9 @@ function mapTimingToPreferred(
     const first = commonTiming[0]?.toLowerCase();
     if (first?.includes('morgen') || first?.includes('nüchtern') || first === 'morning') return 'morning';
     if (first?.includes('mittag') || first === 'noon') return 'noon';
-    if (first?.includes('nachmittag') || first === 'afternoon') return 'afternoon';
+    if (first?.includes('nachmittag') || first === 'afternoon') return 'evening';
     if (first?.includes('abend') || first?.includes('nacht') || first === 'evening') return 'evening';
-    if (first?.includes('schlaf') || first === 'bedtime') return 'bedtime';
+    if (first?.includes('schlaf') || first === 'bedtime') return 'evening'; // Map to evening
     if (first?.includes('vor training') || first === 'pre_workout') return 'pre_workout';
     if (first?.includes('nach training') || first === 'post_workout') return 'post_workout';
   }

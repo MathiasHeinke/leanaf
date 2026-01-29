@@ -34,7 +34,7 @@ const PHASE_0_SUPPLEMENTS: SupplementCatalogEntry[] = [
     category: 'Schlaf',
     default_dosage: '400',
     default_unit: 'mg',
-    timing_constraint: 'bedtime',
+    timing_constraint: 'any', // Abends empfohlen - wird über common_timing gemapped
     interaction_tags: [],
     brand_recommendation: 'Sunday Natural',
     description: 'Beste Bioverfügbarkeit, entspannt Muskeln, fördert Tiefschlaf. 75% der Deutschen sind mangelhaft versorgt.',
@@ -51,7 +51,7 @@ const PHASE_0_SUPPLEMENTS: SupplementCatalogEntry[] = [
     category: 'Schlaf',
     default_dosage: '200',
     default_unit: 'mg',
-    timing_constraint: 'bedtime',
+    timing_constraint: 'any', // Abends empfohlen
     interaction_tags: [],
     brand_recommendation: 'Now Foods',
     description: 'Aminosäure aus Grüntee. Fördert Alpha-Wellen im Gehirn für entspannten Fokus ohne Sedierung.',
@@ -68,7 +68,7 @@ const PHASE_0_SUPPLEMENTS: SupplementCatalogEntry[] = [
     category: 'Schlaf',
     default_dosage: '50',
     default_unit: 'mg',
-    timing_constraint: 'bedtime',
+    timing_constraint: 'any', // Abends empfohlen
     interaction_tags: [],
     brand_recommendation: 'Double Wood',
     description: 'Kamillen-Extrakt. Anxiolytisch, bindet an GABA-Rezeptoren. Huberman-Protokoll Bestandteil.',
@@ -85,7 +85,7 @@ const PHASE_0_SUPPLEMENTS: SupplementCatalogEntry[] = [
     category: 'Schlaf',
     default_dosage: '3',
     default_unit: 'g',
-    timing_constraint: 'bedtime',
+    timing_constraint: 'any', // Abends empfohlen
     interaction_tags: [],
     brand_recommendation: 'Bulk',
     description: 'Senkt Körpertemperatur, verbessert Tiefschlaf-Qualität. Sehr gut verträglich.',
@@ -102,7 +102,7 @@ const PHASE_0_SUPPLEMENTS: SupplementCatalogEntry[] = [
     category: 'Schlaf',
     default_dosage: '2',
     default_unit: 'g',
-    timing_constraint: 'bedtime',
+    timing_constraint: 'any', // Abends empfohlen
     interaction_tags: [],
     brand_recommendation: 'ESN',
     description: 'GABA-Agonist mit beruhigender Wirkung. Unterstützt auch Herzgesundheit.',

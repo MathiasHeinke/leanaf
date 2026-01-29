@@ -5,7 +5,7 @@ interface ConfirmSupplementModalProps {
   open: boolean;
   prompt: string;
   proposal: SupplementProposal | null;
-  onConfirm: (pickedIdx?: number, patch?: { dose?: string | null; schedule?: { freq?: 'daily'|'weekly'|'custom'; time?: 'morning'|'noon'|'evening'|'preworkout'|'postworkout'|'bedtime'|'custom'; custom?: string | null } | null; notes?: string | null; updateExisting?: boolean }) => void;
+  onConfirm: (pickedIdx?: number, patch?: { dose?: string | null; schedule?: { freq?: 'daily'|'weekly'|'custom'; time?: 'morning'|'noon'|'evening'|'preworkout'|'postworkout'|'custom'; custom?: string | null } | null; notes?: string | null; updateExisting?: boolean }) => void;
   onClose: () => void;
 }
 
@@ -18,7 +18,7 @@ export default function ConfirmSupplementModal({ open, prompt, proposal, onConfi
   const [dose, setDose] = useState<string>(item?.dose || '');
   const [notes, setNotes] = useState<string>(item?.notes || '');
   const [freq, setFreq] = useState<'daily'|'weekly'|'custom'|undefined>('daily');
-  const [time, setTime] = useState<'morning'|'noon'|'evening'|'preworkout'|'postworkout'|'bedtime'|'custom'|undefined>('evening');
+  const [time, setTime] = useState<'morning'|'noon'|'evening'|'preworkout'|'postworkout'|'custom'|undefined>('evening');
   const [customTime, setCustomTime] = useState<string>('');
   const existingId = (item?.existingId ?? (proposal as any)?.existingId) as number | null | undefined;
   const [updateExisting, setUpdateExisting] = useState<boolean>(false);
@@ -92,7 +92,6 @@ export default function ConfirmSupplementModal({ open, prompt, proposal, onConfi
                   <option value="evening">abends</option>
                   <option value="preworkout">vor dem Training</option>
                   <option value="postworkout">nach dem Training</option>
-                  <option value="bedtime">vor dem Schlafen</option>
                   <option value="custom">custom</option>
                 </select>
               </div>
