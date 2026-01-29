@@ -1,125 +1,206 @@
 
-# Plan: Timezone-Bug Fix für Training Parser
 
-## Problem-Analyse
+# Plan: Training Widget Timezone & Cache Sync Fix
 
-Das Training wurde auf **Donnerstag (2026-01-29)** gespeichert, obwohl der User es am **Mittwoch** eingetragen hat.
+## Zusammenfassung
 
-**Ursache:** `new Date().toISOString().slice(0, 10)` verwendet UTC, nicht die lokale Zeitzone des Users.
+Drei Bugs verursachen die falschen Wochen-Bubbles und fehlende UI-Aktualisierung:
 
-**Beispiel des Bugs:**
-```
-User in Europe/Berlin:
-- Lokale Zeit: Mittwoch 28. Januar 2026, 23:30 Uhr
-- UTC Zeit:    Donnerstag 29. Januar 2026, 00:30 Uhr
-- toISOString(): "2026-01-29T00:30:00.000Z"
-- Gespeichertes Datum: 2026-01-29 (Donnerstag) ❌
-```
-
-**Betroffene Stellen:**
-1. `src/components/home/sheets/TrainingDaySheet.tsx` (Zeile 40)
-2. `supabase/functions/training-ai-parser/index.ts` (Zeile 498)
+1. **Timezone Bug**: `toISOString()` statt lokaler Datumsberechnung für die Wochentage
+2. **Query Key Mismatch**: Layer 2 invalidiert `['training-week-overview']`, aber Widget nutzt `['training-sessions-weekly']`
+3. **Fehlende Category Invalidierung**: Nach Logging wird `invalidateCategory('workout')` nicht aufgerufen
 
 ---
 
-## Lösung
+## Problem-Visualisierung
 
-Das Projekt hat bereits die korrekten Helper-Funktionen:
-- `src/utils/dateHelpers.ts` → `getCurrentDateString()`
-- `src/utils/timezone-backend-helper.ts` → `createTimezoneHeaders()`
-- `supabase/functions/_shared/timezone-helper.ts` → Edge Function Helper
+```text
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          AKTUELLER ZUSTAND (FEHLERHAFT)                         │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  TrainingWidget (Home)                 TrainingDaySheet (Layer 2)               │
+│  ──────────────────────                ──────────────────────────               │
+│  queryKey: ['training-sessions-weekly'] queryKey: ['training-week-overview']    │
+│  dates: toISOString() ← UTC ❌         dates: toISOString() ← UTC ❌            │
+│                                                                                 │
+│  Nach Logging:                                                                  │
+│  → Widget Cache NICHT invalidiert ❌   → Nur lokale Keys invalidiert            │
+│  → Zeigt alte Daten                    → Korrekte Daten                         │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+                                        ↓
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                          ZIELZUSTAND (KORREKT)                                  │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  TrainingWidget (Home)                 TrainingDaySheet (Layer 2)               │
+│  ──────────────────────                ──────────────────────────               │
+│  queryKey: QUERY_KEYS.TRAINING_WEEKLY  queryKey: QUERY_KEYS.TRAINING_WEEKLY     │
+│  dates: getLast7Days() ✅              dates: getLast7Days() ✅                 │
+│                                                                                 │
+│  Nach Logging:                                                                  │
+│  → invalidateCategory('workout') ✅    → Alle Training-Keys invalidiert         │
+│  → Widget zeigt sofort neuen Stand     → Home Screen synchronized               │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
 
-Diese werden nur nicht an den richtigen Stellen verwendet.
+---
+
+## Implementierung
+
+### 1. Zentralen Helper in `dateHelpers.ts` hinzufügen
+
+Der Helper existiert bereits in `SleepDaySheet.tsx` - er muss nur zentralisiert werden:
+
+```typescript
+// In src/utils/dateHelpers.ts
+
+/**
+ * Get the last N days as YYYY-MM-DD strings (timezone-aware)
+ * Useful for weekly overviews and sparklines
+ */
+export const getLastNDays = (n: number = 7): string[] => {
+  const dates: string[] = [];
+  const today = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(toDateString(d));
+  }
+  return dates;
+};
+
+// Alias for common use case
+export const getLast7Days = (): string[] => getLastNDays(7);
+```
+
+---
+
+### 2. `TrainingWidget.tsx` korrigieren
+
+**Vorher:**
+```typescript
+const dates: string[] = [];
+const today = new Date();
+for (let i = 6; i >= 0; i--) {
+  const d = new Date(today);
+  d.setDate(d.getDate() - i);
+  dates.push(d.toISOString().slice(0, 10));  // ← UTC!
+}
+```
+
+**Nachher:**
+```typescript
+import { getLast7Days } from '@/utils/dateHelpers';
+// ...
+const dates = getLast7Days();  // ← Lokal!
+```
+
+---
+
+### 3. `TrainingDaySheet.tsx` korrigieren
+
+#### 3a. Datumsberechnung fixen (Zeile 124-130):
+
+**Vorher:**
+```typescript
+const dates: string[] = [];
+const today = new Date();
+for (let i = 6; i >= 0; i--) {
+  const d = new Date(today);
+  d.setDate(d.getDate() - i);
+  dates.push(d.toISOString().slice(0, 10));
+}
+```
+
+**Nachher:**
+```typescript
+import { getLast7Days } from '@/utils/dateHelpers';
+// ...
+const dates = getLast7Days();
+```
+
+#### 3b. Query Key vereinheitlichen:
+
+Statt lokaler Keys die zentralen `QUERY_KEYS` verwenden:
+
+```typescript
+import { QUERY_KEYS, invalidateCategory } from '@/constants/queryKeys';
+
+// Query: Weekly overview
+const { data: weekData } = useQuery({
+  queryKey: QUERY_KEYS.TRAINING_WEEKLY,  // ← Einheitlicher Key
+  // ...
+});
+```
+
+#### 3c. Cache-Invalidierung nach Logging verbessern (Zeile 92-95):
+
+**Vorher:**
+```typescript
+await queryClient.invalidateQueries({ queryKey: ['training-session-today'] });
+await queryClient.invalidateQueries({ queryKey: ['training-week-overview'] });
+await queryClient.invalidateQueries({ queryKey: ['training-recent-sessions'] });
+```
+
+**Nachher:**
+```typescript
+// Invalidate all workout-related queries (including Home Screen widget)
+invalidateCategory(queryClient, 'workout');
+
+// Also invalidate local sheet-specific queries
+await queryClient.invalidateQueries({ queryKey: ['training-session-today'] });
+await queryClient.invalidateQueries({ queryKey: ['training-recent-sessions'] });
+```
 
 ---
 
 ## Datei-Änderungen
 
-### 1. Frontend: `TrainingDaySheet.tsx`
-
-**Vorher (Zeile 40):**
-```typescript
-const todayStr = new Date().toISOString().slice(0, 10);
-```
-
-**Nachher:**
-```typescript
-import { getCurrentDateString } from '@/utils/dateHelpers';
-// ...
-const todayStr = getCurrentDateString();
-```
-
-### 2. Frontend: Timezone-Header bei API-Calls
-
-**Im `handleQuickLogSubmit` (Zeile 77-83):**
-```typescript
-import { createTimezoneHeaders } from '@/utils/timezone-backend-helper';
-// ...
-const response = await supabase.functions.invoke('training-ai-parser', {
-  body: {
-    raw_text: result.rawText,
-    training_type: result.trainingType,
-    persist: true
-  },
-  headers: createTimezoneHeaders()  // NEU: Sendet x-user-timezone Header
-});
-```
-
-### 3. Backend: `training-ai-parser/index.ts`
-
-**Import am Anfang:**
-```typescript
-import { 
-  extractTimezone, 
-  getCurrentDateInTimezone 
-} from '../_shared/timezone-helper.ts';
-```
-
-**Vorher (Zeile 498):**
-```typescript
-const todayStr = new Date().toISOString().slice(0, 10);
-```
-
-**Nachher:**
-```typescript
-// Timezone aus Request-Header lesen (vom Frontend gesendet)
-const timezone = extractTimezone(req);
-const todayStr = getCurrentDateInTimezone(timezone);
-console.log(`[TRAINING-AI-PARSER] Using timezone: ${timezone}, date: ${todayStr}`);
-```
-
-**Auch Zeile 530 für session_name:**
-```typescript
-// Vorher:
-const sessionName = `Training ${new Date().toLocaleDateString('de-DE')}`;
-
-// Nachher:
-const sessionName = `Training ${todayStr}`;
-```
-
----
-
-## Zusammenfassung der Änderungen
-
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `src/components/home/sheets/TrainingDaySheet.tsx` | **EDIT** | `getCurrentDateString()` + `createTimezoneHeaders()` |
-| `supabase/functions/training-ai-parser/index.ts` | **EDIT** | `extractTimezone()` + `getCurrentDateInTimezone()` |
+| `src/utils/dateHelpers.ts` | **EDIT** | `getLastNDays()` und `getLast7Days()` hinzufügen |
+| `src/components/home/widgets/TrainingWidget.tsx` | **EDIT** | `getLast7Days()` statt UTC-Berechnung |
+| `src/components/home/sheets/TrainingDaySheet.tsx` | **EDIT** | Query Key vereinheitlichen + `invalidateCategory('workout')` |
 
 ---
 
-## Erwartetes Verhalten nach Fix
+## Vorher/Nachher UI
 
+```text
+VORHER (Bug):
+┌───────────────────────────────────────┐
+│  Training    [Mo][Di][Mi][Do][Fr][Sa][✓]  ← Sonntag grün
+│                                       │    (UTC zeigt falschen Tag)
+│  0/4 Woche                            │
+└───────────────────────────────────────┘
+
+NACHHER (Fix):
+┌───────────────────────────────────────┐
+│  Training    [Mo][Di][Mi][✓][Fr][Sa][So]  ← Donnerstag grün
+│                                       │    (Lokale Zeit korrekt)
+│  1/4 Woche                            │
+└───────────────────────────────────────┘
 ```
-User in Europe/Berlin:
-- Lokale Zeit: Mittwoch 28. Januar 2026, 23:30 Uhr
-- x-user-timezone Header: "Europe/Berlin"
-- getCurrentDateInTimezone("Europe/Berlin"): "2026-01-28"
-- Gespeichertes Datum: 2026-01-28 (Mittwoch) ✅
-```
+
+---
+
+## Bonus: SleepDaySheet aufräumen
+
+Da `getLast7Days()` jetzt zentral ist, kann der lokale Helper in `SleepDaySheet.tsx` entfernt und durch den Import ersetzt werden.
 
 ---
 
 ## Aufwand
 
-~30 Minuten (einfache Änderungen, Helper existieren bereits)
+| Task | Zeit |
+|------|------|
+| `dateHelpers.ts`: Helper hinzufügen | ~5 min |
+| `TrainingWidget.tsx`: Fix | ~10 min |
+| `TrainingDaySheet.tsx`: Fix + Invalidierung | ~15 min |
+| Testen | ~10 min |
+
+**Gesamt: ~40 Minuten**
+
