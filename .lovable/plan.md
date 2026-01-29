@@ -1,78 +1,151 @@
 
-# Fix: Supplement Chip Bearbeitungsmodus - 3 Probleme
+# Fix: Schlaf-Logging mit korrekter Tageswende-Logik
 
-## Gefundene Probleme
+## Problem
 
-| Problem | Ursache | Lösung |
-|---------|---------|--------|
-| Kein Hersteller-Dropdown | `user_supplements.supplement_id = NULL` | ❌ Daten-Problem - muss in DB gefixed werden |
-| "Bett"-Label unlogisch | `shortLabel: 'Bett'` in TimingCircleSelector | ✅ Label auf "Nacht" ändern |
-| ARES Prompt nicht übergeben | Race Condition: Coach.tsx löscht State zu früh | ✅ State-Clearing mit Delay verschieben |
+Der SleepLogger zeigt "Bereits geloggt" an, selbst wenn für **heute** noch kein Schlaf eingetragen wurde. Das liegt an zwei Problemen:
 
----
+1. **useDailyMetrics** holt den **letzten** Sleep-Eintrag ohne Datumsfilter
+2. **SleepLogger** prüft nur `lastHours != null` → immer `true` wenn jemals geloggt
 
-## Fix 1: TimingCircleSelector - Label anpassen
+## Lösung: "Sleep Date" Logik mit 02:00 Uhr Grenze
 
-**Datei:** `src/components/supplements/TimingCircleSelector.tsx`
-
-**Änderung:**
-```typescript
-// VORHER:
-bedtime: { icon: BedDouble, label: 'Vor Schlaf', shortLabel: 'Bett' },
-
-// NACHHER:
-bedtime: { icon: Moon, label: 'Vor Schlaf', shortLabel: 'Nacht' },
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    TAGESWENDE FÜR SCHLAF                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   28.01.2026          │         29.01.2026                  │
+│   ─────────────       │         ─────────────               │
+│                       │                                     │
+│   00:00  01:00  02:00 │ 03:00  04:00  ...  23:00           │
+│   ──────────────┼─────│─────────────────────────           │
+│   ↑             ↑                                          │
+│   └─────────────┘                                          │
+│   Gehört noch zu                                           │
+│   "28.01." wenn Schlaf                                     │
+│   für 28. geloggt wird                                     │
+│                                                             │
+│   Ab 02:00 Uhr → Neuer Tag (29.01.)                        │
+│   Vor 02:00 Uhr → Noch alter Tag (28.01.)                  │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-Zusätzlich: "Bett"-Icon (BedDouble) durch Mond (Moon) ersetzen - konsistent mit dem Abend-Slot.
+**Praxis-Beispiel:**
+- 29.01. um 01:30 Uhr → Schlaf-Datum = 28.01. (gestern)
+- 29.01. um 02:00 Uhr → Schlaf-Datum = 29.01. (heute)
+- 29.01. um 12:00 Uhr → Schlaf-Datum = 29.01. (heute)
 
 ---
 
-## Fix 2: Coach.tsx - Race Condition beheben
+## Technische Änderungen
 
-**Problem:** Der `useEffect` in Coach.tsx löscht den State sofort, bevor AresChat ihn verwenden kann.
+### 1. Neue Helper-Funktion in `dateHelpers.ts`
 
-**Lösung:** Das State-Clearing muss **nach** dem ersten Render von AresChat erfolgen. Da AresChat 600ms wartet, brauchen wir mindestens 700ms Delay.
-
-**Datei:** `src/pages/Coach.tsx`
-
-**Änderung:**
 ```typescript
-// VORHER (Zeile 33-38):
-useEffect(() => {
-  if (autoStartPrompt) {
-    navigate(location.pathname, { replace: true, state: {} });
+/**
+ * Get the "sleep date" - the date for which sleep should be logged.
+ * Before 02:00 AM, sleep counts as the previous day (for night owls).
+ * After 02:00 AM, sleep counts as the current day.
+ */
+export const getSleepDateString = (): string => {
+  const timezone = getUserTimezone();
+  const now = new Date();
+  
+  // Get current hour in user's timezone
+  const hourFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    hour12: false
+  });
+  const currentHour = parseInt(hourFormatter.format(now), 10);
+  
+  // Before 2 AM → use yesterday's date
+  if (currentHour < 2) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return toDateString(yesterday);
   }
-}, [autoStartPrompt, navigate, location.pathname]);
-
-// NACHHER:
-useEffect(() => {
-  if (autoStartPrompt) {
-    // Delay state clearing until AFTER AresChat has read the prompt
-    // AresChat uses 600ms delay, so we wait 1000ms to be safe
-    const timer = setTimeout(() => {
-      navigate(location.pathname, { replace: true, state: {} });
-    }, 1000);
-    return () => clearTimeout(timer);
-  }
-}, [autoStartPrompt, navigate, location.pathname]);
+  
+  // 2 AM or later → use today's date
+  return getCurrentDateString();
+};
 ```
 
 ---
 
-## Fix 3: Datenbank-Bereinigung (Info)
+### 2. Update `useDailyMetrics.ts` - Sleep Query mit Datumsfilter
 
-**Problem:** 6 von 15 aktiven `user_supplements` haben `supplement_id = NULL`:
-- Kreatin Monohydrat
-- Omega-3 (EPA/DHA)
-- Vitamin D3 + K2
-- Whey Protein
-- Alpha-Ketoglutarat
-- Magnesium (Citrat/Bisglycinat)
+**Vorher (Zeile 112-119):**
+```typescript
+// Last Sleep Entry - NO DATE FILTER!
+supabase
+  .from('sleep_tracking')
+  .select('sleep_hours, sleep_quality, date')
+  .eq('user_id', userId)
+  .order('date', { ascending: false })
+  .limit(1)
+  .maybeSingle()
+```
 
-**Ursache:** Diese wurden manuell oder per AI erstellt ohne Verknüpfung zur `supplement_database`.
+**Nachher:**
+```typescript
+// Today's Sleep Entry - WITH DATE FILTER
+supabase
+  .from('sleep_tracking')
+  .select('sleep_hours, sleep_quality, date, deep_sleep_minutes')
+  .eq('user_id', userId)
+  .eq('date', sleepDateStr)  // Neuer Filter!
+  .maybeSingle()
+```
 
-**Empfehlung:** Diese Supplements müssen in der Datenbank mit den korrekten `supplement_id`s verknüpft werden. Dies erfordert ein SQL-Update oder UI-Logik zum Matchen.
+Und am Anfang der Query-Funktion:
+```typescript
+const todayStr = getCurrentDateString();  // Timezone-aware
+const sleepDateStr = getSleepDateString(); // Mit 02:00 Grenze
+```
+
+---
+
+### 3. Update `useAresEvents.ts` - Sleep Speicherung
+
+**Vorher (Zeile 69, 229):**
+```typescript
+const today = new Date().toISOString().slice(0, 10);
+// ...
+date: payload.date || today,
+```
+
+**Nachher:**
+```typescript
+import { getCurrentDateString, getSleepDateString } from '@/utils/dateHelpers';
+// ...
+const todayStr = getCurrentDateString();
+// ...
+// Bei Sleep-Speicherung:
+date: payload.date || getSleepDateString(),  // Spezielle Sleep-Logik
+```
+
+---
+
+### 4. Update `SleepLogger.tsx` - Korrekte Prüfung
+
+**Vorher (Zeile 68-70):**
+```typescript
+const existingSleep = metrics?.sleep;
+const hasExistingLog = existingSleep?.lastHours != null;
+```
+
+**Nachher:**
+```typescript
+import { getSleepDateString } from '@/utils/dateHelpers';
+// ...
+const existingSleep = metrics?.sleep;
+// Prüfe ob Datum des existierenden Eintrags dem heutigen Sleep-Datum entspricht
+const sleepDate = getSleepDateString();
+const hasExistingLog = existingSleep?.date === sleepDate && existingSleep?.lastHours != null;
+```
 
 ---
 
@@ -80,13 +153,43 @@ useEffect(() => {
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/supplements/TimingCircleSelector.tsx` | "Bett" → "Nacht", BedDouble → Moon |
-| `src/pages/Coach.tsx` | State-Clearing mit 1000ms Delay |
+| `src/utils/dateHelpers.ts` | Neue `getSleepDateString()` Funktion |
+| `src/hooks/useDailyMetrics.ts` | Sleep-Query mit Datumsfilter |
+| `src/hooks/useAresEvents.ts` | Sleep-Speicherung mit Sleep-Datum |
+| `src/components/home/loggers/SleepLogger.tsx` | Korrekte Datum-Prüfung |
 
 ---
 
-## Erwartetes Ergebnis nach Fix
+## Erwartetes Ergebnis
 
-1. ✅ Timing-Kreise zeigen "Nacht" statt "Bett" mit Mond-Icon
-2. ✅ ARES Prompt wird korrekt übergeben und ausgeführt
-3. ⚠️ Hersteller-Dropdown erscheint nur bei Supplements mit gültiger `supplement_id` (Daten-Fix separat erforderlich)
+| Uhrzeit | Aktion | Ergebnis |
+|---------|--------|----------|
+| 29.01. 01:30 | Schlaf loggen | Speichert für 28.01. (gestern) |
+| 29.01. 02:00 | Schlaf loggen | Speichert für 29.01. (heute) |
+| 29.01. 12:00 | SleepLogger öffnen | Zeigt "Bereits geloggt" wenn 29.01. existiert |
+| 29.01. 12:00 | Nach Bearbeiten | Update des 29.01. Eintrags |
+| 29.01. 23:00 | Neuen Schlaf loggen? | Nein - zeigt Edit-Modus für 29.01. |
+| 30.01. 02:00 | Schlaf loggen | Speichert für 30.01. (neuer Tag!) |
+
+---
+
+## Technische Details
+
+### DailyMetrics Return-Typ erweitern
+
+Die `sleep` Eigenschaft muss auch `date` enthalten:
+
+```typescript
+sleep: { 
+  lastHours: number | null; 
+  lastQuality: number | null;
+  date: string | null;  // NEU
+  deepSleepMinutes: number | null;  // NEU (optional)
+}
+```
+
+### Edge Cases
+
+- **Zeitzone-Wechsel:** User ändert Timezone um 01:30 → Sleep-Datum kann sich ändern
+- **Reisen:** Bei Langstreckenflügen kann es zu Überlappungen kommen
+- **Workaround:** 02:00 Uhr Grenze ist ein pragmatischer Kompromiss
