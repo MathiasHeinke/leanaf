@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Pencil, Trash2, X, Check, Droplets, Utensils, Moon, Sun, 
   Dumbbell, Clock, AlertCircle, RotateCcw, Sparkles, Pill, Disc,
-  Star, Zap, MessageSquare, Package
+  Zap, MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -22,39 +22,14 @@ import {
 } from '@/components/ui/select';
 import { haptics } from '@/lib/haptics';
 import { useSupplementProducts } from '@/hooks/useSupplementLibrary';
-import type { UserStackItem, PreferredTiming, TimingConstraint, SupplementBrand } from '@/types/supplementLibrary';
-import { TIMING_CONSTRAINT_LABELS, TIMING_CONSTRAINT_ICONS, PREFERRED_TIMING_LABELS, NECESSITY_TIER_CONFIG } from '@/types/supplementLibrary';
+import type { UserStackItem, PreferredTiming, TimingConstraint, SupplementBrand, SupplementProduct } from '@/types/supplementLibrary';
+import { PREFERRED_TIMING_LABELS, NECESSITY_TIER_CONFIG } from '@/types/supplementLibrary';
+import { TimingCircleSelector } from './TimingCircleSelector';
+import { BrandSelector } from './BrandSelector';
+import { SelectedProductCard } from './SelectedProductCard';
+import { SupplementDetailSheet } from './SupplementDetailSheet';
 
-// Quality stars based on price tier
-const getQualityStars = (priceTier: string | null | undefined): number => {
-  switch (priceTier) {
-    case 'luxury': return 5;
-    case 'premium': return 4;
-    case 'mid': return 3;
-    case 'budget': return 2;
-    default: return 3;
-  }
-};
-
-// Star rating component
-const QualityStars = ({ tier }: { tier: string | null | undefined }) => {
-  const count = getQualityStars(tier);
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <Star
-          key={i}
-          className={cn(
-            'h-3 w-3',
-            i <= count 
-              ? 'fill-amber-400 text-amber-400' 
-              : 'fill-muted text-muted'
-          )}
-        />
-      ))}
-    </div>
-  );
-};
+// QualityStars moved to BrandSelector component
 
 // Form-specific icon based on unit
 const getFormIcon = (unit: string): React.ReactNode => {
@@ -128,9 +103,6 @@ const CONSTRAINT_BADGE_CONFIG: Record<TimingConstraint, {
 // Unit options
 const UNIT_OPTIONS = ['mg', 'g', 'µg', 'mcg', 'IU', 'ml', 'Kapseln', 'Tropfen'];
 
-// Timing options for selection
-const TIMING_OPTIONS: PreferredTiming[] = ['morning', 'noon', 'afternoon', 'evening', 'bedtime'];
-
 interface ExpandableSupplementChipProps {
   item: UserStackItem;
   brands?: SupplementBrand[];
@@ -167,16 +139,27 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
   const [cycleOffDays, setCycleOffDays] = useState<number>(
     (item.schedule as any)?.cycle_off_days || 2
   );
+  
+  // Selected product state (NEW)
+  const [selectedProduct, setSelectedProduct] = useState<SupplementProduct | null>(null);
+  const [showDetailSheet, setShowDetailSheet] = useState(false);
 
-  // Handle ARES navigation with pre-filled prompt
+  // Handle ARES navigation with SHORT, focused prompt (NEW)
   const handleAskAres = useCallback(() => {
-    const prompt = `Analysiere "${item.name}" in meinem Stack:
-- Aktuelle Dosis: ${dosage}${unit}
+    const brandName = selectedProduct?.brand?.name || 'unbekannt';
+    const prompt = `QUICK CHECK: ${item.name} (${brandName})
+- Dosis: ${dosage}${unit}
 - Timing: ${PREFERRED_TIMING_LABELS[preferredTiming]}
-Passt das zu meinen Zielen? Gibt es bessere Alternativen oder Synergie-Effekte?`;
+
+TASK:
+1. Timing optimal für mein Ziel?
+2. Interaktionen mit meinem Stack?
+3. Hersteller-Qualität/Preis-Bewertung?
+
+CONSTRAINT: Halte dich extrem kurz (max 3 Sätze). Nur auf Nachfrage tiefer!`;
     
     navigate('/coach/ares', { state: { autoStartPrompt: prompt } });
-  }, [item.name, dosage, unit, preferredTiming, navigate]);
+  }, [item.name, dosage, unit, preferredTiming, selectedProduct, navigate]);
 
   // Get constraint badge info
   const constraint = item.supplement?.timing_constraint || 'any';
@@ -387,25 +370,14 @@ Passt das zu meinen Zielen? Gibt es bessere Alternativen oder Synergie-Effekte?`
                 </div>
               </div>
               
-              {/* Timing Selection */}
-              <div className="space-y-1.5">
+              {/* Timing Selection - Circle Design (Layer 0 consistency) */}
+              <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Einnahmezeitpunkt</Label>
-                <div className="flex flex-wrap gap-2">
-                  {TIMING_OPTIONS.map((timing) => (
-                    <button
-                      key={timing}
-                      onClick={() => setPreferredTiming(timing)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-                        preferredTiming === timing
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
-                      )}
-                    >
-                      {PREFERRED_TIMING_LABELS[timing]}
-                    </button>
-                  ))}
-                </div>
+                <TimingCircleSelector
+                  value={preferredTiming}
+                  onChange={setPreferredTiming}
+                  size="md"
+                />
               </div>
               
               {/* Timing Constraint Info (readonly) */}
@@ -517,66 +489,35 @@ Passt das zu meinen Zielen? Gibt es bessere Alternativen oder Synergie-Effekte?`
                 </div>
               )}
               
-              {/* =============== NEW: Product Marketplace =============== */}
-              {products.length > 0 && (
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                    <Package className="h-3.5 w-3.5" />
-                    Verfügbare Produkte
-                  </Label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {products.slice(0, 5).map((product) => (
-                      <div 
-                        key={product.id}
-                        className={cn(
-                          'p-3 rounded-lg border transition-all',
-                          product.is_recommended 
-                            ? 'bg-primary/5 border-primary/30' 
-                            : 'bg-muted/30 border-border/50 hover:border-border'
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium truncate">
-                                {product.brand?.name || 'Unbekannt'}
-                              </span>
-                              <QualityStars tier={product.brand?.price_tier} />
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {product.brand?.quality_certifications?.slice(0, 3).map((cert) => (
-                                <Badge 
-                                  key={cert} 
-                                  variant="secondary" 
-                                  className="text-[9px] px-1.5 py-0 h-4"
-                                >
-                                  {cert}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            {product.price_per_serving != null && (
-                              <span className="text-sm font-semibold text-primary">
-                                €{product.price_per_serving.toFixed(2)}/Tag
-                              </span>
-                            )}
-                            {product.is_recommended && (
-                              <Badge className="mt-1 text-[9px] px-1.5 py-0 h-4 bg-primary">
-                                Empfohlen
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {productsLoading && (
-                    <div className="text-xs text-muted-foreground text-center py-2">
-                      Lade Produkte...
-                    </div>
+              {/* =============== Brand Selector + Product Card =============== */}
+              {(products.length > 0 || productsLoading) && (
+                <div className="space-y-3">
+                  <Label className="text-xs text-muted-foreground">Hersteller wählen</Label>
+                  <BrandSelector
+                    products={products}
+                    selectedBrandId={selectedProduct?.brand_id || null}
+                    onSelect={(brandId, product) => setSelectedProduct(product)}
+                    loading={productsLoading}
+                  />
+                  
+                  {/* Selected Product Card */}
+                  {selectedProduct && (
+                    <SelectedProductCard
+                      product={selectedProduct}
+                      supplementItem={item.supplement || null}
+                      onInfoClick={() => setShowDetailSheet(true)}
+                    />
                   )}
                 </div>
+              )}
+              
+              {/* Supplement Detail Sheet */}
+              {item.supplement && (
+                <SupplementDetailSheet
+                  item={item.supplement}
+                  isOpen={showDetailSheet}
+                  onClose={() => setShowDetailSheet(false)}
+                />
               )}
             </div>
             
