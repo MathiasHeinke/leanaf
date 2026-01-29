@@ -111,6 +111,16 @@ export const SUPPLEMENT_BRANDS: SupplementBrand[] = [
 
   // Tier 3: Apotheke & Klassisch
   {
+    name: 'Centrum',
+    slug: 'centrum',
+    country: 'US',
+    website: 'centrum.de',
+    price_tier: 'mid',
+    specialization: ['multivitamin', 'classic', 'pharmacy'],
+    quality_certifications: ['GMP', 'pharma-grade'],
+    description: 'Weltweit führender Multivitamin-Hersteller. Apotheken-Qualität.'
+  },
+  {
     name: 'Doppelherz',
     slug: 'doppelherz',
     country: 'DE',
