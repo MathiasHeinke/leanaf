@@ -13,6 +13,8 @@ export const QUERY_KEYS = {
   TRAINING_WEEKLY: ['training-sessions-weekly'] as const,
   WEIGHT_RECENT: ['weight-recent'] as const,
   SLEEP_RECENT: ['sleep-recent'] as const,
+  SLEEP_WEEKLY: ['sleep-weekly'] as const,
+  SLEEP_DAY_SHEET: ['sleep-day-sheet'] as const,
 } as const;
 
 // Map categories to ALL query keys that need refreshing when that category changes
@@ -24,7 +26,7 @@ export const CATEGORY_QUERY_MAP: Record<string, readonly (readonly string[])[]> 
   coffee: [QUERY_KEYS.DAILY_METRICS],
   weight: [QUERY_KEYS.WEIGHT_RECENT, QUERY_KEYS.DAILY_METRICS],
   workout: [QUERY_KEYS.TRAINING_WEEKLY, QUERY_KEYS.DAILY_METRICS],
-  sleep: [QUERY_KEYS.SLEEP_RECENT, QUERY_KEYS.DAILY_METRICS],
+  sleep: [QUERY_KEYS.SLEEP_RECENT, QUERY_KEYS.DAILY_METRICS, QUERY_KEYS.SLEEP_WEEKLY, QUERY_KEYS.SLEEP_DAY_SHEET],
   nutrition: [QUERY_KEYS.DAILY_METRICS, QUERY_KEYS.TODAYS_MEALS],
   journal: [QUERY_KEYS.DAILY_METRICS],
   profile: [QUERY_KEYS.USER_PROFILE, QUERY_KEYS.USER_PROFILE_STRATEGY, QUERY_KEYS.DAILY_METRICS],
