@@ -1,10 +1,11 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extractTimezone, getCurrentDateInTimezone } from '../_shared/timezone-helper.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-user-timezone, x-current-date",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -495,7 +496,10 @@ serve(async (req) => {
     }
 
     // DUAL WRITE: Persist to both Layer 2 and Layer 3
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // Use user's timezone from headers for correct date
+    const timezone = extractTimezone(req);
+    const todayStr = getCurrentDateInTimezone(timezone);
+    console.log(`[TRAINING-AI-PARSER] Using timezone: ${timezone}, date: ${todayStr}`);
 
     // STEP 1: training_sessions (Layer 2)
     const { data: trainingSession, error: tsError } = await supabase
@@ -527,7 +531,7 @@ serve(async (req) => {
     console.log(`[TRAINING-AI-PARSER] Created training_session: ${trainingSession.id}`);
 
     // STEP 2: exercise_sessions (Layer 3 Container)
-    const sessionName = `Training ${new Date().toLocaleDateString('de-DE')}`;
+    const sessionName = `Training ${todayStr}`;
     const { data: exerciseSession, error: esError } = await supabase
       .from('exercise_sessions')
       .insert({
