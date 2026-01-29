@@ -27,6 +27,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   MOBILE SCROLL OPTIMIZATION
+   Verhindert "Scroll-Jacking" und aktiviert natives iOS-Momentum-Scrolling
+   ═══════════════════════════════════════════════════════════════════════════════ */
+@layer utilities {
+  /* Erzwingt Hardware-Beschleunigung und natives iOS-Scroll-Verhalten */
+  .touch-pan-y {
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .touch-pan-x {
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Verhindert Pull-to-Refresh oder Swipe-Nav, wenn nötig */
+  .overscroll-none {
+    overscroll-behavior: none;
+  }
+}
+
+/* Scrollbar-Styling für cleanen Look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
 /* Glass Background Utility - für Coach-Banner & Global-Header */
 .glass-bg {
   @apply backdrop-blur-md bg-background/70 dark:bg-background/60;
