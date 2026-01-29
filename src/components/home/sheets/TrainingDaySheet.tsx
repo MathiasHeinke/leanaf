@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { getCurrentDateString, getLast7DaysWithLabels } from '@/utils/dateHelpers';
+import { getCurrentDateString, getCurrentWeekDaysWithLabels } from '@/utils/dateHelpers';
 import { createTimezoneHeaders } from '@/utils/timezone-backend-helper';
 import { QUERY_KEYS, invalidateCategory } from '@/constants/queryKeys';
 import { 
@@ -116,15 +116,20 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
     }
   };
 
-  // Query: Weekly overview (last 7 days) - uses unified query key for cache sync
+  // Query: Weekly overview (calendar week Mo-So) - uses unified query key for cache sync
   const { data: weekData } = useQuery({
     queryKey: QUERY_KEYS.TRAINING_WEEKLY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { count: 0, days: [] as boolean[], labels: ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'] };
+      if (!user) return { 
+        count: 0, 
+        days: [] as boolean[], 
+        labels: ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'],
+        isFuture: [false, false, false, false, false, false, false]
+      };
       
-      // Use timezone-aware date helper with dynamic labels
-      const { dates, labels } = getLast7DaysWithLabels();
+      // Use calendar week helper (Monday to Sunday)
+      const { dates, labels, isFuture } = getCurrentWeekDaysWithLabels();
       
       const { data: sessions } = await supabase
         .from('training_sessions')
@@ -137,7 +142,8 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
       return {
         count: sessionDates.size,
         days: dates.map(d => sessionDates.has(d)),
-        labels
+        labels,
+        isFuture
       };
     },
     enabled: isOpen
@@ -164,7 +170,8 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
 
   const weeklyCount = weekData?.count || 0;
   const weekDays = weekData?.days || [false, false, false, false, false, false, false];
-  const dayLabels = weekData?.labels || ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'];
+  const dayLabels = weekData?.labels || ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  const futureDays = weekData?.isFuture || [false, false, false, false, false, false, false];
 
   // Helper: Get display label for training type
   const getTypeLabel = (trainingType: TrainingType | null, splitType: SplitType | null): string => {
@@ -345,26 +352,31 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
                 </div>
 
                 <div className="flex gap-2 justify-between">
-                  {weekDays.map((done, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1.5">
-                      <motion.div 
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.1 + i * 0.03 }}
-                        className={cn(
-                          "w-9 h-9 rounded-full flex items-center justify-center",
-                          done 
-                            ? "bg-emerald-500 text-white" 
-                            : "bg-muted/50 text-muted-foreground"
-                        )}
-                      >
-                        {done ? <Check className="w-4 h-4" /> : null}
-                      </motion.div>
-                      <span className="text-[10px] text-muted-foreground font-medium">
-                        {dayLabels[i]}
-                      </span>
-                    </div>
-                  ))}
+                  {weekDays.map((done, i) => {
+                    const isFutureDay = futureDays[i];
+                    return (
+                      <div key={i} className="flex flex-col items-center gap-1.5">
+                        <motion.div 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.1 + i * 0.03 }}
+                          className={cn(
+                            "w-9 h-9 rounded-full flex items-center justify-center",
+                            done 
+                              ? "bg-emerald-500 text-white" 
+                              : isFutureDay
+                                ? "bg-muted/20 border border-dashed border-muted-foreground/30"
+                                : "bg-muted/50 text-muted-foreground"
+                          )}
+                        >
+                          {done ? <Check className="w-4 h-4" /> : null}
+                        </motion.div>
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {dayLabels[i]}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
