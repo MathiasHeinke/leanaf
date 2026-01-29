@@ -1,193 +1,106 @@
 
 
-# Plan: Mehrere Sessions pro Tag mit Icon-Overlay
+# Plan: Doppelte Close-Buttons entfernen
 
-## Status: ✅ IMPLEMENTIERT
+## Problem-Analyse
 
-## Kontext
+| Sheet | Komponente | X-Buttons | Status |
+|-------|------------|-----------|--------|
+| TrainingDaySheet | Eigene Motion | 1 | OK |
+| HydrationDaySheet | Eigene Motion | 1 | OK |
+| **SleepDaySheet** | Shadcn Sheet | 2 | Zu fixen |
+| NutritionDaySheet | ? | ? | Zu pruefen |
+| SupplementsDaySheet | ? | ? | Zu pruefen |
+| BioAgeSheet | ? | ? | Zu pruefen |
+| BodyTrendSheet | ? | ? | Zu pruefen |
+| PeptidesSheet | ? | ? | Zu pruefen |
 
-Im Screenshot siehst du die "Letzte Sessions" Liste, wo jeder Tag als eigene Zeile erscheint. Das Problem:
-- Wenn man an einem Tag **Krafttraining + Sauna + Zone2** macht, gibt es 3 separate Zeilen
-- Das wird schnell unübersichtlich
+## Ursache
 
-## Design-Lösung
+Die Shadcn `SheetContent`-Komponente rendert automatisch einen X-Button:
 
-Statt separater Zeilen pro Session → **gruppieren nach Datum** mit Icons:
-
-```text
-VORHER (viele Zeilen):
-┌─────────────────────────────────────────────────────────┐
-│  29.01  🏋️  Krafttraining    42min  3.012kg     ✓      │
-│  29.01  🔥  Sauna (≥80°C)    20min              ✓      │
-│  29.01  🚶  Zone 2           35min              ✓      │
-│  28.01  🚶  Bewegung                            ✓      │
-└─────────────────────────────────────────────────────────┘
-
-NACHHER (gruppiert mit Icons):
-┌─────────────────────────────────────────────────────────┐
-│  29.01  🏋️ 🔥 🚶   ← Icons klickbar/hoverbar           │
-│         └→ Popover zeigt Details bei Interaktion       │
-│  28.01  🚶                                              │
-│  27.01  🏋️                                              │
-└─────────────────────────────────────────────────────────┘
+```tsx
+// src/components/ui/sheet.tsx (Zeile 66-69)
+<SheetPrimitive.Close className="absolute right-4 top-4 ...">
+  <X className="h-4 w-4" />
+</SheetPrimitive.Close>
 ```
 
-## Technische Umsetzung
+Wenn ein Sheet diese Komponente nutzt und zusaetzlich einen manuellen X-Button im Header hat, entstehen zwei.
 
-### 1. Query anpassen: Sessions nach Datum gruppieren
+## Loesung
 
-```typescript
-// Statt einzelne Sessions, nach Datum gruppiert laden
-const { data } = await supabase
-  .from('training_sessions')
-  .select('*')
-  .eq('user_id', user.id)
-  .gte('session_date', startDate)
-  .order('session_date', { ascending: false });
+Zwei Optionen:
 
-// Gruppieren in der Komponente
-const groupedByDate = data.reduce((acc, session) => {
-  const date = session.session_date;
-  if (!acc[date]) acc[date] = [];
-  acc[date].push(session);
-  return acc;
-}, {});
+**Option A: Manuellen Button entfernen (Empfohlen)**
+- Den manuellen X-Button im Header der betroffenen Sheets entfernen
+- Der eingebaute SheetContent-Button bleibt (konsistent mit Shadcn Design)
+
+**Option B: SheetContent anpassen**
+- Eine Prop `hideCloseButton` zur SheetContent-Komponente hinzufuegen
+- Sheets behalten ihre eigenen gestylten X-Buttons
+
+Ich empfehle **Option A** fuer Konsistenz.
+
+## Mobile UX Entscheidung
+
+Fuer Mobile brauchen wir nur **einen** Schliessen-Mechanismus. Wir behalten:
+- Drag-to-dismiss (Handle Bar)
+- Backdrop-Click
+- 1 X-Button (fuer Accessibility und klare Affordance)
+
+## Aenderungen
+
+### 1. SleepDaySheet.tsx
+
+Den manuellen X-Button im Header entfernen:
+
+```tsx
+// VORHER (Zeile 245-258)
+<div className="flex items-center justify-between px-5 pb-4 border-b ...">
+  <div>
+    <h2>Schlaf-Analyse</h2>
+    <p>...</p>
+  </div>
+  <button onClick={onClose}>  // <- ENTFERNEN
+    <X className="w-5 h-5" />
+  </button>
+</div>
+
+// NACHHER
+<div className="flex items-center justify-between px-5 pb-4 border-b ...">
+  <div>
+    <h2>Schlaf-Analyse</h2>
+    <p>...</p>
+  </div>
+  {/* Kein manueller X-Button - SheetContent hat bereits einen */}
+</div>
 ```
 
-### 2. Neue Komponente: `SessionIconGroup`
+### 2. Andere Sheets pruefen
 
-Eine Zeile pro Tag mit allen Session-Icons:
+Falls weitere Sheets die Shadcn Sheet-Komponente nutzen:
+- NutritionDaySheet
+- SupplementsDaySheet
+- BioAgeSheet
+- BodyTrendSheet
+- PeptidesSheet
 
-```typescript
-interface SessionIconGroupProps {
-  date: string;
-  sessions: TrainingSession[];
-}
+Alle pruefen und gegebenenfalls den doppelten Button entfernen.
 
-const SessionIconGroup = ({ date, sessions }) => {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      {/* Datum */}
-      <span className="text-xs text-muted-foreground w-12">
-        {format(new Date(date), 'dd.MM')}
-      </span>
-      
-      {/* Icon-Reihe mit Popovers */}
-      <div className="flex gap-2">
-        {sessions.map((session) => (
-          <SessionIconPopover key={session.id} session={session} />
-        ))}
-      </div>
-      
-      {/* Aggregierte Daten */}
-      <div className="flex-1 text-right text-xs text-muted-foreground">
-        {totalMinutes}min • {totalVolumeKg}kg
-      </div>
-    </div>
-  );
-};
-```
+## Ergebnis
 
-### 3. Popover für Session-Details
-
-Beim **Klick oder Hover** auf ein Icon erscheint ein Overlay:
-
-```typescript
-const SessionIconPopover = ({ session }) => {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button className="w-8 h-8 rounded-full bg-muted/50 flex items-center justify-center hover:bg-muted transition-colors">
-          <span className="text-lg">{getTypeIcon(session.training_type)}</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64 p-3">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">{getTypeIcon(session.training_type)}</span>
-          <span className="font-semibold">{getTypeLabel(session)}</span>
-        </div>
-        
-        {/* Metrics */}
-        <div className="space-y-1 text-sm text-muted-foreground">
-          {session.total_duration_minutes && (
-            <div className="flex justify-between">
-              <span>Dauer:</span>
-              <span>{session.total_duration_minutes} min</span>
-            </div>
-          )}
-          {session.total_volume_kg && (
-            <div className="flex justify-between">
-              <span>Volumen:</span>
-              <span>{session.total_volume_kg.toLocaleString('de-DE')} kg</span>
-            </div>
-          )}
-        </div>
-        
-        {/* Notizen falls vorhanden */}
-        {session.notes && (
-          <p className="text-xs text-muted-foreground mt-2 border-t pt-2">
-            {session.notes}
-          </p>
-        )}
-      </PopoverContent>
-    </Popover>
-  );
-};
-```
-
-## Visual Design
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│  Letzte Sessions                                            │
-├─────────────────────────────────────────────────────────────┤
-│  29.01   (🏋️) (🔥) (🚶)           42min • 3.012kg    ✓    │
-│             ↓                                               │
-│  ┌─────────────────────────┐                                │
-│  │ 🏋️ Krafttraining (RPT) │  ← Popover bei Klick/Hover   │
-│  │ ─────────────────────── │                                │
-│  │ Dauer:    42 min        │                                │
-│  │ Volumen:  3.012 kg      │                                │
-│  │ Split:    Push          │                                │
-│  └─────────────────────────┘                                │
-│                                                              │
-│  28.01   (🚶)                      35min             ✓      │
-│  27.01   (🏋️)                      55min • 2.800kg  ✓      │
-│  26.01   (🔥)                      20min             ✓      │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Datei-Änderungen
-
-| Datei | Aktion | Beschreibung |
-|-------|--------|--------------|
-| `src/components/training/SessionIconPopover.tsx` | CREATE | Icon mit Popover-Details Komponente |
-| `src/components/training/SessionDayRow.tsx` | CREATE | Gruppierte Tageszeile mit Icons |
-| `src/components/home/sheets/TrainingDaySheet.tsx` | EDIT | Query ändern + neue Komponenten nutzen |
-| `src/components/home/sheets/TrainingDaySheet.tsx` | EDIT | "Letzte Sessions" Section refactoren |
-
-## Mobile-Optimierung
-
-- Auf **Desktop**: Hover zeigt Popover (HoverCard)
-- Auf **Mobile**: Tap öffnet Popover (regulärer Click)
-- Icons sind groß genug (w-8 h-8) für Touch-Targets
-
-## Erwartetes Ergebnis
-
-- **Kompaktere Übersicht**: 1 Zeile pro Tag statt 3
-- **Alle Infos verfügbar**: Details bei Interaktion
-- **Schneller Überblick**: Icons zeigen sofort welche Aktivitäten
-- **Aggregierte Metriken**: Gesamtdauer/Volumen pro Tag sichtbar
+- Alle Sheets haben genau 1 Close-Button
+- Konsistentes Verhalten auf Mobile und Desktop
+- Keine Verwirrung fuer den Nutzer
 
 ## Aufwand
 
 | Task | Zeit |
 |------|------|
-| `SessionIconPopover` Komponente | 20 min |
-| `SessionDayRow` Komponente | 15 min |
-| TrainingDaySheet Query refactoring | 15 min |
-| Integration + Styling | 15 min |
-| Mobile Testing | 10 min |
+| SleepDaySheet fixen | 2 min |
+| Andere Sheets pruefen | 5 min |
+| Testen | 3 min |
 
-**Gesamt: ~1.25 Stunden**
+**Gesamt: ca. 10 Minuten**
+
