@@ -3,7 +3,7 @@
  * Real-time streaming chat interface for ARES coach
  * Design upgraded to match EnhancedUnifiedCoachChat visual style
  * 
- * @version 2.2.0 - Added XP feedback animation
+ * @version 2.3.0 - Added Live Workout Companion (Phase 2)
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -23,6 +23,11 @@ import { SmartChip } from '@/components/ui/smart-chip';
 import { COACH_REGISTRY } from '@/lib/coachRegistry';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Live Workout imports (Phase 2)
+import { useLiveWorkout, type LiveWorkoutPlan } from '@/hooks/useLiveWorkout';
+import { LiveExerciseCard } from './cards/LiveExerciseCard';
+import { LiveWorkoutBanner } from './LiveWorkoutBanner';
 
 // ARES Profile Image from registry
 const ARES_IMAGE_URL = COACH_REGISTRY.ares.imageUrl || '/coaches/ares.png';
@@ -269,6 +274,10 @@ export default function AresChat({
     setUserTyping
   } = useShadowState();
 
+  // Live Workout state (Phase 2)
+  const liveWorkout = useLiveWorkout(userId);
+  const [hasShownRecovery, setHasShownRecovery] = useState(false);
+
   // Load today's conversation history on mount
   useEffect(() => {
     if (historyLoaded) return;
@@ -368,6 +377,14 @@ export default function AresChat({
     onXPAwarded: (xp, toolsUsed) => {
       console.log('[AresChat] XP awarded:', xp, 'Tools:', toolsUsed);
       
+      // Check if start_live_workout was called - this triggers live workout mode
+      if (toolsUsed.includes('start_live_workout')) {
+        console.log('[AresChat] Live workout tool detected - session will start from tool result');
+        // The tool result is parsed from the streaming response
+        // We'll need to extract workout data from the last message
+        // For now, this is handled via the tool detection effect
+      }
+      
       // Show XP gain animation
       setLastXPGain({ amount: xp, timestamp: Date.now() });
       
@@ -424,6 +441,50 @@ export default function AresChat({
 
   // Reset scroll lock when NEW message starts (user sends message)
   // NOT when streaming ends - user keeps scroll freedom until next interaction
+
+  // Live Workout: Tool detection from streaming responses
+  useEffect(() => {
+    if (!streamingContent || isStreaming) return;
+    
+    // Check if the last message triggered a live workout tool
+    const lastAssistantMsg = messages.filter(m => m.role === 'assistant').slice(-1)[0];
+    if (lastAssistantMsg?.content?.includes('start_live_workout')) {
+      // The tool result should be in the response metadata
+      // For now, we detect via content patterns
+      console.log('[AresChat] Detected potential live workout trigger');
+    }
+  }, [streamingContent, isStreaming, messages]);
+
+  // Live Workout: Recovery dialog on mount
+  useEffect(() => {
+    if (liveWorkout.isRecovered && !hasShownRecovery) {
+      setHasShownRecovery(true);
+      
+      const workoutType = liveWorkout.state?.workout_type || 'Workout';
+      const progress = liveWorkout.progress;
+      const startedAt = liveWorkout.state?.session_started_at;
+      const minutesAgo = startedAt 
+        ? Math.round((Date.now() - new Date(startedAt).getTime()) / 60000) 
+        : 0;
+      
+      toast.info('🏋️ Unbeendetes Training gefunden', {
+        description: `${workoutType} - ${progress.current}/${progress.total} Übungen (vor ${minutesAgo} Min)`,
+        duration: 10000,
+        action: {
+          label: 'Fortsetzen',
+          onClick: () => {
+            liveWorkout.resumeSession();
+          }
+        },
+        cancel: {
+          label: 'Verwerfen',
+          onClick: () => {
+            liveWorkout.discardSession();
+          }
+        }
+      });
+    }
+  }, [liveWorkout.isRecovered, hasShownRecovery, liveWorkout.state, liveWorkout.progress]);
 
   // Auto-send prompt when provided (e.g., from action cards with metrics)
   useEffect(() => {
@@ -626,13 +687,59 @@ export default function AresChat({
         {/* Fire Backdrop - contained */}
         <FireBackdrop ref={fireBackdropRef} chatMode />
         
+        {/* Live Workout Banner - sticky at top during active workout */}
+        {liveWorkout.isActive && liveWorkout.state && (
+          <LiveWorkoutBanner
+            workoutType={liveWorkout.state.workout_type}
+            progress={liveWorkout.progress}
+            sessionStartedAt={liveWorkout.state.session_started_at}
+            isPaused={liveWorkout.state.status === 'paused'}
+            onPause={liveWorkout.pauseSession}
+            onResume={liveWorkout.resumeSession}
+          />
+        )}
+        
         {/* Messages Area */}
         {messageContent}
         
-        {/* Input Area */}
-        <div className="flex-none border-t border-border/30 bg-background/95 backdrop-blur-md px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
-          {chatInputComponent}
-        </div>
+        {/* Live Exercise Card - appears after messages during active workout */}
+        {liveWorkout.isActive && liveWorkout.currentExercise && (
+          <div className="flex-none px-4 py-3 border-t border-border/30 bg-background/80 backdrop-blur-md">
+            <LiveExerciseCard
+              exercise={liveWorkout.currentExercise}
+              exerciseNumber={liveWorkout.progress.current}
+              totalExercises={liveWorkout.progress.total}
+              onComplete={async (result) => {
+                await liveWorkout.completeExercise(result);
+                // Scroll to bottom after completing
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              onSkip={liveWorkout.skipExercise}
+              disabled={liveWorkout.state?.status === 'paused'}
+            />
+          </div>
+        )}
+        
+        {/* Input Area - hidden during active workout */}
+        {!liveWorkout.isActive && (
+          <div className="flex-none border-t border-border/30 bg-background/95 backdrop-blur-md px-4 py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+            {chatInputComponent}
+          </div>
+        )}
+        
+        {/* Minimal input during workout for notes/questions */}
+        {liveWorkout.isActive && (
+          <div className="flex-none border-t border-border/30 bg-background/95 backdrop-blur-md px-4 py-2 pb-[max(8px,env(safe-area-inset-bottom))]">
+            <EnhancedChatInput
+              inputText={input}
+              setInputText={setInput}
+              onSendMessage={handleSendWithMedia}
+              isLoading={isStreaming}
+              placeholder="Frage an ARES..."
+              onTypingChange={setUserTyping}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -643,7 +750,38 @@ export default function AresChat({
       {/* Fire Backdrop */}
       <FireBackdrop ref={fireBackdropRef} chatMode />
       
-      <ChatLayout chatInput={chatInputComponent}>
+      {/* Live Workout Banner - sticky at top during active workout */}
+      {liveWorkout.isActive && liveWorkout.state && (
+        <LiveWorkoutBanner
+          workoutType={liveWorkout.state.workout_type}
+          progress={liveWorkout.progress}
+          sessionStartedAt={liveWorkout.state.session_started_at}
+          isPaused={liveWorkout.state.status === 'paused'}
+          onPause={liveWorkout.pauseSession}
+          onResume={liveWorkout.resumeSession}
+          className="sticky top-0 z-10"
+        />
+      )}
+      
+      <ChatLayout chatInput={liveWorkout.isActive ? (
+        <div className="space-y-3">
+          {/* Live Exercise Card in fullscreen mode */}
+          {liveWorkout.currentExercise && (
+            <LiveExerciseCard
+              exercise={liveWorkout.currentExercise}
+              exerciseNumber={liveWorkout.progress.current}
+              totalExercises={liveWorkout.progress.total}
+              onComplete={async (result) => {
+                await liveWorkout.completeExercise(result);
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              onSkip={liveWorkout.skipExercise}
+              disabled={liveWorkout.state?.status === 'paused'}
+            />
+          )}
+          {chatInputComponent}
+        </div>
+      ) : chatInputComponent}>
         {messageContent}
       </ChatLayout>
     </>

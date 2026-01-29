@@ -360,6 +360,36 @@ const ARES_TOOLS = [
         required: ["query"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "start_live_workout",
+      description: "Startet eine interaktive Live-Workout-Session. ARES führt den User Übung für Übung durch das Training mit Tracking und Progressions-Vorschlägen. Nutze dies wenn der User ein Workout starten, anfangen oder durchführen möchte.",
+      parameters: {
+        type: "object",
+        properties: {
+          workout_type: {
+            type: "string",
+            enum: ["push", "pull", "legs", "upper", "lower", "full_body"],
+            description: "Art des Workouts (Push/Pull/Legs/Upper/Lower/Full Body)"
+          },
+          exercise_count: {
+            type: "number",
+            description: "Anzahl der Übungen (3-8, default: 5)"
+          },
+          target_duration_minutes: {
+            type: "number",
+            description: "Zieldauer in Minuten (default: 45)"
+          },
+          use_last_workout: {
+            type: "boolean",
+            description: "True = Übungen und Gewichte vom letzten gleichen Workout übernehmen"
+          }
+        },
+        required: ["workout_type"]
+      }
+    }
   }
 ];
 
@@ -401,6 +431,9 @@ async function executeToolCall(
       
       case 'search_scientific_evidence':
         return await handleSearchScientificEvidence(toolArgs);
+      
+      case 'start_live_workout':
+        return await handleStartLiveWorkout(userId, supaClient, toolArgs, context);
       
       default:
         return { success: false, result: null, error: 'Unknown tool: ' + toolName };
@@ -902,6 +935,157 @@ async function handleUpdatePlan(userId: string, supaClient: any, args: any) {
   }
   
   return { success: true, result: data };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LIVE WORKOUT HANDLER (Phase 2)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface LiveExercise {
+  name: string;
+  normalized_name: string;
+  exercise_id?: string;
+  planned_sets: number;
+  planned_reps: number;
+  planned_weight_kg: number;
+  planned_rpe: number;
+  progression_hint?: string;
+  last_performance?: {
+    weight_kg: number;
+    reps: number;
+    rpe: number;
+    date: string;
+  };
+}
+
+async function handleStartLiveWorkout(
+  userId: string,
+  supaClient: any,
+  args: any,
+  context: any
+): Promise<{ success: boolean; result: any; error?: string }> {
+  const workoutType = args.workout_type || 'push';
+  const exerciseCount = Math.min(Math.max(args.exercise_count || 5, 3), 8);
+  const targetDuration = args.target_duration_minutes || 45;
+  const useLastWorkout = args.use_last_workout !== false;
+
+  console.log('[ARES-LIVE-WORKOUT] Starting session:', { workoutType, exerciseCount, useLastWorkout });
+
+  // 1. Load last performance for this workout type
+  let lastSets: any[] = [];
+  if (useLastWorkout) {
+    const { data: lastSession } = await supaClient
+      .from('exercise_sessions')
+      .select(`
+        id, date,
+        exercise_sets (
+          exercise_id, weight_kg, reps, rpe, set_number,
+          exercises (name, muscle_groups)
+        )
+      `)
+      .eq('user_id', userId)
+      .order('date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastSession?.exercise_sets) {
+      lastSets = lastSession.exercise_sets;
+      console.log('[ARES-LIVE-WORKOUT] Found last session with', lastSets.length, 'sets');
+    }
+  }
+
+  // 2. Generate workout plan based on type
+  const exercises = generateLiveWorkoutPlan(workoutType, exerciseCount, lastSets, context.profile);
+
+  // 3. Calculate progressions
+  for (const exercise of exercises) {
+    if (exercise.last_performance) {
+      const lastRpe = exercise.last_performance.rpe || 7;
+      if (lastRpe < 8) {
+        exercise.planned_weight_kg = exercise.last_performance.weight_kg + 2.5;
+        exercise.progression_hint = `+2.5kg (RPE war ${lastRpe})`;
+      } else if (lastRpe >= 9) {
+        exercise.planned_weight_kg = exercise.last_performance.weight_kg;
+        exercise.progression_hint = `Gewicht halten (RPE war ${lastRpe})`;
+      } else {
+        exercise.planned_weight_kg = exercise.last_performance.weight_kg;
+        exercise.progression_hint = null;
+      }
+    }
+  }
+
+  const sessionId = crypto.randomUUID();
+  const firstName = context.profile?.first_name || 'Krieger';
+  const firstExercise = exercises[0];
+
+  console.log('[ARES-LIVE-WORKOUT] Generated plan with', exercises.length, 'exercises');
+
+  return {
+    success: true,
+    result: {
+      tool: 'start_live_workout',
+      workout_type: workoutType,
+      session_id: sessionId,
+      exercises,
+      estimated_duration_minutes: exerciseCount * 7,
+      ares_message: `Los geht's mit deinem ${workoutType.toUpperCase()} Day, ${firstName}! ` +
+        `Erste Übung: ${firstExercise.name}. ` +
+        (firstExercise.progression_hint 
+          ? `${firstExercise.progression_hint} - du schaffst das!` 
+          : `${firstExercise.planned_weight_kg}kg, ${firstExercise.planned_sets}×${firstExercise.planned_reps}. Gib alles!`)
+    }
+  };
+}
+
+function generateLiveWorkoutPlan(
+  workoutType: string,
+  count: number,
+  lastSets: any[],
+  profile: any
+): LiveExercise[] {
+  const templates: Record<string, string[]> = {
+    push: ['Bankdrücken', 'Schrägbankdrücken', 'Schulterdrücken', 'Seitheben', 'Trizeps Dips', 'Trizeps Pushdown'],
+    pull: ['Klimmzüge', 'Rudern', 'Latzug', 'Face Pulls', 'Bizeps Curls', 'Hammer Curls'],
+    legs: ['Kniebeugen', 'Beinpresse', 'Rumänisches Kreuzheben', 'Beinstrecker', 'Beinbeuger', 'Wadenheben'],
+    upper: ['Bankdrücken', 'Rudern', 'Schulterdrücken', 'Latzug', 'Bizeps Curls', 'Trizeps Pushdown'],
+    lower: ['Kniebeugen', 'Rumänisches Kreuzheben', 'Beinpresse', 'Beinbeuger', 'Wadenheben', 'Hip Thrusts'],
+    full_body: ['Kniebeugen', 'Bankdrücken', 'Rudern', 'Schulterdrücken', 'Klimmzüge', 'Kreuzheben']
+  };
+
+  const exerciseNames = templates[workoutType] || templates.full_body;
+
+  // Default weights based on profile
+  const defaultWeight = profile?.weight ? Math.round(profile.weight * 0.5) : 40;
+
+  return exerciseNames.slice(0, count).map(name => {
+    // Find last performance for this exercise (fuzzy match)
+    const lowerName = name.toLowerCase();
+    const lastForExercise = lastSets.find(s => {
+      const exerciseName = s.exercises?.name?.toLowerCase() || '';
+      return exerciseName.includes(lowerName.split(' ')[0]) || lowerName.includes(exerciseName.split(' ')[0]);
+    });
+
+    const exercise: LiveExercise = {
+      name,
+      normalized_name: name,
+      exercise_id: lastForExercise?.exercise_id,
+      planned_sets: 4,
+      planned_reps: 10,
+      planned_weight_kg: lastForExercise?.weight_kg || defaultWeight,
+      planned_rpe: 7
+    };
+
+    if (lastForExercise) {
+      exercise.last_performance = {
+        weight_kg: lastForExercise.weight_kg,
+        reps: lastForExercise.reps,
+        rpe: lastForExercise.rpe || 7,
+        date: 'Letzte Session'
+      };
+    }
+
+    return exercise;
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
