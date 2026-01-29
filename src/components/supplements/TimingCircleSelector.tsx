@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sunrise, Sun, Moon, Dumbbell, BedDouble, CloudSun, LucideIcon } from 'lucide-react';
+import { Sunrise, Sun, Moon, Dumbbell, CloudSun, LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PreferredTiming } from '@/types/supplementLibrary';
 
@@ -19,7 +19,7 @@ const TIMING_CONFIG: Record<PreferredTiming, {
   noon: { icon: Sun, label: 'Mittags', shortLabel: 'Mi' },
   afternoon: { icon: CloudSun, label: 'Nachmittags', shortLabel: 'Na' },
   evening: { icon: Moon, label: 'Abends', shortLabel: 'Ab' },
-  bedtime: { icon: BedDouble, label: 'Vor Schlaf', shortLabel: 'Bett' },
+  bedtime: { icon: Moon, label: 'Vor Schlaf', shortLabel: 'Nacht' },
   pre_workout: { icon: Dumbbell, label: 'Pre-WO', shortLabel: 'Pre' },
   post_workout: { icon: Dumbbell, label: 'Post-WO', shortLabel: 'Post' },
 };
