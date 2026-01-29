@@ -203,6 +203,9 @@ function getGoalLabel(goal: string): string {
     recomposition: 'Rekomposition',
     performance: 'Leistung',
     health: 'Gesundheit',
+    cognitive: 'Kognition',
+    sleep: 'Schlaf',
+    gut_health: 'Darmgesundheit',
   };
   return labels[goal] || goal;
 }
