@@ -1,110 +1,102 @@
 
-# Matrix v3-3 Import: Vollständige Datenbankfüllung
+# Fix: Matrix-Import auf Multi-Match umstellen
 
-## Ausgangssituation
+## Das Problem
 
-| Metrik | Status |
-|--------|--------|
-| **Total Supplements** | 111 |
-| **Mit Matrix** | 57 (51%) |
-| **Ohne Matrix** | 54 (49%) |
+Die `findMatch`-Funktion in `run-matrix-import/index.ts` gibt nach dem **ersten Match** ein `return` zurück:
 
-### Die 54 fehlenden Supplements (nach Kategorie)
+```javascript
+// Zeile 283 - Stoppt nach erstem Treffer!
+return { dbId: supp.id, dbName: supp.name, matchType: 'manual' };
+```
 
-| Kategorie | Fehlend |
-|-----------|---------|
-| **Magnesium-Varianten** | Magnesium Glycinat, Magnesiumcitrat, Magnesium Komplex 11 Ultra |
-| **Vitamin-Varianten** | Vitamin D3 + K2 MK7 Tropfen, Vitamin D Balance, Vitamin C, Vitamin C (liposomal), Methyl Folate, A-Z Komplex, Multivitamin |
-| **Aminosäuren** | Creatine Monohydrat, EAA Komplex, L-Citrullin, Taurin (kardioprotektiv), NAC, GlyNAC, HMB 3000 |
-| **Adaptogens** | Ashwagandha KSM-66, Curcumin Longvida, Shilajit, Turkesterone Max |
-| **Longevity** | NMN (Nicotinamid Mononukleotid), NMN sublingual, Alpha-Ketoglutarat (AKG), CaAKG, Alpha-Liponsäure, Pterostilben, TUDCA, Urolithin A |
-| **Kollagen** | Kollagen, Kollagen Peptide |
-| **Resveratrol** | Resveratrol, Trans-Resveratrol |
-| **Probiotika** | Probiona Kulturen Komplex, Probiotika Multi-Strain |
-| **Zink** | Zink Bisglycinat, Zinc Complex |
-| **Sonstige** | Omega-3 (EPA/DHA), Elektrolyte (LMNT), Silymarin, Pinienrinden Extrakt, Schwarzkümmelöl 1000, Protein Pulver |
-| **Stack-Produkte (Skip)** | Pre-Workout Komplex, Sport Stack, Nootropic, Schlaf, Frauen, Augen, Beauty, Haare, Gelenke |
-| **Pharma (Skip)** | Metformin, Methylenblau 1% |
+**Konsequenz**: Wenn `ingredient_id: "magnesium"` importiert wird:
+1. MANUAL_OVERRIDES enthaelt `['magnesium', 'magnesiumcitrat', 'magnesium glycinat', ...]`
+2. Die DB-Suche findet "Magnesium" als ersten Treffer
+3. `return` beendet die Suche
+4. "Magnesium Glycinat" und "Magnesiumcitrat" werden NIE aktualisiert!
+
+Deshalb haben wir 70/111 statt 100/111 - die Varianten werden uebersprungen.
 
 ---
 
-## Implementierungsplan
+## Die Loesung
 
-### Schritt 1: Matrix-Datei ins Projekt kopieren
+### Schritt 1: `findMatch` zu `findAllMatches` umbauen
 
-Speichere die neue `ARES_INGREDIENT_RELEVANCE_MATRIX-3-3.md` als Referenz-Datei im Projekt:
+Statt einer einzelnen Match-Rueckgabe werden ALLE passenden DB-Eintraege gesammelt:
 
 ```text
-src/data/matrix-import-v3-3.md
+findAllMatches(ingredientId, ingredientName, dbSupplements): 
+  -> Array<{dbId, dbName, matchType}>  (statt single object | null)
 ```
 
-### Schritt 2: Vollständigen Re-Import durchführen
+### Schritt 2: Import-Loop anpassen
 
-Da die Edge-Function `import-matrix` bereits deployed ist und die MANUAL_OVERRIDES erweitert wurden, muss der Import mit den vollständigen Matrix-Daten aus der neuen Datei durchgeführt werden:
-
-1. Alle 150 JSON-Blöcke aus der Markdown-Datei parsen
-2. Edge-Function aufrufen mit allen Ingredients
-3. Matching über erweiterte MANUAL_OVERRIDES
-
-### Schritt 3: Import in Batches
-
-Die 150 Wirkstoffe werden in 4 Batches verarbeitet:
-
-| Batch | Wirkstoffe | Kategorien |
-|-------|------------|------------|
-| 1 | 1-40 | Vitamine, Mineralien |
-| 2 | 41-80 | Aminosäuren, Fettsäuren |
-| 3 | 81-120 | Adaptogene, Pilze, Longevity |
-| 4 | 121-150 | Gut Health, Joints, Nootropics, Sonstige |
-
-### Schritt 4: Validierung
-
-Nach dem Import Stichproben-Queries:
-
-```sql
--- Prüfe kritische Varianten
-SELECT name, 
-       relevance_matrix::text != '{}' as has_matrix
-FROM supplement_database
-WHERE name IN (
-  'Ashwagandha KSM-66',
-  'Magnesium Glycinat', 
-  'NMN sublingual',
-  'Creatine Monohydrat'
-);
-```
-
----
-
-## Erwartetes Ergebnis
-
-| Status | Anzahl | Prozent |
-|--------|--------|---------|
-| **Matrix zugewiesen** | ~100 | 90% |
-| **Stack-Produkte (Skip)** | 9 | 8% |
-| **Pharma (Skip)** | 2 | 2% |
-
-Nach dem Import werden alle Varianten wie "Ashwagandha KSM-66", "Magnesium Glycinat" etc. die vollständigen 56-Attribute der Relevance Matrix haben - identisch zu ihren Master-Wirkstoffen.
-
----
-
-## Technische Details
-
-### Edge Function Matching-Logik
-
-Die `findMatch()` Funktion prüft in dieser Reihenfolge:
-
-1. **Manual Override**: `ingredient_id` gegen MANUAL_OVERRIDES Dictionary
-2. **Exact Match**: Normalisierter Name-Vergleich
-3. **Fuzzy Match**: Substring-Matching
-
-### Kritische Mappings bereits in MANUAL_OVERRIDES
-
+Statt:
 ```text
-'magnesium': ['magnesium glycinat', 'magnesiumcitrat', ...]
-'ashwagandha': ['ashwagandha ksm-66', 'ksm66', ...]
-'nmn': ['nmn sublingual', 'nmn (nicotinamid mononukleotid)', ...]
-'creatine': ['creatine monohydrat', ...]
+const match = findMatch(...)
+if (match) update(match.dbId)
 ```
 
-Die Overrides sind bereits synchronisiert zwischen Frontend-Matcher und Edge-Function.
+Neu:
+```text
+const matches = findAllMatches(...)
+for (const match of matches) {
+  update(match.dbId)  // Alle Varianten updaten!
+}
+```
+
+### Schritt 3: Deduplizierung
+
+Sicherstellen, dass jeder DB-Eintrag nur einmal upgedatet wird (Set mit IDs).
+
+---
+
+## Dateiaenderungen
+
+### Datei: `supabase/functions/run-matrix-import/index.ts`
+
+1. **Neue Funktion `findAllMatches`** (ersetzt `findMatch`):
+   - Sammelt alle DB-Eintraege, die zu den MANUAL_OVERRIDE patterns passen
+   - Gibt Array statt single object zurueck
+   - Verwendet Set zur Deduplizierung
+
+2. **Import-Loop anpassen**:
+   - Iteriert ueber alle Matches statt nur den ersten
+   - Zaehlt multi-updates korrekt
+
+3. **Logging verbessern**:
+   - Zeigt wie viele DB-Eintraege pro Ingredient updated wurden
+
+---
+
+## Erwartetes Ergebnis nach Fix
+
+| Vorher | Nachher |
+|--------|---------|
+| 70/111 (63%) | ~100/111 (90%) |
+
+### Konkrete Beispiele die jetzt funktionieren werden:
+
+| Import-Ingredient | Wird updaten |
+|-------------------|--------------|
+| `magnesium` | Magnesium, Magnesium Glycinat, Magnesiumcitrat |
+| `ashwagandha` | Ashwagandha, Ashwagandha KSM-66 |
+| `nmn` | NMN, NMN sublingual, NMN (Nicotinamid Mononukleotid) |
+| `creatine` | Creatine, Creatine Monohydrat |
+| `resveratrol` | Resveratrol, Trans-Resveratrol |
+| `zinc` | Zink, Zink Bisglycinat, Zinc Complex |
+| `vit_c` | Vitamin C, Vitamin C (liposomal) |
+| `vit_d3` | Vitamin D3, Vitamin D3 + K2 MK7 Tropfen, Vitamin D Balance |
+| `probiotics_lacto` | Probiotika, Probiona Kulturen Komplex, Probiotika Multi-Strain |
+
+---
+
+## Stack-Produkte (weiterhin Skip)
+
+Diese 11 Produkte haben keine direkte Matrix-Zuweisung:
+- Pre-Workout Komplex, Sport Stack, Nootropic, Schlaf, Frauen, Augen, Beauty, Haare, Gelenke
+- Metformin, Methylenblau 1%
+
+Das ist korrekt - Stacks werden ueber ihre Einzelbestandteile bewertet.
