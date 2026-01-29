@@ -7,7 +7,7 @@ import { WidgetSize } from '@/types/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { QUERY_KEYS } from '@/constants/queryKeys';
-import { getLast7Days } from '@/utils/dateHelpers';
+import { getLast7DaysWithLabels } from '@/utils/dateHelpers';
 
 interface TrainingWidgetProps {
   size: WidgetSize;
@@ -22,10 +22,10 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
     queryKey: QUERY_KEYS.TRAINING_WEEKLY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { count: 0, days: [] as boolean[] };
+      if (!user) return { count: 0, days: [] as boolean[], labels: ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'] };
       
-      // Use timezone-aware date helper
-      const dates = getLast7Days();
+      // Use timezone-aware date helper with dynamic labels
+      const { dates, labels } = getLast7DaysWithLabels();
       
       const { data: sessions } = await supabase
         .from('training_sessions')
@@ -39,7 +39,8 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
       
       return {
         count: sessionDates.size,
-        days: dates.map(d => sessionDates.has(d))
+        days: dates.map(d => sessionDates.has(d)),
+        labels
       };
     },
     staleTime: 10000
@@ -47,6 +48,7 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
 
   const weeklyWorkouts = weeklyData?.count || 0;
   const weekDays = weeklyData?.days || [false, false, false, false, false, false, false];
+  const dayLabels = weeklyData?.labels || ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'];
   const workoutTarget = 4;
   const workoutStatus = weeklyWorkouts < 2 ? 'low' : 
                         weeklyWorkouts >= workoutTarget ? 'good' : 'ok';
@@ -70,7 +72,6 @@ export const TrainingWidget: React.FC<TrainingWidgetProps> = ({ size, onOpenShee
   };
 
   const colors = statusColors[workoutStatus];
-  const dayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
   const progressPercent = Math.min((weeklyWorkouts / workoutTarget) * 100, 100);
 

@@ -206,3 +206,26 @@ export const getLastNDays = (n: number = 7): string[] => {
  * Alias for getLastNDays(7)
  */
 export const getLast7Days = (): string[] => getLastNDays(7);
+
+/**
+ * Get the last 7 days with their weekday labels (timezone-aware)
+ * Returns both date strings AND corresponding German weekday abbreviations
+ * 
+ * Example (if today is Thursday 29.01.2026):
+ * returns { dates: ['2026-01-23', ...], labels: ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'] }
+ */
+export const getLast7DaysWithLabels = (): { dates: string[], labels: string[] } => {
+  const WEEKDAY_LABELS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']; // getDay() returns 0=Sunday
+  const dates: string[] = [];
+  const labels: string[] = [];
+  const today = new Date();
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(toDateString(d));
+    labels.push(WEEKDAY_LABELS[d.getDay()]);
+  }
+  
+  return { dates, labels };
+};
