@@ -30,10 +30,13 @@ const CoachPage = () => {
   const autoStartPrompt = (location.state as { autoStartPrompt?: string })?.autoStartPrompt;
   
   // Clear the state after reading to prevent re-triggering on refresh
+  // Delay clearing to allow AresChat to read the prompt (it uses 600ms delay)
   useEffect(() => {
     if (autoStartPrompt) {
-      // Replace current history entry without the state
-      navigate(location.pathname, { replace: true, state: {} });
+      const timer = setTimeout(() => {
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 1000);
+      return () => clearTimeout(timer);
     }
   }, [autoStartPrompt, navigate, location.pathname]);
 
