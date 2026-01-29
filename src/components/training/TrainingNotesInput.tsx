@@ -1,15 +1,18 @@
 /**
  * TrainingNotesInput - Quick Training Logger with Live Preview
  * Allows free-text training input with real-time parsing and volume calculation
+ * Includes AI fallback for complex/natural language inputs
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dumbbell, Heart, Zap, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Dumbbell, Heart, Zap, Check, AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { parseExercisesFromText, type ParsedExercise } from '@/tools/set-parser';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export interface ParsedTrainingResult {
   rawText: string;
@@ -47,9 +50,16 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
 }) => {
   const [rawText, setRawText] = useState('');
   const [trainingType, setTrainingType] = useState<'strength' | 'cardio' | 'hybrid'>('strength');
+  const [isAiParsing, setIsAiParsing] = useState(false);
+  const [aiParsedData, setAiParsedData] = useState<ParsedExercise[] | null>(null);
 
-  // Parse exercises in real-time
-  const parsedData = useMemo(() => {
+  // Reset AI data when text changes
+  useEffect(() => {
+    setAiParsedData(null);
+  }, [rawText]);
+
+  // Parse exercises in real-time with regex
+  const regexParsedData = useMemo(() => {
     if (!rawText.trim()) {
       return { exercises: [] as ParsedExercise[], totalVolume: 0, totalSets: 0 };
     }
@@ -60,6 +70,54 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
     
     return { exercises, totalVolume, totalSets };
   }, [rawText]);
+
+  // Use AI data if available, otherwise regex
+  const parsedData = useMemo(() => {
+    if (aiParsedData && aiParsedData.length > 0) {
+      const totalVolume = aiParsedData.reduce((sum, ex) => sum + ex.totalVolume, 0);
+      const totalSets = aiParsedData.reduce((sum, ex) => sum + ex.sets.length, 0);
+      return { exercises: aiParsedData, totalVolume, totalSets, isFromAi: true };
+    }
+    return { ...regexParsedData, isFromAi: false };
+  }, [regexParsedData, aiParsedData]);
+
+  // AI parsing handler
+  const handleAiParse = useCallback(async () => {
+    setIsAiParsing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('training-ai-parser', {
+        body: {
+          raw_text: rawText,
+          training_type: trainingType,
+          use_ai: true,
+          persist: false
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.exercises?.length > 0) {
+        // Convert backend format to client format
+        const clientExercises: ParsedExercise[] = data.exercises.map((ex: any) => ({
+          name: ex.normalized_name || ex.name,
+          sets: ex.sets,
+          totalVolume: ex.total_volume_kg
+        }));
+        
+        setAiParsedData(clientExercises);
+        toast.success(`${data.exercises.length} Übungen erkannt!`, {
+          description: 'KI-Parsing erfolgreich'
+        });
+      } else {
+        toast.error('KI konnte keine Übungen erkennen');
+      }
+    } catch (error) {
+      console.error('AI parsing failed:', error);
+      toast.error('KI-Parsing fehlgeschlagen');
+    } finally {
+      setIsAiParsing(false);
+    }
+  }, [rawText, trainingType]);
 
   const handleSubmit = useCallback(async () => {
     if (parsedData.exercises.length === 0) return;
@@ -128,7 +186,7 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
             <div className="bg-muted/20 rounded-xl border border-border/30 p-4 space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <span>📊</span>
-                <span>Erkannt:</span>
+                <span>Erkannt{parsedData.isFromAi ? ' (via KI ✨)' : ''}:</span>
               </div>
 
               {hasValidExercises ? (
@@ -170,9 +228,34 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
                   </div>
                 </>
               ) : (
-                <div className="flex items-center gap-2 text-sm text-amber-500">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>Keine gültigen Übungen erkannt. Format: "Übung 3x10 80kg"</span>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-amber-500">
+                    <AlertCircle className="w-4 h-4" />
+                    <span>Keine gültigen Übungen erkannt. Format: "Übung 3x10 80kg"</span>
+                  </div>
+                  
+                  {/* AI Fallback Button */}
+                  {!aiParsedData && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAiParse}
+                      disabled={isAiParsing}
+                      className="w-full gap-2 border-primary/30 hover:bg-primary/10"
+                    >
+                      {isAiParsing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          KI analysiert...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Mit KI prüfen
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

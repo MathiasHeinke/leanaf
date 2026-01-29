@@ -228,6 +228,143 @@ function parseTrainingText(rawText: string): ParseResult {
   };
 }
 
+// AI Fallback: Use Gemini 3 Flash to parse complex/natural language input
+async function parseWithGemini(rawText: string): Promise<ParseResult | null> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    console.warn('[TRAINING-AI-PARSER] No LOVABLE_API_KEY, skipping AI fallback');
+    return null;
+  }
+
+  try {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-3-flash-preview',
+        messages: [
+          {
+            role: 'system',
+            content: `Du bist ein Fitness-Experte. Parse Trainings-Logs in strukturierte Daten.
+
+Regeln:
+- Erkenne Übungsnamen auch bei Tippfehlern ("goblet squad" → "Goblet Squat", "kurzanhtel" → "Kurzhantel")
+- "3x 8x" oder "3x8" = 3 Sets à 8 Wiederholungen
+- "je Seite" / "pro Seite" = unilateral (das angegebene Gewicht ist pro Arm/Bein)
+- "KH" = Kurzhantel, "LH" = Langhantel
+- Kein RPE angegeben → setze auf 7
+- Gewichte immer in kg
+- Wenn mehrere Übungen in einer Zeile ("Bizeps und Trizeps"), trenne sie`
+          },
+          { role: 'user', content: `Parse diesen Trainings-Log:\n\n${rawText}` }
+        ],
+        tools: [{
+          type: 'function',
+          function: {
+            name: 'parse_training_log',
+            description: 'Gibt geparste Übungen als strukturierte Daten zurück',
+            parameters: {
+              type: 'object',
+              properties: {
+                exercises: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string', description: 'Normalisierter Übungsname auf Deutsch' },
+                      sets: { type: 'number', description: 'Anzahl Sets' },
+                      reps: { type: 'number', description: 'Wiederholungen pro Set' },
+                      weight_kg: { type: 'number', description: 'Gewicht in kg' },
+                      rpe: { type: 'number', description: 'RPE 1-10, default 7' },
+                      notes: { type: 'string', description: 'Zusätzliche Notizen' }
+                    },
+                    required: ['name', 'sets', 'reps', 'weight_kg']
+                  }
+                }
+              },
+              required: ['exercises']
+            }
+          }
+        }],
+        tool_choice: { type: 'function', function: { name: 'parse_training_log' } }
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        console.warn('[TRAINING-AI-PARSER] Rate limited');
+        return null;
+      }
+      if (response.status === 402) {
+        console.warn('[TRAINING-AI-PARSER] Payment required');
+        return null;
+      }
+      console.error('[TRAINING-AI-PARSER] AI gateway error:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    
+    if (!toolCall) {
+      console.warn('[TRAINING-AI-PARSER] No tool call in Gemini response');
+      return null;
+    }
+
+    const parsed = JSON.parse(toolCall.function.arguments);
+    
+    if (!parsed.exercises || !Array.isArray(parsed.exercises) || parsed.exercises.length === 0) {
+      console.warn('[TRAINING-AI-PARSER] No exercises in AI response');
+      return null;
+    }
+
+    // Convert AI output to internal format
+    const exercises: ParsedExercise[] = parsed.exercises.map((ex: any) => {
+      const sets: SetEntry[] = [];
+      for (let i = 0; i < (ex.sets || 3); i++) {
+        sets.push({
+          reps: ex.reps || 10,
+          weight: ex.weight_kg || 0,
+          rpe: ex.rpe || 7,
+          unit: 'kg'
+        });
+      }
+      
+      const normalizedName = normalizeExerciseName(ex.name);
+      const muscleGroups = inferMuscleGroups(normalizedName);
+      const totalVolume = sets.reduce((sum, s) => sum + (s.weight * s.reps), 0);
+      
+      return {
+        name: ex.name,
+        normalized_name: normalizedName,
+        sets,
+        total_volume_kg: totalVolume,
+        muscle_groups: muscleGroups
+      };
+    });
+
+    const totalVolume = exercises.reduce((sum, ex) => sum + ex.total_volume_kg, 0);
+    const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+
+    return {
+      exercises,
+      session_meta: {
+        split_type: inferSplitType(exercises),
+        total_volume_kg: totalVolume,
+        total_sets: totalSets,
+        estimated_duration_minutes: Math.round(totalSets * 2)
+      },
+      warnings: []
+    };
+  } catch (error) {
+    console.error('[TRAINING-AI-PARSER] Gemini parsing error:', error);
+    return null;
+  }
+}
+
 async function findOrCreateExercise(
   supabase: ReturnType<typeof createClient>,
   name: string,
@@ -293,7 +430,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { raw_text, training_type = 'strength', persist = false } = await req.json();
+    const { raw_text, training_type = 'strength', persist = false, use_ai = false } = await req.json();
 
     // Get user from auth header
     const authHeader = req.headers.get('Authorization');
@@ -322,12 +459,28 @@ serve(async (req) => {
     }
 
     console.log(`[TRAINING-AI-PARSER] Processing for user: ${user.id}`);
-    console.log(`[TRAINING-AI-PARSER] Raw text length: ${raw_text.length}`);
+    console.log(`[TRAINING-AI-PARSER] Raw text length: ${raw_text.length}, use_ai: ${use_ai}`);
 
-    // Parse the training text
-    const parseResult = parseTrainingText(raw_text);
+    // Parse the training text with regex first
+    let parseResult = parseTrainingText(raw_text);
     
-    console.log(`[TRAINING-AI-PARSER] Parsed ${parseResult.exercises.length} exercises`);
+    console.log(`[TRAINING-AI-PARSER] Regex parsed ${parseResult.exercises.length} exercises`);
+
+    // AI Fallback: if use_ai is true OR no exercises were found, try Gemini
+    if (use_ai || parseResult.exercises.length === 0) {
+      console.log('[TRAINING-AI-PARSER] Trying AI fallback...');
+      const aiResult = await parseWithGemini(raw_text);
+      
+      if (aiResult && aiResult.exercises.length > 0) {
+        parseResult = aiResult;
+        parseResult.warnings.push('Parsing via KI durchgeführt');
+        console.log(`[TRAINING-AI-PARSER] AI parsed ${aiResult.exercises.length} exercises`);
+      } else {
+        console.log('[TRAINING-AI-PARSER] AI fallback returned no exercises');
+      }
+    }
+    
+    console.log(`[TRAINING-AI-PARSER] Final: ${parseResult.exercises.length} exercises`);
     console.log(`[TRAINING-AI-PARSER] Total volume: ${parseResult.session_meta.total_volume_kg}kg`);
 
     // If not persisting, just return the parse result
