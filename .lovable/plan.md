@@ -2,6 +2,8 @@
 
 # Plan: Mehrere Sessions pro Tag mit Icon-Overlay
 
+## Status: ✅ IMPLEMENTIERT
+
 ## Kontext
 
 Im Screenshot siehst du die "Letzte Sessions" Liste, wo jeder Tag als eigene Zeile erscheint. Das Problem:
@@ -189,4 +191,3 @@ const SessionIconPopover = ({ session }) => {
 | Mobile Testing | 10 min |
 
 **Gesamt: ~1.25 Stunden**
-
