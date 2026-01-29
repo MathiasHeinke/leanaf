@@ -6,7 +6,6 @@ export type TimingValue =
   | 'evening'
   | 'pre_workout'
   | 'post_workout'
-  | 'before_bed'
   | 'with_meals';
 
 export interface TimingOption {
@@ -28,7 +27,6 @@ export function isValidTiming(timing: string): timing is TimingValue {
     'evening', 
     'pre_workout',
     'post_workout',
-    'before_bed',
     'with_meals'
   ];
   return validTimings.includes(timing as TimingValue);
@@ -40,8 +38,7 @@ export const VALID_TIMING_VALUES = [
   'noon',
   'evening',
   'pre_workout', 
-  'post_workout',
-  'before_bed'
+  'post_workout'
 ] as const;
 
 export type ValidTimingValue = typeof VALID_TIMING_VALUES[number];

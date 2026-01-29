@@ -78,11 +78,6 @@ const CONSTRAINT_BADGE_CONFIG: Record<TimingConstraint, {
     label: 'Mit Fett', 
     className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' 
   },
-  bedtime: { 
-    icon: <Moon className="h-3 w-3" />, 
-    label: 'Vor Schlaf', 
-    className: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300' 
-  },
   pre_workout: { 
     icon: <Dumbbell className="h-3 w-3" />, 
     label: 'Vor Training', 
@@ -389,7 +384,6 @@ CONSTRAINT: Halte dich extrem kurz (max 3 Sätze). Nur auf Nachfrage tiefer!`;
                     {constraint === 'fasted' && 'Am besten auf nüchternen Magen einnehmen (30 Min vor dem Essen).'}
                     {constraint === 'with_food' && 'Zusammen mit einer Mahlzeit einnehmen.'}
                     {constraint === 'with_fats' && 'Mit fetthaltiger Nahrung für bessere Absorption.'}
-                    {constraint === 'bedtime' && 'Vor dem Schlafengehen einnehmen.'}
                     {constraint === 'pre_workout' && '30-60 Minuten vor dem Training einnehmen.'}
                     {constraint === 'post_workout' && 'Direkt nach dem Training einnehmen.'}
                   </div>

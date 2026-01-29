@@ -27,7 +27,6 @@ const TIMING_ICONS: Record<PreferredTiming, React.ElementType> = {
   noon: Coffee,
   afternoon: Coffee,
   evening: Moon,
-  bedtime: Moon,
   pre_workout: Dumbbell,
   post_workout: Dumbbell,
 };
@@ -37,7 +36,6 @@ const TIMING_COLORS: Record<PreferredTiming, string> = {
   noon: 'from-yellow-500/20 to-amber-500/10',
   afternoon: 'from-blue-500/20 to-cyan-500/10',
   evening: 'from-purple-500/20 to-indigo-500/10',
-  bedtime: 'from-indigo-500/20 to-violet-500/10',
   pre_workout: 'from-green-500/20 to-emerald-500/10',
   post_workout: 'from-teal-500/20 to-green-500/10',
 };

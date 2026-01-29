@@ -27,8 +27,7 @@ const timingLabels: { [key: string]: string } = {
   'noon': 'Mittags', 
   'evening': 'Abends',
   'pre_workout': 'Vor dem Training',
-  'post_workout': 'Nach dem Training',
-  'before_bed': 'Vor dem Schlafengehen'
+  'post_workout': 'Nach dem Training'
 };
 
 export const InlineSupplementList: React.FC<InlineSupplementListProps> = ({

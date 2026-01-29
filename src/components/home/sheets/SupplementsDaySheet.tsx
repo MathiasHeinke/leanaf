@@ -37,8 +37,7 @@ const TIMING_ICONS: Record<string, React.ReactNode> = {
   noon: <Sun className="w-4 h-4" />,
   evening: <Moon className="w-4 h-4" />,
   pre_workout: <Dumbbell className="w-4 h-4" />,
-  post_workout: <Dumbbell className="w-4 h-4" />,
-  before_bed: <BedDouble className="w-4 h-4" />
+  post_workout: <Dumbbell className="w-4 h-4" />
 };
 
 // Get current timing phase based on time of day
@@ -46,12 +45,11 @@ const getCurrentTimingPhase = (): string => {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 11) return 'morning';
   if (hour >= 11 && hour < 14) return 'noon';
-  if (hour >= 14 && hour < 20) return 'evening';
-  return 'before_bed';
+  return 'evening'; // Everything from 14:00 onwards is evening
 };
 
-// Timing phase order for display
-const TIMING_ORDER = ['morning', 'noon', 'evening', 'pre_workout', 'post_workout', 'before_bed'];
+// Timing phase order for display (no more before_bed)
+const TIMING_ORDER = ['morning', 'noon', 'evening', 'pre_workout', 'post_workout'];
 
 export const SupplementsDaySheet: React.FC<SupplementsDaySheetProps> = ({
   isOpen,

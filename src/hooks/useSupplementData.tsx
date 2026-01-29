@@ -44,19 +44,19 @@ export interface TimeGroupedSupplements {
 export const TIMING_OPTIONS = [
   { value: 'morning', label: 'Morgens', icon: '☀️', tip: 'Auf leeren Magen für bessere Aufnahme' },
   { value: 'noon', label: 'Mittags', icon: '🌅', tip: 'Zwischen den Mahlzeiten' },
-  { value: 'evening', label: 'Abends', icon: '🌙', tip: 'Mit dem Abendessen' },
-  { value: 'bedtime', label: 'Vor dem Schlafen', icon: '🛏️', tip: 'Vor dem Einschlafen' },
+  { value: 'evening', label: 'Abends', icon: '🌙', tip: 'Mit dem Abendessen oder vor dem Schlaf' },
   { value: 'pre_workout', label: 'Vor dem Training', icon: '💪', tip: '30-60 Min vor dem Training' },
   { value: 'post_workout', label: 'Nach dem Training', icon: '🏃', tip: 'Innerhalb 30 Min nach dem Training' },
 ];
 
-// Legacy timing mapping for backwards compatibility
+// Legacy timing mapping for backwards compatibility - all bedtime variants map to evening
 export const LEGACY_TIMING_MAP: Record<string, string> = {
   'empty_stomach': 'morning',
   'between_meals': 'noon', 
   'with_food': 'evening',
-  'before_bed': 'bedtime',
-  'before_sleep': 'bedtime',
+  'before_bed': 'evening',
+  'before_sleep': 'evening',
+  'bedtime': 'evening',
   'workout': 'pre_workout',
   'after_workout': 'post_workout'
 };
