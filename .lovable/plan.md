@@ -1,195 +1,282 @@
 
-# Fix: Schlaf-Logging mit korrekter Tageswende-Logik
 
-## Problem
+# Fix: Layer 2 Supplement Sheet Query-Synchronisation
 
-Der SleepLogger zeigt "Bereits geloggt" an, selbst wenn für **heute** noch kein Schlaf eingetragen wurde. Das liegt an zwei Problemen:
+## Problem-Zusammenfassung
 
-1. **useDailyMetrics** holt den **letzten** Sleep-Eintrag ohne Datumsfilter
-2. **SleepLogger** prüft nur `lastHours != null` → immer `true` wenn jemals geloggt
+| Layer | Datenquelle | Update-Mechanismus | Status |
+|-------|-------------|-------------------|--------|
+| Layer 1 (Widget) | React Query | `invalidateQueries` | ✅ Funktioniert |
+| Layer 2 (Sheet) | Lokaler State + Cache | `supplement-stack-changed` Event | ❌ Nicht synchronisiert |
 
-## Lösung: "Sleep Date" Logik mit 02:00 Uhr Grenze
+### Kernproblem
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    TAGESWENDE FÜR SCHLAF                     │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   28.01.2026          │         29.01.2026                  │
-│   ─────────────       │         ─────────────               │
-│                       │                                     │
-│   00:00  01:00  02:00 │ 03:00  04:00  ...  23:00           │
-│   ──────────────┼─────│─────────────────────────           │
-│   ↑             ↑                                          │
-│   └─────────────┘                                          │
-│   Gehört noch zu                                           │
-│   "28.01." wenn Schlaf                                     │
-│   für 28. geloggt wird                                     │
-│                                                             │
-│   Ab 02:00 Uhr → Neuer Tag (29.01.)                        │
-│   Vor 02:00 Uhr → Noch alter Tag (28.01.)                  │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
+`useSupplementData` nutzt **lokalen State** statt React Query. Die Cache-Invalidierung via Event funktioniert nicht zuverlässig, weil:
 
-**Praxis-Beispiel:**
-- 29.01. um 01:30 Uhr → Schlaf-Datum = 28.01. (gestern)
-- 29.01. um 02:00 Uhr → Schlaf-Datum = 29.01. (heute)
-- 29.01. um 12:00 Uhr → Schlaf-Datum = 29.01. (heute)
+1. Der 5-Sekunden TTL-Cache (`SUPP_CACHE_TTL_MS`) alte Daten zurückgibt
+2. Die `loadSupplementData` Funktion einen Throttle von 1 Sekunde hat
+3. Das Sheet beim Öffnen bereits gemountete, veraltete Daten hat
 
 ---
 
-## Technische Änderungen
+## Lösung: Drei-Schritt-Fix
 
-### 1. Neue Helper-Funktion in `dateHelpers.ts`
+### Schritt 1: Force Refresh beim Sheet-Öffnen
+
+**Datei: `src/components/home/sheets/SupplementsDaySheet.tsx`**
+
+Das Sheet soll beim Öffnen immer frische Daten laden:
 
 ```typescript
-/**
- * Get the "sleep date" - the date for which sleep should be logged.
- * Before 02:00 AM, sleep counts as the previous day (for night owls).
- * After 02:00 AM, sleep counts as the current day.
- */
-export const getSleepDateString = (): string => {
-  const timezone = getUserTimezone();
-  const now = new Date();
+// Zeile 54-67 erweitern
+export const SupplementsDaySheet: React.FC<SupplementsDaySheetProps> = ({
+  isOpen,
+  onClose,
+  onOpenLogger
+}) => {
+  const navigate = useNavigate();
+  const { 
+    groupedSupplements, 
+    markSupplementTaken,
+    markTimingGroupTaken,
+    totalScheduled,
+    totalTaken,
+    loading,
+    refetch  // NEU: refetch Funktion nutzen
+  } = useSupplementData();
+
+  // NEU: Force refresh when sheet opens
+  useEffect(() => {
+    if (isOpen) {
+      refetch({ force: true });
+    }
+  }, [isOpen, refetch]);
   
-  // Get current hour in user's timezone
-  const hourFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    hour: 'numeric',
-    hour12: false
+  // ... rest
+```
+
+### Schritt 2: React Query Integration in useSupplementData
+
+**Datei: `src/hooks/useSupplementData.tsx`**
+
+Migration von lokalem State zu React Query für automatische Synchronisation:
+
+```typescript
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '@/constants/queryKeys';
+
+// Neuer Query Key für Layer 2 Supplement Data
+// In queryKeys.ts: SUPPLEMENTS_SHEET_DATA: ['supplements-sheet-data'] as const
+
+export const useSupplementData = (currentDate?: Date) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const dateStr = currentDate ? currentDate.toISOString().split('T')[0] : getCurrentDateString();
+
+  // React Query statt lokalem State
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: [...QUERY_KEYS.SUPPLEMENTS_DATA, dateStr],
+    queryFn: async () => {
+      if (!user?.id) return { supplements: [], intakes: [] };
+      
+      // Parallel fetch supplements + intakes
+      const [supplementsRes, intakesRes] = await Promise.all([
+        supabase
+          .from('user_supplements')
+          .select(`id, supplement_id, custom_name, dosage, unit, timing, preferred_timing, 
+                   goal, rating, notes, frequency_days, is_active, name, 
+                   supplement_database(name, category)`)
+          .eq('user_id', user.id)
+          .eq('is_active', true),
+        supabase
+          .from('supplement_intake_log')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('date', dateStr)
+      ]);
+
+      const formattedSupplements = (supplementsRes.data || []).map((s: any) => ({
+        ...s,
+        timing: s.preferred_timing ? [s.preferred_timing] : normalizeTimingArray(s.timing),
+        supplement_name: s.custom_name || s.name || s.supplement_database?.name || 'Supplement',
+        supplement_category: s.supplement_database?.category || 'Sonstige',
+      }));
+
+      return {
+        supplements: formattedSupplements,
+        intakes: intakesRes.data || []
+      };
+    },
+    enabled: !!user?.id,
+    staleTime: 10000,  // 10 Sekunden statt 5 Sekunden
   });
-  const currentHour = parseInt(hourFormatter.format(now), 10);
+
+  // Derived state aus Query-Daten berechnen
+  const userSupplements = data?.supplements || [];
+  const todayIntakes = data?.intakes || [];
   
-  // Before 2 AM → use yesterday's date
-  if (currentHour < 2) {
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-    return toDateString(yesterday);
-  }
-  
-  // 2 AM or later → use today's date
-  return getCurrentDateString();
+  // ... groupedSupplements Berechnung bleibt gleich ...
+
+  // Mutation für Supplement-Logging mit Optimistic Update
+  const markSupplementTaken = async (supplementId: string, timing: string, taken: boolean = true) => {
+    // Optimistic update
+    queryClient.setQueryData([...QUERY_KEYS.SUPPLEMENTS_DATA, dateStr], (old: any) => {
+      if (!old) return old;
+      const newIntakes = old.intakes.filter(
+        (i: any) => !(i.user_supplement_id === supplementId && i.timing === timing)
+      );
+      if (taken) {
+        newIntakes.push({
+          id: `temp-${Date.now()}`,
+          user_supplement_id: supplementId,
+          timing,
+          taken: true,
+          date: dateStr,
+        });
+      }
+      return { ...old, intakes: newIntakes };
+    });
+
+    // Supabase write
+    await supabase.from('supplement_intake_log').upsert({...});
+
+    // Invalidate ALLE supplement-related queries
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_TODAY });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SUPPLEMENTS_DATA });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DAILY_METRICS });
+  };
+
+  return { ... };
 };
 ```
 
----
+### Schritt 3: Query Key Registry erweitern
 
-### 2. Update `useDailyMetrics.ts` - Sleep Query mit Datumsfilter
+**Datei: `src/constants/queryKeys.ts`**
 
-**Vorher (Zeile 112-119):**
 ```typescript
-// Last Sleep Entry - NO DATE FILTER!
-supabase
-  .from('sleep_tracking')
-  .select('sleep_hours, sleep_quality, date')
-  .eq('user_id', userId)
-  .order('date', { ascending: false })
-  .limit(1)
-  .maybeSingle()
-```
+export const QUERY_KEYS = {
+  // ... bestehende Keys ...
+  SUPPLEMENTS_DATA: ['supplement-data'] as const,  // Bereits vorhanden!
+} as const;
 
-**Nachher:**
-```typescript
-// Today's Sleep Entry - WITH DATE FILTER
-supabase
-  .from('sleep_tracking')
-  .select('sleep_hours, sleep_quality, date, deep_sleep_minutes')
-  .eq('user_id', userId)
-  .eq('date', sleepDateStr)  // Neuer Filter!
-  .maybeSingle()
-```
-
-Und am Anfang der Query-Funktion:
-```typescript
-const todayStr = getCurrentDateString();  // Timezone-aware
-const sleepDateStr = getSleepDateString(); // Mit 02:00 Grenze
+// CATEGORY_QUERY_MAP erweitern (bereits vorhanden)
+supplements: [QUERY_KEYS.SUPPLEMENTS_TODAY, QUERY_KEYS.SUPPLEMENTS_DATA, QUERY_KEYS.DAILY_METRICS],
 ```
 
 ---
 
-### 3. Update `useAresEvents.ts` - Sleep Speicherung
+## Vereinfachte Quick-Win Lösung
 
-**Vorher (Zeile 69, 229):**
+Falls die komplette Migration zu React Query zu aufwändig ist, hier ein schneller Fix:
+
+**Datei: `src/components/home/sheets/SupplementsDaySheet.tsx`**
+
 ```typescript
-const today = new Date().toISOString().slice(0, 10);
-// ...
-date: payload.date || today,
+// Force refetch bei jedem Öffnen
+useEffect(() => {
+  if (isOpen) {
+    // Kleine Verzögerung, um Animation nicht zu blockieren
+    const timer = setTimeout(() => {
+      refetch({ force: true });
+    }, 100);
+    return () => clearTimeout(timer);
+  }
+}, [isOpen, refetch]);
 ```
 
-**Nachher:**
+**Datei: `src/hooks/useSupplementData.tsx`**
+
+Den TTL-Cache reduzieren und Throttle entfernen:
+
 ```typescript
-import { getCurrentDateString, getSleepDateString } from '@/utils/dateHelpers';
-// ...
-const todayStr = getCurrentDateString();
-// ...
-// Bei Sleep-Speicherung:
-date: payload.date || getSleepDateString(),  // Spezielle Sleep-Logik
+const SUPP_CACHE_TTL_MS = 2000;  // Von 5000 auf 2000 reduzieren
+
+// In loadSupplementData:
+// Diese Zeile entfernen oder anpassen:
+if (now - lastFetchAtRef.current < 1000) {
+  return;  // ← Diese Throttle-Logik blockiert das Refresh
+}
 ```
-
----
-
-### 4. Update `SleepLogger.tsx` - Korrekte Prüfung
-
-**Vorher (Zeile 68-70):**
-```typescript
-const existingSleep = metrics?.sleep;
-const hasExistingLog = existingSleep?.lastHours != null;
-```
-
-**Nachher:**
-```typescript
-import { getSleepDateString } from '@/utils/dateHelpers';
-// ...
-const existingSleep = metrics?.sleep;
-// Prüfe ob Datum des existierenden Eintrags dem heutigen Sleep-Datum entspricht
-const sleepDate = getSleepDateString();
-const hasExistingLog = existingSleep?.date === sleepDate && existingSleep?.lastHours != null;
-```
-
----
-
-## Dateien die geändert werden
-
-| Datei | Änderung |
-|-------|----------|
-| `src/utils/dateHelpers.ts` | Neue `getSleepDateString()` Funktion |
-| `src/hooks/useDailyMetrics.ts` | Sleep-Query mit Datumsfilter |
-| `src/hooks/useAresEvents.ts` | Sleep-Speicherung mit Sleep-Datum |
-| `src/components/home/loggers/SleepLogger.tsx` | Korrekte Datum-Prüfung |
-
----
-
-## Erwartetes Ergebnis
-
-| Uhrzeit | Aktion | Ergebnis |
-|---------|--------|----------|
-| 29.01. 01:30 | Schlaf loggen | Speichert für 28.01. (gestern) |
-| 29.01. 02:00 | Schlaf loggen | Speichert für 29.01. (heute) |
-| 29.01. 12:00 | SleepLogger öffnen | Zeigt "Bereits geloggt" wenn 29.01. existiert |
-| 29.01. 12:00 | Nach Bearbeiten | Update des 29.01. Eintrags |
-| 29.01. 23:00 | Neuen Schlaf loggen? | Nein - zeigt Edit-Modus für 29.01. |
-| 30.01. 02:00 | Schlaf loggen | Speichert für 30.01. (neuer Tag!) |
 
 ---
 
 ## Technische Details
 
-### DailyMetrics Return-Typ erweitern
+### Warum der Event-Listener nicht funktioniert
 
-Die `sleep` Eigenschaft muss auch `date` enthalten:
+Der `supplement-stack-changed` Event wird korrekt dispatcht, aber:
 
-```typescript
-sleep: { 
-  lastHours: number | null; 
-  lastQuality: number | null;
-  date: string | null;  // NEU
-  deepSleepMinutes: number | null;  // NEU (optional)
-}
+1. Wenn Layer 2 nicht geöffnet ist, ist der Event-Listener nicht aktiv
+2. Beim nächsten Öffnen ist der Cache noch "frisch" (< 5 Sekunden alt)
+3. Die Throttle-Logik (`lastFetchAtRef.current < 1000`) blockiert den Force-Fetch
+
+### Datenfluss-Diagramm
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    AKTUELLER ZUSTAND                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Layer 1 (Widget)          Layer 2 (Sheet)                     │
+│  ┌─────────────┐           ┌─────────────┐                     │
+│  │ React Query │           │ Local State │                     │
+│  │ SUPPLEMENTS │           │ + 5s Cache  │                     │
+│  │ _TODAY      │           │ suppCache   │                     │
+│  └──────┬──────┘           └──────┬──────┘                     │
+│         │                         │                             │
+│         ▼                         ▼                             │
+│  invalidateQueries()       supplement-stack-changed Event       │
+│         │                         │                             │
+│         ▼                         │                             │
+│  ✅ Refetch                 ❌ Ignored if sheet closed          │
+│                                   │                             │
+│                                   ▼                             │
+│                             ❌ Cache TTL blockiert Refresh      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Edge Cases
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    NACH DEM FIX                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Layer 1 (Widget)          Layer 2 (Sheet)                     │
+│  ┌─────────────┐           ┌─────────────┐                     │
+│  │ React Query │           │ React Query │                     │
+│  │ SUPPLEMENTS │           │ SUPPLEMENTS │                     │
+│  │ _TODAY      │           │ _DATA       │                     │
+│  └──────┬──────┘           └──────┬──────┘                     │
+│         │                         │                             │
+│         └────────────┬────────────┘                             │
+│                      ▼                                          │
+│           invalidateQueries([SUPPLEMENTS_TODAY,                 │
+│                              SUPPLEMENTS_DATA,                  │
+│                              DAILY_METRICS])                    │
+│                      │                                          │
+│                      ▼                                          │
+│              ✅ Beide Layer refetchen automatisch               │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-- **Zeitzone-Wechsel:** User ändert Timezone um 01:30 → Sleep-Datum kann sich ändern
-- **Reisen:** Bei Langstreckenflügen kann es zu Überlappungen kommen
-- **Workaround:** 02:00 Uhr Grenze ist ein pragmatischer Kompromiss
+---
+
+## Zusammenfassung der Änderungen
+
+| Datei | Änderung | Priorität |
+|-------|----------|-----------|
+| `SupplementsDaySheet.tsx` | `useEffect` für force refetch beim Öffnen | Quick-Win |
+| `useSupplementData.tsx` | TTL reduzieren, Throttle anpassen | Quick-Win |
+| `useSupplementData.tsx` | Migration zu React Query (optional) | Langfristig |
+| `queryKeys.ts` | Bereits korrekt konfiguriert | - |
+
+---
+
+## Empfohlene Vorgehensweise
+
+**Phase 1 (Quick-Win):** Force-Refetch beim Sheet-Öffnen + Cache-TTL reduzieren
+
+**Phase 2 (Langfristig):** `useSupplementData` vollständig auf React Query migrieren für konsistente Cache-Verwaltung
+
