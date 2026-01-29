@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 import { WidgetSize } from '@/types/widgets';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getSleepDateString, toDateString } from '@/utils/dateHelpers';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface SleepWidgetProps {
   size: WidgetSize;
@@ -25,17 +27,18 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
 
   // Fetch sleep data for last 7 days
   const { data: sleepData } = useQuery({
-    queryKey: ['sleep-weekly'],
+    queryKey: QUERY_KEYS.SLEEP_WEEKLY,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return { todayHours: 0, weeklyAvg: 0, sparkline: [] as number[] };
+      if (!user) return { todayHours: 0, weeklyAvg: 0, sparkline: [] as { totalHours: number; deepSleepHours: number }[], todayDeepSleep: 0 };
       
+      // Build dates array with timezone-aware helper
       const dates: string[] = [];
       const today = new Date();
       for (let i = 6; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(d.getDate() - i);
-        dates.push(d.toISOString().slice(0, 10));
+        dates.push(toDateString(d));
       }
       
       const { data: sleepRecords } = await supabase
@@ -52,15 +55,16 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
         deepSleepMap.set(r.date, Number(r.deep_sleep_minutes) || 0);
       });
       
-      // Build sparkline (percentage of 8h target)
-      const sparkline = dates.map(d => {
-        const hours = sleepMap.get(d) || 0;
-        return Math.min((hours / 8) * 100, 100);
-      });
+      // Build sparkline with stacked data (hours + deep sleep hours)
+      const sparkline = dates.map(d => ({
+        totalHours: sleepMap.get(d) || 0,
+        deepSleepHours: (deepSleepMap.get(d) || 0) / 60
+      }));
       
-      const todayStr = today.toISOString().slice(0, 10);
-      const todayHours = sleepMap.get(todayStr) || 0;
-      const todayDeepSleep = deepSleepMap.get(todayStr) || 0;
+      // Use timezone-aware sleep date for "today"
+      const sleepDate = getSleepDateString();
+      const todayHours = sleepMap.get(sleepDate) || 0;
+      const todayDeepSleep = deepSleepMap.get(sleepDate) || 0;
       
       // Calculate weekly average
       const totalHours = Array.from(sleepMap.values()).reduce((a, b) => a + b, 0);
@@ -69,12 +73,13 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
       
       return { todayHours, weeklyAvg, sparkline, todayDeepSleep };
     },
-    staleTime: 60000
+    staleTime: 30000
   });
   
   const sleepHours = sleepData?.todayHours || 0;
   const weeklyAvg = sleepData?.weeklyAvg || 0;
-  const sleepSparkline = sleepData?.sparkline?.length ? sleepData.sparkline : [0, 0, 0, 0, 0, 0, 0];
+  const defaultSparkline = Array(7).fill({ totalHours: 0, deepSleepHours: 0 });
+  const sleepSparkline = sleepData?.sparkline?.length ? sleepData.sparkline : defaultSparkline;
   const sleepStatus = sleepHours >= 7 ? 'good' : sleepHours >= 5 ? 'ok' : sleepHours > 0 ? 'low' : 'none';
   const deepSleepMinutes = sleepData?.todayDeepSleep || 0;
 
@@ -139,17 +144,34 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
         {/* Label */}
         <span className="relative z-10 text-sm font-medium text-foreground shrink-0">Schlaf</span>
         
-        {/* Mini Sparkline */}
+        {/* Mini Sparkline - Stacked Bars */}
         <div className="relative z-10 flex-1 flex items-end justify-center gap-0.5 h-4">
-          {sleepSparkline.map((h, i) => (
-            <motion.div 
-              key={i}
-              initial={{ height: 0 }}
-              animate={{ height: `${Math.max(h, 10)}%` }}
-              transition={{ delay: 0.3 + i * 0.05 }}
-              className={cn("w-2 rounded-sm", colors.bar)}
-            />
-          ))}
+          {sleepSparkline.map((data, i) => {
+            const { totalHours, deepSleepHours } = data;
+            const totalHeight = totalHours > 0 ? Math.max((totalHours / 8) * 100, 25) : 8;
+            const deepPercent = totalHours > 0 ? (deepSleepHours / totalHours) * 100 : 0;
+            
+            return (
+              <motion.div 
+                key={i}
+                initial={{ height: 0 }}
+                animate={{ height: `${totalHeight}%` }}
+                transition={{ delay: 0.3 + i * 0.05 }}
+                className="w-2.5 rounded-sm flex flex-col justify-end overflow-hidden"
+              >
+                {/* Rest sleep (top) */}
+                <div 
+                  className="w-full bg-indigo-400/40"
+                  style={{ height: `${100 - deepPercent}%` }}
+                />
+                {/* Deep sleep (bottom) */}
+                <div 
+                  className="w-full bg-indigo-600"
+                  style={{ height: `${deepPercent}%` }}
+                />
+              </motion.div>
+            );
+          })}
         </div>
         
         {/* Value */}
@@ -200,17 +222,34 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
           </span>
         </div>
         
-        {/* Big Sparkline Chart */}
+        {/* Big Sparkline Chart - Stacked Bars */}
         <div className="flex items-end justify-between gap-2 h-16 mb-4">
-          {sleepSparkline.map((h, i) => (
-            <motion.div 
-              key={i}
-              initial={{ height: 0 }}
-              animate={{ height: `${h}%` }}
-              transition={{ delay: 0.3 + i * 0.05 }}
-              className={cn("flex-1 rounded-md", colors.bar)}
-            />
-          ))}
+          {sleepSparkline.map((data, i) => {
+            const { totalHours, deepSleepHours } = data;
+            const totalHeight = totalHours > 0 ? Math.max((totalHours / 8) * 100, 25) : 8;
+            const deepPercent = totalHours > 0 ? (deepSleepHours / totalHours) * 100 : 0;
+            
+            return (
+              <motion.div 
+                key={i}
+                initial={{ height: 0 }}
+                animate={{ height: `${totalHeight}%` }}
+                transition={{ delay: 0.3 + i * 0.05 }}
+                className="flex-1 rounded-md flex flex-col justify-end overflow-hidden"
+              >
+                {/* Rest sleep (top) */}
+                <div 
+                  className="w-full bg-indigo-400/40"
+                  style={{ height: `${100 - deepPercent}%` }}
+                />
+                {/* Deep sleep (bottom) */}
+                <div 
+                  className="w-full bg-indigo-600"
+                  style={{ height: `${deepPercent}%` }}
+                />
+              </motion.div>
+            );
+          })}
         </div>
 
         <div className="flex justify-between items-end">
@@ -263,17 +302,34 @@ export const SleepWidget: React.FC<SleepWidgetProps> = ({ size, onOpenSheet }) =
           </span>
         </div>
         
-        {/* Mini Sparkline */}
+        {/* Mini Sparkline - Stacked Bars */}
         <div className="flex items-end justify-between gap-1 h-6 my-2">
-          {sleepSparkline.map((h, i) => (
-            <motion.div 
-              key={i}
-              initial={{ height: 0 }}
-              animate={{ height: `${h}%` }}
-              transition={{ delay: 0.3 + i * 0.05 }}
-              className={cn("flex-1 rounded-sm", colors.bar)}
-            />
-          ))}
+          {sleepSparkline.map((data, i) => {
+            const { totalHours, deepSleepHours } = data;
+            const totalHeight = totalHours > 0 ? Math.max((totalHours / 8) * 100, 25) : 8;
+            const deepPercent = totalHours > 0 ? (deepSleepHours / totalHours) * 100 : 0;
+            
+            return (
+              <motion.div 
+                key={i}
+                initial={{ height: 0 }}
+                animate={{ height: `${totalHeight}%` }}
+                transition={{ delay: 0.3 + i * 0.05 }}
+                className="flex-1 rounded-sm flex flex-col justify-end overflow-hidden"
+              >
+                {/* Rest sleep (top) */}
+                <div 
+                  className="w-full bg-indigo-400/40"
+                  style={{ height: `${100 - deepPercent}%` }}
+                />
+                {/* Deep sleep (bottom) */}
+                <div 
+                  className="w-full bg-indigo-600"
+                  style={{ height: `${deepPercent}%` }}
+                />
+              </motion.div>
+            );
+          })}
         </div>
 
         <div>

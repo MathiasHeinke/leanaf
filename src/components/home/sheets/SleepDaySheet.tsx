@@ -25,6 +25,8 @@ import { de } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { getSleepDateString, toDateString } from '@/utils/dateHelpers';
+import { QUERY_KEYS } from '@/constants/queryKeys';
 
 interface SleepDaySheetProps {
   isOpen: boolean;
@@ -41,14 +43,14 @@ const QUALITY_LABELS: Record<number, { emoji: string; label: string; colorClass:
   5: { emoji: '🚀', label: 'Elite Recovery', colorClass: 'text-indigo-500 bg-indigo-500/10' },
 };
 
-// Helper: Get last 7 days as YYYY-MM-DD array
+// Helper: Get last 7 days as YYYY-MM-DD array (timezone-aware)
 const getLast7Days = (): string[] => {
   const dates: string[] = [];
   const today = new Date();
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().slice(0, 10));
+    dates.push(toDateString(d));
   }
   return dates;
 };
@@ -93,44 +95,56 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
   onOpenLogger
 }) => {
   const navigate = useNavigate();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Use timezone-aware sleep date (respects 02:00 AM cutoff)
+  const sleepDate = getSleepDateString();
 
-  // Fetch today's sleep data + weekly sparkline
+  // Fetch today's sleep data + weekly sparkline with deep sleep
   const { data: sleepData, isLoading } = useQuery({
-    queryKey: ['sleep-day-sheet', todayStr],
+    queryKey: [...QUERY_KEYS.SLEEP_DAY_SHEET, sleepDate],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
 
-      // Today's detailed entry
+      // Today's detailed entry (using sleep date)
       const { data: today } = await supabase
         .from('sleep_tracking')
         .select('*')
         .eq('user_id', user.id)
-        .eq('date', todayStr)
+        .eq('date', sleepDate)
         .maybeSingle();
 
-      // Weekly sparkline data
+      // Weekly sparkline data with deep sleep
       const dates = getLast7Days();
       const { data: weekData } = await supabase
         .from('sleep_tracking')
-        .select('date, sleep_hours')
+        .select('date, sleep_hours, deep_sleep_minutes')
         .eq('user_id', user.id)
         .in('date', dates);
 
-      // Build sparkline map
-      const weekMap = new Map<string, number>();
+      // Build sparkline map with deep sleep data
+      const weekMap = new Map<string, { hours: number; deepMinutes: number }>();
       weekData?.forEach(r => {
-        weekMap.set(r.date, Number(r.sleep_hours) || 0);
+        weekMap.set(r.date, {
+          hours: Number(r.sleep_hours) || 0,
+          deepMinutes: Number(r.deep_sleep_minutes) || 0
+        });
       });
 
-      const sparkline = dates.map(d => weekMap.get(d) || 0);
-      const validHours = sparkline.filter(h => h > 0);
+      // Build sparkline with stacked data
+      const sparkline = dates.map(d => {
+        const data = weekMap.get(d) || { hours: 0, deepMinutes: 0 };
+        return {
+          totalHours: data.hours,
+          deepSleepHours: data.deepMinutes / 60
+        };
+      });
+      
+      const validHours = sparkline.filter(s => s.totalHours > 0).map(s => s.totalHours);
       const weeklyAvg = validHours.length > 0 
         ? validHours.reduce((a, b) => a + b, 0) / validHours.length 
         : 0;
 
-      return { today, sparkline, weeklyAvg };
+      return { today, sparkline, weeklyAvg, dates };
     },
     enabled: isOpen,
     staleTime: 30000
@@ -142,9 +156,11 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
   const quality = todayEntry?.sleep_quality || 3;
   const qualityInfo = QUALITY_LABELS[quality] || QUALITY_LABELS[3];
 
-  const sparkline = sleepData?.sparkline || [0, 0, 0, 0, 0, 0, 0];
+  const defaultSparkline = Array(7).fill({ totalHours: 0, deepSleepHours: 0 });
+  const sparkline = sleepData?.sparkline?.length ? sleepData.sparkline : defaultSparkline;
   const weeklyAvg = sleepData?.weeklyAvg || 0;
-  const maxSparkline = Math.max(...sparkline, 8);
+  const maxSparkline = Math.max(...sparkline.map(s => s.totalHours), 8);
+  const dates = sleepData?.dates || getLast7Days();
 
   // Factors
   const interruptions = todayEntry?.sleep_interruptions || 0;
@@ -328,9 +344,14 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
             </div>
             <div className="bg-card rounded-xl p-4 border border-border/30">
               <div className="flex items-end justify-between gap-2 h-20">
-                {sparkline.map((hours, i) => {
-                  const height = hours > 0 ? (hours / maxSparkline) * 100 : 5;
+                {sparkline.map((data, i) => {
+                  const { totalHours, deepSleepHours } = data;
+                  const height = totalHours > 0 ? Math.max((totalHours / maxSparkline) * 100, 15) : 8;
+                  const deepPercent = totalHours > 0 ? (deepSleepHours / totalHours) * 100 : 0;
                   const isToday = i === sparkline.length - 1;
+                  const dayIndex = new Date(dates[i]).getDay();
+                  const dayLabel = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][dayIndex];
+                  
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <motion.div
@@ -338,16 +359,33 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
                         animate={{ height: `${height}%` }}
                         transition={{ delay: 0.4 + i * 0.05 }}
                         className={cn(
-                          "w-full rounded-md min-h-[4px]",
-                          isToday 
-                            ? "bg-primary" 
-                            : hours > 0 
-                              ? "bg-indigo-500/40" 
-                              : "bg-muted"
+                          "w-full rounded-md min-h-[6px] flex flex-col justify-end overflow-hidden",
+                          totalHours === 0 && "bg-muted"
                         )}
-                      />
+                      >
+                        {totalHours > 0 && (
+                          <>
+                            {/* Rest sleep (top) */}
+                            <div 
+                              className={cn(
+                                "w-full",
+                                isToday ? "bg-primary/60" : "bg-indigo-400/40"
+                              )}
+                              style={{ height: `${100 - deepPercent}%` }}
+                            />
+                            {/* Deep sleep (bottom) */}
+                            <div 
+                              className={cn(
+                                "w-full",
+                                isToday ? "bg-primary" : "bg-indigo-600"
+                              )}
+                              style={{ height: `${deepPercent}%` }}
+                            />
+                          </>
+                        )}
+                      </motion.div>
                       <span className="text-[10px] text-muted-foreground">
-                        {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][new Date(getLast7Days()[i]).getDay() === 0 ? 6 : new Date(getLast7Days()[i]).getDay() - 1]}
+                        {dayLabel}
                       </span>
                     </div>
                   );
