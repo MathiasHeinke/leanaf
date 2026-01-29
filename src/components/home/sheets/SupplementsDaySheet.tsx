@@ -3,7 +3,7 @@
  * Shows today's supplement status with timing groups and quick logging
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -63,8 +63,20 @@ export const SupplementsDaySheet: React.FC<SupplementsDaySheetProps> = ({
     markTimingGroupTaken,
     totalScheduled,
     totalTaken,
-    loading 
+    loading,
+    refetch
   } = useSupplementData();
+
+  // Force refresh when sheet opens to ensure fresh data
+  useEffect(() => {
+    if (isOpen) {
+      // Small delay to not block animation
+      const timer = setTimeout(() => {
+        refetch();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, refetch]);
 
   const currentPhase = getCurrentTimingPhase();
 
