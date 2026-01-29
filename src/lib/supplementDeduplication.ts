@@ -146,8 +146,12 @@ export function groupByTier(
   };
   
   for (const item of items) {
-    const tier = item.necessity_tier || 'optimizer';
-    result[tier].push(item);
+    // Defensive: Map unknown tiers to 'specialist'
+    let tier = item.necessity_tier || 'optimizer';
+    if (!(tier in result)) {
+      tier = 'specialist';
+    }
+    result[tier as NecessityTier].push(item);
   }
   
   // Sort each tier by impact_score
