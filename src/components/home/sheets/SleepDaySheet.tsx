@@ -9,7 +9,6 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { 
   Moon, 
-  X, 
   Settings, 
   Clock, 
   Sunrise, 
@@ -249,12 +248,7 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
               {format(new Date(), "EEEE, d. MMMM yyyy", { locale: de })}
             </p>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-muted transition-colors"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
+          {/* SheetContent hat bereits einen X-Button */}
         </div>
 
         {/* Scrollable Content */}

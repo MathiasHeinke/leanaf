@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
-  X, 
   Sparkles, 
   ArrowRight,
   Activity,
@@ -165,12 +164,7 @@ export const BioAgeSheet: React.FC<BioAgeSheetProps> = ({
               <p className="text-sm text-muted-foreground">ARES Bio-Age Proxy</p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="p-2 rounded-full hover:bg-muted transition-colors"
-          >
-            <X className="w-5 h-5 text-muted-foreground" />
-          </button>
+          {/* SheetContent hat bereits einen X-Button */}
         </div>
 
         {/* Scrollable Content */}
