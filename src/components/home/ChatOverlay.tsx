@@ -6,7 +6,7 @@
  */
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { ChevronDown, Zap, Info, Clock, Trash2, Loader2 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -69,6 +69,9 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
   const [showDailyResetDialog, setShowDailyResetDialog] = useState(false);
   const [isDeletingToday, setIsDeletingToday] = useState(false);
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
+  
+  // Drag Controls - allows drag ONLY from header, not entire sheet
+  const dragControls = useDragControls();
   const [loadingHistory, setLoadingHistory] = useState(false);
   
   // Ref to trigger message refresh in AresChat
@@ -238,20 +241,25 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
           />
 
           {/* Sheet - z-[51] to be above backdrop */}
+          {/* FIX: dragListener={false} prevents drag from intercepting scroll events */}
+          {/* Drag is now ONLY triggered via dragControls from the header area */}
           <motion.div 
             initial={{ y: "100%" }}
             animate={{ y: "5%" }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
             onDragEnd={handleDragEnd}
             className="fixed inset-x-0 bottom-0 top-[5%] z-[51] bg-background rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
           >
-            {/* Drag Handle - clickable to close */}
+            {/* Drag Handle - ONLY zone that triggers drag-to-dismiss */}
             <div 
-              className="absolute top-0 left-0 right-0 h-10 flex items-center justify-center cursor-pointer z-10"
+              onPointerDown={(e) => dragControls.start(e)}
+              className="absolute top-0 left-0 right-0 h-10 flex items-center justify-center cursor-grab active:cursor-grabbing z-10 touch-none"
               onClick={handleClose}
             >
               <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
