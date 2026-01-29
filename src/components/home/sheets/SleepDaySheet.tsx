@@ -153,7 +153,60 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
   const todayEntry = sleepData?.today;
   const hasLoggedToday = !!todayEntry;
   const sleepHours = todayEntry?.sleep_hours ? Number(todayEntry.sleep_hours) : 0;
-  const quality = todayEntry?.sleep_quality || 3;
+  
+  // Factors
+  const interruptions = todayEntry?.sleep_interruptions || 0;
+  const screenTime = todayEntry?.screen_time_evening || 0;
+  const motivation = todayEntry?.motivation_level || 0;
+  const libido = todayEntry?.morning_libido || 0;
+  const deepSleepMinutes = todayEntry?.deep_sleep_minutes || 0;
+
+  // Calculate composite sleep score (1-5) based on all factors
+  const calculateSleepScore = (): number => {
+    if (!hasLoggedToday || sleepHours === 0) return 3;
+    
+    let score = 0;
+    
+    // Sleep duration (0-40 points)
+    if (sleepHours >= 8) score += 40;
+    else if (sleepHours >= 7) score += 35;
+    else if (sleepHours >= 6) score += 25;
+    else if (sleepHours >= 5) score += 15;
+    else score += 5;
+    
+    // Deep sleep (0-30 points) - Target: ≥90 minutes
+    if (deepSleepMinutes >= 120) score += 30;
+    else if (deepSleepMinutes >= 90) score += 25;
+    else if (deepSleepMinutes >= 60) score += 15;
+    else if (deepSleepMinutes >= 30) score += 8;
+    else score += 0;
+    
+    // Low interruptions (0-15 points)
+    if (interruptions === 0) score += 15;
+    else if (interruptions === 1) score += 10;
+    else if (interruptions <= 2) score += 5;
+    else score += 0;
+    
+    // Morning motivation (0-10 points)
+    score += (motivation / 5) * 10;
+    
+    // Morning libido as recovery indicator (0-5 points)
+    score += (libido / 5) * 5;
+    
+    // Penalty for late screen time (0 to -5 points)
+    if (screenTime > 60) score -= 5;
+    else if (screenTime > 30) score -= 2;
+    
+    // Convert to 1-5 scale
+    // Max possible: 40+30+15+10+5 = 100 points
+    if (score >= 85) return 5; // Elite Recovery
+    if (score >= 65) return 4; // Gut
+    if (score >= 45) return 3; // Okay
+    if (score >= 25) return 2; // Schlecht
+    return 1; // Miserabel
+  };
+  
+  const quality = calculateSleepScore();
   const qualityInfo = QUALITY_LABELS[quality] || QUALITY_LABELS[3];
 
   const defaultSparkline = Array(7).fill({ totalHours: 0, deepSleepHours: 0 });
@@ -161,13 +214,6 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
   const weeklyAvg = sleepData?.weeklyAvg || 0;
   const maxSparkline = Math.max(...sparkline.map(s => s.totalHours), 8);
   const dates = sleepData?.dates || getLast7Days();
-
-  // Factors
-  const interruptions = todayEntry?.sleep_interruptions || 0;
-  const screenTime = todayEntry?.screen_time_evening || 0;
-  const motivation = todayEntry?.motivation_level || 0;
-  const libido = todayEntry?.morning_libido || 0;
-  const deepSleepMinutes = todayEntry?.deep_sleep_minutes || 0;
 
   // Helper: Format deep sleep
   const formatDeepSleep = (minutes: number): string => {
@@ -346,8 +392,15 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
               <div className="flex items-end justify-between gap-2 h-20">
                 {sparkline.map((data, i) => {
                   const { totalHours, deepSleepHours } = data;
-                  const height = totalHours > 0 ? Math.max((totalHours / maxSparkline) * 100, 15) : 8;
-                  const deepPercent = totalHours > 0 ? (deepSleepHours / totalHours) * 100 : 0;
+                  // Calculate pixel height based on container (80px = h-20)
+                  const containerHeight = 80;
+                  const barHeight = totalHours > 0 
+                    ? Math.max((totalHours / maxSparkline) * containerHeight, 12) 
+                    : 6;
+                  const deepHeight = totalHours > 0 
+                    ? (deepSleepHours / totalHours) * barHeight 
+                    : 0;
+                  const restHeight = barHeight - deepHeight;
                   const isToday = i === sparkline.length - 1;
                   const dayIndex = new Date(dates[i]).getDay();
                   const dayLabel = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][dayIndex];
@@ -356,30 +409,34 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <motion.div
                         initial={{ height: 0 }}
-                        animate={{ height: `${height}%` }}
-                        transition={{ delay: 0.4 + i * 0.05 }}
+                        animate={{ height: barHeight }}
+                        transition={{ delay: 0.4 + i * 0.05, duration: 0.4 }}
                         className={cn(
-                          "w-full rounded-md min-h-[6px] flex flex-col justify-end overflow-hidden",
-                          totalHours === 0 && "bg-muted"
+                          "w-full rounded-md overflow-hidden flex flex-col justify-end",
+                          totalHours === 0 && "bg-muted/50"
                         )}
                       >
                         {totalHours > 0 && (
                           <>
-                            {/* Rest sleep (top) */}
-                            <div 
+                            {/* Rest sleep (top) - blue/lighter */}
+                            <motion.div 
+                              initial={{ height: 0 }}
+                              animate={{ height: restHeight }}
+                              transition={{ delay: 0.5 + i * 0.05 }}
                               className={cn(
                                 "w-full",
-                                isToday ? "bg-primary/60" : "bg-indigo-400/40"
+                                isToday ? "bg-primary/60" : "bg-indigo-400/50"
                               )}
-                              style={{ height: `${100 - deepPercent}%` }}
                             />
-                            {/* Deep sleep (bottom) */}
-                            <div 
+                            {/* Deep sleep (bottom) - purple/darker */}
+                            <motion.div 
+                              initial={{ height: 0 }}
+                              animate={{ height: deepHeight }}
+                              transition={{ delay: 0.5 + i * 0.05 }}
                               className={cn(
                                 "w-full",
                                 isToday ? "bg-primary" : "bg-indigo-600"
                               )}
-                              style={{ height: `${deepPercent}%` }}
                             />
                           </>
                         )}
