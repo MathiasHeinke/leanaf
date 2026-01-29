@@ -1,10 +1,13 @@
-import React from 'react';
-import { X, Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { getMetaCategory, META_CATEGORIES } from '@/lib/categoryMapping';
+import { useUserRelevanceContext } from '@/hooks/useUserRelevanceContext';
+import { calculateRelevanceScore, getScoreTierConfig } from '@/lib/calculateRelevanceScore';
+import { RelevanceScorePopover } from './RelevanceScorePopover';
 import {
   EVIDENCE_LEVEL_CONFIG,
   NECESSITY_TIER_CONFIG,
@@ -25,6 +28,24 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
   isOpen,
   onClose,
 }) => {
+  // Get user relevance context for personalized scoring - MUST be before early return
+  const { context: userContext } = useUserRelevanceContext();
+  
+  // Calculate personalized relevance score
+  const scoreResult = useMemo(() => {
+    if (!item) return null;
+    return calculateRelevanceScore(
+      item.impact_score ?? 5.0,
+      item.relevance_matrix,
+      userContext
+    );
+  }, [item?.impact_score, item?.relevance_matrix, userContext]);
+  
+  const personalizedTierConfig = useMemo(() => {
+    if (!scoreResult) return null;
+    return getScoreTierConfig(scoreResult.score);
+  }, [scoreResult]);
+  
   if (!item) return null;
 
   const metaCategoryKey = getMetaCategory(item.category);
@@ -236,13 +257,49 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
             </>
           )}
 
-          {/* Impact Score & Cost */}
+          {/* Personalized ARES Score & Cost */}
           <Separator />
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Impact Score</p>
-              <p className="text-lg font-bold">{item.impact_score?.toFixed(1) || '–'}</p>
-            </div>
+            {/* Personalized Score */}
+            {scoreResult && personalizedTierConfig && (
+              <RelevanceScorePopover
+                scoreResult={scoreResult}
+                supplementName={item.name}
+              >
+                <div className={cn(
+                  'p-3 rounded-lg cursor-pointer hover:opacity-80 transition-opacity',
+                  personalizedTierConfig.bgClass,
+                  'border',
+                  personalizedTierConfig.borderClass
+                )}>
+                  <div className="flex items-center gap-1.5">
+                    <Zap className={cn('h-3.5 w-3.5', personalizedTierConfig.textClass)} />
+                    <p className="text-xs text-muted-foreground">Dein Score</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className={cn('text-lg font-bold', personalizedTierConfig.textClass)}>
+                      {scoreResult.score.toFixed(1)}
+                    </p>
+                    {scoreResult.isPersonalized && (
+                      <Sparkles className="h-3 w-3 text-primary" />
+                    )}
+                  </div>
+                  <p className={cn('text-[10px] mt-0.5', personalizedTierConfig.textClass)}>
+                    {personalizedTierConfig.labelShort}
+                  </p>
+                </div>
+              </RelevanceScorePopover>
+            )}
+            
+            {/* Static Impact Score fallback */}
+            {!scoreResult && (
+              <div className="p-3 rounded-lg bg-muted/50">
+                <p className="text-xs text-muted-foreground">Impact Score</p>
+                <p className="text-lg font-bold">{item.impact_score?.toFixed(1) || '–'}</p>
+              </div>
+            )}
+            
+            {/* Cost per day */}
             {item.cost_per_day_eur && (
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground">Kosten/Tag</p>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -22,12 +22,15 @@ import {
 } from '@/components/ui/select';
 import { haptics } from '@/lib/haptics';
 import { useSupplementProducts } from '@/hooks/useSupplementLibrary';
+import { useUserRelevanceContext } from '@/hooks/useUserRelevanceContext';
+import { calculateRelevanceScore, getScoreTierConfig } from '@/lib/calculateRelevanceScore';
 import type { UserStackItem, PreferredTiming, TimingConstraint, SupplementBrand, SupplementProduct } from '@/types/supplementLibrary';
 import { PREFERRED_TIMING_LABELS, NECESSITY_TIER_CONFIG } from '@/types/supplementLibrary';
 import { TimingCircleSelector } from './TimingCircleSelector';
 import { BrandSelector } from './BrandSelector';
 import { SelectedProductCard } from './SelectedProductCard';
 import { SupplementDetailSheet } from './SupplementDetailSheet';
+import { RelevanceScorePopover } from './RelevanceScorePopover';
 
 // QualityStars moved to BrandSelector component
 
@@ -122,6 +125,20 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
     isExpanded ? item.supplement_id || undefined : undefined
   );
   
+  // Get user relevance context for personalized scoring
+  const { context: userContext } = useUserRelevanceContext();
+  
+  // Calculate personalized relevance score
+  const scoreResult = useMemo(() => {
+    return calculateRelevanceScore(
+      item.supplement?.impact_score ?? 5.0,
+      item.supplement?.relevance_matrix,
+      userContext
+    );
+  }, [item.supplement?.impact_score, item.supplement?.relevance_matrix, userContext]);
+  
+  const tierConfig = useMemo(() => getScoreTierConfig(scoreResult.score), [scoreResult.score]);
+  
   // Form state
   const [dosage, setDosage] = useState(item.dosage || '');
   const [unit, setUnit] = useState(item.unit || 'mg');
@@ -135,7 +152,7 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
     (item.schedule as any)?.cycle_off_days || 2
   );
   
-  // Selected product state (NEW)
+  // Selected product state
   const [selectedProduct, setSelectedProduct] = useState<SupplementProduct | null>(null);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
 
@@ -447,39 +464,47 @@ CONSTRAINT: Halte dich extrem kurz (max 3 Sätze). Nur auf Nachfrage tiefer!`;
                 />
               </div>
               
-              {/* =============== NEW: Impact Score Badge =============== */}
-              {item.supplement?.impact_score && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                  <div className="p-2 rounded-full bg-primary/10">
-                    <Zap className="h-4 w-4 text-primary" />
+              {/* =============== ARES Personalized Score =============== */}
+              {item.supplement && (
+                <div className={cn(
+                  'flex items-center gap-3 p-3 rounded-lg border',
+                  tierConfig.bgClass,
+                  tierConfig.borderClass
+                )}>
+                  <div className={cn('p-2 rounded-full', tierConfig.bgClass)}>
+                    <Zap className={cn('h-4 w-4', tierConfig.textClass)} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-foreground">
-                        {item.supplement.impact_score.toFixed(1)}
+                      <span className={cn('text-lg font-bold', tierConfig.textClass)}>
+                        {scoreResult.score.toFixed(1)}
                       </span>
-                      <span className="text-xs text-muted-foreground">Impact Score</span>
+                      <span className="text-xs text-muted-foreground">
+                        Dein Score {scoreResult.isPersonalized && '✨'}
+                      </span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden mt-1">
                       <div 
-                        className="h-full bg-primary rounded-full transition-all duration-300" 
-                        style={{ width: `${Math.min(item.supplement.impact_score * 10, 100)}%` }}
+                        className={cn('h-full rounded-full transition-all duration-300', tierConfig.textClass.replace('text-', 'bg-'))}
+                        style={{ width: `${Math.min(scoreResult.score * 10, 100)}%` }}
                       />
                     </div>
                   </div>
-                  {item.supplement.necessity_tier && (
+                  <RelevanceScorePopover
+                    scoreResult={scoreResult}
+                    supplementName={item.name}
+                  >
                     <Badge 
                       variant="outline" 
                       className={cn(
-                        'text-[10px] shrink-0',
-                        item.supplement.necessity_tier === 'essential' && 'border-primary text-primary',
-                        item.supplement.necessity_tier === 'optimizer' && 'border-amber-500 text-amber-600',
-                        item.supplement.necessity_tier === 'specialist' && 'border-muted-foreground text-muted-foreground'
+                        'text-[10px] shrink-0 cursor-pointer hover:opacity-80',
+                        tierConfig.borderClass,
+                        tierConfig.textClass
                       )}
                     >
-                      {NECESSITY_TIER_CONFIG[item.supplement.necessity_tier]?.shortLabel || item.supplement.necessity_tier}
+                      {tierConfig.labelShort}
                     </Badge>
-                  )}
+                  </RelevanceScorePopover>
                 </div>
               )}
               

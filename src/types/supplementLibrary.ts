@@ -165,6 +165,9 @@ export const FORM_QUALITY_LABELS: Record<FormQuality, { label: string; descripti
   schlecht: { label: 'Schlecht', description: 'Geringe Absorption', color: 'red' },
 };
 
+// Import RelevanceMatrix type
+import type { RelevanceMatrix } from './relevanceMatrix';
+
 // Supplement Library Item (Master-Katalog) - erweitert
 export interface SupplementLibraryItem {
   id: string;
@@ -196,6 +199,8 @@ export interface SupplementLibraryItem {
   cycling_protocol?: string | null;
   underrated_score?: number | null;
   warnung?: string | null;
+  // ARES Matrix-Scoring (personalized relevance)
+  relevance_matrix?: RelevanceMatrix | null;
 }
 
 // Supplement Brand Interface
