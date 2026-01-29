@@ -241,14 +241,13 @@ export const SleepDaySheet: React.FC<SleepDaySheetProps> = ({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pb-4 border-b border-border/30">
+        <div className="flex items-center gap-3 px-5 pb-4 border-b border-border/30">
           <div>
             <h2 className="text-xl font-bold text-foreground">Schlaf-Analyse</h2>
             <p className="text-sm text-muted-foreground">
               {format(new Date(), "EEEE, d. MMMM yyyy", { locale: de })}
             </p>
           </div>
-          {/* SheetContent hat bereits einen X-Button */}
         </div>
 
         {/* Scrollable Content */}

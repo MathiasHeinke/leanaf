@@ -154,17 +154,14 @@ export const BioAgeSheet: React.FC<BioAgeSheetProps> = ({
         </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pb-4 border-b border-border/30">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20">
-              <Sparkles className="w-5 h-5 text-purple-500" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Biologisches Alter</h2>
-              <p className="text-sm text-muted-foreground">ARES Bio-Age Proxy</p>
-            </div>
+        <div className="flex items-center gap-3 px-5 pb-4 border-b border-border/30">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20">
+            <Sparkles className="w-5 h-5 text-purple-500" />
           </div>
-          {/* SheetContent hat bereits einen X-Button */}
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Biologisches Alter</h2>
+            <p className="text-sm text-muted-foreground">ARES Bio-Age Proxy</p>
+          </div>
         </div>
 
         {/* Scrollable Content */}
