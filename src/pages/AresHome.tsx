@@ -265,6 +265,8 @@ export default function AresHome() {
           // If we have macros, skip the input sheet and go directly to confirmation
           if (prefillData.calories !== undefined) {
             const analyzedData = {
+              id: prefillData.id || null,           // For UPDATE existing meal
+              mode: prefillData.mode || 'create',   // 'edit' | 'duplicate' | 'create'
               title: prefillData.title || 'Mahlzeit',
               calories: prefillData.calories || 0,
               protein: prefillData.protein || 0,
