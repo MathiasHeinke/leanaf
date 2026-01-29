@@ -68,13 +68,13 @@ export const useQuickLogging = () => {
     try {
       const today = new Date().toISOString().slice(0, 10);
 
-      // Get only supplements that have this timing in their timing array
+      // Get only supplements that have this preferred_timing (single source of truth)
       const { data: supplements, error: fetchError } = await supabase
         .from('user_supplements')
-        .select('id, supplement_id, supplements(name)')
+        .select('id, supplement_id, name, custom_name, preferred_timing')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .contains('timing', [timing]);
+        .eq('preferred_timing', timing);
 
       if (fetchError) throw fetchError;
 
@@ -109,10 +109,13 @@ export const useQuickLogging = () => {
 
       // Invalidate cache for immediate UI update
       invalidateCategory(queryClient, 'supplements');
+      
+      // Dispatch event to sync useSupplementData's in-memory cache
+      window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
 
       // Get supplement names for feedback
       const names = supplements
-        .map(s => (s.supplements as any)?.name)
+        .map(s => s.custom_name || s.name)
         .filter(Boolean)
         .slice(0, 3);
       
