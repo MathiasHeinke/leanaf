@@ -20,9 +20,12 @@ export const ChatLayout = ({ children, chatInput }: ChatLayoutProps) => {
           : "md:pl-[--sidebar-width]"
       )}
     >
-      {/* ZONE B: Scrollable Chat Content */}
+      {/* ZONE B: Scrollable Chat Content - MOBILE SCROLL FIX */}
       <div className="flex-1 min-h-0 flex flex-col px-4 pt-2">
-        <div className="flex-1 overflow-y-auto overscroll-contain">
+        <div 
+          className="flex-1 overflow-y-auto overscroll-contain touch-pan-y"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {children}
         </div>
       </div>

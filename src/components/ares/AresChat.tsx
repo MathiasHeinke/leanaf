@@ -390,15 +390,24 @@ export default function AresChat({
   });
 
   // Auto-scroll to bottom (only if user hasn't scrolled up)
+  // FIX: Use 'instant' during streaming to prevent animation stacking -> lag
   useEffect(() => {
     if (!userScrolledUpRef.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // Bei aktiver Stream-Aktualisierung: instant für Responsiveness
+      // Bei neuer Message: smooth für UX
+      const behavior = streamingContent ? 'instant' : 'smooth';
+      messagesEndRef.current?.scrollIntoView({ behavior, block: 'end' });
     }
   }, [messages, streamingContent]);
 
-  // Detect user scroll intent
+  // Detect user scroll intent - works for both embedded and non-embedded modes
   useEffect(() => {
-    const scrollArea = scrollAreaRef.current;
+    // In non-embedded mode, the scroll container is in ChatLayout
+    // We need to find the actual scrollable parent
+    const scrollArea = embedded 
+      ? scrollAreaRef.current 
+      : scrollAreaRef.current?.closest('.overflow-y-auto') as HTMLElement | null;
+    
     if (!scrollArea) return;
 
     const handleScroll = () => {
@@ -409,9 +418,9 @@ export default function AresChat({
       userScrolledUpRef.current = distanceFromBottom > 100;
     };
 
-    scrollArea.addEventListener('scroll', handleScroll);
+    scrollArea.addEventListener('scroll', handleScroll, { passive: true });
     return () => scrollArea.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [embedded]);
 
   // Reset scroll lock when NEW message starts (user sends message)
   // NOT when streaming ends - user keeps scroll freedom until next interaction
@@ -509,10 +518,19 @@ export default function AresChat({
   );
 
   // Message content - shared between embedded and fullscreen modes
+  // FIX: Conditional scroll container - only embedded mode has its own scroll
+  // In non-embedded mode, ChatLayout handles scrolling (prevents double scroll-jacking)
   const messageContent = (
     <div 
       ref={scrollAreaRef}
-      className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-2 py-4"
+      className={cn(
+        "flex-1 px-2 py-4",
+        // NUR im embedded mode selbst scrollen
+        // Im non-embedded mode scrollt ChatLayout -> kein overflow hier
+        embedded 
+          ? "overflow-y-auto overscroll-contain touch-pan-y" 
+          : "h-full"
+      )}
     >
       <div className="max-w-3xl mx-auto space-y-1">
         {/* Empty state */}
