@@ -583,7 +583,7 @@ serve(async (req) => {
               reps: set.reps,
               rpe: set.rpe || 7,
               date: todayStr,
-              origin: 'layer2_notes'
+              origin: 'auto'
             });
 
           if (setError) {
