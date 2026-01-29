@@ -10,12 +10,16 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Dumbbell, Activity, HeartPulse, Flame, Check, Minus, Plus, Footprints, Moon, LucideIcon, ChevronDown } from 'lucide-react';
+import { Dumbbell, Activity, HeartPulse, Flame, Check, Minus, Plus, Footprints, Moon, LucideIcon, ChevronDown, Calendar } from 'lucide-react';
 import { useAresEvents } from '@/hooks/useAresEvents';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { de } from 'date-fns/locale';
 import type { TrainingType, SplitType, CardioType, Vo2Protocol } from '@/types/training';
 import { CARDIO_TYPE_OPTIONS, VO2_PROTOCOL_OPTIONS, SAUNA_TEMP_OPTIONS, SPLIT_TYPE_LABELS } from '@/types/training';
 
@@ -128,6 +132,7 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
   const [selectedType, setSelectedType] = useState<TrainingType | null>(null);
   const [duration, setDuration] = useState(45);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
   // Multi-select states for workouts
   const [selectedSplits, setSelectedSplits] = useState<MainSplitType[]>([]);
@@ -221,13 +226,17 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
       sessionData.rpe = rpe;
     }
     
+    // Format date for DB
+    const sessionDate = format(selectedDate, 'yyyy-MM-dd');
+    
     const success = await trackEvent('workout', { 
       training_type: selectedType,
       split_type: selectedSplits[0] || undefined, // Primary split for compatibility
       duration_minutes: selectedTypeConfig?.needsTime ? duration : undefined,
       total_volume_kg: totalVolume ? parseFloat(totalVolume.replace(',', '.')) : undefined,
       session_data: Object.keys(sessionData).length > 0 ? sessionData : undefined,
-      did_workout: selectedType !== 'rest'
+      did_workout: selectedType !== 'rest',
+      override_date: sessionDate // Pass selected date
     });
     
     if (success) {
@@ -244,10 +253,45 @@ export const TrainingLogger: React.FC<TrainingLoggerProps> = ({ onClose }) => {
     setDuration(d => Math.max(5, Math.min(180, d + delta)));
   };
 
+  const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+
   return (
     <div className="flex flex-col min-h-[300px]">
       {/* SCROLLABLE CONTENT */}
       <div className="flex-1 space-y-4 overflow-y-auto">
+        
+        {/* DATE PICKER - Compact inline style */}
+        <div className="flex items-center gap-2 px-1">
+          <Calendar className="w-4 h-4 text-muted-foreground" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  "h-8 px-3 text-sm font-medium",
+                  !isToday && "text-primary"
+                )}
+              >
+                {isToday ? 'Heute' : format(selectedDate, 'd. MMMM yyyy', { locale: de })}
+                <ChevronDown className="w-3 h-3 ml-1 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+                disabled={(date) => date > new Date()}
+                locale={de}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          {!isToday && (
+            <span className="text-xs text-muted-foreground">(nachträglich)</span>
+          )}
+        </div>
         
         {/* WORKOUTS SECTION - Compact when activity selected */}
         <motion.div 

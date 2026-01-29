@@ -50,6 +50,9 @@ export interface EventPayload {
   entry_type?: 'text' | 'voice';
   prompt_used?: string;
   
+  // Override date for retrospective logging
+  override_date?: string;
+  
   // Shared
   date?: string;
 }
@@ -205,6 +208,9 @@ export const useAresEvents = () => {
 
       // === WORKOUT (extended) ===
       if (category === 'workout' && payload.training_type) {
+        // Use override_date if provided (retrospective logging), else date, else today
+        const workoutDate = payload.override_date || payload.date || todayStr;
+        
         const insertData: Record<string, unknown> = {
           user_id: auth.user.id,
           training_type: payload.training_type,
@@ -212,7 +218,7 @@ export const useAresEvents = () => {
           total_duration_minutes: payload.duration_minutes || null,
           total_volume_kg: payload.total_volume_kg || null,
           session_data: payload.session_data || {},
-          session_date: payload.date || todayStr
+          session_date: workoutDate
         };
         
         const { error } = await supabase.from('training_sessions').insert(insertData as any);
@@ -222,7 +228,7 @@ export const useAresEvents = () => {
           throw error;
         }
         
-        console.log(`[AresEvents] ✓ Logged ${payload.training_type} workout`);
+        console.log(`[AresEvents] ✓ Logged ${payload.training_type} workout for ${workoutDate}`);
         toast.success('Training gespeichert');
       }
 
