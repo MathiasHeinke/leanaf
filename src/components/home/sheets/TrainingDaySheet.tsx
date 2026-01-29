@@ -25,6 +25,7 @@ import {
   type SplitType
 } from '@/types/training';
 import { TrainingNotesInput, type ParsedTrainingResult } from '@/components/training/TrainingNotesInput';
+import { SessionDayRow } from '@/components/training/SessionDayRow';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface TrainingDaySheetProps {
@@ -149,21 +150,36 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
     enabled: isOpen
   });
 
-  // Query: Recent sessions (last 7)
-  const { data: recentSessions } = useQuery({
+  // Query: Recent sessions (last 14 days, grouped by date)
+  const { data: groupedSessions } = useQuery({
     queryKey: ['training-recent-sessions'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!user) return {} as Record<string, typeof data>;
+      
+      // Get sessions from last 14 days
+      const fourteenDaysAgo = new Date();
+      fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+      const startDate = fourteenDaysAgo.toISOString().split('T')[0];
       
       const { data } = await supabase
         .from('training_sessions')
         .select('*')
         .eq('user_id', user.id)
-        .order('session_date', { ascending: false })
-        .limit(7);
+        .gte('session_date', startDate)
+        .order('session_date', { ascending: false });
       
-      return data || [];
+      if (!data) return {};
+      
+      // Group by date
+      const grouped = data.reduce((acc, session) => {
+        const date = session.session_date;
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(session);
+        return acc;
+      }, {} as Record<string, typeof data>);
+      
+      return grouped;
     },
     enabled: isOpen
   });
@@ -380,8 +396,8 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
                 </div>
               </div>
 
-              {/* Recent Sessions */}
-              {recentSessions && recentSessions.length > 0 && (
+              {/* Recent Sessions - Grouped by Date */}
+              {groupedSessions && Object.keys(groupedSessions).length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-muted-foreground" />
@@ -389,51 +405,24 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
                   </h3>
 
                   <div className="bg-muted/20 rounded-2xl border border-border/30 overflow-hidden">
-                    {recentSessions.map((session, idx) => {
-                      const sessionDate = format(new Date(session.session_date), 'dd.MM', { locale: de });
-                      const typeIcon = getTypeIcon(session.training_type as TrainingType);
-                      const typeLabel = getTypeLabel(
-                        session.training_type as TrainingType, 
-                        session.split_type as SplitType
-                      );
-
-                      return (
-                        <div 
-                          key={session.id}
-                          className={cn(
-                            "flex items-center gap-3 px-4 py-3",
-                            idx !== recentSessions.length - 1 && "border-b border-border/30"
-                          )}
-                        >
-                          <span className="text-xs text-muted-foreground w-12 font-medium">
-                            {sessionDate}
-                          </span>
-                          <span className="text-lg">{typeIcon}</span>
-                          <div className="flex-1 min-w-0">
-                            <span className="font-medium text-sm text-foreground truncate block">
-                              {typeLabel}
-                            </span>
-                          </div>
-                          {session.total_duration_minutes && (
-                            <span className="text-xs text-muted-foreground">
-                              {session.total_duration_minutes}min
-                            </span>
-                          )}
-                          {session.total_volume_kg && (
-                            <span className="text-xs font-semibold text-foreground">
-                              {session.total_volume_kg.toLocaleString('de-DE')}kg
-                            </span>
-                          )}
-                          <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                        </div>
-                      );
-                    })}
+                    {Object.entries(groupedSessions)
+                      .sort(([a], [b]) => b.localeCompare(a)) // Sort by date descending
+                      .slice(0, 7) // Limit to 7 days
+                      .map(([date, sessions], idx, arr) => (
+                        <SessionDayRow
+                          key={date}
+                          date={date}
+                          sessions={sessions}
+                          isFirst={idx === 0}
+                          isLast={idx === arr.length - 1}
+                        />
+                      ))}
                   </div>
                 </div>
               )}
 
               {/* Empty state for no sessions */}
-              {(!recentSessions || recentSessions.length === 0) && (
+              {(!groupedSessions || Object.keys(groupedSessions).length === 0) && (
                 <div className="text-center py-8">
                   <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
                     <Dumbbell className="w-8 h-8 text-muted-foreground" />
