@@ -152,3 +152,36 @@ export const TIMEZONE_OPTIONS = [
   { value: 'Asia/Tokyo', label: 'Japan (Tokyo)' },
   { value: 'Australia/Sydney', label: 'Australien (Sydney)' }
 ];
+
+/**
+ * Get the "sleep date" - the date for which sleep should be logged.
+ * Before 02:00 AM, sleep counts as the previous day (for night owls).
+ * After 02:00 AM, sleep counts as the current day.
+ * 
+ * Example:
+ * - 29.01. at 01:30 → Sleep date = 28.01. (yesterday)
+ * - 29.01. at 02:00 → Sleep date = 29.01. (today)
+ * - 29.01. at 12:00 → Sleep date = 29.01. (today)
+ */
+export const getSleepDateString = (): string => {
+  const timezone = getUserTimezone();
+  const now = new Date();
+  
+  // Get current hour in user's timezone
+  const hourFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    hour12: false
+  });
+  const currentHour = parseInt(hourFormatter.format(now), 10);
+  
+  // Before 2 AM → use yesterday's date
+  if (currentHour < 2) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return toDateString(yesterday);
+  }
+  
+  // 2 AM or later → use today's date
+  return getCurrentDateString();
+};

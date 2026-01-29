@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DAILY_METRICS_KEY, DailyMetrics } from './useDailyMetrics';
 import { invalidateCategory } from '@/constants/queryKeys';
+import { getCurrentDateString, getSleepDateString } from '@/utils/dateHelpers';
 
 export type EventCategory = 'water' | 'coffee' | 'supplement' | 'weight' | 'workout' | 'sleep' | 'journal';
 
@@ -66,7 +67,7 @@ export const useAresEvents = () => {
   ): Promise<boolean> => {
     
     // === A. OPTIMISTIC UPDATE (INSTANT - 0ms) ===
-    const today = new Date().toISOString().slice(0, 10);
+    const todayStr = getCurrentDateString();
     
     queryClient.setQueryData<DailyMetrics>(DAILY_METRICS_KEY, (old) => {
       if (!old) return old;
@@ -100,7 +101,7 @@ export const useAresEvents = () => {
           ...old,
           weight: {
             latest: payload.weight_kg,
-            date: payload.date || today
+            date: payload.date || todayStr
           }
         };
       }
@@ -116,13 +117,16 @@ export const useAresEvents = () => {
         };
       }
       
-      // Sleep → update sleep info
+      // Sleep → update sleep info (use sleep date for proper tracking)
       if (category === 'sleep' && payload.sleep_hours) {
+        const sleepDate = getSleepDateString();
         return {
           ...old,
           sleep: {
             lastHours: payload.sleep_hours,
-            lastQuality: payload.sleep_quality || 3
+            lastQuality: payload.sleep_quality || 3,
+            date: payload.date || sleepDate,
+            deepSleepMinutes: payload.deep_sleep_minutes || null
           }
         };
       }
@@ -144,7 +148,7 @@ export const useAresEvents = () => {
         const { error } = await supabase.from('user_fluids').insert({
           user_id: auth.user.id,
           amount_ml: payload.amount,
-          date: today,
+          date: todayStr,
           consumed_at: now,
           custom_name: category === 'coffee' ? 'Kaffee' : (payload.customName || null)
         });
@@ -162,7 +166,7 @@ export const useAresEvents = () => {
         const { error } = await supabase.from('supplement_intake_log').upsert({
           user_id: auth.user.id,
           user_supplement_id: payload.supplementId,
-          date: today,
+          date: todayStr,
           timing: payload.timing,
           taken: true
         }, {
@@ -182,7 +186,7 @@ export const useAresEvents = () => {
         const { error } = await supabase.from('weight_history').upsert({
           user_id: auth.user.id,
           weight: payload.weight_kg,
-          date: payload.date || today,
+          date: payload.date || todayStr,
           body_fat_percentage: payload.body_fat_percentage || null,
           muscle_percentage: payload.muscle_percentage || null,
           notes: payload.notes || null
@@ -208,7 +212,7 @@ export const useAresEvents = () => {
           total_duration_minutes: payload.duration_minutes || null,
           total_volume_kg: payload.total_volume_kg || null,
           session_data: payload.session_data || {},
-          session_date: payload.date || today
+          session_date: payload.date || todayStr
         };
         
         const { error } = await supabase.from('training_sessions').insert(insertData as any);
@@ -222,11 +226,12 @@ export const useAresEvents = () => {
         toast.success('Training gespeichert');
       }
 
-      // === SLEEP (extended) ===
+      // === SLEEP (extended) - uses getSleepDateString for 02:00 AM cutoff ===
       if (category === 'sleep' && payload.sleep_hours) {
+        const sleepDate = payload.date || getSleepDateString();
         const { error } = await supabase.from('sleep_tracking').upsert({
           user_id: auth.user.id,
-          date: payload.date || today,
+          date: sleepDate,
           sleep_hours: payload.sleep_hours,
           sleep_quality: payload.sleep_quality || 3,
           bedtime: payload.bedtime || null,
@@ -253,12 +258,12 @@ export const useAresEvents = () => {
           userId: auth.user.id, 
           contentLength: payload.content.length,
           mood: payload.mood,
-          date: payload.date || today
+          date: payload.date || todayStr
         });
         
         const { data, error } = await supabase.from('diary_entries').insert({
           user_id: auth.user.id,
-          date: payload.date || today,
+          date: payload.date || todayStr,
           content: payload.content,
           mood: payload.mood || null,
           entry_type: payload.entry_type || 'text',
