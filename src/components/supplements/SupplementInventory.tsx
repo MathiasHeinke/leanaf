@@ -63,8 +63,12 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
     };
 
     (library || []).forEach((item) => {
-      const tier = item.necessity_tier || 'optimizer';
-      groups[tier].push(item);
+      // Defensive: Map unknown tiers to 'specialist'
+      let tier = item.necessity_tier || 'optimizer';
+      if (!(tier in groups)) {
+        tier = 'specialist';
+      }
+      groups[tier as NecessityTier].push(item);
     });
 
     // Sort each tier by impact score (descending)
