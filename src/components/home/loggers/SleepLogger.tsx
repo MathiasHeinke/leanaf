@@ -15,6 +15,7 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { getSleepDateString } from '@/utils/dateHelpers';
 
 interface SleepLoggerProps {
   onClose: () => void;
@@ -65,9 +66,10 @@ export const SleepLogger: React.FC<SleepLoggerProps> = ({ onClose }) => {
   const { trackEvent } = useAresEvents();
   const { data: metrics } = useDailyMetrics();
   
-  // Check if sleep is already logged today (has lastHours = data exists)
+  // Check if sleep is already logged for the current "sleep date" (with 02:00 AM cutoff)
   const existingSleep = metrics?.sleep;
-  const hasExistingLog = existingSleep?.lastHours != null;
+  const sleepDate = getSleepDateString();
+  const hasExistingLog = existingSleep?.date === sleepDate && existingSleep?.lastHours != null;
   
   // Edit mode state
   const [isEditing, setIsEditing] = useState(false);

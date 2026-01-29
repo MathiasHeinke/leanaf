@@ -5,6 +5,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getCurrentDateString, getSleepDateString } from '@/utils/dateHelpers';
 
 export interface DailyMetrics {
   water: { current: number; target: number };
@@ -25,7 +26,7 @@ export interface DailyMetrics {
   // NEW: Weight, Training, Sleep
   weight: { latest: number | null; date: string | null };
   training: { todayType: string | null; todayMinutes: number | null };
-  sleep: { lastHours: number | null; lastQuality: number | null };
+  sleep: { lastHours: number | null; lastQuality: number | null; date: string | null; deepSleepMinutes: number | null };
 }
 
 export const DAILY_METRICS_KEY = ['daily-metrics'];
@@ -55,11 +56,13 @@ export const useDailyMetrics = () => {
           goals: DEFAULT_GOALS,
           weight: { latest: null, date: null },
           training: { todayType: null, todayMinutes: null },
-          sleep: { lastHours: null, lastQuality: null }
+          sleep: { lastHours: null, lastQuality: null, date: null, deepSleepMinutes: null }
         };
       }
 
-      const todayStr = new Date().toISOString().slice(0, 10);
+      // Use timezone-aware date helpers
+      const todayStr = getCurrentDateString();
+      const sleepDateStr = getSleepDateString(); // 02:00 AM cutoff for sleep
 
       // Fetch all data in parallel
       const [goalsRes, fluidsRes, suppsRes, mealsRes, weightRes, trainingRes, sleepRes] = await Promise.all([
@@ -109,13 +112,12 @@ export const useDailyMetrics = () => {
           .limit(1)
           .maybeSingle(),
         
-        // Last Sleep Entry
+        // Today's Sleep Entry (with 02:00 AM cutoff)
         supabase
           .from('sleep_tracking')
-          .select('sleep_hours, sleep_quality, date')
+          .select('sleep_hours, sleep_quality, date, deep_sleep_minutes')
           .eq('user_id', userId)
-          .order('date', { ascending: false })
-          .limit(1)
+          .eq('date', sleepDateStr)
           .maybeSingle()
       ]);
 
@@ -154,10 +156,12 @@ export const useDailyMetrics = () => {
         todayMinutes: trainingRes.data?.total_duration_minutes ? Number(trainingRes.data.total_duration_minutes) : null
       };
 
-      // Sleep data
+      // Sleep data (with date for proper "already logged" check)
       const sleep = {
         lastHours: sleepRes.data?.sleep_hours ? Number(sleepRes.data.sleep_hours) : null,
-        lastQuality: sleepRes.data?.sleep_quality ? Number(sleepRes.data.sleep_quality) : null
+        lastQuality: sleepRes.data?.sleep_quality ? Number(sleepRes.data.sleep_quality) : null,
+        date: sleepRes.data?.date || null,
+        deepSleepMinutes: sleepRes.data?.deep_sleep_minutes ? Number(sleepRes.data.deep_sleep_minutes) : null
       };
 
       return {
