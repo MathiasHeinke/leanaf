@@ -1,6 +1,7 @@
 /**
  * TrainingNotesInput - Quick Training Logger with Live Preview
  * Allows free-text training input with real-time parsing and volume calculation
+ * Supports DUAL PARSING: Strength (Sets × Reps × Weight) AND Cardio (Duration, Speed, Distance)
  * Includes AI fallback for complex/natural language inputs
  */
 
@@ -11,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { parseExercisesFromText, type ParsedExercise } from '@/tools/set-parser';
+import { parseCardioFromText, parseCardioMulti, isCardioInput } from '@/tools/cardio-parser';
+import { type CardioEntry, CARDIO_ACTIVITY_LABELS, CARDIO_ACTIVITY_EMOJIS } from '@/types/training';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -18,8 +21,10 @@ export interface ParsedTrainingResult {
   rawText: string;
   trainingType: 'strength' | 'cardio' | 'hybrid';
   exercises: ParsedExercise[];
+  cardioEntries: CardioEntry[];
   totalVolume: number;
   totalSets: number;
+  totalDuration: number;
 }
 
 interface TrainingNotesInputProps {
@@ -52,15 +57,20 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
   const [trainingType, setTrainingType] = useState<'strength' | 'cardio' | 'hybrid'>('strength');
   const [isAiParsing, setIsAiParsing] = useState(false);
   const [aiParsedData, setAiParsedData] = useState<ParsedExercise[] | null>(null);
-
-  // Reset AI data when text changes
+  const [aiParsedCardio, setAiParsedCardio] = useState<CardioEntry[] | null>(null);
   useEffect(() => {
     setAiParsedData(null);
+    setAiParsedCardio(null);
   }, [rawText]);
 
-  // Parse exercises in real-time with regex
-  const regexParsedData = useMemo(() => {
-    if (!rawText.trim()) {
+  // Detect if input looks like cardio
+  const looksLikeCardio = useMemo(() => {
+    return trainingType === 'cardio' || (trainingType === 'hybrid' && isCardioInput(rawText));
+  }, [rawText, trainingType]);
+
+  // Parse strength exercises in real-time with regex
+  const regexParsedStrength = useMemo(() => {
+    if (!rawText.trim() || trainingType === 'cardio') {
       return { exercises: [] as ParsedExercise[], totalVolume: 0, totalSets: 0 };
     }
     
@@ -69,17 +79,39 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
     const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
     
     return { exercises, totalVolume, totalSets };
-  }, [rawText]);
+  }, [rawText, trainingType]);
 
-  // Use AI data if available, otherwise regex
-  const parsedData = useMemo(() => {
-    if (aiParsedData && aiParsedData.length > 0) {
-      const totalVolume = aiParsedData.reduce((sum, ex) => sum + ex.totalVolume, 0);
-      const totalSets = aiParsedData.reduce((sum, ex) => sum + ex.sets.length, 0);
-      return { exercises: aiParsedData, totalVolume, totalSets, isFromAi: true };
+  // Parse cardio entries in real-time
+  const regexParsedCardio = useMemo(() => {
+    if (!rawText.trim() || trainingType === 'strength') {
+      return { entries: [] as CardioEntry[], totalDuration: 0 };
     }
-    return { ...regexParsedData, isFromAi: false };
-  }, [regexParsedData, aiParsedData]);
+    
+    const entries = parseCardioMulti(rawText);
+    const totalDuration = entries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+    
+    return { entries, totalDuration };
+  }, [rawText, trainingType]);
+
+  // Combine parsed data (AI overrides if available)
+  const parsedData = useMemo(() => {
+    // Strength data
+    const exercises = aiParsedData && aiParsedData.length > 0 
+      ? aiParsedData 
+      : regexParsedStrength.exercises;
+    const totalVolume = exercises.reduce((sum, ex) => sum + ex.totalVolume, 0);
+    const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
+    
+    // Cardio data
+    const cardioEntries = aiParsedCardio && aiParsedCardio.length > 0
+      ? aiParsedCardio
+      : regexParsedCardio.entries;
+    const totalDuration = cardioEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+    
+    const isFromAi = (aiParsedData && aiParsedData.length > 0) || (aiParsedCardio && aiParsedCardio.length > 0);
+    
+    return { exercises, totalVolume, totalSets, cardioEntries, totalDuration, isFromAi };
+  }, [regexParsedStrength, regexParsedCardio, aiParsedData, aiParsedCardio]);
 
   // AI parsing handler
   const handleAiParse = useCallback(async () => {
@@ -108,8 +140,13 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
         toast.success(`${data.exercises.length} Übungen erkannt!`, {
           description: 'KI-Parsing erfolgreich'
         });
+      } else if (data?.cardio_entries?.length > 0) {
+        setAiParsedCardio(data.cardio_entries);
+        toast.success(`${data.cardio_entries.length} Cardio-Aktivitäten erkannt!`, {
+          description: 'KI-Parsing erfolgreich'
+        });
       } else {
-        toast.error('KI konnte keine Übungen erkennen');
+        toast.error('KI konnte keine Aktivitäten erkennen');
       }
     } catch (error) {
       console.error('AI parsing failed:', error);
@@ -120,19 +157,24 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
   }, [rawText, trainingType]);
 
   const handleSubmit = useCallback(async () => {
-    if (parsedData.exercises.length === 0) return;
+    const hasValidData = parsedData.exercises.length > 0 || parsedData.cardioEntries.length > 0;
+    if (!hasValidData) return;
     
     await onSubmit({
       rawText,
       trainingType,
       exercises: parsedData.exercises,
+      cardioEntries: parsedData.cardioEntries,
       totalVolume: parsedData.totalVolume,
-      totalSets: parsedData.totalSets
+      totalSets: parsedData.totalSets,
+      totalDuration: parsedData.totalDuration
     });
   }, [rawText, trainingType, parsedData, onSubmit]);
 
   const hasContent = rawText.trim().length > 0;
   const hasValidExercises = parsedData.exercises.length > 0;
+  const hasValidCardio = parsedData.cardioEntries.length > 0;
+  const hasValidData = hasValidExercises || hasValidCardio;
 
   return (
     <div className="space-y-4">
@@ -186,10 +228,14 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
             <div className="bg-muted/20 rounded-xl border border-border/30 p-4 space-y-3">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 <span>📊</span>
-                <span>Erkannt{parsedData.isFromAi ? ' (via KI ✨)' : ''}:</span>
+                <span>
+                  Erkannt{parsedData.isFromAi ? ' (via KI ✨)' : ''}
+                  {hasValidCardio && !hasValidExercises ? ' (Cardio)' : ''}:
+                </span>
               </div>
 
-              {hasValidExercises ? (
+              {/* Strength Preview */}
+              {hasValidExercises && (
                 <>
                   <div className="space-y-2">
                     {parsedData.exercises.map((exercise, idx) => (
@@ -200,7 +246,7 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
                         transition={{ delay: idx * 0.05 }}
                         className="flex items-center gap-2 text-sm"
                       >
-                        <Check className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                         <span className="font-medium text-foreground truncate">
                           {exercise.name}:
                         </span>
@@ -227,15 +273,63 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
                     </div>
                   </div>
                 </>
-              ) : (
+              )}
+
+              {/* Cardio Preview */}
+              {hasValidCardio && (
+                <>
+                  <div className="space-y-2">
+                    {parsedData.cardioEntries.map((entry, idx) => (
+                      <motion.div
+                        key={`cardio-${idx}`}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                        <span className="text-base">{CARDIO_ACTIVITY_EMOJIS[entry.activity]}</span>
+                        <span className="font-medium text-foreground">
+                          {CARDIO_ACTIVITY_LABELS[entry.activity]}:
+                        </span>
+                        <span className="text-muted-foreground">
+                          {entry.duration_minutes} min
+                          {entry.speed_kmh && entry.speed_max_kmh 
+                            ? ` @ ${entry.speed_kmh}-${entry.speed_max_kmh} km/h`
+                            : entry.speed_kmh 
+                              ? ` @ ${entry.speed_kmh} km/h`
+                              : ''}
+                          {entry.distance_km && ` • ${entry.distance_km} km`}
+                          {entry.avg_hr && ` • ${entry.avg_hr} bpm`}
+                        </span>
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Total Duration */}
+                  <div className="pt-2 border-t border-border/30 flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Gesamt:</span>
+                    <span className="text-sm font-bold text-foreground">
+                      {parsedData.totalDuration} min Cardio
+                    </span>
+                  </div>
+                </>
+              )}
+
+              {/* No valid data - show help */}
+              {!hasValidData && (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-amber-500">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <AlertCircle className="w-4 h-4" />
-                    <span>Keine gültigen Übungen erkannt. Format: "Übung 3x10 80kg"</span>
+                    <span>
+                      {trainingType === 'cardio' 
+                        ? 'Format: "Laufband 30min 10kmh" oder "5km Joggen"'
+                        : 'Format: "Übung 3x10 80kg" oder "Laufband 10min"'}
+                    </span>
                   </div>
                   
                   {/* AI Fallback Button */}
-                  {!aiParsedData && (
+                  {!aiParsedData && !aiParsedCardio && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -277,7 +371,7 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
         )}
         <Button
           onClick={handleSubmit}
-          disabled={isLoading || !hasValidExercises}
+          disabled={isLoading || !hasValidData}
           className="flex-1 h-11 rounded-xl font-semibold"
         >
           {isLoading ? (
@@ -288,7 +382,7 @@ export const TrainingNotesInput: React.FC<TrainingNotesInputProps> = ({
           ) : (
             <>
               <Check className="w-4 h-4 mr-2" />
-              Workout speichern
+              {hasValidCardio && !hasValidExercises ? 'Cardio speichern' : 'Workout speichern'}
             </>
           )}
         </Button>

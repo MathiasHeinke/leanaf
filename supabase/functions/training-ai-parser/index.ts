@@ -17,6 +17,16 @@ interface SetEntry {
   unit?: "kg" | "lb";
 }
 
+interface CardioEntry {
+  activity: 'running' | 'cycling' | 'rowing' | 'swimming' | 'walking' | 'other';
+  duration_minutes: number;
+  distance_km?: number;
+  speed_kmh?: number;
+  speed_max_kmh?: number;
+  avg_hr?: number;
+  notes?: string;
+}
+
 interface ParsedExercise {
   name: string;
   normalized_name: string;
@@ -30,11 +40,13 @@ interface SessionMeta {
   split_type: string;
   total_volume_kg: number;
   total_sets: number;
+  total_duration_minutes: number;
   estimated_duration_minutes: number;
 }
 
 interface ParseResult {
   exercises: ParsedExercise[];
+  cardio_entries: CardioEntry[];
   session_meta: SessionMeta;
   warnings: string[];
 }
@@ -140,10 +152,116 @@ function inferSplitType(exercises: ParsedExercise[]): string {
   return 'full_body';
 }
 
-function parseTrainingText(rawText: string): ParseResult {
+// Cardio activity detection patterns
+const CARDIO_PATTERNS: Record<string, RegExp> = {
+  running: /laufband|joggen|laufen|jogging|running|sprint|rennen|run/i,
+  cycling: /rad|bike|cycling|ergometer|spinning|fahrrad|cycle/i,
+  rowing: /rudern|rowing|ruderger|concept2|c2|row/i,
+  swimming: /schwimmen|swimming|bahnen|swim/i,
+  walking: /gehen|walking|spazier|walk|marsch/i,
+};
+
+function detectCardioActivity(text: string): 'running' | 'cycling' | 'rowing' | 'swimming' | 'walking' | 'other' {
+  for (const [activity, pattern] of Object.entries(CARDIO_PATTERNS)) {
+    if (pattern.test(text)) return activity as any;
+  }
+  return 'other';
+}
+
+function parseCardioText(rawText: string): CardioEntry[] {
+  const entries: CardioEntry[] = [];
+  const lines = rawText.split(/\n|;/).filter(l => l.trim());
+  
+  for (const line of lines) {
+    const text = line.trim().toLowerCase();
+    if (!text) continue;
+    
+    // Detect activity
+    const activity = detectCardioActivity(text);
+    
+    // Parse duration: "10min", "30 minuten", "1h", "1.5 stunden"
+    let durationMinutes: number | undefined;
+    const hhmmMatch = text.match(/(\d+):(\d+)\s*(h|stunden?)/i);
+    if (hhmmMatch) {
+      durationMinutes = parseInt(hhmmMatch[1]) * 60 + parseInt(hhmmMatch[2]);
+    } else {
+      const durationMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(min|minuten?|h|stunden?)/i);
+      if (durationMatch) {
+        const value = parseFloat(durationMatch[1].replace(',', '.'));
+        const unit = durationMatch[2].toLowerCase();
+        durationMinutes = unit.startsWith('h') ? Math.round(value * 60) : Math.round(value);
+      }
+    }
+    
+    // Parse speed: "9-12kmh", "10 km/h"
+    let speedKmh: number | undefined;
+    let speedMaxKmh: number | undefined;
+    const speedMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(?:-\s*(\d+(?:[.,]\d+)?))?\s*(?:km\/h|kmh)/i);
+    if (speedMatch) {
+      speedKmh = parseFloat(speedMatch[1].replace(',', '.'));
+      if (speedMatch[2]) speedMaxKmh = parseFloat(speedMatch[2].replace(',', '.'));
+    }
+    
+    // Parse distance: "5km", "3.2 kilometer"
+    let distanceKm: number | undefined;
+    const distanceMatch = text.match(/(\d+(?:[.,]\d+)?)\s*(km|kilometer)\b/i);
+    if (distanceMatch) {
+      distanceKm = parseFloat(distanceMatch[1].replace(',', '.'));
+    }
+    
+    // Parse heart rate
+    let avgHr: number | undefined;
+    const hrMatch = text.match(/(?:hr|puls|bpm|herzfrequenz|@)\s*(\d+)/i) || text.match(/(\d+)\s*(?:bpm|puls)/i);
+    if (hrMatch) {
+      const hr = parseInt(hrMatch[1]);
+      if (hr >= 40 && hr <= 220) avgHr = hr;
+    }
+    
+    // Must have duration OR distance
+    if (!durationMinutes && !distanceKm) continue;
+    
+    // Estimate duration from distance if missing
+    if (!durationMinutes && distanceKm) {
+      const pacePerKm = activity === 'cycling' ? 3 : activity === 'running' ? 6 : 10;
+      durationMinutes = Math.round(distanceKm * pacePerKm);
+    }
+    
+    entries.push({
+      activity,
+      duration_minutes: durationMinutes || 0,
+      distance_km: distanceKm,
+      speed_kmh: speedKmh,
+      speed_max_kmh: speedMaxKmh,
+      avg_hr: avgHr,
+    });
+  }
+  
+  return entries;
+}
+
+function parseTrainingText(rawText: string, trainingType: string): ParseResult {
   const lines = rawText.split('\n').filter(l => l.trim());
   const exercises: ParsedExercise[] = [];
   const warnings: string[] = [];
+
+  // If training type is cardio, parse as cardio first
+  if (trainingType === 'cardio') {
+    const cardioEntries = parseCardioText(rawText);
+    const totalDuration = cardioEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+    
+    return {
+      exercises: [],
+      cardio_entries: cardioEntries,
+      session_meta: {
+        split_type: 'cardio',
+        total_volume_kg: 0,
+        total_sets: 0,
+        total_duration_minutes: totalDuration,
+        estimated_duration_minutes: totalDuration
+      },
+      warnings: cardioEntries.length === 0 ? ['Keine Cardio-Aktivitäten erkannt'] : []
+    };
+  }
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -206,23 +324,29 @@ function parseTrainingText(rawText: string): ParseResult {
     }
   }
 
-  if (exercises.length === 0) {
+  // For hybrid: also try to parse cardio
+  const cardioEntries = trainingType === 'hybrid' ? parseCardioText(rawText) : [];
+
+  if (exercises.length === 0 && cardioEntries.length === 0) {
     warnings.push('Keine Übungen erkannt. Bitte Format prüfen: "Übung 4x10 80kg @7"');
   }
 
   const totalVolume = exercises.reduce((sum, ex) => sum + ex.total_volume_kg, 0);
   const totalSets = exercises.reduce((sum, ex) => sum + ex.sets.length, 0);
-  const splitType = inferSplitType(exercises);
+  const cardioDuration = cardioEntries.reduce((sum, e) => sum + (e.duration_minutes || 0), 0);
+  const splitType = exercises.length > 0 ? inferSplitType(exercises) : 'cardio';
   
-  // Estimate duration: ~2 min per set (including rest)
-  const estimatedDuration = Math.round(totalSets * 2);
+  // Estimate duration: ~2 min per set + cardio duration
+  const estimatedDuration = Math.round(totalSets * 2) + cardioDuration;
 
   return {
     exercises,
+    cardio_entries: cardioEntries,
     session_meta: {
       split_type: splitType,
       total_volume_kg: totalVolume,
       total_sets: totalSets,
+      total_duration_minutes: cardioDuration,
       estimated_duration_minutes: estimatedDuration
     },
     warnings
@@ -352,10 +476,12 @@ Regeln:
 
     return {
       exercises,
+      cardio_entries: [],
       session_meta: {
         split_type: inferSplitType(exercises),
         total_volume_kg: totalVolume,
         total_sets: totalSets,
+        total_duration_minutes: 0,
         estimated_duration_minutes: Math.round(totalSets * 2)
       },
       warnings: []
@@ -463,12 +589,13 @@ serve(async (req) => {
     console.log(`[TRAINING-AI-PARSER] Raw text length: ${raw_text.length}, use_ai: ${use_ai}`);
 
     // Parse the training text with regex first
-    let parseResult = parseTrainingText(raw_text);
+    let parseResult = parseTrainingText(raw_text, training_type);
     
-    console.log(`[TRAINING-AI-PARSER] Regex parsed ${parseResult.exercises.length} exercises`);
+    console.log(`[TRAINING-AI-PARSER] Regex parsed ${parseResult.exercises.length} exercises, ${parseResult.cardio_entries.length} cardio entries`);
 
-    // AI Fallback: if use_ai is true OR no exercises were found, try Gemini
-    if (use_ai || parseResult.exercises.length === 0) {
+    // AI Fallback: if use_ai is true OR no data was found, try Gemini (for strength only)
+    const hasNoData = parseResult.exercises.length === 0 && parseResult.cardio_entries.length === 0;
+    if ((use_ai || hasNoData) && training_type !== 'cardio') {
       console.log('[TRAINING-AI-PARSER] Trying AI fallback...');
       const aiResult = await parseWithGemini(raw_text);
       
@@ -502,18 +629,25 @@ serve(async (req) => {
     console.log(`[TRAINING-AI-PARSER] Using timezone: ${timezone}, date: ${todayStr}`);
 
     // STEP 1: training_sessions (Layer 2)
+    // Determine training_type for DB based on parsed content
+    let dbTrainingType = training_type === 'strength' ? 'rpt' : training_type;
+    if (training_type === 'cardio' || (parseResult.cardio_entries.length > 0 && parseResult.exercises.length === 0)) {
+      dbTrainingType = 'zone2'; // Default cardio to zone2
+    }
+    
     const { data: trainingSession, error: tsError } = await supabase
       .from('training_sessions')
       .insert({
         user_id: user.id,
         session_date: todayStr,
-        training_type: training_type === 'strength' ? 'rpt' : training_type,
+        training_type: dbTrainingType,
         split_type: parseResult.session_meta.split_type,
         total_duration_minutes: parseResult.session_meta.estimated_duration_minutes,
         total_volume_kg: parseResult.session_meta.total_volume_kg,
         session_data: {
           raw_text,
           parsed_exercises: parseResult.exercises,
+          cardio_entries: parseResult.cardio_entries,
           source: 'layer2_notes'
         }
       })

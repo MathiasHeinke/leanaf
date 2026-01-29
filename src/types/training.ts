@@ -100,5 +100,40 @@ export const VO2_PROTOCOL_OPTIONS = [
   { id: 'stairmaster' as const, label: 'Stairmaster', emoji: '🪜' },
 ];
 
+// Cardio entry data structure for Zone2/VO2max logging
+export interface CardioEntry {
+  activity: CardioType | 'other';
+  duration_minutes: number;
+  distance_km?: number;
+  speed_kmh?: number;
+  speed_max_kmh?: number;
+  pace_min_km?: number;
+  avg_hr?: number;
+  max_hr?: number;
+  incline_percent?: number;
+  calories?: number;
+  notes?: string;
+}
+
+// Cardio activity labels for display
+export const CARDIO_ACTIVITY_LABELS: Record<CardioType | 'other', string> = {
+  walking: 'Gehen',
+  running: 'Laufen',
+  cycling: 'Radfahren',
+  swimming: 'Schwimmen',
+  rowing: 'Rudern',
+  other: 'Sonstiges',
+};
+
+// Cardio activity emojis
+export const CARDIO_ACTIVITY_EMOJIS: Record<CardioType | 'other', string> = {
+  walking: '🚶',
+  running: '🏃',
+  cycling: '🚴',
+  swimming: '🏊',
+  rowing: '🚣',
+  other: '🏋️',
+};
+
 // Sauna temperature options
 export const SAUNA_TEMP_OPTIONS = [80, 90, 100] as const;
