@@ -1,75 +1,113 @@
 
-# Plan: Fix für Layer 3 Training Session Data
+# Plan: Fix für Wochentag-Labels in Training Widgets
 
-## Ursache
+## Problem-Analyse
 
-Der Edge Function `training-ai-parser` schlägt beim Einfügen von `exercise_sets` still fehl. Die Datenbank hat einen Check-Constraint:
+Die Wochen-Bubbles zeigen falsche Tagesbezeichnungen, weil:
 
-```sql
-exercise_sets_origin_check: 
-  CHECK (origin IS NULL OR origin = ANY (ARRAY['manual', 'image', 'auto']))
+1. `getLast7Days()` gibt die **letzten 7 Tage** zurück (heute + 6 Tage zurück)
+2. Die Labels sind **statisch** `['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So']`
+3. Die Labels müssen **dynamisch** zu den tatsächlichen Wochentagen passen
+
+**Beispiel (heute ist Donnerstag 29.01.2026):**
+
+```text
+getLast7Days() = ['2026-01-23', '2026-01-24', '2026-01-25', '2026-01-26', '2026-01-27', '2026-01-28', '2026-01-29']
+                   Freitag      Samstag      Sonntag      Montag       Dienstag     Mittwoch     Donnerstag
+
+Statische Labels:    [Mo]        [Di]         [Mi]        [Do]         [Fr]         [Sa]         [So]
+                     ↑ FALSCH!   
+
+Korrekte Labels:     [Fr]        [Sa]         [So]        [Mo]         [Di]         [Mi]         [Do]
 ```
-
-Der Code versucht `origin: 'layer2_notes'` einzufügen - dies verletzt den Constraint und verhindert alle Set-Inserts.
-
-**Beweislage:**
-- `training_sessions` hat korrekt `total_volume_kg: 3012` gespeichert
-- `exercise_sessions` wurde erstellt (ID: `66a5bfd4-00c0-457b-8107-9351e9bbbe81`)
-- `exercise_sets` für diese Session: **0 Zeilen** (alle Inserts fehlgeschlagen)
 
 ---
 
 ## Lösung
 
-### Option A (Empfohlen): `origin` auf gültigen Wert ändern
+### Neuen Helper in `dateHelpers.ts` hinzufügen
 
-**Datei:** `supabase/functions/training-ai-parser/index.ts`
+```typescript
+/**
+ * Get the last N days with their weekday labels (timezone-aware)
+ * Returns both date strings AND corresponding German weekday abbreviations
+ */
+export const getLast7DaysWithLabels = (): { dates: string[], labels: string[] } => {
+  const WEEKDAY_LABELS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']; // getDay() returns 0=Sunday
+  const dates: string[] = [];
+  const labels: string[] = [];
+  const today = new Date();
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    dates.push(toDateString(d));
+    labels.push(WEEKDAY_LABELS[d.getDay()]);
+  }
+  
+  return { dates, labels };
+};
+```
 
-**Zeile 586 ändern:**
+### Komponenten aktualisieren
+
+**TrainingWidget.tsx:**
 
 ```typescript
 // VORHER:
-origin: 'layer2_notes'
+const dates = getLast7Days();
+const dayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
 // NACHHER:
-origin: 'manual'  // oder 'auto' - beides gültig
+import { getLast7DaysWithLabels } from '@/utils/dateHelpers';
+// In queryFn:
+const { dates, labels } = getLast7DaysWithLabels();
+// Return labels mit in weeklyData
+return {
+  count: sessionDates.size,
+  days: dates.map(d => sessionDates.has(d)),
+  labels
+};
+// Im Render:
+const dayLabels = weeklyData?.labels || ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do'];
 ```
 
-### Option B: Check-Constraint erweitern
-
-Alternative wäre, den Check-Constraint um `'layer2_notes'` zu erweitern. Das erfordert eine Migration:
-
-```sql
-ALTER TABLE exercise_sets DROP CONSTRAINT exercise_sets_origin_check;
-ALTER TABLE exercise_sets ADD CONSTRAINT exercise_sets_origin_check 
-  CHECK (origin IS NULL OR origin = ANY (ARRAY['manual', 'image', 'auto', 'layer2_notes']));
-```
-
-**Empfehlung:** Option A ist schneller und erfordert keine Schema-Migration.
+**TrainingDaySheet.tsx:** Identische Änderung
 
 ---
 
-## Implementierung
+## Datei-Änderungen
 
-| Datei | Aktion | Änderung |
-|-------|--------|----------|
-| `supabase/functions/training-ai-parser/index.ts` | EDIT | Zeile 586: `origin: 'layer2_notes'` → `origin: 'auto'` |
+| Datei | Aktion | Beschreibung |
+|-------|--------|--------------|
+| `src/utils/dateHelpers.ts` | EDIT | `getLast7DaysWithLabels()` Helper hinzufügen |
+| `src/components/home/widgets/TrainingWidget.tsx` | EDIT | Dynamische Labels aus Query verwenden |
+| `src/components/home/sheets/TrainingDaySheet.tsx` | EDIT | Dynamische Labels aus Query verwenden |
 
 ---
 
-## Erwartetes Ergebnis nach Fix
+## Erwartetes Ergebnis
 
-```
+```text
+VORHER (Bug):
 ┌──────────────────────────────────────────────────────────┐
-│  ✓ Heute trainiert!                                      │
+│  Diese Woche                              4/4 Sessions   │
 │                                                          │
-│  ⊙ 21           ⚡ 3.012          💪 7.3                 │
-│  Sätze          kg Volumen       Ø RPE                   │
+│  [  ]  [  ]  [  ]  [✓]  [✓]  [✓]  [✓]                    │
+│   Mo    Di    Mi    Do   Fr   Sa   So  ← Statisch FALSCH │
 │                                                          │
-│  Heutige Sessions:                                       │
-│  Training 29.1.2026 [Abgeschlossen] •••                  │
-│  21 Sätze • Goblet Squat +6 weitere                      │
+│  Training war am 29.01 (Do) aber zeigt am "Do" Position  │
+│  obwohl letzte 7 Tage bei Fr-Do enden!                   │
+└──────────────────────────────────────────────────────────┘
+
+NACHHER (Fix):
+┌──────────────────────────────────────────────────────────┐
+│  Diese Woche                              4/4 Sessions   │
 │                                                          │
+│  [  ]  [  ]  [  ]  [✓]  [✓]  [✓]  [✓]                    │
+│   Fr    Sa    So    Mo   Di   Mi   Do  ← Dynamisch       │
+│                                                          │
+│  Training am 29.01 zeigt korrekt auf "Do" (letzter Tag)  │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -77,36 +115,28 @@ ALTER TABLE exercise_sets ADD CONSTRAINT exercise_sets_origin_check
 
 ## Technische Details
 
-### Warum passierte der Fehler still?
-
-Der Code (Zeile 589-591) loggt den Fehler nur:
+Die Query gibt jetzt auch die Labels zurück:
 
 ```typescript
-if (setError) {
-  console.error(`[TRAINING-AI-PARSER] Error inserting set ${i + 1}:`, setError);
+// queryFn returns:
+{
+  count: 4,
+  days: [false, false, false, true, true, true, true],
+  labels: ['Fr', 'Sa', 'So', 'Mo', 'Di', 'Mi', 'Do']
 }
 ```
 
-Es gibt kein `throw` oder Response-Änderung - die Funktion meldet "Erfolg", obwohl 0 Sets eingefügt wurden.
-
-### Bonus: Besseres Error Handling
-
-Optional kann man nach der For-Schleife prüfen, ob Sets tatsächlich eingefügt wurden:
-
-```typescript
-// Nach der Set-Insert-Schleife
-const { count } = await supabase
-  .from('exercise_sets')
-  .select('id', { count: 'exact', head: true })
-  .eq('session_id', exerciseSession.id);
-
-if (count === 0) {
-  console.error('[TRAINING-AI-PARSER] WARNING: No sets were inserted!');
-}
-```
+So bleiben Daten und Labels immer synchron.
 
 ---
 
 ## Aufwand
 
-**5 Minuten** - Einzeilige Code-Änderung + Edge Function Deploy
+| Task | Zeit |
+|------|------|
+| Helper in dateHelpers.ts | 5 min |
+| TrainingWidget.tsx | 10 min |
+| TrainingDaySheet.tsx | 10 min |
+| Testen | 5 min |
+
+**Gesamt: ~30 Minuten**
