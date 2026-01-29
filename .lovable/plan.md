@@ -1,472 +1,241 @@
 
-# ARES Matrix-Scoring: Erweiterte Attribute
+# ARES Matrix-Daten Import: Analyse & Implementierungsplan
 
-## Uebersicht der Erweiterungen
+## I. ANALYSE-ERGEBNIS
 
-Die bestehende Matrix-Scoring-Engine wird um folgende Dimensionen erweitert:
+### Dokument-Zusammenfassung
+| Metrik | Wert |
+|--------|------|
+| **Wirkstoffe im Import** | 150 |
+| **Wirkstoffe in DB** | 111 |
+| **Kategorien im Import** | 14 (vitamine, mineralien, aminosaeuren, fettsaeuren, adaptogene, vitalpilze, antioxidantien, longevity, darm, gelenke, nootropics, enzyme, proteine, sonstiges) |
+| **relevance_matrix bereits befuellt** | 0 (alle leer) |
 
-| Kategorie | Neue Attribute | Datenquelle |
-|-----------|---------------|-------------|
-| Peptid-Klassen | 8 Klassen | `peptide_compounds.category` |
-| Kalorischer Status | Defizit/Surplus | `profiles.weight` vs `target_weight` |
-| Demografie | Alter, Geschlecht | `profiles.age`, `profiles.gender` |
-| Erweiterte Ziele | Rekomposition | `profiles.goal_type` |
+### Schema-Kompatibilitaet
+
+#### MATCH: Diese Felder sind 1:1 kompatibel
+| Import-Feld | DB-Typ | Status |
+|-------------|--------|--------|
+| `phase_modifiers` | `Record<string, number>` | ✅ Perfekt |
+| `context_modifiers` | `{true_natural, enhanced_no_trt, on_trt, on_glp1}` | ✅ Perfekt |
+| `goal_modifiers` | `Record<string, number>` | ✅ Perfekt |
+| `calorie_modifiers` | `{in_deficit, in_surplus}` | ✅ Perfekt |
+| `peptide_class_modifiers` | `Record<string, number>` | ✅ Perfekt |
+| `demographic_modifiers` | `{age_over_40, age_over_50, age_over_60, is_female, is_male}` | ✅ Perfekt |
+| `bloodwork_triggers` | `Record<string, number>` | ✅ Perfekt |
+| `compound_synergies` | `Record<string, number>` | ✅ Perfekt |
+
+#### DISKREPANZ: Felder im Import, die NICHT im DB-Schema sind
+| Import-Feld | Beschreibung | Aktion |
+|-------------|--------------|--------|
+| `ingredient_id` | z.B. "vit_d3", "hmb" | Mapping zu DB-Namen noetig |
+| `ingredient_name` | z.B. "Vitamin D3", "HMB" | Fuer Matching verwenden |
+| `category` | z.B. "vitamine", "aminosaeuren" | Ignorieren (DB hat eigene) |
+| `base_score` | z.B. 9.0, 7.5 | **WICHTIG:** Vergleich mit `impact_score` noetig |
+| `warnings` | z.B. `{"on_trt": "TRT macht redundant"}` | **NEU:** Zu `explanation_templates` mappen |
+
+#### NEUE GOALS im Import (nicht in DB-Logik)
+| Goal | In Import | In unserer Logik |
+|------|-----------|------------------|
+| `fat_loss` | ✅ | ✅ |
+| `muscle_gain` | ✅ | ✅ |
+| `recomposition` | ✅ | ✅ |
+| `longevity` | ✅ | ✅ |
+| `maintenance` | ✅ | ✅ |
+| `performance` | ✅ | ✅ |
+| `cognitive` | ✅ | ❌ **NEU** - hinzufuegen |
+| `sleep` | ✅ | ❌ **NEU** - hinzufuegen |
+| `gut_health` | ✅ | ❌ **NEU** - hinzufuegen |
+
+### Wirkstoffe: Import vs. Datenbank
+
+#### MATCHING-PROBLEME zu loesen
+Das Import-Dokument nutzt normalisierte IDs wie `vit_d3`, `hmb`, `ashwagandha`, waehrend die DB deutsche Namen wie "Vitamin D3", "HMB", "Ashwagandha KSM-66" hat.
+
+**Beispiel-Mappings:**
+| Import-ID | Import-Name | DB-Name (approx.) |
+|-----------|-------------|-------------------|
+| `vit_d3` | Vitamin D3 | Vitamin D3 |
+| `vit_k2` | Vitamin K2 MK-7 | Vitamin K2 |
+| `magnesium` | Magnesium | Magnesium |
+| `hmb` | HMB | HMB, HMB 3000 |
+| `ashwagandha` | Ashwagandha | Ashwagandha, Ashwagandha KSM-66 |
+| `creatine` | Kreatin | Creatine Monohydrat, Creatin |
+| `bergamot` | Citrus Bergamot | Citrus Bergamot |
+
+#### WIRKSTOFFE IM IMPORT, NICHT IN DB (~39 potentiell)
+Da Import 150 hat, DB 111, fehlen ca. 39 Wirkstoffe. Diese koennten spaeter als neue Eintraege hinzugefuegt werden.
 
 ---
 
-## 1. Peptid-Klassen-Modifikatoren
+## II. TECHNISCHE ANFORDERUNGEN
 
-### Mapping der Peptid-Kategorien
+### 1. Typ-Erweiterungen (src/types/relevanceMatrix.ts)
 
-Die aktiven Peptide des Users werden auf funktionale Klassen gemappt:
-
-| Klasse | Peptide | Effekt auf Supplements |
-|--------|---------|------------------------|
-| `gh_secretagogue` | CJC-1295, Ipamorelin, Tesamorelin, MK-677 | +Schlaf, +Kollagen, +Recovery |
-| `healing` | BPC-157, TB-500 | +Kollagen, +Glutamin, +Zinc |
-| `longevity` | Epitalon, Thymalin, SS-31 | +NAD+, +Resveratrol, +Fisetin |
-| `nootropic` | Semax, Selank, Dihexa | +Omega-3, +Cholin, +Magnesium |
-| `metabolic` | Retatrutide, Tirzepatide, Semaglutide | +Elektrolyte, +Protein, +B-Vitamine |
-| `immune` | Thymosin Alpha-1, LL-37 | +Vitamin D, +Zinc, +Quercetin |
-| `testo` | Testosterone, Kisspeptin | -Natural Booster, +Lipid-Support |
-| `skin` | GHK-Cu | +Kollagen, +Vitamin C |
-
-### Implementierung
-
+**Neue Goals hinzufuegen:**
 ```typescript
-// Neue Konstante in relevanceMatrix.ts
-export const PEPTIDE_CATEGORIES = [
-  'gh_secretagogue', 'healing', 'longevity', 'nootropic',
-  'metabolic', 'immune', 'testo', 'skin'
-] as const;
+// goal_modifiers unterstuetzt jetzt auch:
+// - cognitive
+// - sleep  
+// - gut_health
+```
 
-// Mapping von Peptid-Namen zu Kategorien
-export const PEPTIDE_TO_CATEGORY: Record<string, string> = {
-  // GH Secretagogues
-  'cjc_1295': 'gh_secretagogue',
-  'cjc-1295': 'gh_secretagogue',
-  'ipamorelin': 'gh_secretagogue',
-  'tesamorelin': 'gh_secretagogue',
-  'mk_677': 'gh_secretagogue',
-  'sermorelin': 'gh_secretagogue',
-  
-  // Healing
-  'bpc_157': 'healing',
-  'bpc-157': 'healing',
-  'tb_500': 'healing',
-  'tb-500': 'healing',
-  
-  // Metabolic (GLP-1 wird separat behandelt)
-  'retatrutide': 'metabolic',
-  'tirzepatide': 'metabolic',
-  'semaglutide': 'metabolic',
-  
-  // usw...
-};
+**Warnings/Explanation Templates:**
+Das Import-Dokument enthaelt `warnings` Objekte mit kontextbezogenen Warnungen. Diese sollen zu `explanation_templates` gemappt werden.
+
+### 2. Matching-Strategie fuer Import
+
+**Option A: Fuzzy Name Matching**
+- Vergleiche `ingredient_name` mit `supplement_database.name`
+- Normalisiere: lowercase, Umlaute, Bindestrich/Leerzeichen
+
+**Option B: Manuelles Mapping-Dictionary**
+- Erstelle ein statisches Mapping von `ingredient_id` -> DB-UUID
+- Praeziser, erfordert aber manuelle Pflege
+
+**Empfehlung: Option A + B kombiniert**
+1. Versuche Fuzzy-Match auf Namen
+2. Fallback auf manuelles Mapping fuer Problemfaelle
+
+### 3. Import-Script Architektur
+
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│ IMPORT PIPELINE                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│ 1. Parse MD-Datei -> Extrahiere JSON-Bloecke                        │
+│ 2. Validiere gegen RelevanceMatrix-Schema                           │
+│ 3. Fuer jeden Wirkstoff:                                            │
+│    a. Finde passenden DB-Eintrag (Name-Matching)                    │
+│    b. Mappe Import-Felder zu DB-Schema                              │
+│    c. Merge `warnings` -> `explanation_templates`                   │
+│    d. UPDATE supplement_database SET relevance_matrix = {...}       │
+│ 4. Report: Matched, Unmatched, Errors                               │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Kalorischer Status (Defizit/Surplus)
+## III. IMPLEMENTIERUNGSPLAN
 
-### Berechnung
+### Phase 1: Schema-Erweiterungen (15 Min)
 
-```typescript
-// In useUserRelevanceContext.ts
-function determineCalorieStatus(
-  currentWeight: number | null,
-  targetWeight: number | null,
-  calorieDeficit: number | null
-): 'deficit' | 'surplus' | 'maintenance' {
-  // Primaer: Direktes Defizit-Feld
-  if (calorieDeficit !== null) {
-    if (calorieDeficit > 200) return 'deficit';
-    if (calorieDeficit < -200) return 'surplus';
-    return 'maintenance';
-  }
-  
-  // Fallback: Gewichtsvergleich
-  if (currentWeight && targetWeight) {
-    const diff = currentWeight - targetWeight;
-    if (diff > 2) return 'deficit';  // Will abnehmen
-    if (diff < -2) return 'surplus'; // Will zunehmen
-  }
-  
-  return 'maintenance';
-}
-```
+**1.1 Typ-Erweiterungen**
+- `src/types/relevanceMatrix.ts`: Goals um `cognitive`, `sleep`, `gut_health` erweitern
+- `explanation_templates` Typ hinzufuegen (bereits vorhanden, aber validieren)
 
-### Matrix-Erweiterung
+**1.2 Score-Berechnung erweitern**
+- `src/lib/calculateRelevanceScore.ts`: Neue Goals verarbeiten
 
-HMB bei Defizit: +3 (Muskelschutz kritisch)
-HMB bei Surplus: -1 (weniger relevant)
-Digestive Enzymes bei Surplus: +2 (mehr Nahrung = mehr Verdauungslast)
+### Phase 2: Import-Utility erstellen (45 Min)
 
----
+**2.1 Markdown-Parser**
+- Extrahiere alle JSON-Bloecke aus der MD-Datei
+- Validiere gegen TypeScript-Interface
 
-## 3. Demografische Faktoren
+**2.2 Name-Matcher**
+- Fuzzy-Matching-Funktion fuer Wirkstoff-Namen
+- Manuelles Override-Dictionary fuer Problemfaelle
 
-### Alter
+**2.3 Matrix-Transformer**
+- Mappe Import-Format zu DB-Format
+- Konvertiere `warnings` zu `explanation_templates`
 
-| Altersgruppe | Flag | Auswirkung |
-|--------------|------|------------|
-| >= 40 | `age_over_40` | +Longevity, +Joint Support, +NAD+ |
-| >= 50 | `age_over_50` | +Hormone Support, +Bone Health |
-| >= 60 | `age_over_60` | +Cognitive, +Sarcopenia Prevention |
+### Phase 3: Admin-Import-Tool (30 Min)
 
-### Geschlecht
+**3.1 UI-Seite**
+- `/admin/import-matrix` Route
+- Datei-Upload oder Paste-Bereich fuer MD-Content
+- Preview der zu importierenden Daten
+- Matching-Report anzeigen
+- "Import starten" Button
 
-| Geschlecht | Flag | Auswirkung |
-|------------|------|------------|
-| `female` | `is_female` | +Iron (Menstruation), +Calcium, -Testosterone Boosters |
-| `male` | `is_male` | +Zinc, +Prostate Support (>50) |
+**3.2 Import-Logik**
+- Batch-UPDATE fuer alle gematchten Wirkstoffe
+- Fehlerbehandlung und Logging
+
+### Phase 4: Validierung (20 Min)
+
+**4.1 Test-Cases**
+- HMB: Natural vs TRT Score-Differenz pruefen
+- Elektrolyte: GLP-1 Synergie pruefen
+- Tongkat Ali: TRT-Malus pruefen
+
+**4.2 UI-Check**
+- ExpandableSupplementChip zeigt personalisierten Score
+- RelevanceScorePopover zeigt Gruende korrekt
 
 ---
 
-## 4. Erweiterte Matrix-Struktur
+## IV. DATEIEN ZU ERSTELLEN/AENDERN
 
-### Neue JSONB-Struktur
+### Neue Dateien
+| Datei | Zweck |
+|-------|-------|
+| `src/lib/matrixImportParser.ts` | MD-Parser + JSON-Extraktion |
+| `src/lib/matrixIngredientMatcher.ts` | Fuzzy Name Matching + Override Map |
+| `src/pages/admin/ImportMatrixPage.tsx` | Admin UI fuer Import |
 
-```json
-{
-  "phase_modifiers": { "0": 0, "1": 0, "2": 0, "3": 0 },
-  
-  "context_modifiers": {
-    "true_natural": 0,
-    "enhanced_no_trt": 0,
-    "on_trt": 0,
-    "on_glp1": 0
-  },
-  
-  "goal_modifiers": {
-    "fat_loss": 0,
-    "muscle_gain": 0,
-    "recomposition": 0,
-    "longevity": 0,
-    "maintenance": 0,
-    "performance": 0
-  },
-  
-  "calorie_modifiers": {
-    "in_deficit": 0,
-    "in_surplus": 0
-  },
-  
-  "peptide_class_modifiers": {
-    "gh_secretagogue": 0,
-    "healing": 0,
-    "longevity": 0,
-    "nootropic": 0,
-    "metabolic": 0,
-    "immune": 0,
-    "testo": 0,
-    "skin": 0
-  },
-  
-  "demographic_modifiers": {
-    "age_over_40": 0,
-    "age_over_50": 0,
-    "age_over_60": 0,
-    "is_female": 0,
-    "is_male": 0
-  },
-  
-  "bloodwork_triggers": {
-    "cortisol_high": 0,
-    "testosterone_low": 0,
-    "dhea_low": 0,
-    "hdl_low": 0,
-    "ldl_high": 0,
-    "triglycerides_high": 0,
-    "apob_high": 0,
-    "vitamin_d_low": 0,
-    "b12_low": 0,
-    "magnesium_low": 0,
-    "ferritin_high": 0,
-    "iron_low": 0,
-    "glucose_high": 0,
-    "hba1c_elevated": 0,
-    "insulin_high": 0,
-    "insulin_resistant": 0,
-    "inflammation_high": 0,
-    "homocysteine_high": 0,
-    "thyroid_slow": 0,
-    "thyroid_overactive": 0
-  },
-  
-  "compound_synergies": {
-    "retatrutide": 0,
-    "tirzepatide": 0,
-    "semaglutide": 0,
-    "cjc_1295": 0,
-    "ipamorelin": 0,
-    "bpc_157": 0,
-    "tb_500": 0
-  }
-}
-```
-
----
-
-## 5. Erweiterte UserRelevanceContext
-
-```typescript
-interface UserRelevanceContext {
-  // Bestehende Flags
-  isTrueNatural: boolean;
-  isEnhancedNoTRT: boolean;
-  isOnTRT: boolean;
-  isOnGLP1: boolean;
-  
-  // NEU: Kalorischer Status
-  isInDeficit: boolean;
-  isInSurplus: boolean;
-  
-  // NEU: Demografische Flags
-  ageOver40: boolean;
-  ageOver50: boolean;
-  ageOver60: boolean;
-  isFemale: boolean;
-  isMale: boolean;
-  
-  // NEU: Aktive Peptid-Klassen
-  activePeptideClasses: string[];  // ['gh_secretagogue', 'healing', etc.]
-  
-  // Bestehende Felder
-  phase: 0 | 1 | 2 | 3;
-  protocolModes: string[];
-  activePeptides: string[];
-  goal: string;
-  bloodworkFlags: string[];
-}
-```
-
----
-
-## 6. Erweiterte Score-Berechnung
-
-```typescript
-// In calculateRelevanceScore.ts - Neue Schritte
-
-// 7. Calorie Status Modifiers
-if (context.isInDeficit && matrix.calorie_modifiers?.in_deficit) {
-  const mod = matrix.calorie_modifiers.in_deficit;
-  score += mod;
-  if (mod > 0) reasons.push(`Defizit aktiv: +${mod}`);
-}
-if (context.isInSurplus && matrix.calorie_modifiers?.in_surplus) {
-  const mod = matrix.calorie_modifiers.in_surplus;
-  score += mod;
-  if (mod > 0) reasons.push(`Aufbauphase: +${mod}`);
-}
-
-// 8. Peptide Class Modifiers
-for (const peptideClass of context.activePeptideClasses) {
-  const mod = matrix.peptide_class_modifiers?.[peptideClass];
-  if (mod !== undefined && mod !== 0) {
-    score += mod;
-    const classLabel = getPeptideClassLabel(peptideClass);
-    reasons.push(`${classLabel} Protokoll: +${mod}`);
-  }
-}
-
-// 9. Demographic Modifiers
-if (context.ageOver40 && matrix.demographic_modifiers?.age_over_40) {
-  score += matrix.demographic_modifiers.age_over_40;
-  reasons.push(`Alter 40+: +${matrix.demographic_modifiers.age_over_40}`);
-}
-if (context.ageOver50 && matrix.demographic_modifiers?.age_over_50) {
-  score += matrix.demographic_modifiers.age_over_50;
-  reasons.push(`Alter 50+: +${matrix.demographic_modifiers.age_over_50}`);
-}
-if (context.isFemale && matrix.demographic_modifiers?.is_female) {
-  score += matrix.demographic_modifiers.is_female;
-  reasons.push(`Weiblich: +${matrix.demographic_modifiers.is_female}`);
-}
-```
-
----
-
-## 7. Beispiel-Matrizen mit allen Attributen
-
-### HMB (Muskelschutz) - Komplett
-
-```json
-{
-  "phase_modifiers": { "0": 2, "1": 0, "2": -1, "3": 0 },
-  "context_modifiers": {
-    "true_natural": 3,
-    "enhanced_no_trt": 5,
-    "on_trt": -4,
-    "on_glp1": 2
-  },
-  "goal_modifiers": {
-    "fat_loss": 2,
-    "muscle_gain": 1,
-    "recomposition": 2,
-    "longevity": 0,
-    "maintenance": 0
-  },
-  "calorie_modifiers": {
-    "in_deficit": 3,
-    "in_surplus": -1
-  },
-  "peptide_class_modifiers": {
-    "metabolic": 3,
-    "gh_secretagogue": 1,
-    "testo": -3
-  },
-  "demographic_modifiers": {
-    "age_over_40": 1,
-    "age_over_50": 2
-  },
-  "bloodwork_triggers": {},
-  "compound_synergies": {
-    "retatrutide": 3,
-    "tirzepatide": 2,
-    "semaglutide": 2
-  }
-}
-```
-
-### NMN (Longevity) - Komplett
-
-```json
-{
-  "phase_modifiers": { "0": 0, "1": 1, "2": 2, "3": 3 },
-  "context_modifiers": {
-    "true_natural": 0,
-    "enhanced_no_trt": 0,
-    "on_trt": 0,
-    "on_glp1": 0
-  },
-  "goal_modifiers": {
-    "longevity": 3,
-    "maintenance": 1,
-    "fat_loss": 0
-  },
-  "calorie_modifiers": {
-    "in_deficit": 0,
-    "in_surplus": 0
-  },
-  "peptide_class_modifiers": {
-    "longevity": 2,
-    "gh_secretagogue": 1
-  },
-  "demographic_modifiers": {
-    "age_over_40": 2,
-    "age_over_50": 3,
-    "age_over_60": 4
-  },
-  "bloodwork_triggers": {
-    "inflammation_high": 2,
-    "glucose_high": 1
-  },
-  "compound_synergies": {}
-}
-```
-
-### Eisen (Iron) - Komplett
-
-```json
-{
-  "phase_modifiers": { "0": 0, "1": 0, "2": 0, "3": 0 },
-  "context_modifiers": {},
-  "goal_modifiers": {
-    "fat_loss": 0,
-    "muscle_gain": 1,
-    "performance": 2
-  },
-  "calorie_modifiers": {
-    "in_deficit": 1
-  },
-  "peptide_class_modifiers": {},
-  "demographic_modifiers": {
-    "is_female": 3,
-    "is_male": -1
-  },
-  "bloodwork_triggers": {
-    "iron_low": 4,
-    "ferritin_high": -5
-  },
-  "compound_synergies": {}
-}
-```
-
----
-
-## 8. CSV-Template fuer Matrix-Import
-
-Alle 50+ Attribute als Spalten:
-
-```
-wirkstoff_name,phase_0,phase_1,phase_2,phase_3,true_natural,enhanced_no_trt,on_trt,on_glp1,fat_loss,muscle_gain,recomposition,longevity,maintenance,performance,in_deficit,in_surplus,gh_secretagogue,healing,longevity_class,nootropic,metabolic,immune,testo,skin,age_over_40,age_over_50,age_over_60,is_female,is_male,cortisol_high,testosterone_low,dhea_low,hdl_low,ldl_high,triglycerides_high,apob_high,vitamin_d_low,b12_low,magnesium_low,ferritin_high,iron_low,glucose_high,hba1c_elevated,insulin_high,insulin_resistant,inflammation_high,homocysteine_high,thyroid_slow,thyroid_overactive,retatrutide,tirzepatide,semaglutide,cjc_1295,ipamorelin,bpc_157,tb_500
-```
-
----
-
-## 9. Dateien zu aendern
-
-### Typ-Erweiterungen
+### Zu aendernde Dateien
 | Datei | Aenderung |
 |-------|-----------|
-| `src/types/relevanceMatrix.ts` | Erweiterte Matrix-Interfaces, neue Konstanten |
-
-### Hook-Erweiterungen  
-| Datei | Aenderung |
-|-------|-----------|
-| `src/hooks/useUserRelevanceContext.ts` | Demografie, Defizit, Peptid-Klassen laden |
-
-### Score-Berechnung
-| Datei | Aenderung |
-|-------|-----------|
-| `src/lib/calculateRelevanceScore.ts` | Neue Modifier-Kategorien verarbeiten |
-
-### UI-Anpassungen
-| Datei | Aenderung |
-|-------|-----------|
-| `src/components/supplements/RelevanceScorePopover.tsx` | Neue Labels fuer Demografie/Peptide |
+| `src/types/relevanceMatrix.ts` | Goals erweitern (cognitive, sleep, gut_health) |
+| `src/lib/calculateRelevanceScore.ts` | Neue Goals verarbeiten |
+| `src/components/supplements/RelevanceScorePopover.tsx` | Neue Goal-Labels |
+| `src/App.tsx` | Route fuer /admin/import-matrix |
 
 ---
 
-## 10. Vollstaendige Attribut-Liste (50 Attribute)
+## V. IMPORT-DATEN VALIDIERUNG
 
-### Phasen (4)
-`phase_0`, `phase_1`, `phase_2`, `phase_3`
+### Stichproben-Analyse
 
-### Kontext (4)
-`true_natural`, `enhanced_no_trt`, `on_trt`, `on_glp1`
+**Vitamin D3:**
+- Import base_score: 9.0
+- DB impact_score: 9.0 (falls vorhanden) 
+- phase_modifiers: {"0": 2.0, "1": 1.0, "2": 0.0, "3": 0.0} ✅
+- bloodwork_triggers: {"vitamin_d_low": 4.0} ✅
 
-### Ziele (6)
-`fat_loss`, `muscle_gain`, `recomposition`, `longevity`, `maintenance`, `performance`
+**HMB:**
+- Import base_score: 7.0
+- context_modifiers: {"true_natural": 3.0, "enhanced_no_trt": 5.0, "on_trt": -4.0} ✅
+- compound_synergies: {"retatrutide": 4.0} ✅
+- calorie_modifiers: {"in_deficit": 3.0} ✅
 
-### Kalorien (2)
-`in_deficit`, `in_surplus`
+**Tongkat Ali:**
+- context_modifiers: {"true_natural": 3.0, "on_trt": -5.0} ✅
+- demographic_modifiers: {"is_female": -3.0, "is_male": 1.5} ✅
+- warnings: {"on_trt": "KOMPLETT REDUNDANT..."} -> explanation_templates
 
-### Peptid-Klassen (8)
-`gh_secretagogue`, `healing`, `longevity_class`, `nootropic`, `metabolic`, `immune`, `testo`, `skin`
-
-### Demografie (5)
-`age_over_40`, `age_over_50`, `age_over_60`, `is_female`, `is_male`
-
-### Blutwerte (20)
-`cortisol_high`, `testosterone_low`, `dhea_low`, `hdl_low`, `ldl_high`, `triglycerides_high`, `apob_high`, `vitamin_d_low`, `b12_low`, `magnesium_low`, `ferritin_high`, `iron_low`, `glucose_high`, `hba1c_elevated`, `insulin_high`, `insulin_resistant`, `inflammation_high`, `homocysteine_high`, `thyroid_slow`, `thyroid_overactive`
-
-### Compound-Synergien (7)
-`retatrutide`, `tirzepatide`, `semaglutide`, `cjc_1295`, `ipamorelin`, `bpc_157`, `tb_500`
-
-**Gesamt: 56 Attribute pro Wirkstoff**
+### Qualitaets-Check: BESTANDEN
+Die Daten sind konsistent und folgen dem definierten Schema. Die Modifikator-Werte sind plausibel und spiegeln die pharmakologische Logik korrekt wider.
 
 ---
 
-## 11. Aufwand
+## VI. GESCHAETZTER AUFWAND
 
-| Task | Zeit |
-|------|------|
-| Typ-Erweiterung (relevanceMatrix.ts) | 20 min |
-| Hook-Erweiterung (useUserRelevanceContext.ts) | 45 min |
-| Score-Berechnung erweitern | 30 min |
-| UI Labels aktualisieren | 15 min |
-| Testing | 30 min |
+| Phase | Task | Zeit |
+|-------|------|------|
+| 1 | Typ-Erweiterungen | 15 Min |
+| 2 | Import-Utilities | 45 Min |
+| 3 | Admin-Import-Tool | 30 Min |
+| 4 | Validierung & Test | 20 Min |
+| **Total** | | **~2 Stunden** |
 
-**Gesamt: ~2.5 Stunden**
+---
+
+## VII. OFFENE PUNKTE
+
+### Vor Import zu klaeren:
+
+1. **base_score vs impact_score**: Soll der Import-`base_score` den bestehenden `impact_score` ueberschreiben oder nur die Matrix befuellen?
+   - Empfehlung: Matrix befuellen, impact_score beibehalten
+
+2. **Nicht-gematchte Wirkstoffe**: 39 Wirkstoffe im Import haben keine DB-Entsprechung
+   - Option A: Ignorieren
+   - Option B: Als neue Eintraege anlegen (erfordert mehr Felder)
+   - Empfehlung: Option A (erstmal nur Matrix fuer bestehende)
+
+3. **Duplikate**: Manche DB-Eintraege sind Varianten (z.B. "Ashwagandha" vs "Ashwagandha KSM-66")
+   - Empfehlung: Beide mit derselben Matrix befuellen
+
