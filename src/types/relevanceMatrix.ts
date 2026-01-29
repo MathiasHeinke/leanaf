@@ -1,5 +1,5 @@
 // =====================================================
-// ARES Matrix-Scoring: Relevance Matrix Types
+// ARES Matrix-Scoring: Relevance Matrix Types (Extended v2)
 // =====================================================
 
 /**
@@ -21,6 +21,24 @@ export interface RelevanceMatrix {
   // Goal-based modifiers
   goal_modifiers?: Record<string, number>;
   
+  // Caloric status modifiers
+  calorie_modifiers?: {
+    in_deficit?: number;        // User is in caloric deficit
+    in_surplus?: number;        // User is in caloric surplus
+  };
+  
+  // Peptide class modifiers (by functional category)
+  peptide_class_modifiers?: Record<string, number>;
+  
+  // Demographic modifiers
+  demographic_modifiers?: {
+    age_over_40?: number;
+    age_over_50?: number;
+    age_over_60?: number;
+    is_female?: number;
+    is_male?: number;
+  };
+  
   // Bloodwork-triggered modifiers
   bloodwork_triggers?: Record<string, number>;
   
@@ -41,6 +59,20 @@ export interface UserRelevanceContext {
   isEnhancedNoTRT: boolean;   // Peptides active WITHOUT TRT
   isOnTRT: boolean;           // TRT/HRT active (regardless of peptides)
   isOnGLP1: boolean;          // GLP-1 agonist active (Reta/Tirze/Sema)
+  
+  // Caloric status
+  isInDeficit: boolean;       // Currently in caloric deficit
+  isInSurplus: boolean;       // Currently in caloric surplus
+  
+  // Demographic flags
+  ageOver40: boolean;
+  ageOver50: boolean;
+  ageOver60: boolean;
+  isFemale: boolean;
+  isMale: boolean;
+  
+  // Active peptide classes
+  activePeptideClasses: string[];  // ['gh_secretagogue', 'healing', etc.]
   
   // Raw data
   phase: 0 | 1 | 2 | 3;
@@ -131,3 +163,165 @@ export const TRT_AGENTS = [
   'sustanon',
   'nebido',
 ];
+
+// =====================================================
+// Peptide Class System
+// =====================================================
+
+export const PEPTIDE_CATEGORIES = [
+  'gh_secretagogue',
+  'healing',
+  'longevity',
+  'nootropic',
+  'metabolic',
+  'immune',
+  'testo',
+  'skin',
+] as const;
+
+export type PeptideCategory = typeof PEPTIDE_CATEGORIES[number];
+
+/**
+ * Mapping from peptide names to functional categories
+ * Normalized to lowercase with underscores
+ */
+export const PEPTIDE_TO_CATEGORY: Record<string, PeptideCategory> = {
+  // GH Secretagogues
+  'cjc_1295': 'gh_secretagogue',
+  'cjc-1295': 'gh_secretagogue',
+  'cjc1295': 'gh_secretagogue',
+  'ipamorelin': 'gh_secretagogue',
+  'tesamorelin': 'gh_secretagogue',
+  'mk_677': 'gh_secretagogue',
+  'mk-677': 'gh_secretagogue',
+  'mk677': 'gh_secretagogue',
+  'sermorelin': 'gh_secretagogue',
+  'ghrp_6': 'gh_secretagogue',
+  'ghrp-6': 'gh_secretagogue',
+  'ghrp_2': 'gh_secretagogue',
+  'ghrp-2': 'gh_secretagogue',
+  'hexarelin': 'gh_secretagogue',
+  
+  // Healing
+  'bpc_157': 'healing',
+  'bpc-157': 'healing',
+  'bpc157': 'healing',
+  'tb_500': 'healing',
+  'tb-500': 'healing',
+  'tb500': 'healing',
+  'thymosin_beta_4': 'healing',
+  'pentadecapeptide': 'healing',
+  
+  // Longevity
+  'epitalon': 'longevity',
+  'epithalon': 'longevity',
+  'thymalin': 'longevity',
+  'ss_31': 'longevity',
+  'ss-31': 'longevity',
+  'mots_c': 'longevity',
+  'mots-c': 'longevity',
+  'humanin': 'longevity',
+  
+  // Nootropic
+  'semax': 'nootropic',
+  'selank': 'nootropic',
+  'dihexa': 'nootropic',
+  'p21': 'nootropic',
+  'na_semax': 'nootropic',
+  'na-semax': 'nootropic',
+  'cerebrolysin': 'nootropic',
+  
+  // Metabolic (GLP-1 agonists)
+  'retatrutide': 'metabolic',
+  'reta': 'metabolic',
+  'tirzepatide': 'metabolic',
+  'tirze': 'metabolic',
+  'mounjaro': 'metabolic',
+  'zepbound': 'metabolic',
+  'semaglutide': 'metabolic',
+  'ozempic': 'metabolic',
+  'wegovy': 'metabolic',
+  'liraglutide': 'metabolic',
+  'saxenda': 'metabolic',
+  'victoza': 'metabolic',
+  'aod_9604': 'metabolic',
+  'aod-9604': 'metabolic',
+  'fragment_176_191': 'metabolic',
+  
+  // Immune
+  'thymosin_alpha_1': 'immune',
+  'ta1': 'immune',
+  'll_37': 'immune',
+  'll-37': 'immune',
+  
+  // Testosterone-related
+  'testosterone': 'testo',
+  'kisspeptin': 'testo',
+  'kisspeptin_10': 'testo',
+  'gonadorelin': 'testo',
+  'hcg': 'testo',
+  
+  // Skin/Cosmetic
+  'ghk_cu': 'skin',
+  'ghk-cu': 'skin',
+  'copper_peptide': 'skin',
+  'matrixyl': 'skin',
+  'snap_8': 'skin',
+  'snap-8': 'skin',
+  'argireline': 'skin',
+  'melanotan': 'skin',
+  'melanotan_ii': 'skin',
+  'melanotan_2': 'skin',
+  'pt_141': 'skin',
+  'pt-141': 'skin',
+};
+
+/**
+ * Get the category for a peptide name
+ */
+export function getPeptideCategory(peptideName: string): PeptideCategory | null {
+  const normalized = peptideName.toLowerCase().replace(/[\s-]/g, '_');
+  return PEPTIDE_TO_CATEGORY[normalized] || null;
+}
+
+/**
+ * Get all categories for a list of peptide names
+ */
+export function getPeptideCategories(peptideNames: string[]): PeptideCategory[] {
+  const categories = new Set<PeptideCategory>();
+  for (const name of peptideNames) {
+    const category = getPeptideCategory(name);
+    if (category) {
+      categories.add(category);
+    }
+  }
+  return Array.from(categories);
+}
+
+// =====================================================
+// Labels for UI Display
+// =====================================================
+
+export const PEPTIDE_CLASS_LABELS: Record<PeptideCategory, string> = {
+  gh_secretagogue: 'GH-Stimulation',
+  healing: 'Heilung',
+  longevity: 'Langlebigkeit',
+  nootropic: 'Nootropika',
+  metabolic: 'Stoffwechsel',
+  immune: 'Immunsystem',
+  testo: 'Testosteron',
+  skin: 'Haut/Kosmetik',
+};
+
+export const DEMOGRAPHIC_LABELS: Record<string, string> = {
+  age_over_40: 'Alter 40+',
+  age_over_50: 'Alter 50+',
+  age_over_60: 'Alter 60+',
+  is_female: 'Weiblich',
+  is_male: 'Männlich',
+};
+
+export const CALORIE_STATUS_LABELS: Record<string, string> = {
+  in_deficit: 'Kaloriendefizit',
+  in_surplus: 'Kalorienüberschuss',
+};

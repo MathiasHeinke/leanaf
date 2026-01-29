@@ -1,5 +1,5 @@
 // =====================================================
-// ARES Matrix-Scoring: Relevance Score Calculation Engine
+// ARES Matrix-Scoring: Relevance Score Calculation Engine (Extended v2)
 // =====================================================
 
 import type { 
@@ -7,6 +7,7 @@ import type {
   UserRelevanceContext, 
   RelevanceScoreResult 
 } from '@/types/relevanceMatrix';
+import { PEPTIDE_CLASS_LABELS } from '@/types/relevanceMatrix';
 
 /**
  * Calculate personalized relevance score for a supplement
@@ -15,8 +16,11 @@ import type {
  * 1. Phase modifiers (additive)
  * 2. Context modifiers (exclusive: TRT > Enhanced > Natural, then GLP-1 additive)
  * 3. Goal modifiers (additive)
- * 4. Bloodwork triggers (additive)
- * 5. Compound synergies (additive)
+ * 4. Calorie status modifiers (additive)
+ * 5. Peptide class modifiers (additive)
+ * 6. Demographic modifiers (additive)
+ * 7. Bloodwork triggers (additive)
+ * 8. Compound synergies (additive)
  * 
  * @param baseImpactScore - The static impact_score from supplement_database
  * @param matrix - The relevance_matrix JSONB from supplement_database
@@ -92,23 +96,86 @@ export function calculateRelevanceScore(
     reasons.push(`Ziel ${goalLabel}: ${mod > 0 ? '+' : ''}${mod}`);
   }
   
-  // 5. Bloodwork Triggers
+  // 5. Calorie Status Modifiers
+  if (context.isInDeficit && matrix.calorie_modifiers?.in_deficit !== undefined) {
+    const mod = matrix.calorie_modifiers.in_deficit;
+    if (mod !== 0) {
+      score += mod;
+      reasons.push(`Defizit aktiv: ${mod > 0 ? '+' : ''}${mod}`);
+    }
+  }
+  if (context.isInSurplus && matrix.calorie_modifiers?.in_surplus !== undefined) {
+    const mod = matrix.calorie_modifiers.in_surplus;
+    if (mod !== 0) {
+      score += mod;
+      reasons.push(`Aufbauphase: ${mod > 0 ? '+' : ''}${mod}`);
+    }
+  }
+  
+  // 6. Peptide Class Modifiers
+  for (const peptideClass of context.activePeptideClasses) {
+    const mod = matrix.peptide_class_modifiers?.[peptideClass];
+    if (mod !== undefined && mod !== 0) {
+      score += mod;
+      const classLabel = PEPTIDE_CLASS_LABELS[peptideClass as keyof typeof PEPTIDE_CLASS_LABELS] || peptideClass;
+      reasons.push(`${classLabel} Protokoll: ${mod > 0 ? '+' : ''}${mod}`);
+    }
+  }
+  
+  // 7. Demographic Modifiers
+  if (context.ageOver60 && matrix.demographic_modifiers?.age_over_60 !== undefined) {
+    const mod = matrix.demographic_modifiers.age_over_60;
+    if (mod !== 0) {
+      score += mod;
+      reasons.push(`Alter 60+: ${mod > 0 ? '+' : ''}${mod}`);
+    }
+  } else if (context.ageOver50 && matrix.demographic_modifiers?.age_over_50 !== undefined) {
+    const mod = matrix.demographic_modifiers.age_over_50;
+    if (mod !== 0) {
+      score += mod;
+      reasons.push(`Alter 50+: ${mod > 0 ? '+' : ''}${mod}`);
+    }
+  } else if (context.ageOver40 && matrix.demographic_modifiers?.age_over_40 !== undefined) {
+    const mod = matrix.demographic_modifiers.age_over_40;
+    if (mod !== 0) {
+      score += mod;
+      reasons.push(`Alter 40+: ${mod > 0 ? '+' : ''}${mod}`);
+    }
+  }
+  
+  // Gender modifiers (additive, not exclusive)
+  if (context.isFemale && matrix.demographic_modifiers?.is_female !== undefined) {
+    const mod = matrix.demographic_modifiers.is_female;
+    if (mod !== 0) {
+      score += mod;
+      reasons.push(`Weiblich: ${mod > 0 ? '+' : ''}${mod}`);
+    }
+  }
+  if (context.isMale && matrix.demographic_modifiers?.is_male !== undefined) {
+    const mod = matrix.demographic_modifiers.is_male;
+    if (mod !== 0) {
+      score += mod;
+      reasons.push(`Männlich: ${mod > 0 ? '+' : ''}${mod}`);
+    }
+  }
+  
+  // 8. Bloodwork Triggers
   for (const flag of context.bloodworkFlags) {
     const mod = matrix.bloodwork_triggers?.[flag];
     if (mod !== undefined && mod !== 0) {
       score += mod;
       const flagLabel = getBloodworkFlagLabel(flag);
-      reasons.push(`Blutwert ${flagLabel}: +${mod}`);
+      reasons.push(`Blutwert ${flagLabel}: ${mod > 0 ? '+' : ''}${mod}`);
     }
   }
   
-  // 6. Compound Synergies
+  // 9. Compound Synergies
   for (const peptide of context.activePeptides) {
     const normalizedName = peptide.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const mod = matrix.compound_synergies?.[normalizedName];
     if (mod !== undefined && mod !== 0) {
       score += mod;
-      reasons.push(`${peptide} Synergie: +${mod}`);
+      reasons.push(`${peptide} Synergie: ${mod > 0 ? '+' : ''}${mod}`);
     }
   }
   
