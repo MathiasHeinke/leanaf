@@ -1,582 +1,305 @@
 
 
-# Phase 2: ARES Live Workout Companion
+# Plan: KI-Fallback für Training Parser
 
 ## Zusammenfassung
 
-ARES wird zum interaktiven Workout-Coach, der live durch das Training führt, Übung für Übung mit Progression-Vorschlägen, Zeitstempeln und automatischer Speicherung in Layer 2 + Layer 3.
+Implementierung eines "✨ Mit KI prüfen" Buttons, der bei fehlgeschlagenem Regex-Parsing **Gemini 3 Flash** aufruft, um natürlichsprachliche Eingaben wie `"goblet squad: 3x 8x mit 14kg Hantel"` in strukturierte Daten umzuwandeln.
 
 ---
 
-## Architektur-Überblick
+## Architektur
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                         USER FLOW (Mobile Chat)                              │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  User: "Start Push Day"                                                      │
-│         ↓                                                                    │
-│  ARES: [ruft start_live_workout Tool auf]                                    │
-│         ↓                                                                    │
-│  ┌──────────────────────────────────────────────────────────────────────┐    │
-│  │  LiveWorkoutBanner (sticky oben im Chat)                              │   │
-│  │  Push Day • 2/6 Übungen • 12:34                                       │   │
-│  │  ━━━━━━━━━━━━━○○○○                                                    │   │
-│  └──────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ┌──────────────────────────────────────────────────────────────────────┐    │
-│  │  LiveExerciseCard (aktuelle Übung)                                    │   │
-│  │                                                                       │   │
-│  │  💪 Bankdrücken                               Übung 1/6              │   │
-│  │  ─────────────────────────────────────────────────────────────       │   │
-│  │  Letztes Mal: 77.5kg × 10 × 4 Sets                                   │   │
-│  │  Ziel heute:  80kg × 10 × 4 Sets (+2.5kg)                            │   │
-│  │                                                                       │   │
-│  │  ┌─────────────────────────────────────────────────────────────┐     │   │
-│  │  │  [–] [ 80 ] [+] kg    [–] [ 10 ] [+] ×    RPE [ 7 ]        │     │   │
-│  │  └─────────────────────────────────────────────────────────────┘     │   │
-│  │                                                                       │   │
-│  │  [✓ FERTIG]                                      [⏭ Skip]            │   │
-│  └──────────────────────────────────────────────────────────────────────┘    │
-│                                                                              │
-│  ARES: "Stark! 80kg geschafft 💪 Weiter mit Schulterdrücken..."             │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    TrainingNotesInput.tsx                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Textarea: "1. goblet squad: 3x 8x mit 14kg Hantel..."                  │
+│                                                                         │
+│  📊 Erkannt:                                                            │
+│  ⚠️ Keine gültigen Übungen erkannt.                                     │
+│                                                                         │
+│  [✨ Mit KI prüfen]  ← NEU: Erscheint wenn exercises.length === 0       │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+
+                                  │ Klick
+                                  ▼
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│               Edge Function: training-ai-parser                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. Input: { raw_text, use_ai: true }                                   │
+│                                                                         │
+│  2. Gemini 3 Flash via Lovable AI Gateway                               │
+│     → Tool-Calling für strukturierte JSON-Ausgabe                       │
+│     → parse_training_log Tool Definition                                │
+│                                                                         │
+│  3. Output: Strukturierte Übungsliste                                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Technische Komponenten
+## Implementierung
 
-### 1. State Management: `useLiveWorkout.ts`
+### 1. Edge Function erweitern: `training-ai-parser/index.ts`
 
-**Datei:** `src/hooks/useLiveWorkout.ts`
+**Neue Eingabe-Parameter:**
+- `use_ai: boolean` - Erzwingt KI-Parsing
 
-**Features:**
-- LocalStorage-Persistenz (crash-safe)
-- Server-Sync bei Übungswechsel
-- Recovery-Dialog bei App-Neustart
-- Automatische Progression (+2.5kg wenn RPE < 8)
+**Neue Funktion `parseWithGemini()`:**
 
-**State-Struktur:**
 ```typescript
-interface LiveWorkoutState {
-  session_id: string;
-  status: 'planning' | 'active' | 'paused' | 'completed';
-  workout_type: string;                    // push, pull, legs, etc.
-  
-  exercises: LiveExercise[];               // Geplante Übungen
-  current_exercise_index: number;          // Aktueller Index
-  
-  session_started_at: string;              // ISO timestamp
-  current_exercise_started_at: string;     // Für Dauer-Tracking
-  
-  completed_exercises: CompletedExercise[]; // Ergebnisse
-  last_saved_at: string;                   // Für Sync-Check
-}
-
-interface LiveExercise {
-  name: string;
-  normalized_name: string;
-  exercise_id?: string;                    // DB-Match
-  planned_sets: number;
-  planned_reps: number;
-  planned_weight_kg: number;
-  planned_rpe: number;
-  last_performance?: {                     // Aus exercise_sets geladen
-    weight_kg: number;
-    reps: number;
-    rpe: number;
-    date: string;
-  };
-}
-
-interface CompletedExercise {
-  exercise_index: number;
-  actual_sets: number;
-  actual_reps: number;
-  actual_weight_kg: number;
-  actual_rpe: number;
-  started_at: string;
-  completed_at: string;
-  duration_seconds: number;
-}
-```
-
-**Hook-API:**
-```typescript
-export function useLiveWorkout() {
-  return {
-    state: LiveWorkoutState | null;
-    isActive: boolean;
-    isRecovered: boolean;           // True wenn von LocalStorage geladen
-    currentExercise: LiveExercise | null;
-    progress: { current: number; total: number; percent: number };
-    
-    // Actions
-    startSession: (plan: LiveWorkoutPlan) => void;
-    completeExercise: (result: ExerciseResult) => Promise<void>;
-    skipExercise: () => void;
-    pauseSession: () => void;
-    resumeSession: () => void;
-    finishSession: () => Promise<void>;
-    discardSession: () => void;
-  };
-}
-```
-
-**Persistenz-Logik:**
-```typescript
-// Bei jeder Änderung: Sofort LocalStorage
-useEffect(() => {
-  if (state) {
-    localStorage.setItem('ares_live_workout', JSON.stringify(state));
+async function parseWithGemini(rawText: string): Promise<ParseResult | null> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    console.warn('[TRAINING-AI-PARSER] No LOVABLE_API_KEY');
+    return null;
   }
-}, [state]);
 
-// Bei App-Start: Recovery-Check
-useEffect(() => {
-  const saved = localStorage.getItem('ares_live_workout');
-  if (saved) {
-    const parsed = JSON.parse(saved);
-    if (parsed.status === 'active' || parsed.status === 'paused') {
-      setIsRecovered(true);
-      setState(parsed);
-    }
-  }
-}, []);
-```
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-3-flash-preview',
+      messages: [
+        {
+          role: 'system',
+          content: `Du bist ein Fitness-Experte. Parse Trainings-Logs in strukturierte Daten.
 
----
-
-### 2. UI: `LiveExerciseCard.tsx`
-
-**Datei:** `src/components/ares/cards/LiveExerciseCard.tsx`
-
-**Mobile-First Design:**
-- Max 200px Höhe
-- Touch-optimierte Stepper (min 44px touch targets)
-- Große "FERTIG" Button
-- Swipe-Gesten (optional in Phase 2b)
-
-**Struktur:**
-```typescript
-interface LiveExerciseCardProps {
-  exercise: LiveExercise;
-  exerciseNumber: number;
-  totalExercises: number;
-  onComplete: (result: ExerciseResult) => void;
-  onSkip: () => void;
-  disabled?: boolean;
-}
-
-// Inline-State für Eingaben
-const [weight, setWeight] = useState(exercise.planned_weight_kg);
-const [reps, setReps] = useState(exercise.planned_reps);
-const [sets, setSets] = useState(exercise.planned_sets);
-const [rpe, setRpe] = useState(exercise.planned_rpe);
-```
-
-**UI-Komponenten:**
-```text
-┌─────────────────────────────────────────────────────────┐
-│  Header: Übungsname + Badge (1/6)                       │
-│  ─────────────────────────────────────────────────────  │
-│  Last Performance: "77.5kg × 10 × 4 (RPE 7)"            │
-│  Progression Hint: "+2.5kg empfohlen" (grün)            │
-│                                                         │
-│  ┌────────────────────────────────────────────────────┐ │
-│  │  Weight Stepper: [–] [ 80.0 ] [+] kg               │ │
-│  │  Reps Stepper:   [–] [  10  ] [+] ×                │ │
-│  │  Sets Stepper:   [–] [   4  ] [+] Sets             │ │
-│  │  RPE Slider:     ○━━━━━●━━━━○ 7                    │ │
-│  └────────────────────────────────────────────────────┘ │
-│                                                         │
-│  [✓ FERTIG - Nächste Übung]              [⏭ Skip]      │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-### 3. Progress Banner: `LiveWorkoutBanner.tsx`
-
-**Datei:** `src/components/ares/LiveWorkoutBanner.tsx`
-
-**Sticky am oberen Chat-Rand während aktivem Workout:**
-
-```typescript
-interface LiveWorkoutBannerProps {
-  workoutType: string;
-  progress: { current: number; total: number };
-  elapsedTime: string;             // "12:34"
-  onPause: () => void;
-  onExpand: () => void;            // Zeigt Übungsliste
-}
-```
-
-**Kompaktes Design:**
-```text
-┌─────────────────────────────────────────────────────────┐
-│  🔥 Push Day • 2/6 • 12:34            [⏸] [≡]          │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━○○○○○                      │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-### 4. ARES Tool: `start_live_workout`
-
-**Erweiterung in `coach-orchestrator-enhanced/index.ts`:**
-
-**Neue Tool-Definition:**
-```typescript
-{
-  type: "function",
-  function: {
-    name: "start_live_workout",
-    description: "Startet eine interaktive Live-Workout-Session. ARES führt den User Übung für Übung durch das Training.",
-    parameters: {
-      type: "object",
-      properties: {
-        workout_type: {
-          type: "string",
-          enum: ["push", "pull", "legs", "upper", "lower", "full_body"],
-          description: "Art des Workouts"
+Regeln:
+- Erkenne Übungsnamen auch bei Tippfehlern ("goblet squad" → "Goblet Squat")
+- "3x 8x" = 3 Sets à 8 Wiederholungen
+- "je Seite" / "pro Seite" = unilateral (Gewicht pro Arm/Bein)
+- "KH" = Kurzhantel, "LH" = Langhantel
+- Kein RPE angegeben → setze auf 7
+- Gewichte immer in kg`
         },
-        exercise_count: {
-          type: "number",
-          description: "Anzahl der Übungen (3-8, default: 5)"
-        },
-        target_duration_minutes: {
-          type: "number",
-          description: "Zieldauer in Minuten (default: 45)"
-        },
-        use_last_workout: {
-          type: "boolean",
-          description: "True = Übungen vom letzten gleichen Workout übernehmen"
+        { role: 'user', content: `Parse diesen Trainings-Log:\n\n${rawText}` }
+      ],
+      tools: [{
+        type: 'function',
+        function: {
+          name: 'parse_training_log',
+          description: 'Gibt geparste Übungen als strukturierte Daten zurück',
+          parameters: {
+            type: 'object',
+            properties: {
+              exercises: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string', description: 'Normalisierter Übungsname' },
+                    sets: { type: 'number', description: 'Anzahl Sets' },
+                    reps: { type: 'number', description: 'Wiederholungen pro Set' },
+                    weight_kg: { type: 'number', description: 'Gewicht in kg' },
+                    rpe: { type: 'number', description: 'RPE 1-10' },
+                    notes: { type: 'string', description: 'Zusätzliche Notizen' }
+                  },
+                  required: ['name', 'sets', 'reps', 'weight_kg']
+                }
+              }
+            },
+            required: ['exercises']
+          }
         }
-      },
-      required: ["workout_type"]
-    }
-  }
-}
-```
-
-**Tool-Handler:**
-```typescript
-async function handleStartLiveWorkout(
-  userId: string, 
-  supaClient: any, 
-  args: any
-): Promise<{ success: boolean; result: any }> {
-  const workoutType = args.workout_type;
-  const exerciseCount = args.exercise_count || 5;
-  
-  // 1. Lade letzte Performance für diesen Workout-Typ
-  const { data: lastWorkout } = await supaClient
-    .from('exercise_sessions')
-    .select(`
-      id, date,
-      exercise_sets (
-        exercise_id, weight_kg, reps, rpe, set_number,
-        exercises (name, muscle_groups)
-      )
-    `)
-    .eq('user_id', userId)
-    .eq('workout_type', workoutType)
-    .order('date', { ascending: false })
-    .limit(1)
-    .single();
-
-  // 2. Generiere Trainingsplan mit Progression
-  const exercises = generateLiveWorkoutPlan(
-    workoutType, 
-    exerciseCount, 
-    lastWorkout?.exercise_sets || []
-  );
-
-  // 3. Berechne Progressionen
-  for (const exercise of exercises) {
-    if (exercise.last_performance) {
-      // +2.5kg wenn letztes RPE < 8
-      if ((exercise.last_performance.rpe || 7) < 8) {
-        exercise.planned_weight_kg = exercise.last_performance.weight_kg + 2.5;
-        exercise.progression_hint = "+2.5kg (RPE war " + exercise.last_performance.rpe + ")";
-      } else {
-        exercise.planned_weight_kg = exercise.last_performance.weight_kg;
-        exercise.progression_hint = "Gewicht halten (RPE war " + exercise.last_performance.rpe + ")";
-      }
-    }
-  }
-
-  return {
-    success: true,
-    result: {
-      tool: "start_live_workout",
-      workout_type: workoutType,
-      session_id: crypto.randomUUID(),
-      exercises,
-      estimated_duration_minutes: exerciseCount * 7,
-      ares_message: "Los geht's mit deinem " + workoutType.toUpperCase() + " Day! " + 
-                    "Erste Übung: " + exercises[0].name + ". " +
-                    (exercises[0].progression_hint || "")
-    }
-  };
-}
-
-function generateLiveWorkoutPlan(
-  workoutType: string, 
-  count: number, 
-  lastSets: any[]
-): LiveExercise[] {
-  const templates: Record<string, string[]> = {
-    push: ["Bankdrücken", "Schrägbankdrücken", "Schulterdrücken", "Seitheben", "Trizeps Dips", "Trizeps Pushdown"],
-    pull: ["Klimmzüge", "Rudern", "Latzug", "Face Pulls", "Bizeps Curls", "Hammer Curls"],
-    legs: ["Kniebeugen", "Beinpresse", "Rumänisches Kreuzheben", "Beinstrecker", "Beinbeuger", "Wadenheben"],
-    upper: ["Bankdrücken", "Rudern", "Schulterdrücken", "Latzug", "Bizeps Curls", "Trizeps"],
-    lower: ["Kniebeugen", "Rumänisches Kreuzheben", "Beinpresse", "Beinbeuger", "Wadenheben", "Hip Thrusts"],
-    full_body: ["Kniebeugen", "Bankdrücken", "Rudern", "Schulterdrücken", "Klimmzüge", "Kreuzheben"]
-  };
-
-  const exerciseNames = templates[workoutType] || templates.full_body;
-  
-  return exerciseNames.slice(0, count).map(name => {
-    // Suche letzte Performance für diese Übung
-    const lastForExercise = lastSets.find(s => 
-      s.exercises?.name?.toLowerCase() === name.toLowerCase()
-    );
-    
-    return {
-      name,
-      normalized_name: name,
-      planned_sets: 4,
-      planned_reps: 10,
-      planned_weight_kg: lastForExercise?.weight_kg || 40,
-      planned_rpe: 7,
-      last_performance: lastForExercise ? {
-        weight_kg: lastForExercise.weight_kg,
-        reps: lastForExercise.reps,
-        rpe: lastForExercise.rpe,
-        date: "Letzte Session"
-      } : undefined
-    };
+      }],
+      tool_choice: { type: 'function', function: { name: 'parse_training_log' } }
+    })
   });
+
+  // Parse response und konvertiere in internes Format
+  // ...
 }
 ```
 
----
-
-### 5. Chat-Integration: `AresChat.tsx`
-
-**Änderungen:**
+**Erweiterte Hauptlogik:**
 
 ```typescript
-// Import des Live Workout Hooks
-import { useLiveWorkout } from '@/hooks/useLiveWorkout';
-import { LiveExerciseCard } from './cards/LiveExerciseCard';
-import { LiveWorkoutBanner } from './LiveWorkoutBanner';
+const { raw_text, training_type = 'strength', persist = false, use_ai = false } = await req.json();
 
-export default function AresChat({ ... }: AresChatProps) {
-  const liveWorkout = useLiveWorkout();
+// Regex-Pass
+let parseResult = parseTrainingText(raw_text);
+
+// KI-Fallback wenn: explizit angefordert ODER keine Übungen erkannt
+if (use_ai || parseResult.exercises.length === 0) {
+  console.log('[TRAINING-AI-PARSER] Trying AI fallback...');
+  const aiResult = await parseWithGemini(raw_text);
   
-  // Tool-Response Detection
-  useEffect(() => {
-    // Wenn ARES start_live_workout Tool aufruft, Session starten
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg?.role === 'assistant' && lastMsg.toolResult?.tool === 'start_live_workout') {
-      liveWorkout.startSession(lastMsg.toolResult);
-    }
-  }, [messages]);
-  
-  // Recovery Dialog
-  useEffect(() => {
-    if (liveWorkout.isRecovered && !hasShownRecovery) {
-      // Toast oder Dialog zeigen
-      toast.info("Unbeendetes Workout gefunden", {
-        description: `${liveWorkout.state?.workout_type} - ${liveWorkout.progress.current}/${liveWorkout.progress.total} Übungen`,
-        action: {
-          label: "Fortsetzen",
-          onClick: () => liveWorkout.resumeSession()
-        },
-        cancel: {
-          label: "Verwerfen",
-          onClick: () => liveWorkout.discardSession()
-        }
-      });
-    }
-  }, [liveWorkout.isRecovered]);
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Sticky Banner während Live Workout */}
-      {liveWorkout.isActive && (
-        <LiveWorkoutBanner 
-          workoutType={liveWorkout.state.workout_type}
-          progress={liveWorkout.progress}
-          onPause={liveWorkout.pauseSession}
-        />
-      )}
-      
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto">
-        {messages.map(msg => ...)}
-        
-        {/* Live Exercise Card nach ARES Nachrichten */}
-        {liveWorkout.isActive && liveWorkout.currentExercise && (
-          <LiveExerciseCard
-            exercise={liveWorkout.currentExercise}
-            exerciseNumber={liveWorkout.progress.current}
-            totalExercises={liveWorkout.progress.total}
-            onComplete={async (result) => {
-              await liveWorkout.completeExercise(result);
-              // ARES generiert automatisch Motivations-Nachricht
-            }}
-            onSkip={liveWorkout.skipExercise}
-          />
-        )}
-      </div>
-      
-      {/* Input */}
-      <EnhancedChatInput ... />
-    </div>
-  );
-}
-```
-
----
-
-### 6. Dual-Write bei Workout-Abschluss
-
-**Wiederverwendung der training-ai-parser Logik:**
-
-```typescript
-// In useLiveWorkout.ts -> finishSession()
-async function finishSession() {
-  const today = new Date().toISOString().split('T')[0];
-  
-  // Berechne Statistiken
-  const totalVolume = state.completed_exercises.reduce((sum, ex) => 
-    sum + (ex.actual_weight_kg * ex.actual_reps * ex.actual_sets), 0
-  );
-  const totalDuration = Math.round(
-    (Date.now() - new Date(state.session_started_at).getTime()) / 60000
-  );
-
-  // STEP 1: training_sessions (Layer 2)
-  const { data: trainingSession } = await supabase
-    .from('training_sessions')
-    .insert({
-      user_id: userId,
-      session_date: today,
-      training_type: 'rpt',
-      split_type: state.workout_type,
-      total_duration_minutes: totalDuration,
-      total_volume_kg: totalVolume,
-      session_data: {
-        source: 'ares_live_workout',
-        exercises: state.completed_exercises,
-        timestamps: {
-          started: state.session_started_at,
-          completed: new Date().toISOString()
-        }
-      }
-    })
-    .select('id')
-    .single();
-
-  // STEP 2: exercise_sessions (Layer 3)
-  const { data: exerciseSession } = await supabase
-    .from('exercise_sessions')
-    .insert({
-      user_id: userId,
-      date: today,
-      session_name: `ARES ${state.workout_type} Live Workout`,
-      workout_type: 'strength',
-      start_time: state.session_started_at,
-      end_time: new Date().toISOString(),
-      duration_minutes: totalDuration,
-      metadata: { 
-        source: 'ares_live_workout', 
-        training_session_id: trainingSession.id 
-      }
-    })
-    .select('id')
-    .single();
-
-  // STEP 3: exercise_sets (Layer 3) mit Timestamps
-  for (const completed of state.completed_exercises) {
-    const exercise = state.exercises[completed.exercise_index];
-    const exerciseId = await findOrCreateExercise(exercise.normalized_name);
-    
-    // Ein Set pro Übung (vereinfacht) oder aufgeteilt
-    for (let i = 0; i < completed.actual_sets; i++) {
-      await supabase.from('exercise_sets').insert({
-        session_id: exerciseSession.id,
-        user_id: userId,
-        exercise_id: exerciseId,
-        set_number: i + 1,
-        weight_kg: completed.actual_weight_kg,
-        reps: completed.actual_reps,
-        rpe: completed.actual_rpe,
-        date: today,
-        started_at: completed.started_at,       // Timestamp!
-        completed_at: completed.completed_at,   // Timestamp!
-        duration_seconds: completed.duration_seconds,
-        origin: 'ares_live_workout'
-      });
-    }
+  if (aiResult && aiResult.exercises.length > 0) {
+    parseResult = aiResult;
+    parseResult.warnings.push('Parsing via KI durchgeführt');
+    console.log(`[TRAINING-AI-PARSER] AI parsed ${aiResult.exercises.length} exercises`);
   }
-
-  // Cleanup
-  localStorage.removeItem('ares_live_workout');
-  setState(null);
-  
-  // Query Invalidation
-  queryClient.invalidateQueries({ queryKey: ['training-session-today'] });
-  queryClient.invalidateQueries({ queryKey: ['exercise-sessions'] });
 }
 ```
 
 ---
 
-## Datenbank-Änderungen (Optional)
+### 2. UI-Änderungen: `TrainingNotesInput.tsx`
 
-**Migration für Timing-Spalten:**
+**Neue States:**
+```typescript
+const [isAiParsing, setIsAiParsing] = useState(false);
+const [aiParsedData, setAiParsedData] = useState<ParsedExercise[] | null>(null);
+```
 
-```sql
--- Optional: Neue Spalten für exercise_sets
-ALTER TABLE exercise_sets
-ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS duration_seconds INTEGER,
-ADD COLUMN IF NOT EXISTS origin TEXT DEFAULT 'manual';
+**Neue Funktion `handleAiParse()`:**
+```typescript
+const handleAiParse = async () => {
+  setIsAiParsing(true);
+  try {
+    const { data, error } = await supabase.functions.invoke('training-ai-parser', {
+      body: {
+        raw_text: rawText,
+        training_type: trainingType,
+        use_ai: true,
+        persist: false
+      }
+    });
+    
+    if (error) throw error;
+    
+    if (data?.exercises?.length > 0) {
+      // Konvertiere Backend-Format in Client-Format
+      const clientExercises: ParsedExercise[] = data.exercises.map((ex: any) => ({
+        name: ex.normalized_name || ex.name,
+        sets: ex.sets,
+        totalVolume: ex.total_volume_kg
+      }));
+      
+      setAiParsedData(clientExercises);
+      toast.success(`${data.exercises.length} Übungen erkannt!`, {
+        description: 'KI-Parsing erfolgreich'
+      });
+    } else {
+      toast.error('KI konnte keine Übungen erkennen');
+    }
+  } catch (error) {
+    console.error('AI parsing failed:', error);
+    toast.error('KI-Parsing fehlgeschlagen');
+  } finally {
+    setIsAiParsing(false);
+  }
+};
+```
+
+**Neuer Button im UI:**
+```tsx
+{/* Nach der Warnung "Keine gültigen Übungen erkannt" */}
+{!hasValidExercises && hasContent && !aiParsedData && (
+  <Button
+    variant="outline"
+    size="sm"
+    onClick={handleAiParse}
+    disabled={isAiParsing}
+    className="mt-3 gap-2 w-full"
+  >
+    {isAiParsing ? (
+      <>
+        <Loader2 className="w-4 h-4 animate-spin" />
+        KI analysiert...
+      </>
+    ) : (
+      <>
+        <Sparkles className="w-4 h-4" />
+        Mit KI prüfen
+      </>
+    )}
+  </Button>
+)}
+```
+
+**Angepasste Preview-Logik:**
+```typescript
+// Nutze AI-Daten wenn vorhanden, sonst Regex
+const displayData = useMemo(() => {
+  if (aiParsedData && aiParsedData.length > 0) {
+    return {
+      exercises: aiParsedData,
+      totalVolume: aiParsedData.reduce((sum, ex) => sum + ex.totalVolume, 0),
+      totalSets: aiParsedData.reduce((sum, ex) => sum + ex.sets.length, 0),
+      isFromAi: true
+    };
+  }
+  return { ...parsedData, isFromAi: false };
+}, [parsedData, aiParsedData]);
 ```
 
 ---
 
-## Recovery-System
+## Erwartetes Parsing-Ergebnis
 
-**Szenarien:**
+**Input:**
+```
+1. goblet squad: 3x 8x mit 14kg Hantel
+2. kurzanhtel bankdrücken 3x 8x je 14kg pro Seite
+3. einarmig KH rudern 3x 8x 18kg je Seite
+4. rumänisches Kreuzheben mit 3x 10x 22kg je Seite
+5. Overheadpress 3x 8x 12kg je Seite
+6. und 7. am kabelturm Bizeps und trizeps mit 20kg 3x 8x
+```
 
-| Szenario | Lösung |
-|----------|--------|
-| App geschlossen | LocalStorage → Recovery-Toast |
-| Browser-Crash | LocalStorage bleibt erhalten |
-| Tab-Wechsel | State bleibt in React-Context |
-| Netzwerk-Ausfall | Lokale Queue → Sync bei Reconnect |
+**Gemini Output (via Tool-Calling):**
+```json
+{
+  "exercises": [
+    { "name": "Goblet Squat", "sets": 3, "reps": 8, "weight_kg": 14 },
+    { "name": "Kurzhantel Bankdrücken", "sets": 3, "reps": 8, "weight_kg": 14 },
+    { "name": "Einarmiges Kurzhantel Rudern", "sets": 3, "reps": 8, "weight_kg": 18 },
+    { "name": "Rumänisches Kreuzheben", "sets": 3, "reps": 10, "weight_kg": 22 },
+    { "name": "Overhead Press", "sets": 3, "reps": 8, "weight_kg": 12 },
+    { "name": "Bizeps Curls (Kabel)", "sets": 3, "reps": 8, "weight_kg": 20 },
+    { "name": "Trizeps Pushdown", "sets": 3, "reps": 8, "weight_kg": 20 }
+  ]
+}
+```
 
-**Recovery-Dialog:**
+---
+
+## UI-Flow
 
 ```text
-┌─────────────────────────────────────────┐
-│  🏋️ Unbeendetes Training gefunden       │
-│                                         │
-│  Push Day - 4 von 6 Übungen             │
-│  Gestartet vor 23 Minuten               │
-│                                         │
-│  [Fortsetzen]         [Verwerfen]       │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  📝 Schnelles Training loggen                                       │
+│  ┌─────────────────────────────────────────────────────────────────┐│
+│  │ 1. goblet squad: 3x 8x mit 14kg Hantel                          ││
+│  │ 2. kurzanhtel bankdrücken 3x 8x je 14kg pro Seite               ││
+│  │ ...                                                              ││
+│  └─────────────────────────────────────────────────────────────────┘│
+│                                                                     │
+│  📊 Erkannt:                                                        │
+│  ⚠️ Keine gültigen Übungen erkannt. Format: "Übung 3x10 80kg"       │
+│                                                                     │
+│  [✨ Mit KI prüfen]  ← NEU                                          │
+│                                                                     │
+│  [Workout speichern] (disabled)                                     │
+└─────────────────────────────────────────────────────────────────────┘
+
+                    ↓ Klick auf "Mit KI prüfen"
+
+┌─────────────────────────────────────────────────────────────────────┐
+│  📊 Erkannt (via KI ✨):                                            │
+│  ✓ Goblet Squat: 3×8×14kg (336kg)                                   │
+│  ✓ Kurzhantel Bankdrücken: 3×8×14kg (336kg)                         │
+│  ✓ Einarmiges KH Rudern: 3×8×18kg (432kg)                           │
+│  ✓ Rumänisches Kreuzheben: 3×10×22kg (660kg)                        │
+│  ✓ Overhead Press: 3×8×12kg (288kg)                                 │
+│  ✓ Bizeps Curls (Kabel): 3×8×20kg (480kg)                           │
+│  ✓ Trizeps Pushdown: 3×8×20kg (480kg)                               │
+│                                                                     │
+│  Gesamt: 3.012 kg                                                   │
+│                                                                     │
+│  [✓ Workout speichern] (jetzt aktiv)                                │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -585,84 +308,59 @@ ADD COLUMN IF NOT EXISTS origin TEXT DEFAULT 'manual';
 
 | Datei | Aktion | Beschreibung |
 |-------|--------|--------------|
-| `src/hooks/useLiveWorkout.ts` | **NEU** | State-Management + Persistenz |
-| `src/components/ares/cards/LiveExerciseCard.tsx` | **NEU** | Kompakte interaktive Card |
-| `src/components/ares/LiveWorkoutBanner.tsx` | **NEU** | Sticky Progress-Banner |
-| `src/components/ares/AresChat.tsx` | **EDIT** | Live-Workout Integration |
-| `supabase/functions/coach-orchestrator-enhanced/index.ts` | **EDIT** | `start_live_workout` Tool |
-| `supabase/migrations/xxx_add_exercise_timing.sql` | **NEU** | Optional: Timing-Spalten |
+| `supabase/functions/training-ai-parser/index.ts` | **EDIT** | `parseWithGemini()` Funktion + `use_ai` Parameter |
+| `src/components/training/TrainingNotesInput.tsx` | **EDIT** | "Mit KI prüfen" Button + State-Management |
 
 ---
 
-## Beispiel-Konversation
+## Technische Details
 
-```text
-User: "Hey ARES, ich will heute Push machen"
+### Rate Limits & Error Handling
 
-ARES: "Push-Day! 💪 Basierend auf deinem letzten Training:
+```typescript
+// In parseWithGemini()
+if (!response.ok) {
+  if (response.status === 429) {
+    console.warn('[TRAINING-AI-PARSER] Rate limited');
+    return null;
+  }
+  if (response.status === 402) {
+    console.warn('[TRAINING-AI-PARSER] Payment required');
+    return null;
+  }
+  console.error('[TRAINING-AI-PARSER] AI gateway error:', response.status);
+  return null;
+}
+```
 
-       • Bankdrücken: Letztes Mal 77.5kg × 10 → Heute 80kg (+2.5kg)
-       • Schrägbank: Letztes Mal 50kg × 10 → Heute 52.5kg
-       • Schulterdrücken: 40kg × 10 → Halten (RPE war 8)
-       
-       [▶️ WORKOUT STARTEN]"
+### Reset bei Text-Änderung
 
-User: *klickt "WORKOUT STARTEN"*
-
-[LiveWorkoutBanner erscheint oben]
-[LiveExerciseCard für Bankdrücken erscheint]
-
-ARES: "Los geht's mit Bankdrücken. 4 Sets à 10 Wiederholungen bei 80kg. 
-       RPE sollte bei 7 liegen. Gib alles!"
-
-User: *stellt 82.5kg ein, 10 Reps, RPE 8, klickt "FERTIG"*
-
-[Card wechselt automatisch zu Schrägbank]
-
-ARES: "BOOM! 82.5kg 🔥 Das war stark! 
-       Weiter mit Schrägbankdrücken. 52.5kg, 4 × 10."
-
-[... nach allen Übungen ...]
-
-ARES: "WORKOUT KOMPLETT! 🎉
-
-       📊 Push Day Zusammenfassung:
-       ━━━━━━━━━━━━━━━━━━━━━━━━
-       • Dauer: 47 Minuten
-       • Volumen: 8.450 kg
-       • Durchschnitt-RPE: 7.6
-       
-       💪 PROGRESSION:
-       • Bankdrücken: +5kg vs letzte Woche!
-       • Schrägbank: +2.5kg
-       
-       Alles gespeichert. Du bist ein BEAST!"
+```typescript
+// In TrainingNotesInput.tsx
+useEffect(() => {
+  // Reset AI-Daten wenn User Text ändert
+  setAiParsedData(null);
+}, [rawText]);
 ```
 
 ---
 
 ## Aufwandsschätzung
 
-| Komponente | Aufwand | Priorität |
-|------------|---------|-----------|
-| `useLiveWorkout.ts` Hook | ~3h | P0 |
-| `LiveExerciseCard.tsx` | ~3h | P0 |
-| `LiveWorkoutBanner.tsx` | ~1h | P0 |
-| `start_live_workout` Tool | ~2h | P0 |
-| AresChat Integration | ~2h | P0 |
-| Dual-Write + Queries | ~2h | P0 |
-| Recovery-System | ~1h | P1 |
-| DB Migration (optional) | ~0.5h | P2 |
+| Komponente | Aufwand |
+|------------|---------|
+| Edge Function: `parseWithGemini()` | ~1.5h |
+| UI: Button + State | ~45min |
+| Testing & Deploy | ~30min |
 
-**Gesamt Phase 2: ~14-15 Stunden**
+**Gesamt: ~2.5-3 Stunden**
 
 ---
 
-## Nächste Schritte
+## Vorteile
 
-1. **Sprint 1 (Core):** useLiveWorkout + LiveExerciseCard + Tool
-2. **Sprint 2 (UX):** Banner + AresChat Integration + Recovery
-3. **Sprint 3 (Polish):** Gesten, Voice-Input, Animationen
-
-Das Ergebnis: ARES wird zum ultimativen Gym-Buddy, der live durch das Training führt, alles trackt mit Timestamps, und sogar App-Crashes überlebt.
+1. **Kosteneffizient:** KI nur bei Bedarf, nicht bei jedem Keystroke
+2. **Robust:** Tool-Calling garantiert valides JSON
+3. **User-Kontrolle:** Button gibt explizite Kontrolle
+4. **Fallback-Kette:** Regex → KI → Manuell
 
