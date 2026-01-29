@@ -1,103 +1,92 @@
 
+# Fix: Supplement Chip Bearbeitungsmodus - 3 Probleme
 
-# Fix: ActionCard-Kreise werden nicht aktualisiert nach Supplement-Logging
+## Gefundene Probleme
 
-## Problem-Analyse
-
-Das **SupplementsWidget** zeigt korrekt "Morgens 4/4 ✓", aber die **ActionCard** (Timing-Kreise) zeigt immer noch "0/4". Die Ursache ist eine **dreifache Daten-Inkonsistenz**:
-
-### 1. Cache-Architektur-Problem
-| Komponente | Datenquelle | Cache-Typ |
-|------------|-------------|-----------|
-| SupplementsWidget | React Query (`QUERY_KEYS.SUPPLEMENTS_TODAY`) | React Query Cache |
-| SupplementTimingCircles | `useSupplementData` Hook | Eigener In-Memory-Cache (5s TTL) |
-
-**Problem:** `invalidateCategory(queryClient, 'supplements')` invalidiert nur React Query Keys, aber `useSupplementData` nutzt einen **eigenen separaten Cache** der nicht invalidiert wird.
-
-### 2. Event-System nicht getriggert
-Der `useSupplementData` Hook hört auf `'supplement-stack-changed'` Events, aber:
-- `useQuickLogging.logSupplementsTaken` dispatcht dieses Event **nicht**
-- `markTimingGroupTaken` im Hook selbst invalidiert React Query, nicht den eigenen Cache
-
-### 3. Timing-Feld-Inkonsistenz (DB-Design-Problem)
-| Funktion | Filtert nach |
-|----------|--------------|
-| `useQuickLogging.logSupplementsTaken` | `.contains('timing', [timing])` (Array-Feld) |
-| `useSupplementData` Gruppierung | `preferred_timing` (Single-Value-Feld) |
-
-**Beispiel aus der DB:**
-- Astaxanthin: `timing = [noon]`, `preferred_timing = 'morning'`
-- Wird von `useQuickLogging` als Noon gezählt, aber von `useSupplementData` als Morning gruppiert!
+| Problem | Ursache | Lösung |
+|---------|---------|--------|
+| Kein Hersteller-Dropdown | `user_supplements.supplement_id = NULL` | ❌ Daten-Problem - muss in DB gefixed werden |
+| "Bett"-Label unlogisch | `shortLabel: 'Bett'` in TimingCircleSelector | ✅ Label auf "Nacht" ändern |
+| ARES Prompt nicht übergeben | Race Condition: Coach.tsx löscht State zu früh | ✅ State-Clearing mit Delay verschieben |
 
 ---
 
-## Lösung
+## Fix 1: TimingCircleSelector - Label anpassen
 
-### Fix 1: Event-Dispatch nach Quick-Logging
-**Datei:** `src/hooks/useQuickLogging.ts`
+**Datei:** `src/components/supplements/TimingCircleSelector.tsx`
 
-Nach erfolgreichem Logging das `'supplement-stack-changed'` Event dispatchen:
-
+**Änderung:**
 ```typescript
-// Nach Zeile 111: invalidateCategory(queryClient, 'supplements');
-// HINZUFÜGEN:
-window.dispatchEvent(new CustomEvent('supplement-stack-changed'));
-```
-
-### Fix 2: useSupplementData Cache-Invalidierung bei React Query Invalidation
-**Datei:** `src/hooks/useSupplementData.tsx`
-
-Option A: React Query statt eigenem Cache nutzen (bevorzugt)
-Option B: Auf React Query Cache-Events hören
-
-**Empfehlung: Option A** - Hook auf React Query migrieren für Konsistenz
-
-### Fix 3: Timing-Feld-Konsistenz
-**Datei:** `src/hooks/useQuickLogging.ts`
-
-Die `logSupplementsTaken` Funktion sollte nach `preferred_timing` filtern, nicht nach dem `timing` Array:
-
-```typescript
-// VORHER (Zeile 72-77):
-const { data: supplements, error: fetchError } = await supabase
-  .from('user_supplements')
-  .select('id, supplement_id, supplements(name)')
-  .eq('user_id', user.id)
-  .eq('is_active', true)
-  .contains('timing', [timing]);
+// VORHER:
+bedtime: { icon: BedDouble, label: 'Vor Schlaf', shortLabel: 'Bett' },
 
 // NACHHER:
-const { data: supplements, error: fetchError } = await supabase
-  .from('user_supplements')
-  .select('id, supplement_id, name, custom_name, preferred_timing')
-  .eq('user_id', user.id)
-  .eq('is_active', true)
-  .eq('preferred_timing', timing);
+bedtime: { icon: Moon, label: 'Vor Schlaf', shortLabel: 'Nacht' },
+```
+
+Zusätzlich: "Bett"-Icon (BedDouble) durch Mond (Moon) ersetzen - konsistent mit dem Abend-Slot.
+
+---
+
+## Fix 2: Coach.tsx - Race Condition beheben
+
+**Problem:** Der `useEffect` in Coach.tsx löscht den State sofort, bevor AresChat ihn verwenden kann.
+
+**Lösung:** Das State-Clearing muss **nach** dem ersten Render von AresChat erfolgen. Da AresChat 600ms wartet, brauchen wir mindestens 700ms Delay.
+
+**Datei:** `src/pages/Coach.tsx`
+
+**Änderung:**
+```typescript
+// VORHER (Zeile 33-38):
+useEffect(() => {
+  if (autoStartPrompt) {
+    navigate(location.pathname, { replace: true, state: {} });
+  }
+}, [autoStartPrompt, navigate, location.pathname]);
+
+// NACHHER:
+useEffect(() => {
+  if (autoStartPrompt) {
+    // Delay state clearing until AFTER AresChat has read the prompt
+    // AresChat uses 600ms delay, so we wait 1000ms to be safe
+    const timer = setTimeout(() => {
+      navigate(location.pathname, { replace: true, state: {} });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }
+}, [autoStartPrompt, navigate, location.pathname]);
 ```
 
 ---
 
-## Technische Details
+## Fix 3: Datenbank-Bereinigung (Info)
 
-### Betroffene Dateien
+**Problem:** 6 von 15 aktiven `user_supplements` haben `supplement_id = NULL`:
+- Kreatin Monohydrat
+- Omega-3 (EPA/DHA)
+- Vitamin D3 + K2
+- Whey Protein
+- Alpha-Ketoglutarat
+- Magnesium (Citrat/Bisglycinat)
+
+**Ursache:** Diese wurden manuell oder per AI erstellt ohne Verknüpfung zur `supplement_database`.
+
+**Empfehlung:** Diese Supplements müssen in der Datenbank mit den korrekten `supplement_id`s verknüpft werden. Dies erfordert ein SQL-Update oder UI-Logik zum Matchen.
+
+---
+
+## Dateien die geändert werden
+
 | Datei | Änderung |
 |-------|----------|
-| `src/hooks/useQuickLogging.ts` | Filter auf `preferred_timing` ändern + Event dispatch |
-| `src/hooks/useSupplementData.tsx` | Cache-Sync mit React Query |
-| `src/components/home/cards/SupplementTimingCircles.tsx` | Refetch nach Logging triggern |
+| `src/components/supplements/TimingCircleSelector.tsx` | "Bett" → "Nacht", BedDouble → Moon |
+| `src/pages/Coach.tsx` | State-Clearing mit 1000ms Delay |
 
-### Datenbank-Analyse
-Aktuelle Supplement-Verteilung:
-- 17 Supplements mit `preferred_timing = 'morning'`
-- 5 mit `preferred_timing = 'bedtime'`
-- 3 mit `preferred_timing = 'noon'`
-- 2 mit `preferred_timing = 'pre_workout'`
-- 1 mit `preferred_timing = 'post_workout'`
+---
 
-**4 von 17 Morning-Supplements wurden heute geloggt** - daher zeigt das Widget korrekt 4/4 für die *genommenen*, aber die ActionCard zeigt 0/4 weil der Cache stale ist.
+## Erwartetes Ergebnis nach Fix
 
-### Erwartetes Ergebnis nach Fix
-1. Logging über ActionCard-Kreise aktualisiert sofort alle UI-Komponenten
-2. Widget und ActionCard zeigen konsistente Zahlen
-3. Alle Loggins nutzen `preferred_timing` als Single Source of Truth
-
+1. ✅ Timing-Kreise zeigen "Nacht" statt "Bett" mit Mond-Icon
+2. ✅ ARES Prompt wird korrekt übergeben und ausgeführt
+3. ⚠️ Hersteller-Dropdown erscheint nur bei Supplements mit gültiger `supplement_id` (Daten-Fix separat erforderlich)
