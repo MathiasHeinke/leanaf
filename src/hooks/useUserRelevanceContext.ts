@@ -1,5 +1,5 @@
 // =====================================================
-// ARES Matrix-Scoring: User Relevance Context Hook
+// ARES Matrix-Scoring: User Relevance Context Hook (Extended v2)
 // =====================================================
 
 import { useMemo } from 'react';
@@ -7,11 +7,15 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import type { UserRelevanceContext } from '@/types/relevanceMatrix';
-import { GLP1_AGENTS, TRT_AGENTS, BLOODWORK_THRESHOLDS } from '@/types/relevanceMatrix';
+import { 
+  GLP1_AGENTS, 
+  TRT_AGENTS, 
+  getPeptideCategories 
+} from '@/types/relevanceMatrix';
 
 /**
  * Hook to aggregate user context for relevance scoring
- * Fetches and combines data from profiles, peptide_protocols, user_bloodwork, user_protocol_status
+ * Fetches and combines data from profiles, peptide_protocols, user_bloodwork, user_protocol_status, daily_goals
  */
 export function useUserRelevanceContext(): {
   context: UserRelevanceContext | null;
@@ -20,14 +24,14 @@ export function useUserRelevanceContext(): {
 } {
   const { user } = useAuth();
   
-  // Fetch user profile for protocol_mode and goal
+  // Fetch user profile for protocol_mode, goal, demographics
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['user-profile-relevance', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
       const { data, error } = await supabase
         .from('profiles')
-        .select('protocol_mode, goal_type')
+        .select('protocol_mode, goal_type, age, gender, weight, target_weight')
         .eq('id', user.id)
         .maybeSingle();
       if (error) throw error;
@@ -94,6 +98,23 @@ export function useUserRelevanceContext(): {
     staleTime: 1000 * 60 * 10, // 10 minutes
   });
   
+  // Fetch daily goals for calorie deficit info
+  const { data: dailyGoals, isLoading: goalsLoading } = useQuery({
+    queryKey: ['user-daily-goals-relevance', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('daily_goals')
+        .select('calorie_deficit, goal_type')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+    staleTime: 1000 * 60 * 5,
+  });
+  
   // Compute the context
   const context = useMemo<UserRelevanceContext | null>(() => {
     if (!user?.id) return null;
@@ -142,26 +163,73 @@ export function useUserRelevanceContext(): {
     // Get phase (default to 0)
     const phase = (protocolStatus?.current_phase ?? 0) as 0 | 1 | 2 | 3;
     
+    // Determine caloric status
+    const calorieStatus = determineCalorieStatus(
+      profile?.weight || null,
+      profile?.target_weight || null,
+      dailyGoals?.calorie_deficit || null
+    );
+    
+    // Get demographic flags
+    const age = profile?.age || null;
+    const gender = profile?.gender || null;
+    
+    // Get active peptide classes
+    const activePeptideClasses = getPeptideCategories(activePeptideNames);
+    
     return {
       isTrueNatural,
       isEnhancedNoTRT,
       isOnTRT,
       isOnGLP1,
+      isInDeficit: calorieStatus === 'deficit',
+      isInSurplus: calorieStatus === 'surplus',
+      ageOver40: age !== null && age >= 40,
+      ageOver50: age !== null && age >= 50,
+      ageOver60: age !== null && age >= 60,
+      isFemale: gender === 'female',
+      isMale: gender === 'male',
+      activePeptideClasses,
       phase,
       protocolModes,
       activePeptides: activePeptideNames,
-      goal: profile?.goal_type || 'maintenance',
+      goal: profile?.goal_type || dailyGoals?.goal_type || 'maintenance',
       bloodworkFlags,
     };
-  }, [user?.id, profile, protocolStatus, peptideProtocols, bloodwork]);
+  }, [user?.id, profile, protocolStatus, peptideProtocols, bloodwork, dailyGoals]);
   
-  const isLoading = profileLoading || statusLoading || peptidesLoading || bloodworkLoading;
+  const isLoading = profileLoading || statusLoading || peptidesLoading || bloodworkLoading || goalsLoading;
   
   return {
     context,
     isLoading,
     error: null,
   };
+}
+
+/**
+ * Determine caloric status based on available data
+ */
+function determineCalorieStatus(
+  currentWeight: number | null,
+  targetWeight: number | null,
+  calorieDeficit: number | null
+): 'deficit' | 'surplus' | 'maintenance' {
+  // Primary: Direct deficit field from daily_goals
+  if (calorieDeficit !== null) {
+    if (calorieDeficit > 200) return 'deficit';
+    if (calorieDeficit < -200) return 'surplus';
+    return 'maintenance';
+  }
+  
+  // Fallback: Weight comparison
+  if (currentWeight && targetWeight) {
+    const diff = currentWeight - targetWeight;
+    if (diff > 2) return 'deficit';  // Wants to lose weight
+    if (diff < -2) return 'surplus'; // Wants to gain weight
+  }
+  
+  return 'maintenance';
 }
 
 /**
@@ -259,6 +327,18 @@ export function useContextSummary(): string {
   }
   
   parts.push(`Phase ${context.phase}`);
+  
+  // Add caloric status
+  if (context.isInDeficit) {
+    parts.push('Defizit');
+  } else if (context.isInSurplus) {
+    parts.push('Aufbau');
+  }
+  
+  // Add peptide classes if any
+  if (context.activePeptideClasses.length > 0) {
+    parts.push(`${context.activePeptideClasses.length} Peptid-Klassen`);
+  }
   
   if (context.bloodworkFlags.length > 0) {
     parts.push(`${context.bloodworkFlags.length} Blutwert-Trigger`);

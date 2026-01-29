@@ -1,10 +1,10 @@
 /**
  * RelevanceScorePopover - Shows detailed breakdown of personalized score
- * Displays base score, modifiers, and explanations
+ * Displays base score, modifiers, and explanations (Extended v2)
  */
 
 import React from 'react';
-import { Info, TrendingUp, TrendingDown, Minus, AlertTriangle, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, Sparkles, Activity, Users, Dumbbell, Beaker, Heart } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -24,6 +24,87 @@ interface RelevanceScorePopoverProps {
   children?: React.ReactNode;
 }
 
+/**
+ * Categorize reasons into groups for better display
+ */
+function categorizeReasons(reasons: string[]): {
+  context: string[];
+  goals: string[];
+  demographics: string[];
+  bloodwork: string[];
+  peptides: string[];
+  other: string[];
+} {
+  const categories = {
+    context: [] as string[],
+    goals: [] as string[],
+    demographics: [] as string[],
+    bloodwork: [] as string[],
+    peptides: [] as string[],
+    other: [] as string[],
+  };
+
+  for (const reason of reasons) {
+    const lowerReason = reason.toLowerCase();
+    
+    if (lowerReason.includes('trt') || lowerReason.includes('natural') || lowerReason.includes('peptide ohne') || lowerReason.includes('glp-1') || lowerReason.includes('phase')) {
+      categories.context.push(reason);
+    } else if (lowerReason.includes('ziel') || lowerReason.includes('defizit') || lowerReason.includes('aufbau')) {
+      categories.goals.push(reason);
+    } else if (lowerReason.includes('alter') || lowerReason.includes('weiblich') || lowerReason.includes('männlich')) {
+      categories.demographics.push(reason);
+    } else if (lowerReason.includes('blutwert')) {
+      categories.bloodwork.push(reason);
+    } else if (lowerReason.includes('protokoll') || lowerReason.includes('synergie')) {
+      categories.peptides.push(reason);
+    } else {
+      categories.other.push(reason);
+    }
+  }
+
+  return categories;
+}
+
+/**
+ * Get icon for category
+ */
+function getCategoryIcon(category: string) {
+  switch (category) {
+    case 'context':
+      return <Activity className="h-3 w-3" />;
+    case 'goals':
+      return <Dumbbell className="h-3 w-3" />;
+    case 'demographics':
+      return <Users className="h-3 w-3" />;
+    case 'bloodwork':
+      return <Heart className="h-3 w-3" />;
+    case 'peptides':
+      return <Beaker className="h-3 w-3" />;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Get label for category
+ */
+function getCategoryLabel(category: string): string {
+  switch (category) {
+    case 'context':
+      return 'Protokoll-Modus';
+    case 'goals':
+      return 'Ziele & Status';
+    case 'demographics':
+      return 'Demografie';
+    case 'bloodwork':
+      return 'Blutwerte';
+    case 'peptides':
+      return 'Peptide & Synergien';
+    default:
+      return 'Sonstige';
+  }
+}
+
 export const RelevanceScorePopover: React.FC<RelevanceScorePopoverProps> = ({
   scoreResult,
   supplementName,
@@ -32,6 +113,11 @@ export const RelevanceScorePopover: React.FC<RelevanceScorePopoverProps> = ({
 }) => {
   const tierConfig = getScoreTierConfig(scoreResult.score);
   const scoreDelta = scoreResult.score - scoreResult.baseScore;
+  const categorizedReasons = categorizeReasons(scoreResult.reasons);
+  
+  // Get non-empty categories
+  const activeCategories = Object.entries(categorizedReasons)
+    .filter(([_, reasons]) => reasons.length > 0);
   
   return (
     <Popover>
@@ -84,44 +170,48 @@ export const RelevanceScorePopover: React.FC<RelevanceScorePopoverProps> = ({
             <span className="font-medium">{scoreResult.baseScore.toFixed(1)}</span>
           </div>
           
-          {/* Modifiers */}
-          {scoreResult.reasons.length > 0 && (
+          {/* Categorized Modifiers */}
+          {activeCategories.length > 0 && (
             <>
               <Separator />
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Modifikatoren
-                </p>
-                {scoreResult.reasons.map((reason, idx) => {
-                  // Parse the modifier value from the reason string
-                  const isPositive = reason.includes('+');
-                  const isNegative = reason.includes('-') && !reason.includes('+');
-                  
-                  return (
-                    <div 
-                      key={idx} 
-                      className="flex items-center justify-between text-sm"
-                    >
-                      <span className="text-muted-foreground flex items-center gap-1.5">
-                        {isPositive ? (
-                          <TrendingUp className="h-3 w-3 text-green-500" />
-                        ) : isNegative ? (
-                          <TrendingDown className="h-3 w-3 text-red-500" />
-                        ) : (
-                          <Minus className="h-3 w-3 text-muted-foreground" />
-                        )}
-                        {reason.split(':')[0]}
-                      </span>
-                      <span className={cn(
-                        'font-medium',
-                        isPositive && 'text-green-600',
-                        isNegative && 'text-red-600'
-                      )}>
-                        {reason.split(':')[1]?.trim() || ''}
-                      </span>
+              <div className="space-y-3">
+                {activeCategories.map(([category, reasons]) => (
+                  <div key={category} className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {getCategoryIcon(category)}
+                      <span>{getCategoryLabel(category)}</span>
                     </div>
-                  );
-                })}
+                    {reasons.map((reason, idx) => {
+                      const isPositive = reason.includes('+');
+                      const isNegative = reason.includes('-') && !reason.includes('+');
+                      
+                      return (
+                        <div 
+                          key={idx} 
+                          className="flex items-center justify-between text-sm pl-4"
+                        >
+                          <span className="text-muted-foreground flex items-center gap-1.5">
+                            {isPositive ? (
+                              <TrendingUp className="h-3 w-3 text-green-500" />
+                            ) : isNegative ? (
+                              <TrendingDown className="h-3 w-3 text-red-500" />
+                            ) : (
+                              <Minus className="h-3 w-3 text-muted-foreground" />
+                            )}
+                            {reason.split(':')[0]}
+                          </span>
+                          <span className={cn(
+                            'font-medium',
+                            isPositive && 'text-green-600',
+                            isNegative && 'text-red-600'
+                          )}>
+                            {reason.split(':')[1]?.trim() || ''}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </>
           )}
@@ -170,7 +260,7 @@ export const RelevanceScorePopover: React.FC<RelevanceScorePopoverProps> = ({
             <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/5 border border-primary/20">
               <Sparkles className="h-4 w-4 text-primary shrink-0" />
               <p className="text-xs text-muted-foreground">
-                Personalisiert basierend auf deinem Profil, Blutwerten und aktiven Protokollen.
+                Personalisiert basierend auf deinem Profil, Blutwerten, Peptiden und Zielen.
               </p>
             </div>
           )}
