@@ -14,6 +14,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getCurrentDateString } from '@/utils/dateHelpers';
+import { createTimezoneHeaders } from '@/utils/timezone-backend-helper';
 import { 
   TRAINING_TYPE_LABELS, 
   TRAINING_TYPE_ICONS, 
@@ -37,7 +39,7 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
 }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = getCurrentDateString();
   const dayLabels = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   const workoutTarget = 4;
   
@@ -79,7 +81,8 @@ export const TrainingDaySheet: React.FC<TrainingDaySheetProps> = ({
           raw_text: result.rawText,
           training_type: result.trainingType,
           persist: true
-        }
+        },
+        headers: createTimezoneHeaders()
       });
 
       if (response.error) {
