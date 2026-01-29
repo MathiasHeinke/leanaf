@@ -195,8 +195,8 @@ export async function executeMatrixImport(markdownContent: string): Promise<Batc
  */
 export async function executeMatrixImportFromFile(): Promise<BatchImportResult> {
   try {
-    // Dynamic import of the markdown file as raw text
-    const matrixModule = await import('@/data/matrix-import-v2.1.md?raw');
+    // Dynamic import of the markdown file as raw text (v3-3)
+    const matrixModule = await import('@/data/matrix-import-v3-3.md?raw');
     const markdownContent = matrixModule.default;
     
     return executeMatrixImport(markdownContent);
