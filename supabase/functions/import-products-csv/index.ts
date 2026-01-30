@@ -132,9 +132,9 @@ Deno.serve(async (req) => {
     // Pre-fetch all brands for lookup
     const { data: brands } = await supabase
       .from("supplement_brands")
-      .select("id, brand_slug");
+      .select("id, slug");
     
-    const brandMap = new Map(brands?.map(b => [b.brand_slug, b.id]) || []);
+    const brandMap = new Map(brands?.map(b => [b.slug, b.id]) || []);
 
     // Pre-fetch all supplements for lookup
     const { data: supplements } = await supabase
