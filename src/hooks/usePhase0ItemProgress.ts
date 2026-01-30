@@ -229,31 +229,32 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
         actionHref: '/bloodwork',
       };
 
-      // === KFA TREND (5 consecutive measurements with falling trend) ===
+      // === KFA TREND (≥3 Messungen, mind. 1× fallend) ===
       const kfaData = weightWithKfaResult.data || [];
       const kfaMeasurements = kfaData.length;
+      const measurementsRequired = 3;
 
-      // Check for consecutive falling measurements
-      let consecutiveDown = 0;
+      // Check if ANY measurement shows a downward trend
+      let hasAnyDownwardTrend = false;
+      let downwardCount = 0;
       if (kfaMeasurements >= 2) {
         for (let i = 0; i < kfaMeasurements - 1; i++) {
           const current = kfaData[i]?.body_fat_percentage;
           const previous = kfaData[i + 1]?.body_fat_percentage;
           if (current && previous && current < previous) {
-            consecutiveDown++;
-          } else {
-            break; // Trend interrupted
+            hasAnyDownwardTrend = true;
+            downwardCount++;
           }
         }
       }
 
       const latestKfa = kfaData[0]?.body_fat_percentage;
-      const kfaTrendComplete = consecutiveDown >= 4; // 5 measurements = 4 comparisons
-      const kfaProgress = kfaMeasurements === 0 
-        ? 0 
-        : kfaTrendComplete 
-          ? 100 
-          : Math.min(90, (consecutiveDown / 4) * 80 + (Math.min(kfaMeasurements, 5) / 5) * 10);
+      const kfaTrendComplete = kfaMeasurements >= measurementsRequired && hasAnyDownwardTrend;
+      
+      // Progress: 50% for measurements, 50% for trend
+      const measurementProgress = Math.min(100, (kfaMeasurements / measurementsRequired) * 50);
+      const trendProgress = hasAnyDownwardTrend ? 50 : 0;
+      const kfaProgress = kfaMeasurements === 0 ? 0 : kfaTrendComplete ? 100 : measurementProgress + trendProgress;
 
       progress.kfa_trend = {
         key: 'kfa_trend',
@@ -261,17 +262,21 @@ export function usePhase0ItemProgress(checklist: Phase0Checklist | null) {
         current: kfaMeasurements > 0 
           ? `${latestKfa?.toFixed(1)}% KFA` 
           : '⚠️ KFA fehlt',
-        target: '5× fallend',
+        target: '≥3 Messungen',
         status: kfaTrendComplete ? 'completed' : kfaMeasurements > 0 ? 'in_progress' : 'not_started',
         stats: {
           measurements: kfaMeasurements,
-          measurementsRequired: 5,
-          consecutiveDown: consecutiveDown,
-          trend: consecutiveDown > 0 ? 'down' : 'stable',
+          measurementsRequired: measurementsRequired,
+          consecutiveDown: downwardCount,
+          trend: hasAnyDownwardTrend ? 'down' : 'stable',
         },
         explanation: kfaMeasurements === 0 
-          ? 'Trage deinen Körperfettanteil (KFA) ein. Ziel: 5 aufeinanderfolgende Messungen mit fallendem Trend.'
-          : `${consecutiveDown + 1}/5 Messungen zeigen fallenden Trend. Weiter so!`,
+          ? 'Trage deinen Körperfettanteil (KFA) ein. Ziel: ≥3 Messungen mit mind. 1× fallendem Trend.'
+          : kfaMeasurements < measurementsRequired
+            ? `${kfaMeasurements}/${measurementsRequired} Messungen. Noch ${measurementsRequired - kfaMeasurements} nötig.`
+            : hasAnyDownwardTrend
+              ? `${kfaMeasurements} Messungen mit fallendem Trend – ✓ erfüllt!`
+              : `${kfaMeasurements} Messungen, aber noch kein fallender Trend erkannt.`,
         actionLabel: kfaMeasurements === 0 ? 'KFA eintragen' : 'Messung hinzufügen',
         actionHref: '/body',
       };
