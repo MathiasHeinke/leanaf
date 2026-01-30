@@ -26,54 +26,36 @@ interface ImportResult {
   error?: string;
 }
 
-// 37 Duplikate zum Löschen nach Import
-const DUPLICATES_TO_DELETE = [
-  // Biogena (3)
-  { brand_slug: 'biogena', product_name: 'Ashwagandha KSM-66 500mg' },
-  { brand_slug: 'biogena', product_name: 'Berberin 500mg' },
-  { brand_slug: 'biogena', product_name: 'Colostrum Gold 60 Kapseln' },
-  // Nature Love (2)
-  { brand_slug: 'nature-love', product_name: 'Omega-3 vegan aus Algenöl' },
-  { brand_slug: 'nature-love', product_name: 'Vitamin D3 + K2 Tropfen' },
-  // Doppelherz (4)
-  { brand_slug: 'doppelherz', product_name: 'Omega-3 1000mg' },
-  { brand_slug: 'doppelherz', product_name: 'Omega-3 Seefischöl 1000' },
-  { brand_slug: 'doppelherz', product_name: 'Vitamin D3 2000 I.E.' },
-  { brand_slug: 'doppelherz', product_name: 'Vitamin D3 2000 IE 60 Tabs' },
-  // Orthomol (11)
-  { brand_slug: 'orthomol', product_name: 'Orthomol Immun 30 Portions' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Vital f 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Vital m 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Sport 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Cardio 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Mental 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Tendo 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Arthro plus 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Osteo 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Femin 30 Beutel' },
-  { brand_slug: 'orthomol', product_name: 'Orthomol Hair intense 30 Beutel' },
-  // Sunday Natural (3)
-  { brand_slug: 'sunday-natural', product_name: 'Omega-3 Algenöl' },
-  { brand_slug: 'sunday-natural', product_name: 'Omega-3 Algae Oil EPA+DHA' },
-  { brand_slug: 'sunday-natural', product_name: 'Vitamin D3+K2 Tropfen' },
-  // Naturtreu (3)
-  { brand_slug: 'naturtreu', product_name: 'Darmfreund Probiotika' },
-  { brand_slug: 'naturtreu', product_name: 'Darmfreund Probiotika Kapseln' },
-  { brand_slug: 'naturtreu', product_name: 'Ruhepol Magnesium' },
-  // ProFuel (5)
-  { brand_slug: 'profuel', product_name: 'Omega-3 vegan' },
-  { brand_slug: 'profuel', product_name: 'Omega-3 Algenöl' },
-  { brand_slug: 'profuel', product_name: 'Vitamin D3 + K2' },
-  { brand_slug: 'profuel', product_name: 'Vitamin D3 5000 IE' },
-  { brand_slug: 'profuel', product_name: 'Vitamin D3+K2 Tropfen' },
-  // MoleQlar (4)
-  { brand_slug: 'moleqlar', product_name: 'NMN Pur 250mg' },
-  { brand_slug: 'moleqlar', product_name: 'NMN 500mg' },
-  { brand_slug: 'moleqlar', product_name: 'Spermidin' },
-  { brand_slug: 'moleqlar', product_name: 'Spermidin Plus' },
-  // ESN (2)
-  { brand_slug: 'esn', product_name: 'Omega-3 Ultra' },
-  { brand_slug: 'esn', product_name: 'Ultrapure Creatine Monohydrat' },
+// 22 Duplikate zum Löschen - direkt per UUID
+const DUPLICATE_IDS_TO_DELETE = [
+  // ESN
+  '595c3827-b1cd-4428-a359-16098c1f308e', // Ultrapure Creatine Monohydrat
+  // Doppelherz
+  '8eee61c9-8ffb-448f-bf2a-ce779d270944', // Vitamin D3 2000 IE 60 Tabs
+  // MoleQlar NMN
+  'e82f8180-1b4a-41ac-9a0b-6be82a83367b', // NMN Pur 250mg
+  '962d1dea-6007-4b48-aa6b-d4b7b77db3cf', // NMN 500mg
+  // MoleQlar Spermidin
+  'efdaa869-801a-4674-a416-b3b326f80343', // Spermidin
+  // Naturtreu
+  '47071656-cbc3-43a4-9bed-02925ce7baa3', // Darmfreund Probiotika
+  // Orthomol (10)
+  'c248e42c-fdae-4194-8f1b-d28c9359df4c', // Immun 30 Tagesportionen
+  '8cf916b1-fdf3-411b-8ebe-35e7003326aa', // Arthroplus 30 Portions
+  'b900c084-556e-4b91-aeff-b54e9de1d7f0', // Beauty 30 Trinkfläschchen
+  '05fec0f0-bfd8-441c-8c4a-4ba5e45c35cb', // Cardio 30 Beutel
+  '7e62b477-34a3-4216-ace0-2e7c251d3518', // Mental 30 Portions
+  '9bdbc344-46ed-4391-9b2e-b745ca16eb90', // Osteo 30 Portions
+  'a8be0def-d8c0-4802-86a7-96d1e14822ae', // Sport 30 Trinkfläschchen
+  '0a6f1366-1bb2-45b4-918a-b77540d7bcc9', // Tendo 30 Granulat
+  '8da03c33-6593-4d06-96cf-c306934eb14c', // Vital f 30 Granulat
+  '8de1d522-ad26-4cf8-b39d-9fe715d70540', // Vital m 30 Granulat
+  // Sunday Natural
+  '0aa7ed83-5095-4d34-a9a0-9b7f4ac81022', // Omega-3 Algenöl
+  '9990e599-1f3b-439a-a716-84f8c65af3f4', // Vitamin D3+K2 Tropfen
+  // ProFuel
+  'f066ea49-0a64-4835-a526-c21313dccdd5', // Omega-3 Algenöl 90 Caps
+  '1a77b854-7a32-4c4a-82b8-40a409c69b69', // Vitamin D3 + K2 vegan
 ];
 
 function parseCSVLine(line: string): string[] {
@@ -220,37 +202,22 @@ export default function AdminImportCSVPage() {
 
   const deleteDuplicates = async () => {
     setIsDeleting(true);
-    addLog('🗑️ Starting duplicate deletion...');
+    addLog('🗑️ Starting duplicate deletion by ID...');
     
     let deleted = 0;
     let notFound = 0;
     
-    // Erst alle Brands holen
-    const { data: brands } = await supabase
-      .from('supplement_brands')
-      .select('id, slug');
-    
-    const brandMap = new Map(brands?.map(b => [b.slug, b.id]) || []);
-    
-    for (const dup of DUPLICATES_TO_DELETE) {
-      const brandId = brandMap.get(dup.brand_slug);
-      if (!brandId) {
-        addLog(`⚠️ Brand not found: ${dup.brand_slug}`);
-        notFound++;
-        continue;
-      }
-      
+    for (const id of DUPLICATE_IDS_TO_DELETE) {
       const { error, count } = await supabase
         .from('supplement_products')
         .delete()
-        .eq('product_name', dup.product_name)
-        .eq('brand_id', brandId);
+        .eq('id', id);
       
       if (error) {
-        addLog(`❌ Delete failed: ${dup.product_name} - ${error.message}`);
+        addLog(`❌ Delete failed: ${id} - ${error.message}`);
+        notFound++;
       } else if (count && count > 0) {
         deleted++;
-        addLog(`✅ Deleted: ${dup.product_name} (${dup.brand_slug})`);
       } else {
         notFound++;
       }
@@ -292,7 +259,7 @@ export default function AdminImportCSVPage() {
               </Card>
               <Card>
                 <CardContent className="pt-4">
-                  <div className="text-2xl font-bold">{DUPLICATES_TO_DELETE.length}</div>
+                  <div className="text-2xl font-bold">{DUPLICATE_IDS_TO_DELETE.length}</div>
                   <div className="text-xs text-muted-foreground">Duplikate zu löschen</div>
                 </CardContent>
               </Card>
@@ -330,7 +297,7 @@ export default function AdminImportCSVPage() {
                 ) : (
                   <>
                     <Trash2 className="h-4 w-4 mr-2" />
-                    37 Duplikate löschen
+                    22 Duplikate löschen
                   </>
                 )}
               </Button>
