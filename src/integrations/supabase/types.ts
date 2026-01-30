@@ -6461,83 +6461,167 @@ export type Database = {
         Row: {
           allergens: string[] | null
           amazon_asin: string | null
+          amazon_image: string | null
+          amazon_name: string | null
+          amazon_url: string | null
+          bioavailability: number | null
           brand_id: string | null
+          category: string | null
+          country_of_origin: string | null
           created_at: string | null
+          dosage_per_serving: string | null
           dose_per_serving: number
           dose_unit: string
           form: string | null
           id: string
+          impact_score_big8: number | null
           ingredients: Json | null
+          is_gluten_free: boolean | null
           is_organic: boolean | null
           is_recommended: boolean | null
           is_vegan: boolean | null
           is_verified: boolean | null
+          lab_tests: number | null
+          match_score: number | null
+          origin: string | null
           pack_size: number
           pack_unit: string | null
           popularity_score: number | null
+          potency: number | null
           price_eur: number | null
           price_per_serving: number | null
           product_name: string
           product_sku: string | null
           product_url: string | null
+          purity: number | null
+          quality_bioavailability: number | null
+          quality_dosage: number | null
+          quality_form: number | null
+          quality_purity: number | null
+          quality_research: number | null
+          quality_synergy: number | null
           quality_tags: string[] | null
+          quality_transparency: number | null
+          quality_value: number | null
+          reviews: number | null
+          serving_size: string | null
+          servings_per_container: number | null
           servings_per_pack: number | null
+          short_description: string | null
           supplement_id: string | null
+          timing: string | null
           updated_at: string | null
+          value: number | null
         }
         Insert: {
           allergens?: string[] | null
           amazon_asin?: string | null
+          amazon_image?: string | null
+          amazon_name?: string | null
+          amazon_url?: string | null
+          bioavailability?: number | null
           brand_id?: string | null
+          category?: string | null
+          country_of_origin?: string | null
           created_at?: string | null
+          dosage_per_serving?: string | null
           dose_per_serving: number
           dose_unit: string
           form?: string | null
           id?: string
+          impact_score_big8?: number | null
           ingredients?: Json | null
+          is_gluten_free?: boolean | null
           is_organic?: boolean | null
           is_recommended?: boolean | null
           is_vegan?: boolean | null
           is_verified?: boolean | null
+          lab_tests?: number | null
+          match_score?: number | null
+          origin?: string | null
           pack_size: number
           pack_unit?: string | null
           popularity_score?: number | null
+          potency?: number | null
           price_eur?: number | null
           price_per_serving?: number | null
           product_name: string
           product_sku?: string | null
           product_url?: string | null
+          purity?: number | null
+          quality_bioavailability?: number | null
+          quality_dosage?: number | null
+          quality_form?: number | null
+          quality_purity?: number | null
+          quality_research?: number | null
+          quality_synergy?: number | null
           quality_tags?: string[] | null
+          quality_transparency?: number | null
+          quality_value?: number | null
+          reviews?: number | null
+          serving_size?: string | null
+          servings_per_container?: number | null
           servings_per_pack?: number | null
+          short_description?: string | null
           supplement_id?: string | null
+          timing?: string | null
           updated_at?: string | null
+          value?: number | null
         }
         Update: {
           allergens?: string[] | null
           amazon_asin?: string | null
+          amazon_image?: string | null
+          amazon_name?: string | null
+          amazon_url?: string | null
+          bioavailability?: number | null
           brand_id?: string | null
+          category?: string | null
+          country_of_origin?: string | null
           created_at?: string | null
+          dosage_per_serving?: string | null
           dose_per_serving?: number
           dose_unit?: string
           form?: string | null
           id?: string
+          impact_score_big8?: number | null
           ingredients?: Json | null
+          is_gluten_free?: boolean | null
           is_organic?: boolean | null
           is_recommended?: boolean | null
           is_vegan?: boolean | null
           is_verified?: boolean | null
+          lab_tests?: number | null
+          match_score?: number | null
+          origin?: string | null
           pack_size?: number
           pack_unit?: string | null
           popularity_score?: number | null
+          potency?: number | null
           price_eur?: number | null
           price_per_serving?: number | null
           product_name?: string
           product_sku?: string | null
           product_url?: string | null
+          purity?: number | null
+          quality_bioavailability?: number | null
+          quality_dosage?: number | null
+          quality_form?: number | null
+          quality_purity?: number | null
+          quality_research?: number | null
+          quality_synergy?: number | null
           quality_tags?: string[] | null
+          quality_transparency?: number | null
+          quality_value?: number | null
+          reviews?: number | null
+          serving_size?: string | null
+          servings_per_container?: number | null
           servings_per_pack?: number | null
+          short_description?: string | null
           supplement_id?: string | null
+          timing?: string | null
           updated_at?: string | null
+          value?: number | null
         }
         Relationships: [
           {
