@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { COMPLETE_PRODUCT_SEED, COMPLETE_SEED_STATS } from '@/data/seeds';
-import { Database, Loader2, Play, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
-
+import { Database, Loader2, Play, CheckCircle2, XCircle, RefreshCw, Download } from 'lucide-react';
+import { exportAllProductsToCSV } from '@/utils/exportProductsCSV';
+import { toast } from 'sonner';
 interface SeedResult {
   success: boolean;
   results: {
@@ -34,6 +35,7 @@ export default function AdminSeedPage() {
   const [logs, setLogs] = useState<string[]>([]);
   const [dbStatus, setDbStatus] = useState<{ products: number; supplements: number; brands: number } | null>(null);
   const [results, setResults] = useState<{ added: number; skipped: number; errors: string[] } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const addLog = (msg: string) => {
     setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
@@ -161,7 +163,7 @@ export default function AdminSeedPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <Button onClick={checkStatus} variant="outline" disabled={isSeeding}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Status prüfen
@@ -176,6 +178,35 @@ export default function AdminSeedPage() {
                   <>
                     <Play className="h-4 w-4 mr-2" />
                     Seeding starten
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={async () => {
+                  setIsExporting(true);
+                  addLog('📦 Starte CSV-Export aller Produkte...');
+                  const result = await exportAllProductsToCSV();
+                  if (result.success) {
+                    addLog(`✅ Export abgeschlossen: ${result.productCount} Produkte exportiert`);
+                    toast.success(`${result.productCount} Produkte als CSV exportiert`);
+                  } else {
+                    addLog(`❌ Export fehlgeschlagen: ${result.error}`);
+                    toast.error(`Export fehlgeschlagen: ${result.error}`);
+                  }
+                  setIsExporting(false);
+                }} 
+                variant="secondary" 
+                disabled={isSeeding || isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Exportiere...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4 mr-2" />
+                    CSV Export
                   </>
                 )}
               </Button>
