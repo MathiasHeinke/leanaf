@@ -80,6 +80,7 @@ const INGREDIENT_TO_SUPPLEMENT: Record<string, string> = {
   'multivitamin': 'Multivitamin',
   'vitamin_a': 'Vitamin A',
   'vitamin_e': 'Vitamin E',
+  'biotin': 'Biotin',
   
   // Minerals
   'magnesium': 'Magnesium',
@@ -90,15 +91,24 @@ const INGREDIENT_TO_SUPPLEMENT: Record<string, string> = {
   'calcium': 'Calcium',
   'iodine': 'Jod',
   'potassium': 'Kalium',
+  'boron': 'Bor',
+  'silicon': 'Silizium',
+  'silica': 'Silizium',
+  'kelp': 'Jod',
   
   // Amino acids
   'glutamine': 'L-Glutamin',
+  'glutamine_gut': 'L-Glutamin',
   'taurine': 'Taurin',
   'theanine': 'L-Theanin',
   'glycine': 'Glycin',
   'nac': 'NAC',
   'arginine': 'L-Arginin',
   'citrulline': 'L-Citrullin',
+  'lysine': 'L-Lysin',
+  'tryptophan': 'L-Tryptophan',
+  'bcaa': 'BCAA',
+  'leucine': 'BCAA',
   
   // Fatty acids
   'omega3_dha': 'Omega-3',
@@ -113,9 +123,11 @@ const INGREDIENT_TO_SUPPLEMENT: Record<string, string> = {
   'ashwagandha': 'Ashwagandha',
   'rhodiola': 'Rhodiola',
   'ginseng': 'Ginseng',
+  'maca': 'Maca',
   
   // Antioxidants
   'curcumin': 'Curcumin',
+  'piperine': 'Curcumin',
   'quercetin': 'Quercetin',
   'glutathione': 'Glutathion',
   'opc': 'OPC',
@@ -127,17 +139,25 @@ const INGREDIENT_TO_SUPPLEMENT: Record<string, string> = {
   'probiotics_lacto': 'Probiotika',
   'probiotics_bifido': 'Probiotika',
   'probiotics': 'Probiotika',
+  'prebiotics': 'Präbiotika',
+  'psyllium': 'Flohsamen',
   
   // Joint health
   'collagen': 'Kollagen',
   'collagen_peptides': 'Kollagen',
   'glucosamine': 'Glucosamin',
+  'chondroitin': 'Chondroitin',
   'msm': 'MSM',
   'hyaluronic_acid': 'Hyaluronsäure',
   'boswellia': 'Boswellia',
+  'rosehip': 'Hagebutte',
   
   // Sleep
   'melatonin': 'Melatonin',
+  '5htp': '5-HTP',
+  'valerian': 'Baldrian',
+  'passionflower': 'Passionsblume',
+  'gaba': 'GABA',
   
   // Mushrooms
   'lions_mane': 'Lions Mane',
@@ -153,14 +173,23 @@ const INGREDIENT_TO_SUPPLEMENT: Record<string, string> = {
   'phosphatidylcholine': 'Phosphatidylcholin',
   'alpha_gpc': 'Alpha-GPC',
   'ps': 'Phosphatidylserin',
+  'ginkgo': 'Ginkgo',
   
   // Sport
   'creatine': 'Creatine',
   
+  // Superfoods
+  'spirulina': 'Spirulina',
+  'chlorella': 'Chlorella',
+  
+  // Liver & Detox
+  'milk_thistle': 'Mariendistel',
+  'artichoke': 'Artischocke',
+  
   // Other
-  'biotin': 'Biotin',
-  'silica': 'Silizium',
-  'kelp': 'Jod',
+  'black_seed_oil': 'Schwarzkümmelöl',
+  'ginger': 'Ingwer',
+  'elderberry': 'Holunder',
 };
 
 // ============================================
