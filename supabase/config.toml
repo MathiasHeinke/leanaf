@@ -150,3 +150,5 @@ verify_jwt = false
 [functions.ares-instant-check]
 verify_jwt = true
 
+[functions.import-products-csv]
+verify_jwt = false
