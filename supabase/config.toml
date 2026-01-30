@@ -147,3 +147,6 @@ verify_jwt = false
 [functions.training-ai-parser]
 verify_jwt = false
 
+[functions.ares-instant-check]
+verify_jwt = true
+

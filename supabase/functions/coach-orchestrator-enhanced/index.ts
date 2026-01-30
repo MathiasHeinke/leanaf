@@ -2410,13 +2410,6 @@ async function callLLMWithTools(
   }
 
   let llmResponse = await response.json();
-  console.log('[ARES-LLM] Raw response:', JSON.stringify({
-    hasChoices: !!llmResponse.choices,
-    choicesLength: llmResponse.choices?.length,
-    hasContent: !!llmResponse.choices?.[0]?.message?.content,
-    hasToolCalls: !!llmResponse.choices?.[0]?.message?.tool_calls,
-    finishReason: llmResponse.choices?.[0]?.finish_reason,
-  }));
   let assistantMessage = llmResponse.choices[0].message;
   
   // Handle tool calls in a loop
@@ -2459,30 +2452,8 @@ async function callLLMWithTools(
     assistantMessage = llmResponse.choices[0].message;
   }
   
-  // Fallback to GPT-5 if content is empty and no tool calls
-  if (!assistantMessage.content && toolResults.length === 0) {
-    console.warn('[ARES-LLM] Empty content from Gemini, falling back to GPT-5');
-    try {
-      const fallbackResponse = await callLovableWithTools(messages, 2000, temperature, 'openai/gpt-5');
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        console.log('[ARES-LLM] GPT-5 fallback response:', JSON.stringify({
-          hasContent: !!fallbackData.choices?.[0]?.message?.content,
-          finishReason: fallbackData.choices?.[0]?.finish_reason,
-        }));
-        if (fallbackData.choices?.[0]?.message?.content) {
-          assistantMessage = fallbackData.choices[0].message;
-          providerUsed = 'lovable';
-          modelUsed = 'openai/gpt-5';
-        }
-      }
-    } catch (fallbackErr) {
-      console.error('[ARES-LLM] GPT-5 fallback failed:', fallbackErr);
-    }
-  }
-  
   return {
-    content: assistantMessage.content || 'Entschuldigung, ich konnte keine Antwort generieren. Bitte versuche es erneut.',
+    content: assistantMessage.content || '',
     toolResults: toolResults,
     providerUsed,
     modelUsed
