@@ -199,17 +199,22 @@ Deno.serve(async (req) => {
 
     // Extract data with fallbacks
     const profile = profileResult.data || {};
-    const stack: SupplementStackItem[] = (stackResult.data || []).map((s: any) => ({
-      name: s.name,
-      dosage: s.dosage || '?',
-      unit: s.unit || '',
-      timing: TIMING_LABELS[s.preferred_timing] || s.preferred_timing || 'Unbekannt',
-    }));
-    const peptides: PeptideProtocol[] = (peptidesResult.data || []).map((p: any) => ({
-      compound: p.compound,
-      status: p.status,
-    }));
-    const bloodwork: BloodworkMarker[] = bloodworkResult.data || [];
+    const stack: SupplementStackItem[] = (stackResult.data || [])
+      .filter((s: any) => s.name) // Filter out entries without name
+      .map((s: any) => ({
+        name: s.name,
+        dosage: s.dosage || '?',
+        unit: s.unit || '',
+        timing: TIMING_LABELS[s.preferred_timing] || s.preferred_timing || 'Unbekannt',
+      }));
+    const peptides: PeptideProtocol[] = (peptidesResult.data || [])
+      .filter((p: any) => p.compound) // Filter out entries without compound
+      .map((p: any) => ({
+        compound: p.compound,
+        status: p.status || 'unknown',
+      }));
+    const bloodwork: BloodworkMarker[] = (bloodworkResult.data || [])
+      .filter((b: any) => b.marker_name); // Filter out entries without marker_name
     const insights: UserInsight[] = insightsResult.data || [];
     const goals = goalsResult.data || {};
 
@@ -221,12 +226,13 @@ Deno.serve(async (req) => {
     const timingLabel = TIMING_LABELS[supplement.timing] || supplement.timing;
     const constraintLabel = supplement.constraint ? CONSTRAINT_LABELS[supplement.constraint] : null;
 
-    // Format stack for prompt
+    // Format stack for prompt (safely handle null/undefined names)
+    const supplementNameLower = (supplement.name || '').toLowerCase();
     const stackSection = stack.length > 0
       ? stack
-          .filter(s => s.name.toLowerCase() !== supplement.name.toLowerCase()) // Exclude current supplement
+          .filter(s => s.name && s.name.toLowerCase() !== supplementNameLower) // Exclude current supplement
           .map(s => `- ${s.name} (${s.dosage}${s.unit}, ${s.timing})`)
-          .join('\n')
+          .join('\n') || 'Noch keine anderen Supplements'
       : 'Noch keine Supplements eingetragen';
 
     // Format peptides for prompt
@@ -234,13 +240,15 @@ Deno.serve(async (req) => {
       ? peptides.map(p => `- ${p.compound} (${p.status})`).join('\n')
       : 'Keine';
 
-    // Format relevant bloodwork
+    // Format relevant bloodwork (safely handle null marker names)
     const relevantMarkers = ['Vitamin D', 'Magnesium', 'Ferritin', 'B12', 'Zink', 'Eisen'];
     const bloodworkSection = bloodwork.length > 0
       ? bloodwork
-          .filter(b => relevantMarkers.some(m => b.marker_name.toLowerCase().includes(m.toLowerCase())))
+          .filter(b => b.marker_name && relevantMarkers.some(m => 
+            b.marker_name.toLowerCase().includes(m.toLowerCase())
+          ))
           .slice(0, 5)
-          .map(b => `- ${b.marker_name}: ${b.value} ${b.unit}`)
+          .map(b => `- ${b.marker_name}: ${b.value} ${b.unit || ''}`)
           .join('\n') || 'Keine relevanten Marker verfügbar'
       : 'Keine Blutwerte vorhanden';
 
