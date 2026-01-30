@@ -109,7 +109,43 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    const { products, batch_name = "manual" } = body;
+    const { products, batch_name = "manual", delete_ids } = body;
+
+    // Handle delete operation
+    if (delete_ids && Array.isArray(delete_ids) && delete_ids.length > 0) {
+      console.log(`Deleting ${delete_ids.length} products by ID`);
+      
+      let deleted = 0;
+      let notFound = 0;
+      
+      for (const id of delete_ids) {
+        const { error, count } = await supabase
+          .from("supplement_products")
+          .delete()
+          .eq("id", id);
+        
+        if (error || !count || count === 0) {
+          notFound++;
+        } else {
+          deleted++;
+        }
+      }
+      
+      const { count: finalCount } = await supabase
+        .from("supplement_products")
+        .select("*", { count: "exact", head: true });
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Deleted ${deleted} products, ${notFound} not found`,
+          deleted,
+          not_found: notFound,
+          database_totals: { products: finalCount || 0 }
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // If no products, return current status
     if (!products || !Array.isArray(products) || products.length === 0) {
