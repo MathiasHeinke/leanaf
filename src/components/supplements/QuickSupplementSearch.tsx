@@ -133,7 +133,7 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
   };
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
+    <div ref={containerRef} className={cn('relative z-20', className)}>
       {/* Search Input */}
       <div className={cn(
         'flex items-center gap-2 h-10 px-3 rounded-lg',
@@ -177,8 +177,8 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
       {/* Dropdown Results */}
       {isOpen && filteredResults.length > 0 && (
         <div className={cn(
-          'absolute top-full left-0 right-0 mt-1 z-50',
-          'bg-popover border border-border rounded-lg shadow-lg',
+          'absolute top-full left-0 right-0 mt-1 z-[100]',
+          'bg-popover border border-border rounded-lg shadow-xl',
           'max-h-60 overflow-y-auto'
         )}>
           {filteredResults.map((item) => (
