@@ -1,119 +1,86 @@
 
 
-# Multi-Hersteller Import: Centrum + Doppelherz
+## CSV-Export für alle Supplement-Produkte
 
-## Ausgangssituation
+### Zusammenfassung
+Erstelle eine Funktion zum Export aller 940 Supplement-Produkte als vollständige CSV-Datei mit allen verknüpften Daten aus drei Tabellen.
 
-| Hersteller | Brand existiert | Produkte in DB | Produkte in JSON |
-|------------|-----------------|----------------|------------------|
-| **Doppelherz** | Ja (slug: `doppelherz`) | 22 | 19 |
-| **Centrum** | Nein | 0 | 15 |
+### Daten-Umfang
 
-### JSON-Format Unterschiede zu Biogena
+**Produkt-Daten (supplement_products)**
+- ID, Produktname, SKU
+- Pack-Größe, Einheit, Portionen
+- Dosis pro Portion, Einheit
+- Preis EUR, Preis pro Portion
+- Form (Kapsel/Pulver/etc.)
+- Vegan, Bio, Allergene
+- URL, Amazon ASIN
+- Verifiziert, Empfohlen
+- Popularität, Quality-Tags
 
-| Feld | Biogena | Centrum/Doppelherz |
-|------|---------|-------------------|
-| `form` | Fehlt (wird aus dosage geparsed) | Explizit als String (`tablets`, `softgels`, `capsules`) |
-| `made_in_germany` | Fehlt | Boolean vorhanden |
-| `lab_tested` | Fehlt | Boolean vorhanden |
-| `pack_size` | Fehlt (nur `servings`) | Explizit vorhanden |
-| `big8_scores.lab_tests` | `lab_tested` | `lab_tests` (anderer Feldname!) |
+**Marken-Daten (supplement_brands)**
+- Markenname, Slug
+- Land, Website
+- Preisstufe (budget/mid/premium)
+- Spezialisierung
+- Qualitätszertifizierungen
 
----
+**Supplement-Master-Daten (supplement_database)**
+- Supplement-Name, Kategorie
+- Standard-Dosierung
+- Timing-Constraint
+- Protokoll-Phase (0/1/2/3)
+- Impact Score, Priority Score
+- Necessity Tier (essential/optimizer/specialist)
+- Evidenz-Level
+- Hallmarks, Synergien, Blocker
+- Cycling-Anforderungen
 
-## Implementierungsschritte
+### Umsetzung
 
-### Schritt 1: Centrum als Brand anlegen
+1. **Neue Utility-Funktion**: `src/utils/exportProductsCSV.ts`
+   - Lädt alle Produkte mit JOIN auf brands und supplement_database
+   - Konvertiert Arrays zu Semikolon-getrennten Strings
+   - Generiert UTF-8 CSV mit BOM für Excel-Kompatibilität
+   - Triggert automatischen Download
 
-```sql
-INSERT INTO supplement_brands (name, slug, country, website, price_tier, specialization, quality_certifications, description)
-VALUES ('Centrum', 'centrum', 'US', 'centrum.de', 'mid', ARRAY['multivitamin', 'classic', 'pharmacy'], ARRAY['GMP', 'pharma-grade'], 'Weltweit fuehrender Multivitamin-Hersteller. Apotheken-Qualitaet.');
-```
+2. **Export-Button hinzufügen** auf `/supplements` Seite
+   - Button im Header-Bereich der Produktliste
+   - Loading-State während Export
+   - Success/Error Toast-Benachrichtigung
 
-### Schritt 2: Generische Edge Function erstellen
-
-**Datei:** `supabase/functions/seed-manufacturer-products/index.ts`
-
-Unterschiede zur Biogena-Version:
-- **Dynamischer Brand-Slug**: Liest `manufacturer_id` aus JSON
-- **Form-Mapping**: Uebersetzt englische Form-Namen (`tablets` -> `Tabletten`, `softgels` -> `Softgels`)
-- **Erweiterte Tags**: Nutzt `made_in_germany` und `lab_tested` fuer Quality-Tags
-- **Flexible Scores**: Unterstuetzt sowohl `lab_tested` als auch `lab_tests` Feldnamen
-- **Erweitertes Ingredient-Mapping**: Neue Kategorien fuer Multivitamin-Produkte
-
-### Schritt 3: Ingredient-Mapping erweitern
-
-Neue Mappings fuer Centrum/Doppelherz Kategorien:
-
-```text
-'multivitamin' -> 'Multivitamin'
-'omega3' -> 'Omega-3'
-'q10' -> 'CoQ10 Ubiquinol'
-'vitamin_d' -> 'Vitamin D3'
-'vitamin_b12' -> 'Vitamin B12'
-'fish_oil' -> 'Omega-3'
-'epa' -> 'Omega-3'
-'dha' -> 'Omega-3'
-'coenzyme_q10' -> 'CoQ10 Ubiquinol'
-'lutein' -> 'Lutein'
-```
-
-### Schritt 4: Form-Mapping hinzufuegen
+### Technische Details
 
 ```text
-'tablets' -> 'Tabletten'
-'softgels' -> 'Softgels'
-'capsules' -> 'Kapseln'
-'drops' -> 'Tropfen'
-'powder' -> 'Pulver'
-'liquid' -> 'Fluessig'
+CSV-Spalten (ca. 45 Felder):
+┌──────────────────────────────────────────────────────────┐
+│ PRODUKT                                                  │
+├──────────────────────────────────────────────────────────┤
+│ id, product_name, product_sku, pack_size, pack_unit,     │
+│ servings_per_pack, dose_per_serving, dose_unit,          │
+│ price_eur, price_per_serving, form, is_vegan, is_organic,│
+│ allergens, product_url, amazon_asin, is_verified,        │
+│ is_recommended, popularity_score, quality_tags           │
+├──────────────────────────────────────────────────────────┤
+│ MARKE                                                    │
+├──────────────────────────────────────────────────────────┤
+│ brand_name, brand_slug, brand_country, brand_website,    │
+│ brand_price_tier, brand_specialization, brand_certs      │
+├──────────────────────────────────────────────────────────┤
+│ SUPPLEMENT                                               │
+├──────────────────────────────────────────────────────────┤
+│ supplement_name, supplement_category, default_dosage,    │
+│ timing_constraint, protocol_phase, impact_score,         │
+│ necessity_tier, priority_score, evidence_level,          │
+│ hallmarks_addressed, synergies, blockers,                │
+│ cycling_required, cycling_protocol                       │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### Schritt 5: Quality-Tags aus JSON-Feldern
+**Dateiname-Format**: `ares_products_export_YYYY-MM-DD.csv`
 
-```text
-made_in_germany: true -> 'made-in-de'
-lab_tested: true -> 'lab-tested'
-big8_scores.value >= 8.5 -> 'good-value'
-big8_scores.bioavailability >= 8.5 -> 'high-bioavailability'
-```
-
----
-
-## Dateiaenderungen
-
-### Neue Datei: `supabase/functions/seed-manufacturer-products/index.ts`
-
-- Generischer Handler fuer alle Hersteller-JSONs
-- Liest `manufacturer_id` aus JSON und sucht passenden Brand
-- Falls Brand nicht existiert: Fehler mit Hinweis zur Erstellung
-- Verarbeitet unterschiedliche Form- und Score-Feldnamen
-- Upsert-Logik wie bei Biogena
-
-### Aenderung: `src/data/supplementBrands.ts`
-
-- Centrum als neuen Brand hinzufuegen (fuer Frontend-Anzeige)
-
----
-
-## Ablauf
-
-```text
-1. Edge Function deployen
-2. Centrum Brand via SQL anlegen
-3. POST /seed-manufacturer-products mit centrum.json
-4. POST /seed-manufacturer-products mit doppelherz.json
-5. Ergebnis pruefen
-```
-
----
-
-## Erwartetes Ergebnis
-
-| Metrik | Vorher | Nachher |
-|--------|--------|---------|
-| **Centrum Produkte** | 0 | 15 |
-| **Doppelherz Produkte** | 22 | ~30 (Upsert) |
-| **Gesamt Produkte** | ~450 | ~480+ |
-| **Hersteller mit Daten** | 17 | 18 (Centrum neu) |
+**Besonderheiten**:
+- UTF-8 BOM für Excel-Kompatibilität
+- Arrays als Semikolon-separierte Werte
+- Anführungszeichen-Escaping für Textfelder mit Kommas
 
