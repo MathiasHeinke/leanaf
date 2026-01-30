@@ -119,6 +119,16 @@ export const SUPPLEMENT_BRANDS: SupplementBrand[] = [
     description: 'Slowakische Sport-Supplements. Günstige Basics wie Kreatin und Whey.'
   },
   {
+    name: 'Natural Elements',
+    slug: 'natural-elements',
+    country: 'DE',
+    website: 'natural-elements.eu',
+    price_tier: 'mid',
+    specialization: ['amazon', 'premium', 'natural'],
+    quality_certifications: ['made-in-de', 'lab-tested', 'vegan'],
+    description: 'Premium Amazon-Marke aus Deutschland. Breites Sortiment mit hohen Qualitätsstandards.'
+  },
+  {
     name: 'Bulk',
     slug: 'bulk',
     country: 'UK',
