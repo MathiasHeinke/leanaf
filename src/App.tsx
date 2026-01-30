@@ -35,6 +35,7 @@ import ExecuteImportPage from "./pages/Admin/ExecuteImportPage";
 import MatrixImportRunner from "./pages/Admin/MatrixImportRunner";
 import AdminSeedPage from "./pages/AdminSeedPage";
 import AdminImportCSVPage from "./pages/AdminImportCSVPage";
+import ImportCSVRunner from "./pages/admin/ImportCSVRunner";
 import TransformationJourneyPage from "./pages/TransformationJourney";
 import Bloodwork from "./pages/Bloodwork";
 import ProtocolPage from "./pages/Protocol";
@@ -107,6 +108,7 @@ const App = () => (
                       <Route path="/admin/matrix-runner" element={<MatrixImportRunner />} />
                       <Route path="/admin/seed-supplements" element={<AdminSeedPage />} />
                       <Route path="/admin/import-csv" element={<AdminImportCSVPage />} />
+                      <Route path="/admin/csv-runner" element={<ImportCSVRunner />} />
                       {/* Redirect old subscription route */}
                       <Route path="/subscription" element={<Navigate to="/credits" replace />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
