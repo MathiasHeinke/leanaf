@@ -4,6 +4,11 @@
  * Purpose: Stateless, one-shot supplement analysis without chat history
  * Model: Gemini 2.5 Flash (speed priority)
  * Response Time Target: < 3 seconds
+ * 
+ * Features:
+ * - Persona-aware (Lester/ARES based on user's coach_personality)
+ * - Full user context (stack, peptides, bloodwork, insights)
+ * - Uses correct DB schemas (fixed from v1)
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -25,41 +30,6 @@ interface SupplementInput {
   timing: string;
   brandName?: string;
   constraint?: string;
-}
-
-interface UserContext {
-  goal?: string;
-  phase?: number;
-  weight?: number;
-  age?: number;
-  gender?: string;
-  protocol_mode?: string;
-  target_calories?: number;
-  target_protein?: number;
-}
-
-interface SupplementStackItem {
-  name: string;
-  dosage: string;
-  unit: string;
-  timing: string;
-}
-
-interface PeptideProtocol {
-  compound: string;
-  status: string;
-}
-
-interface BloodworkMarker {
-  marker_name: string;
-  value: number;
-  unit: string;
-  test_date: string;
-}
-
-interface UserInsight {
-  insight_type: string;
-  content: string;
 }
 
 // Timing labels for display
@@ -133,7 +103,7 @@ Deno.serve(async (req) => {
       : supabase;
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // PARALLEL DATA LOADING - Minimize latency
+    // PARALLEL DATA LOADING - Corrected DB Schemas
     // ═══════════════════════════════════════════════════════════════════════════
     
     const startTime = Date.now();
@@ -145,15 +115,16 @@ Deno.serve(async (req) => {
       bloodworkResult,
       insightsResult,
       goalsResult,
+      coachMemoryResult,
     ] = await Promise.all([
-      // 1. User Profile
+      // 1. User Profile (CORRECTED: removed 'phase', added coach_personality)
       svcClient
         .from('profiles')
-        .select('goal, phase, weight, age, gender, protocol_mode, preferred_name, display_name')
+        .select('goal, weight, age, gender, protocol_mode, preferred_name, display_name, coach_personality, daily_calorie_target, protein_target_g')
         .eq('user_id', userId)
         .maybeSingle(),
 
-      // 2. Current Supplement Stack
+      // 2. Current Supplement Stack (correct)
       svcClient
         .from('user_supplements')
         .select('name, dosage, unit, preferred_timing')
@@ -161,35 +132,42 @@ Deno.serve(async (req) => {
         .eq('is_active', true)
         .limit(20),
 
-      // 3. Active Peptide Protocols
+      // 3. Peptide Protocols (CORRECTED: use name, peptides JSONB, goal, is_active, phase)
       svcClient
         .from('peptide_protocols')
-        .select('compound, status, dose, frequency')
+        .select('name, peptides, goal, is_active, phase')
         .eq('user_id', userId)
-        .eq('status', 'active')
-        .limit(10),
+        .eq('is_active', true)
+        .limit(5),
 
-      // 4. Recent Bloodwork (last 90 days)
+      // 4. Bloodwork (CORRECTED: flat marker columns instead of marker_name/value)
       svcClient
         .from('user_bloodwork')
-        .select('marker_name, value, unit, test_date')
+        .select('test_date, vitamin_d, vitamin_b12, ferritin, magnesium, zinc, iron, total_testosterone, free_testosterone, tsh, ft3, ft4, hba1c, creatinine, alt, ast, ggt, hdl, ldl, triglycerides, hscrp')
         .eq('user_id', userId)
-        .gte('test_date', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
         .order('test_date', { ascending: false })
-        .limit(15),
+        .limit(1),
 
-      // 5. User Insights (known preferences)
+      // 5. User Insights (CORRECTED: table is user_insights, not ares_user_insights)
       svcClient
-        .from('ares_user_insights')
-        .select('insight_type, content')
+        .from('user_insights')
+        .select('category, insight, importance')
         .eq('user_id', userId)
-        .in('insight_type', ['preference', 'health_context', 'supplement_tolerance'])
+        .eq('is_active', true)
+        .order('importance', { ascending: false })
         .limit(10),
 
-      // 6. Daily Goals
+      // 6. Daily Goals (check if calories/protein exist)
       svcClient
         .from('daily_goals')
-        .select('calories, protein, carbs, fats')
+        .select('calories, protein, carbs, fats, fluid_goal_ml')
+        .eq('user_id', userId)
+        .maybeSingle(),
+
+      // 7. Coach Memory (for preferred_name, mood, topics)
+      svcClient
+        .from('coach_memory')
+        .select('memory_data')
         .eq('user_id', userId)
         .maybeSingle(),
     ]);
@@ -197,78 +175,157 @@ Deno.serve(async (req) => {
     const loadTime = Date.now() - startTime;
     console.log(`[ARES-INSTANT-CHECK] Data loaded in ${loadTime}ms`);
 
-    // Extract data with fallbacks
+    // Extract profile data
     const profile = profileResult.data || {};
-    const stack: SupplementStackItem[] = (stackResult.data || [])
-      .filter((s: any) => s.name) // Filter out entries without name
-      .map((s: any) => ({
-        name: s.name,
-        dosage: s.dosage || '?',
-        unit: s.unit || '',
-        timing: TIMING_LABELS[s.preferred_timing] || s.preferred_timing || 'Unbekannt',
-      }));
-    const peptides: PeptideProtocol[] = (peptidesResult.data || [])
-      .filter((p: any) => p.compound) // Filter out entries without compound
-      .map((p: any) => ({
-        compound: p.compound,
-        status: p.status || 'unknown',
-      }));
-    const bloodwork: BloodworkMarker[] = (bloodworkResult.data || [])
-      .filter((b: any) => b.marker_name); // Filter out entries without marker_name
-    const insights: UserInsight[] = insightsResult.data || [];
     const goals = goalsResult.data || {};
+    const coachMemory = coachMemoryResult.data?.memory_data as Record<string, any> || {};
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // BUILD ANALYSIS PROMPT
+    // LOAD PERSONA based on coach_personality
     // ═══════════════════════════════════════════════════════════════════════════
 
-    const userName = profile.preferred_name || profile.display_name || 'User';
-    const timingLabel = TIMING_LABELS[supplement.timing] || supplement.timing;
-    const constraintLabel = supplement.constraint ? CONSTRAINT_LABELS[supplement.constraint] : null;
+    // Map coach_personality to persona ID
+    // 'soft' -> LESTER (science nerd), default -> ARES (spartan)
+    const coachPersonality = profile.coach_personality || 'default';
+    const personaId = coachPersonality === 'soft' ? 'lester' : 'ares';
+    
+    console.log(`[ARES-INSTANT-CHECK] Loading persona: ${personaId} (from coach_personality: ${coachPersonality})`);
 
-    // Format stack for prompt (safely handle null/undefined names)
+    const personaResult = await svcClient
+      .from('coach_personas')
+      .select('id, name, language_style, dial_depth, dial_humor, dial_opinion, dial_warmth, dial_directness, dialect, phrases')
+      .eq('id', personaId)
+      .maybeSingle();
+
+    const persona = personaResult.data;
+    console.log(`[ARES-INSTANT-CHECK] Persona loaded:`, persona?.name || 'fallback to ARES');
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FORMAT DATA FOR PROMPT
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Get user's preferred name from coach_memory or profile
+    const userName = coachMemory.preferred_name || profile.preferred_name || profile.display_name || 'User';
+
+    // Format stack for prompt
+    const stack = (stackResult.data || []).filter((s: any) => s.name);
     const supplementNameLower = (supplement.name || '').toLowerCase();
     const stackSection = stack.length > 0
       ? stack
-          .filter(s => s.name && s.name.toLowerCase() !== supplementNameLower) // Exclude current supplement
-          .map(s => `- ${s.name} (${s.dosage}${s.unit}, ${s.timing})`)
+          .filter((s: any) => s.name.toLowerCase() !== supplementNameLower)
+          .map((s: any) => `- ${s.name} (${s.dosage || '?'}${s.unit || ''}, ${TIMING_LABELS[s.preferred_timing] || s.preferred_timing || '?'})`)
           .join('\n') || 'Noch keine anderen Supplements'
       : 'Noch keine Supplements eingetragen';
 
-    // Format peptides for prompt
-    const peptideSection = peptides.length > 0
-      ? peptides.map(p => `- ${p.compound} (${p.status})`).join('\n')
-      : 'Keine';
+    // Format peptides (CORRECTED: peptides is JSONB array)
+    const peptides = (peptidesResult.data || []).filter((p: any) => p.is_active);
+    let peptideSection = 'Keine aktiven Protokolle';
+    if (peptides.length > 0) {
+      const peptideLines: string[] = [];
+      for (const protocol of peptides) {
+        const peptideList = Array.isArray(protocol.peptides) ? protocol.peptides : [];
+        for (const pep of peptideList) {
+          const pepName = typeof pep === 'string' ? pep : (pep.name || pep.compound || 'Unbekannt');
+          const pepDose = typeof pep === 'object' && pep.dose ? ` (${pep.dose})` : '';
+          peptideLines.push(`- ${pepName}${pepDose}: ${protocol.goal || 'aktiv'}`);
+        }
+      }
+      peptideSection = peptideLines.length > 0 ? peptideLines.join('\n') : 'Keine aktiven Protokolle';
+    }
 
-    // Format relevant bloodwork (safely handle null marker names)
-    const relevantMarkers = ['Vitamin D', 'Magnesium', 'Ferritin', 'B12', 'Zink', 'Eisen'];
-    const bloodworkSection = bloodwork.length > 0
-      ? bloodwork
-          .filter(b => b.marker_name && relevantMarkers.some(m => 
-            b.marker_name.toLowerCase().includes(m.toLowerCase())
-          ))
-          .slice(0, 5)
-          .map(b => `- ${b.marker_name}: ${b.value} ${b.unit || ''}`)
-          .join('\n') || 'Keine relevanten Marker verfügbar'
-      : 'Keine Blutwerte vorhanden';
+    // Format bloodwork (CORRECTED: flat columns instead of marker_name/value)
+    const latestBloodwork = bloodworkResult.data?.[0];
+    let bloodworkSection = 'Keine Blutwerte vorhanden';
+    if (latestBloodwork) {
+      const markers: string[] = [];
+      if (latestBloodwork.vitamin_d) markers.push(`- Vitamin D: ${latestBloodwork.vitamin_d} ng/ml`);
+      if (latestBloodwork.vitamin_b12) markers.push(`- B12: ${latestBloodwork.vitamin_b12} pg/ml`);
+      if (latestBloodwork.magnesium) markers.push(`- Magnesium: ${latestBloodwork.magnesium} mg/dl`);
+      if (latestBloodwork.zinc) markers.push(`- Zink: ${latestBloodwork.zinc} µg/dl`);
+      if (latestBloodwork.ferritin) markers.push(`- Ferritin: ${latestBloodwork.ferritin} ng/ml`);
+      if (latestBloodwork.iron) markers.push(`- Eisen: ${latestBloodwork.iron} µg/dl`);
+      if (latestBloodwork.total_testosterone) markers.push(`- Testosteron: ${latestBloodwork.total_testosterone} ng/dl`);
+      if (latestBloodwork.tsh) markers.push(`- TSH: ${latestBloodwork.tsh} mIU/L`);
+      if (latestBloodwork.hba1c) markers.push(`- HbA1c: ${latestBloodwork.hba1c}%`);
+      if (latestBloodwork.hscrp) markers.push(`- hsCRP: ${latestBloodwork.hscrp} mg/L`);
+      bloodworkSection = markers.length > 0 ? markers.join('\n') : 'Keine relevanten Marker';
+    }
 
-    // Format insights
+    // Format insights (CORRECTED: use category/insight instead of insight_type/content)
+    const insights = insightsResult.data || [];
+    const relevantCategories = ['gewohnheiten', 'substanzen', 'gesundheit', 'koerper', 'praeferenzen', 'ernaehrung'];
     const insightSection = insights.length > 0
-      ? insights.map(i => `- ${i.content}`).join('\n')
+      ? insights
+          .filter((i: any) => !i.category || relevantCategories.includes(i.category.toLowerCase()))
+          .slice(0, 5)
+          .map((i: any) => `- ${i.insight}`)
+          .join('\n') || 'Keine bekannten Präferenzen'
       : 'Keine bekannten Präferenzen';
 
-    const systemPrompt = `Du bist ARES, der Elite-Supplement-Auditor. Du analysierst Supplements für ${userName} und gibst eine prägnante, personalisierte Bewertung.
+    // ═══════════════════════════════════════════════════════════════════════════
+    // BUILD PERSONA-AWARE PROMPT
+    // ═══════════════════════════════════════════════════════════════════════════
 
-STIL:
-- Direkt und auf den Punkt
+    const timingLabel = TIMING_LABELS[supplement.timing] || supplement.timing;
+    const constraintLabel = supplement.constraint ? CONSTRAINT_LABELS[supplement.constraint] : null;
+
+    // Build persona style block
+    let personaStyleBlock = '';
+    if (persona) {
+      const depth = persona.dial_depth ?? 7;
+      const humor = persona.dial_humor ?? 5;
+      const opinion = persona.dial_opinion ?? 6;
+      const warmth = persona.dial_warmth ?? 5;
+      const directness = persona.dial_directness ?? 7;
+
+      personaStyleBlock = `
+PERSONA: ${persona.name?.toUpperCase() || 'ARES'}
+Stil: ${persona.language_style || 'Direkt und wissenschaftlich fundiert'}
+Tiefe: ${depth}/10 | Humor: ${humor}/10 | Meinung: ${opinion}/10 | Wärme: ${warmth}/10 | Direktheit: ${directness}/10
+${persona.dialect ? `Dialekt-Hinweis: ${persona.dialect}` : ''}
+
+PERSONA-SPEZIFISCHE ANWEISUNGEN:
+${persona.name?.toLowerCase() === 'lester' ? `
+- Du bist LESTER, der Wissenschafts-Nerd
+- Erkläre wie ein Biochemie-Professor mit Humor
+- Nutze Fachbegriffe (IGF-1, mTor, Bioavailability, etc.) und erkläre sie kurz
+- Sei nerdig aber charmant, tiefgründig aber unterhaltsam
+- Zeige echte Begeisterung für biochemische Zusammenhänge` : `
+- Du bist ARES, der spartanische Krieger-Coach
+- Direkt, keine Floskeln, effizient
+- Fokus auf praktische Optimierung
+- Klare Empfehlungen ohne Umschweife`}
+`;
+    } else {
+      // Fallback to ARES style
+      personaStyleBlock = `
+PERSONA: ARES
+Stil: Direkt und effizient, spartanisch
+Tiefe: 7/10 | Humor: 3/10 | Meinung: 8/10
+
+PERSONA-SPEZIFISCHE ANWEISUNGEN:
+- Direkt, keine Floskeln, effizient
+- Fokus auf praktische Optimierung
+- Klare Empfehlungen ohne Umschweife
+`;
+    }
+
+    const systemPrompt = `Du bist ${persona?.name?.toUpperCase() || 'ARES'}, der Elite-Supplement-Auditor.
+${personaStyleBlock}
+
+ANTWORT-REGELN:
+- Maximal 4 kurze Absätze, maximal 150 Wörter
 - Nutze Emojis für Struktur (✅ ⏰ 💊 ⚠️ 💡)
-- Maximal 4 kurze Absätze
-- Maximal 150 Wörter
-- Keine Floskeln, keine Einleitungen`;
+- Keine Floskeln, keine Einleitungen wie "Klar" oder "Natürlich"
+- Starte direkt mit der Bewertung
+- Antworte IMMER auf Deutsch`;
+
+    // Get calorie target from goals or profile
+    const calorieTarget = goals.calories || profile.daily_calorie_target;
 
     const userPrompt = `## USER KONTEXT
-- Phase: ${profile.phase || 'unbekannt'} | Protokoll: ${profile.protocol_mode || 'natural'}
-- Ziel: ${profile.goal || 'nicht definiert'}${goals.calories ? ` (${goals.calories} kcal/Tag)` : ''}
+- Protokoll: ${profile.protocol_mode || 'natural'}
+- Ziel: ${profile.goal || 'nicht definiert'}${calorieTarget ? ` (${calorieTarget} kcal/Tag)` : ''}
 - Alter: ${profile.age || '?'} | Gewicht: ${profile.weight || '?'}kg | Geschlecht: ${profile.gender || '?'}
 
 ## AKTUELLER STACK
@@ -286,7 +343,7 @@ ${insightSection}
 ## ZU PRÜFENDES SUPPLEMENT
 - Name: ${supplement.name}
 - Marke: ${supplement.brandName || 'unbekannt'}
-- Dosis: ${supplement.dosage}${supplement.unit}
+- Dosis: ${supplement.dosage} ${supplement.unit}
 - Timing: ${timingLabel}
 ${constraintLabel ? `- Einnahme-Hinweis: ${constraintLabel}` : ''}
 
@@ -297,6 +354,12 @@ Bewerte dieses Supplement für ${userName}:
 3. Ist die Dosis angemessen?
 4. Gibt es Interaktionen mit dem Stack/Peptiden?
 5. Qualität der Marke (falls bekannt)?`;
+
+    // Log the complete prompt for debugging
+    console.log('[ARES-INSTANT-CHECK] === COMPLETE PROMPT ===');
+    console.log('[ARES-INSTANT-CHECK] System:', systemPrompt.substring(0, 200) + '...');
+    console.log('[ARES-INSTANT-CHECK] User:', userPrompt);
+    console.log('[ARES-INSTANT-CHECK] === END PROMPT ===');
 
     // ═══════════════════════════════════════════════════════════════════════════
     // CALL GEMINI 2.5 FLASH
@@ -325,7 +388,7 @@ Bewerte dieses Supplement für ${userName}:
           { role: 'user', content: userPrompt },
         ],
         max_tokens: 500,
-        temperature: 0.3, // Low temperature for consistent, focused responses
+        temperature: 0.4, // Slightly higher for more personality
       }),
     });
 
@@ -351,7 +414,7 @@ Bewerte dieses Supplement für ${userName}:
             { role: 'user', content: userPrompt },
           ],
           max_tokens: 500,
-          temperature: 0.3,
+          temperature: 0.4,
         }),
       });
 
@@ -369,7 +432,11 @@ Bewerte dieses Supplement für ${userName}:
       console.log(`[ARES-INSTANT-CHECK] Total time (with fallback): ${totalTime}ms`);
 
       return new Response(
-        JSON.stringify({ analysis, timing: { load: loadTime, ai: aiTime, total: totalTime } }),
+        JSON.stringify({ 
+          analysis, 
+          persona: persona?.name || 'ARES',
+          timing: { load: loadTime, ai: aiTime, total: totalTime } 
+        }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -383,6 +450,7 @@ Bewerte dieses Supplement für ${userName}:
     return new Response(
       JSON.stringify({ 
         analysis, 
+        persona: persona?.name || 'ARES',
         timing: { 
           load: loadTime, 
           ai: aiTime, 
