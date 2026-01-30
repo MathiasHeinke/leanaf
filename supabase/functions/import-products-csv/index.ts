@@ -109,7 +109,96 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    const { products, batch_name = "manual", delete_ids } = body;
+    const { products, batch_name = "manual", delete_ids, update_amazon_data } = body;
+
+    // Handle Amazon data update from CSV
+    if (update_amazon_data && Array.isArray(update_amazon_data) && update_amazon_data.length > 0) {
+      console.log(`Updating Amazon data for ${update_amazon_data.length} products`);
+      
+      // Pre-fetch all brands for lookup
+      const { data: brands } = await supabase
+        .from("supplement_brands")
+        .select("id, slug");
+      
+      const brandMap = new Map(brands?.map(b => [b.slug, b.id]) || []);
+      
+      let updated = 0;
+      let notFound = 0;
+      const notFoundItems: string[] = [];
+      
+      for (const item of update_amazon_data) {
+        const brandId = brandMap.get(item.brand_slug);
+        
+        if (!brandId) {
+          notFound++;
+          notFoundItems.push(`Brand not found: ${item.brand_slug}`);
+          continue;
+        }
+        
+        // Find product by name + brand
+        const { data: product } = await supabase
+          .from("supplement_products")
+          .select("id")
+          .eq("product_name", item.product_name)
+          .eq("brand_id", brandId)
+          .maybeSingle();
+        
+        if (product) {
+          const updateData: Record<string, any> = {
+            updated_at: new Date().toISOString(),
+          };
+          
+          if (item.amazon_asin !== undefined) updateData.amazon_asin = cleanString(item.amazon_asin);
+          if (item.amazon_url !== undefined) updateData.amazon_url = cleanString(item.amazon_url);
+          if (item.amazon_name !== undefined) updateData.amazon_name = cleanString(item.amazon_name);
+          if (item.amazon_image_url !== undefined) updateData.amazon_image = cleanString(item.amazon_image_url);
+          
+          const { error } = await supabase
+            .from("supplement_products")
+            .update(updateData)
+            .eq("id", product.id);
+          
+          if (error) {
+            notFound++;
+            notFoundItems.push(`Update failed: ${item.product_name} - ${error.message}`);
+          } else {
+            updated++;
+          }
+        } else {
+          notFound++;
+          notFoundItems.push(`Product not found: ${item.product_name} (${item.brand_slug})`);
+        }
+      }
+      
+      // Get final ASIN stats
+      const { data: asinStats } = await supabase
+        .from("supplement_products")
+        .select("amazon_asin")
+        .not("amazon_asin", "is", null)
+        .neq("amazon_asin", "");
+      
+      const uniqueAsins = new Set(asinStats?.map(p => p.amazon_asin) || []);
+      
+      const { count: totalProducts } = await supabase
+        .from("supplement_products")
+        .select("*", { count: "exact", head: true });
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Updated Amazon data for ${updated} products, ${notFound} not found/failed`,
+          updated,
+          not_found: notFound,
+          not_found_items: notFoundItems.slice(0, 50),
+          database_totals: {
+            products: totalProducts || 0,
+            products_with_asin: asinStats?.length || 0,
+            unique_asins: uniqueAsins.size
+          }
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Handle delete operation
     if (delete_ids && Array.isArray(delete_ids) && delete_ids.length > 0) {
