@@ -1,305 +1,243 @@
 
-# ARES Instant Check - Vollständiger Implementierungsplan
 
-## Zusammenfassung
+# Fix: ARES Instant Check - Komplette Datenkorrektur & Lester-Integration
 
-Ersetzung des problematischen "Frag ARES" Chat-Redirects durch ein **Inline-Overlay** mit schneller, kontextbezogener AI-Analyse. Der User bleibt im Supplement-Chip, bekommt eine personalisierte Bewertung und kann danach speichern – **Zero Context Switching**.
+## Problem-Zusammenfassung
 
----
+Der ARES Instant Check lädt aktuell **fehlerhafte Daten** wegen falscher DB-Schemas und **ignoriert die Persona-Einstellungen** komplett.
 
-## Architektur
+## Zu behebende Fehler
 
+### 1. Datenbank-Schema-Korrekturen
+
+| Problem | Lösung |
+|---------|--------|
+| `profiles.phase` existiert nicht | Entfernen oder aus `protocol_mode` ableiten |
+| `peptide_protocols.compound/status/dose/frequency` falsch | Korrekt: `name, peptides (JSONB), goal, is_active, phase` |
+| `user_bloodwork.marker_name/value/unit` falsch | Korrekt: Flache Spalten (vitamin_d, ferritin, magnesium, zinc, etc.) |
+| `ares_user_insights` existiert nicht | Korrekt: `user_insights` mit Spalten `category, insight, importance, confidence` |
+| `daily_goals.calories/protein/carbs/fats` | Prüfen ob Tabelle existiert, sonst aus `profiles.daily_calorie_target` etc. nehmen |
+
+### 2. Fehlende Datenquellen
+
+| Datenquelle | Wert für Prompt |
+|-------------|-----------------|
+| `coach_memory.memory_data` | `preferred_name: "Matze"`, Mood History, Topics, User Notes |
+| `coach_personas` (basierend auf `profiles.coach_personality`) | Lester's `language_style`, `dial_*` Werte |
+
+### 3. Lester-Persona-Integration
+
+Die Persona muss aus `coach_personas` geladen werden basierend auf dem User's `profiles.coach_personality` Wert.
+
+**Lester-spezifischer Stil-Block für den Prompt:**
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                    ExpandableSupplementChip                         │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │  Magnesium  400mg  Abends                                     │  │
-│  │  [Timing] [Dosis] [Zyklisch]                                  │  │
-│  │                                                               │  │
-│  │  [Speichern]              [Frag ARES] [Loeschen]              │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼ onClick
-┌─────────────────────────────────────────────────────────────────────┐
-│              AresInstantCheckDrawer (Vaul Drawer)                   │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │  ⚡ Analyse: Magnesium (NOW Foods)                            │  │
-│  ├───────────────────────────────────────────────────────────────┤  │
-│  │                                                               │  │
-│  │  [Loading State - Rotating Text Animation]                    │  │
-│  │  "Lade dein Profil..."                                        │  │
-│  │  "Pruefe Supplement-Stack..."                                 │  │
-│  │  "Analysiere Interaktionen..."                                │  │
-│  │                                                               │  │
-│  │  [Result State - Markdown]                                    │  │
-│  │  ✅ Bewertung: Gut geeignet                                   │  │
-│  │  ⏰ Timing: Abends optimal fuer Schlaf                        │  │
-│  │  💊 Dosis: 400mg angemessen                                   │  │
-│  │  ⚠️ Tipp: 2h nach Zink fuer bessere Absorption                │  │
-│  │                                                               │  │
-│  │                              [Verstanden]                     │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│             Edge Function: ares-instant-check                       │
-│  Input: supplement_data + user_id (auto)                            │
-│  Parallel Data Load:                                                │
-│    - profiles (Ziel, Phase, Gewicht)                                │
-│    - user_supplements (aktiver Stack)                               │
-│    - peptide_protocols (aktive Peptide)                             │
-│    - user_bloodwork (letzte Marker)                                 │
-│    - ares_user_insights (bekannte Praeferenzen)                     │
-│    - daily_goals (aktuelles Kalorienziel)                           │
-│  Model: google/gemini-2.5-flash (Prioritaet: Speed)                 │
-│  Output: { analysis: string } (Markdown)                            │
-└─────────────────────────────────────────────────────────────────────┘
+PERSONA: LESTER - Der Wissenschafts-Nerd
+- Erkläre wie ein Biochemie-Professor mit Humor
+- Nutze Fachbegriffe (IGF-1, mTor, etc.) und erkläre sie kurz
+- Tiefe: Maximum | Humor: Maximum | Meinung: Stark
+- Sei nerdig aber charmant
 ```
 
----
+## Korrigierte Datenladung
 
-## Teil 1: Neue Edge Function
+```typescript
+const [
+  profileResult,
+  stackResult,
+  peptidesResult,
+  bloodworkResult,
+  insightsResult,
+  coachMemoryResult,
+  personaResult,
+] = await Promise.all([
+  // 1. User Profile (KORRIGIERT: ohne 'phase')
+  svcClient
+    .from('profiles')
+    .select('goal, weight, age, gender, protocol_mode, preferred_name, display_name, coach_personality, daily_calorie_target, protein_target_g')
+    .eq('user_id', userId)
+    .maybeSingle(),
 
-### Datei: `supabase/functions/ares-instant-check/index.ts`
+  // 2. Current Supplement Stack (unverändert - korrekt)
+  svcClient
+    .from('user_supplements')
+    .select('name, dosage, unit, preferred_timing')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(20),
 
-**Eigenschaften:**
-- Lightweight, stateless (kein Chat, keine History-Speicherung)
-- JWT-verifiziert (User-Auth erforderlich)
-- Parallele Datenladung fuer minimale Latenz
-- Ziel: Response in unter 3 Sekunden
+  // 3. Peptide Protocols (KORRIGIERT: richtige Spalten)
+  svcClient
+    .from('peptide_protocols')
+    .select('name, peptides, goal, is_active, phase')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .limit(5),
 
-**Datenquellen (parallel geladen):**
+  // 4. Bloodwork (KORRIGIERT: flache Marker-Spalten)
+  svcClient
+    .from('user_bloodwork')
+    .select('test_date, vitamin_d, vitamin_b12, ferritin, magnesium, zinc, iron, total_testosterone')
+    .eq('user_id', userId)
+    .order('test_date', { ascending: false })
+    .limit(1),
 
-| Tabelle | Felder | Zweck |
-|---------|--------|-------|
-| `profiles` | goal, phase, weight, age, gender, protocol_mode | User-Kontext |
-| `user_supplements` | name, dosage, timing, schedule | Stack-Interaktionen |
-| `peptide_protocols` | compound, status | Aktive Peptide |
-| `user_bloodwork` | markers, test_date (letzte 90 Tage) | Relevante Blutwerte |
-| `ares_user_insights` | insight_type, content | Bekannte Praeferenzen |
-| `daily_goals` | target_calories, target_protein | Makro-Ziele |
+  // 5. User Insights (KORRIGIERT: richtige Tabelle)
+  svcClient
+    .from('user_insights')
+    .select('category, insight, importance')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .order('importance', { ascending: false })
+    .limit(10),
 
-**Prompt-Struktur:**
+  // 6. Coach Memory (NEU: für preferred_name, mood, topics)
+  svcClient
+    .from('coach_memory')
+    .select('memory_data')
+    .eq('user_id', userId)
+    .maybeSingle(),
+
+  // 7. Persona (NEU: basierend auf coach_personality)
+  // Wird nach Profile-Load dynamisch abgefragt
+]);
+
+// Persona laden basierend auf coach_personality
+const personaName = profile.coach_personality === 'soft' ? 'LESTER' : 'ARES';
+const personaResult = await svcClient
+  .from('coach_personas')
+  .select('name, language_style, dial_depth, dial_humor, dial_opinion, dialect')
+  .eq('name', personaName)
+  .maybeSingle();
+```
+
+## Korrigierter Prompt
+
+```typescript
+// Persona-Style-Block dynamisch bauen
+const persona = personaResult.data;
+const personaStyleBlock = persona ? `
+PERSONA: ${persona.name}
+Stil: ${persona.language_style}
+Tiefe: ${persona.dial_depth}/10 | Humor: ${persona.dial_humor}/10 | Meinung: ${persona.dial_opinion}/10
+${persona.dialect ? `Dialekt-Hinweis: ${persona.dialect}` : ''}
+` : '';
+
+const systemPrompt = `Du bist ${persona?.name || 'ARES'}, der Elite-Supplement-Auditor.
+${personaStyleBlock}
+
+ANTWORT-REGELN:
+- Maximal 4 kurze Absätze, maximal 150 Wörter
+- Nutze Emojis für Struktur (✅ ⏰ 💊 ⚠️ 💡)
+- Keine Floskeln, keine Einleitungen
+- Bei Lester: Nutze Fachbegriffe und erkläre kurz
+`;
+```
+
+## Korrigierte Bloodwork-Formatierung
+
+```typescript
+// VORHER (falsch): Erwartet JSON-Marker
+const bloodworkSection = bloodwork.filter(b => b.marker_name...)
+
+// NACHHER (korrekt): Flache Spalten transformieren
+const latestBloodwork = bloodworkResult.data?.[0];
+const bloodworkSection = latestBloodwork ? [
+  latestBloodwork.vitamin_d ? `- Vitamin D: ${latestBloodwork.vitamin_d} ng/ml` : null,
+  latestBloodwork.magnesium ? `- Magnesium: ${latestBloodwork.magnesium} mg/dl` : null,
+  latestBloodwork.zinc ? `- Zink: ${latestBloodwork.zinc} µg/dl` : null,
+  latestBloodwork.ferritin ? `- Ferritin: ${latestBloodwork.ferritin} ng/ml` : null,
+  latestBloodwork.vitamin_b12 ? `- B12: ${latestBloodwork.vitamin_b12} pg/ml` : null,
+].filter(Boolean).join('\n') || 'Keine relevanten Marker' : 'Keine Blutwerte vorhanden';
+```
+
+## Korrigierte Peptide-Formatierung
+
+```typescript
+// VORHER (falsch): Erwartet compound/status Spalten
+const peptideSection = peptides.map(p => `${p.compound} (${p.status})`)
+
+// NACHHER (korrekt): peptides ist JSONB Array
+const peptideSection = peptides.length > 0
+  ? peptides.flatMap(p => {
+      const peptideList = Array.isArray(p.peptides) ? p.peptides : [];
+      return peptideList.map(pep => 
+        `- ${pep.name || pep}: ${p.goal || 'aktiv'}`
+      );
+    }).join('\n') || 'Keine'
+  : 'Keine';
+```
+
+## Korrigierte Insights-Formatierung
+
+```typescript
+// VORHER (falsch): ares_user_insights.insight_type/content
+// NACHHER (korrekt): user_insights.category/insight
+const insightSection = insights.length > 0
+  ? insights
+      .filter(i => ['gewohnheiten', 'substanzen', 'gesundheit', 'koerper'].includes(i.category))
+      .slice(0, 5)
+      .map(i => `- ${i.insight}`)
+      .join('\n')
+  : 'Keine bekannten Präferenzen';
+```
+
+## Erwartetes Ergebnis: Korrigierter Prompt für Ecdysteron
 
 ```text
-Du bist ARES, der Elite-Supplement-Auditor.
+PERSONA: LESTER - Der Wissenschafts-Nerd
+Stil: Extrem hohes Tiefes Fachwissen zu Training, Steroiden, Peptiden...
+Tiefe: 10/10 | Humor: 10/10 | Meinung: 9/10
 
 ## USER KONTEXT
-- Phase: [phase] | Protokoll: [protocol_mode]
-- Ziel: [goal] (Kalorien: [target_calories])
-- Alter: [age] | Gewicht: [weight]kg | Geschlecht: [gender]
+- Protokoll: enhanced
+- Ziel: lose (2044 kcal/Tag)
+- Alter: 41 | Gewicht: 100.80kg | Geschlecht: male
 
 ## AKTUELLER STACK
-[Liste aller aktiven Supplements mit Timing]
+- Magnesium Komplex 11 Ultra (200mg, Abends)
+- Zink (15mg, Abends)
+- HMB 3000 (1500mg, Vor Training)
+- Creatin (5g, Nach Training)
+- Omega-3 (EPA/DHA) (3g, Mittags)
+... (weitere 9 Supplements)
 
 ## AKTIVE PEPTIDE
-[Liste aktiver Peptide oder "Keine"]
+Keine aktiven Protokolle
 
 ## RELEVANTE BLUTWERTE
-[Letzte Werte wie Vitamin D, Magnesium, etc.]
+Keine Blutwerte vorhanden
 
-## BEKANNTE PRAEFERENZEN
-[Insights wie "nimmt abends lieber Kapseln"]
+## BEKANNTE PRÄFERENZEN
+- Trainiert morgens nüchtern
+- Nimmt Zink 15mg abends
+- Bevorzugt Reis, um Insulinspitzen zu vermeiden
+- Verwendet eine Withings Body Comp Waage
+- Verwendet ein Amazfit Armband zur Fitnessüberwachung
 
-## ZU PRUEFENDES SUPPLEMENT
-- Name: [name]
-- Marke: [brand_name]
-- Dosis: [dosage][unit]
-- Timing: [timing]
-- Constraint: [timing_constraint]
+## ZU PRÜFENDES SUPPLEMENT
+- Name: Ecdysteron
+- Marke: unbekannt
+- Dosis: 1 Kapseln
+- Timing: Vor Training
 
 ## AUFGABE
-Bewerte dieses Supplement fuer diesen User:
-1. Passt es zu seinen Zielen?
+Bewerte dieses Supplement für Matze:
+1. Passt es zu den Zielen?
 2. Ist das Timing optimal?
 3. Ist die Dosis angemessen?
 4. Gibt es Interaktionen mit dem Stack/Peptiden?
-5. Qualitaet der Marke (falls bekannt)?
-
-## FORMAT
-Antworte in maximal 4 kurzen Absaetzen.
-Nutze Emojis fuer Struktur (✅ ⏰ 💊 ⚠️ 💡).
-Maximal 150 Woerter.
+5. Qualität der Marke (falls bekannt)?
 ```
 
-**Model:** `google/gemini-2.5-flash` (schnell, guenstig, ausreichend fuer diese Aufgabe)
+## Dateien die geändert werden
 
-**Config-Eintrag:**
-```toml
-[functions.ares-instant-check]
-verify_jwt = true
-```
+| Datei | Änderung |
+|-------|----------|
+| `supabase/functions/ares-instant-check/index.ts` | Komplette Überarbeitung der Datenladung, Schema-Fixes, Persona-Integration |
 
----
+## Performance-Auswirkung
 
-## Teil 2: Frontend Hook
+- Eine zusätzliche DB-Abfrage für `coach_personas` (nach Profile geladen)
+- Insgesamt weiterhin schnell durch parallele Abfragen
+- Erwartet: ~250-350ms Datenladung statt ~180ms
 
-### Datei: `src/hooks/useAresInstantCheck.ts`
-
-**Features:**
-- Einfacher Request/Response (kein Streaming noetig)
-- Loading, Success, Error States
-- Reset-Funktion fuer Wiederverwendung
-
-**Interface:**
-```typescript
-interface SupplementAnalysisInput {
-  name: string;
-  dosage: string;
-  unit: string;
-  timing: PreferredTiming;
-  brandName?: string;
-  constraint?: TimingConstraint;
-}
-
-interface UseAresInstantCheckReturn {
-  analyze: (supplement: SupplementAnalysisInput) => Promise<void>;
-  isLoading: boolean;
-  result: string | null;
-  error: string | null;
-  reset: () => void;
-}
-```
-
----
-
-## Teil 3: Drawer-Komponente
-
-### Datei: `src/components/supplements/AresInstantCheckDrawer.tsx`
-
-**UI-Design:**
-- Verwendet existierenden Vaul `Drawer` (Mobile-optimiert)
-- Glassmorphism-Styling passend zu ARES Aesthetic
-- Handle-Bar oben (native Swipe-to-Close)
-
-**Loading State (Rotating Text Animation):**
-```typescript
-const LOADING_MESSAGES = [
-  'Lade dein Profil...',
-  'Pruefe Supplement-Stack...',
-  'Analysiere Interaktionen...',
-  'Pruefe Timing-Kompatibilitaet...',
-  'Generiere Empfehlung...'
-];
-```
-- Interval: 1.5s zwischen Messages
-- Pulsing ARES Logo oder Sparkles Icon
-
-**Result State:**
-- Markdown-Rendering via `react-markdown` (bereits installiert)
-- Saubere Typografie mit ausreichend Padding
-
-**Footer:**
-- Einzelner "Verstanden" Button (Primary Style)
-- Schliesst Drawer und kehrt zum Chip zurueck
-
-**Props:**
-```typescript
-interface AresInstantCheckDrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  supplement: SupplementAnalysisInput;
-}
-```
-
----
-
-## Teil 4: Integration in ExpandableSupplementChip
-
-### Aenderungen in `src/components/supplements/ExpandableSupplementChip.tsx`
-
-**Zu entfernen:**
-- `useNavigate` Import (Zeile 3)
-- `navigate('/coach/ares', ...)` Aufruf (Zeile 173)
-- `navigate` Konstante (Zeile 119)
-
-**Zu hinzufuegen:**
-- State: `const [showInstantCheck, setShowInstantCheck] = useState(false);`
-- Neue `handleAskAres` Logik:
-
-```typescript
-const handleAskAres = useCallback(() => {
-  haptics.light();
-  setShowInstantCheck(true);
-}, []);
-```
-
-- Drawer-Einbindung am Ende (vor dem schliessenden `</motion.div>`):
-
-```tsx
-<AresInstantCheckDrawer
-  isOpen={showInstantCheck}
-  onClose={() => setShowInstantCheck(false)}
-  supplement={{
-    name: item.name,
-    dosage,
-    unit,
-    timing: preferredTiming,
-    brandName: selectedProduct?.brand?.name,
-    constraint: item.supplement?.timing_constraint,
-  }}
-/>
-```
-
----
-
-## Teil 5: Cleanup (coach-orchestrator-enhanced)
-
-### Zu entfernen aus `supabase/functions/coach-orchestrator-enhanced/index.ts`:
-
-Die kuerzlich hinzugefuegten Workarounds (Zeilen 2413-2488):
-- Debug-Logging (`[ARES-LLM] Raw response`)
-- GPT-5 Fallback-Logik (`Empty content from Gemini, falling back to GPT-5`)
-- Fallback-String (`Entschuldigung, ich konnte keine Antwort generieren...`)
-
-Diese waren temporaere Fixes fuer das fundamentale UX-Problem, das jetzt architektonisch geloest wird.
-
----
-
-## Dateien-Uebersicht
-
-| Datei | Aktion |
-|-------|--------|
-| `supabase/functions/ares-instant-check/index.ts` | NEU erstellen |
-| `src/hooks/useAresInstantCheck.ts` | NEU erstellen |
-| `src/components/supplements/AresInstantCheckDrawer.tsx` | NEU erstellen |
-| `src/components/supplements/ExpandableSupplementChip.tsx` | AENDERN |
-| `supabase/config.toml` | AENDERN (neue Function) |
-| `supabase/functions/coach-orchestrator-enhanced/index.ts` | AENDERN (Cleanup) |
-
----
-
-## Vorteile gegenueber bisheriger Loesung
-
-| Aspekt | Vorher (Chat-Redirect) | Nachher (Inline-Drawer) |
-|--------|------------------------|-------------------------|
-| **Kontext** | User verliert Form-State | Form bleibt erhalten |
-| **Prompt** | Sichtbar im Chat | Unsichtbar (Backend) |
-| **Chat-Historie** | Wird polluted | Bleibt sauber |
-| **Komplexitaet** | Streaming + Memory + Tools | Simpler Request/Response |
-| **Abhaengigkeit** | ares-streaming (1488 Zeilen) | Eigene leichte Function |
-| **Latenz** | 5-10s (Context + Streaming) | Ziel: unter 3s |
-| **Side Effects** | Shared State mit Chat | Isoliert, keine |
-
----
-
-## Erwartete User Experience
-
-1. User oeffnet Supplement-Chip, passt Dosis/Timing an
-2. Klickt "Frag ARES"
-3. Drawer oeffnet sich sofort mit animiertem Loading
-4. Nach circa 2-3s erscheint personalisierte Bewertung
-5. User liest, klickt "Verstanden"
-6. Zurueck im Chip - kann speichern oder weiter anpassen
-7. Kein Kontextverlust, kein Seitenwechsel
-
----
-
-## Deployment
-
-Nach Implementierung:
-1. Edge Function deployen: `ares-instant-check`
-2. Testen mit verschiedenen Supplements
-3. Optional: Cleanup-Deploy fuer `coach-orchestrator-enhanced`
