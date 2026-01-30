@@ -1,36 +1,69 @@
 
 
-## Entfernung des Analog/Advanced Toggles
+## Fix: Bedtime-Supplements fehlen im Abendstack
 
-### Zusammenfassung
-Der Mode-Toggle (Zeilen 104-113) wird entfernt, da er aktuell keine Funktionalität hat und nur UI-Clutter verursacht.
+### Problem
+In der Datenbank haben 4 Supplements den Wert `preferred_timing: 'bedtime'`, aber dieser Timing-Typ wurde aus dem TypeScript-System entfernt. Die Gruppierungslogik in `useUserStackByTiming` mappt `bedtime` **nicht** auf `evening`, wodurch diese Supplements in einem unsichtbaren Bucket landen.
 
-### Änderungen
+**Betroffene Supplements:**
+| Name | Dosierung | DB-Timing |
+|------|-----------|-----------|
+| Zink | 15mg | bedtime |
+| Glycin | 3g | bedtime |
+| Magnesium | 200mg | bedtime |
+| Ashwagandha KSM-66 | 600mg | bedtime |
 
-**Datei: `src/pages/Protocol.tsx`**
+---
 
-| Aktion | Details |
+### Lösung (2-Schritte)
+
+#### Schritt 1: Frontend-Fix (sofort wirksam)
+**Datei:** `src/hooks/useSupplementLibrary.ts`
+
+Im `useUserStackByTiming` Hook wird eine Legacy-Mapping-Funktion eingefügt:
+
+```typescript
+// Legacy timing mapping - consolidate bedtime into evening
+const normalizePreferredTiming = (timing: string | undefined): PreferredTiming => {
+  if (!timing) return 'morning';
+  if (timing === 'bedtime' || timing === 'before_bed' || timing === 'before_sleep') {
+    return 'evening';
+  }
+  return timing as PreferredTiming;
+};
+
+const groupedByTiming = activeStack.reduce((acc, item) => {
+  const timing = normalizePreferredTiming(item.preferred_timing);
+  // ... rest bleibt gleich
+}, {} as Record<PreferredTiming, UserStackItem[]>);
+```
+
+#### Schritt 2: Datenbank-Migration (permanente Korrektur)
+SQL-Update um alle `bedtime` Werte auf `evening` zu ändern:
+
+```sql
+UPDATE user_supplements 
+SET preferred_timing = 'evening' 
+WHERE preferred_timing IN ('bedtime', 'before_bed', 'before_sleep');
+```
+
+---
+
+### Erwartetes Ergebnis
+
+| Vorher | Nachher |
 |--------|---------|
-| Entfernen | Zeilen 104-113: Der komplette Mode-Toggle Button |
-| Entfernen | Zeile 20: `Settings2` Import (wird nicht mehr benötigt) |
-| Entfernen | Zeile 68: `setProtocolMode` aus dem Hook-Destructuring |
+| Evening & Night Routine: **2 Items** | Evening & Night Routine: **6 Items** |
+| Elektrolyte, Magnesium Komplex | + Zink, Glycin, Magnesium, Ashwagandha |
 
-### Vorher (Header-Bereich)
+---
 
-```text
-┌─────────────────────────────────────────────────┐
-│ [Icon] ARES Protokoll     [Advanced] [Pause]    │
-└─────────────────────────────────────────────────┘
-```
+### Technische Details
 
-### Nachher (Header-Bereich)
+**Betroffene Dateien:**
+- `src/hooks/useSupplementLibrary.ts` (Zeilen 323-330)
 
-```text
-┌─────────────────────────────────────────────────┐
-│ [Icon] ARES Protokoll               [Pause]     │
-└─────────────────────────────────────────────────┘
-```
-
-### Aufwand
-Minimale Änderung – nur Entfernung von ca. 10 Zeilen Code und 2 Imports.
+**Änderungsumfang:**
+- ~10 Zeilen Code hinzufügen
+- 1 SQL-Statement für Datenbereinigung
 
