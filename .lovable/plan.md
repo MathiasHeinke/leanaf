@@ -1,69 +1,95 @@
 
 
-## Fix: Bedtime-Supplements fehlen im Abendstack
+## Quick-Add Suchfeld in Protocol Bundle Cards
 
-### Problem
-In der Datenbank haben 4 Supplements den Wert `preferred_timing: 'bedtime'`, aber dieser Timing-Typ wurde aus dem TypeScript-System entfernt. Die Gruppierungslogik in `useUserStackByTiming` mappt `bedtime` **nicht** auf `evening`, wodurch diese Supplements in einem unsichtbaren Bucket landen.
+### Zusammenfassung
+Ein neues "Supplement hinzufügen"-Feld wird am Ende jeder `ProtocolBundleCard` eingefügt. Es ermöglicht das schnelle Suchen und Hinzufügen von Supplements direkt in einen bestimmten Timing-Slot (z.B. Post-Workout → Protein Shake).
 
-**Betroffene Supplements:**
-| Name | Dosierung | DB-Timing |
-|------|-----------|-----------|
-| Zink | 15mg | bedtime |
-| Glycin | 3g | bedtime |
-| Magnesium | 200mg | bedtime |
-| Ashwagandha KSM-66 | 600mg | bedtime |
+### UI-Design
 
----
-
-### Lösung (2-Schritte)
-
-#### Schritt 1: Frontend-Fix (sofort wirksam)
-**Datei:** `src/hooks/useSupplementLibrary.ts`
-
-Im `useUserStackByTiming` Hook wird eine Legacy-Mapping-Funktion eingefügt:
-
-```typescript
-// Legacy timing mapping - consolidate bedtime into evening
-const normalizePreferredTiming = (timing: string | undefined): PreferredTiming => {
-  if (!timing) return 'morning';
-  if (timing === 'bedtime' || timing === 'before_bed' || timing === 'before_sleep') {
-    return 'evening';
-  }
-  return timing as PreferredTiming;
-};
-
-const groupedByTiming = activeStack.reduce((acc, item) => {
-  const timing = normalizePreferredTiming(item.preferred_timing);
-  // ... rest bleibt gleich
-}, {} as Record<PreferredTiming, UserStackItem[]>);
+```text
+┌─────────────────────────────────────────────────────────┐
+│ 🌙 Evening & Night Routine                               │
+│    ⏱ 18:00 - 23:00 · 2 Items                            │
+├─────────────────────────────────────────────────────────┤
+│  💧 Elektrolyte (LMNT)               200mg          ✕   │
+│  💊 Magnesium Komplex 11 Ultra       200mg              │
+├─────────────────────────────────────────────────────────┤
+│  🔍  Supplement suchen...                         [＋]  │  ← NEU
+├─────────────────────────────────────────────────────────┤
+│  ~0.80 €/Tag                      [Stack abschließen >] │
+└─────────────────────────────────────────────────────────┘
 ```
 
-#### Schritt 2: Datenbank-Migration (permanente Korrektur)
-SQL-Update um alle `bedtime` Werte auf `evening` zu ändern:
+### Komponenten-Architektur
 
-```sql
-UPDATE user_supplements 
-SET preferred_timing = 'evening' 
-WHERE preferred_timing IN ('bedtime', 'before_bed', 'before_sleep');
-```
+**Neue Komponente:** `QuickSupplementSearch.tsx`
+- Kompaktes Suchfeld mit Lupe-Icon (links) und Plus-Button (rechts)
+- Placeholder: "Supplement suchen..."
+- Bei Fokus: Dropdown mit gefilterten Ergebnissen aus `supplement_database`
+- Bei Auswahl: Supplement wird mit dem vorgegebenen `timing` direkt zum Stack hinzugefügt
 
----
+### Datei-Änderungen
 
-### Erwartetes Ergebnis
-
-| Vorher | Nachher |
-|--------|---------|
-| Evening & Night Routine: **2 Items** | Evening & Night Routine: **6 Items** |
-| Elektrolyte, Magnesium Komplex | + Zink, Glycin, Magnesium, Ashwagandha |
-
----
+| Datei | Änderung |
+|-------|----------|
+| `src/components/supplements/QuickSupplementSearch.tsx` | **Neu erstellen** – Kompaktes Inline-Suchfeld mit Dropdown |
+| `src/components/supplements/ProtocolBundleCard.tsx` | Neues Feld nach den Chips einfügen, vor dem Footer |
 
 ### Technische Details
 
-**Betroffene Dateien:**
-- `src/hooks/useSupplementLibrary.ts` (Zeilen 323-330)
+**QuickSupplementSearch Props:**
+```typescript
+interface QuickSupplementSearchProps {
+  timing: PreferredTiming;    // Target-Slot (morning, evening, post_workout, etc.)
+  onAdd?: () => void;         // Optional callback nach erfolgreichem Add
+}
+```
 
-**Änderungsumfang:**
-- ~10 Zeilen Code hinzufügen
-- 1 SQL-Statement für Datenbereinigung
+**Verhalten:**
+1. Bei Eingabe: Debounced (300ms) Suche gegen `useSupplementLibrary()`
+2. Dropdown zeigt max. 5 Treffer mit Name + Kategorie
+3. Klick auf Treffer → `useSupplementToggle().toggleSupplement(item, true)` mit überschriebenem `preferred_timing`
+4. Plus-Button ohne Suchbegriff → Öffnet vollständiges Such-Sheet (optional für spätere Erweiterung)
+
+**Integration in ProtocolBundleCard:**
+```tsx
+{/* Nach den Supplement Chips, vor dem Footer */}
+<div className="px-4 pb-2">
+  <QuickSupplementSearch 
+    timing={timing} 
+    onAdd={onRefetch} 
+  />
+</div>
+```
+
+### Styling
+
+- Hintergrund: `bg-background/60` (leicht transparent, passt zum Card-Gradient)
+- Border: `border border-dashed border-border/50`
+- Rounded: `rounded-lg`
+- Höhe: 40px (touch-friendly)
+- Lupe-Icon: 16px, `text-muted-foreground`
+- Plus-Button: 24x24px Circle, `bg-primary text-primary-foreground`
+
+### Flow
+
+```text
+User tippt "Protein" 
+       ↓
+Dropdown erscheint:
+  • Whey Protein Isolate (Protein)
+  • Casein Protein (Protein)  
+  • Kollagen (Protein)
+       ↓
+User klickt "Whey Protein Isolate"
+       ↓
+→ Insert in user_supplements mit preferred_timing = 'post_workout'
+→ Toast: "Whey Protein Isolate zu Post-Workout hinzugefügt"
+→ Card aktualisiert sich automatisch (refetch)
+```
+
+### Aufwand
+- 1 neue Komponente (~120 Zeilen)
+- 1 kleine Integration in ProtocolBundleCard (~5 Zeilen)
 
