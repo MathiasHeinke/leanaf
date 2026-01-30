@@ -320,8 +320,17 @@ export const useUserStackByTiming = () => {
 
   const activeStack = (stack || []).filter(item => item.is_active);
 
+  // Legacy timing mapping - consolidate bedtime into evening
+  const normalizePreferredTiming = (timing: string | undefined): PreferredTiming => {
+    if (!timing) return 'morning';
+    if (timing === 'bedtime' || timing === 'before_bed' || timing === 'before_sleep') {
+      return 'evening';
+    }
+    return timing as PreferredTiming;
+  };
+
   const groupedByTiming = activeStack.reduce((acc, item) => {
-    const timing = item.preferred_timing || 'morning';
+    const timing = normalizePreferredTiming(item.preferred_timing);
     if (!acc[timing]) {
       acc[timing] = [];
     }
