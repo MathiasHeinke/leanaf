@@ -38,7 +38,7 @@ const CHECKLIST_ITEMS: CheckItem[] = [
   {
     key: 'sleep_score',
     title: 'Schlaf-Hygiene',
-    description: '≥7.5h Schlaf, dunkel, kühl (16-18°C)',
+    description: '≥7h Schlaf, dunkel, kühl (16-18°C)',
     icon: Moon,
     autoValidate: true
   },
@@ -63,14 +63,14 @@ const CHECKLIST_ITEMS: CheckItem[] = [
   {
     key: 'protein_training',
     title: 'Protein & Training',
-    description: '≥1.8g/kg Protein + ≥180 Min Zone 2/Woche',
+    description: '≥1.2g/kg Protein + 5× Training ODER 6k Schritte',
     icon: Dumbbell,
     autoValidate: true
   },
   {
     key: 'kfa_trend',
     title: 'KFA-Trend',
-    description: 'KFA bekannt und fallend (Männer <20%)',
+    description: '≥3 Messungen, mind. 1× fallend',
     icon: TrendingDown,
     autoValidate: true
   },
@@ -123,7 +123,7 @@ export function Phase0Checklist() {
         
         if (sleepData && sleepData.length >= 7) {
           const avgSleep = sleepData.reduce((acc: number, d: any) => acc + (d.sleep_hours || 0), 0) / sleepData.length;
-          if (avgSleep >= 7.5 && !status.phase_0_checklist.sleep_score.completed) {
+          if (avgSleep >= 7 && !status.phase_0_checklist.sleep_score.completed) {
             await updatePhase0Check('sleep_score', {
               completed: true,
               avg_hours: Math.round(avgSleep * 10) / 10,
@@ -157,29 +157,36 @@ export function Phase0Checklist() {
           }
         }
 
-        // 3. Validate KFA Trend
+        // 3. Validate KFA Trend (≥3 Messungen, mind. 1× fallend)
         const { data: weightData } = await (supabase as any)
           .from('weight_history')
-          .select('weight, body_fat_percentage')
+          .select('weight, body_fat_percentage, date')
           .eq('user_id', user.id)
           .not('body_fat_percentage', 'is', null)
           .order('date', { ascending: false })
-          .limit(5);
+          .limit(10);
 
-        if (weightData && weightData.length >= 2) {
-          const latestKfa = weightData[0].body_fat_percentage;
-          const oldestKfa = weightData[weightData.length - 1].body_fat_percentage;
-          
-          if (latestKfa && oldestKfa && latestKfa < oldestKfa) {
-            const trend = latestKfa < 20 ? 'optimal' : 'improving';
-            if (!status.phase_0_checklist.kfa_trend.completed) {
-              await updatePhase0Check('kfa_trend', {
-                completed: true,
-                current_kfa: latestKfa,
-                trend,
-                validated_at: new Date().toISOString()
-              });
+        if (weightData && weightData.length >= 3) {
+          // Check if ANY measurement shows a downward trend
+          let hasAnyDownwardTrend = false;
+          for (let i = 0; i < weightData.length - 1; i++) {
+            const current = weightData[i].body_fat_percentage;
+            const previous = weightData[i + 1].body_fat_percentage;
+            if (current && previous && current < previous) {
+              hasAnyDownwardTrend = true;
+              break;
             }
+          }
+          
+          if (hasAnyDownwardTrend && !status.phase_0_checklist.kfa_trend.completed) {
+            const latestKfa = weightData[0].body_fat_percentage;
+            const trend = latestKfa < 20 ? 'optimal' : 'improving';
+            await updatePhase0Check('kfa_trend', {
+              completed: true,
+              current_kfa: latestKfa,
+              trend,
+              validated_at: new Date().toISOString()
+            });
           }
         }
 
