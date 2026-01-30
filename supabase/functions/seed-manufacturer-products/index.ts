@@ -109,6 +109,14 @@ const INGREDIENT_TO_SUPPLEMENT: Record<string, string> = {
   'tryptophan': 'L-Tryptophan',
   'bcaa': 'BCAA',
   'leucine': 'BCAA',
+  'eaa': 'EAA',
+  'tyrosine': 'L-Tyrosin',
+  
+  // Proteins
+  'whey': 'Whey Protein',
+  'casein': 'Casein',
+  'pea_protein': 'Erbsenprotein',
+  'rice_protein': 'Reisprotein',
   
   // Fatty acids
   'omega3_dha': 'Omega-3',
@@ -177,6 +185,17 @@ const INGREDIENT_TO_SUPPLEMENT: Record<string, string> = {
   
   // Sport
   'creatine': 'Creatine',
+  'beta_alanine': 'Beta-Alanin',
+  'caffeine': 'Koffein',
+  'hmb': 'HMB',
+  'carnitine': 'L-Carnitin',
+  'betaine': 'Betain',
+  'mct_oil': 'MCT-Öl',
+  'sodium': 'Elektrolyte',
+  
+  // Antioxidants (extended)
+  'ala': 'Alpha-Liponsäure',
+  'coq10': 'CoQ10 Ubiquinol',
   
   // Superfoods
   'spirulina': 'Spirulina',
