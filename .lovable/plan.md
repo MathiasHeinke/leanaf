@@ -1,95 +1,63 @@
 
 
-## Quick-Add Suchfeld in Protocol Bundle Cards
+## Fix: Dropdown wird vom Container abgeschnitten
 
-### Zusammenfassung
-Ein neues "Supplement hinzufügen"-Feld wird am Ende jeder `ProtocolBundleCard` eingefügt. Es ermöglicht das schnelle Suchen und Hinzufügen von Supplements direkt in einen bestimmten Timing-Slot (z.B. Post-Workout → Protein Shake).
+### Problem
+Die `ProtocolBundleCard` verwendet `overflow-hidden` (Zeile 127), um die abgerundeten Ecken sauber darzustellen. Dies verhindert jedoch, dass das Such-Dropdown über die Container-Grenzen hinausragt.
 
-### UI-Design
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│ 🌙 Evening & Night Routine                               │
-│    ⏱ 18:00 - 23:00 · 2 Items                            │
-├─────────────────────────────────────────────────────────┤
-│  💧 Elektrolyte (LMNT)               200mg          ✕   │
-│  💊 Magnesium Komplex 11 Ultra       200mg              │
-├─────────────────────────────────────────────────────────┤
-│  🔍  Supplement suchen...                         [＋]  │  ← NEU
-├─────────────────────────────────────────────────────────┤
-│  ~0.80 €/Tag                      [Stack abschließen >] │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Komponenten-Architektur
-
-**Neue Komponente:** `QuickSupplementSearch.tsx`
-- Kompaktes Suchfeld mit Lupe-Icon (links) und Plus-Button (rechts)
-- Placeholder: "Supplement suchen..."
-- Bei Fokus: Dropdown mit gefilterten Ergebnissen aus `supplement_database`
-- Bei Auswahl: Supplement wird mit dem vorgegebenen `timing` direkt zum Stack hinzugefügt
+### Lösung
+Die beste Lösung ist, das Dropdown mit einem **React Portal** zu rendern. Dadurch wird es außerhalb des DOM-Baums der Karte platziert und ist nicht mehr von `overflow-hidden` betroffen.
 
 ### Datei-Änderungen
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/supplements/QuickSupplementSearch.tsx` | **Neu erstellen** – Kompaktes Inline-Suchfeld mit Dropdown |
-| `src/components/supplements/ProtocolBundleCard.tsx` | Neues Feld nach den Chips einfügen, vor dem Footer |
+| `src/components/supplements/QuickSupplementSearch.tsx` | Dropdown in ein Portal wrappen |
 
-### Technische Details
+### Technische Umsetzung
 
-**QuickSupplementSearch Props:**
+Das Dropdown wird mit `ReactDOM.createPortal()` direkt in `document.body` gerendert. Die Position wird dynamisch basierend auf dem Suchfeld berechnet:
+
 ```typescript
-interface QuickSupplementSearchProps {
-  timing: PreferredTiming;    // Target-Slot (morning, evening, post_workout, etc.)
-  onAdd?: () => void;         // Optional callback nach erfolgreichem Add
-}
+import { createPortal } from 'react-dom';
+
+// In der Komponente:
+const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+
+// Bei Fokus/Öffnen die Position berechnen:
+useEffect(() => {
+  if (isOpen && containerRef.current) {
+    const rect = containerRef.current.getBoundingClientRect();
+    setDropdownPosition({
+      top: rect.bottom + window.scrollY + 4, // 4px Abstand
+      left: rect.left + window.scrollX,
+      width: rect.width,
+    });
+  }
+}, [isOpen]);
+
+// Dropdown-Render mit Portal:
+{isOpen && filteredResults.length > 0 && createPortal(
+  <div 
+    style={{
+      position: 'absolute',
+      top: dropdownPosition.top,
+      left: dropdownPosition.left,
+      width: dropdownPosition.width,
+    }}
+    className="z-[9999] bg-popover border rounded-lg shadow-xl"
+  >
+    {/* Ergebnisliste */}
+  </div>,
+  document.body
+)}
 ```
 
-**Verhalten:**
-1. Bei Eingabe: Debounced (300ms) Suche gegen `useSupplementLibrary()`
-2. Dropdown zeigt max. 5 Treffer mit Name + Kategorie
-3. Klick auf Treffer → `useSupplementToggle().toggleSupplement(item, true)` mit überschriebenem `preferred_timing`
-4. Plus-Button ohne Suchbegriff → Öffnet vollständiges Such-Sheet (optional für spätere Erweiterung)
-
-**Integration in ProtocolBundleCard:**
-```tsx
-{/* Nach den Supplement Chips, vor dem Footer */}
-<div className="px-4 pb-2">
-  <QuickSupplementSearch 
-    timing={timing} 
-    onAdd={onRefetch} 
-  />
-</div>
-```
-
-### Styling
-
-- Hintergrund: `bg-background/60` (leicht transparent, passt zum Card-Gradient)
-- Border: `border border-dashed border-border/50`
-- Rounded: `rounded-lg`
-- Höhe: 40px (touch-friendly)
-- Lupe-Icon: 16px, `text-muted-foreground`
-- Plus-Button: 24x24px Circle, `bg-primary text-primary-foreground`
-
-### Flow
-
-```text
-User tippt "Protein" 
-       ↓
-Dropdown erscheint:
-  • Whey Protein Isolate (Protein)
-  • Casein Protein (Protein)  
-  • Kollagen (Protein)
-       ↓
-User klickt "Whey Protein Isolate"
-       ↓
-→ Insert in user_supplements mit preferred_timing = 'post_workout'
-→ Toast: "Whey Protein Isolate zu Post-Workout hinzugefügt"
-→ Card aktualisiert sich automatisch (refetch)
-```
+### Vorteile
+- Das Dropdown erscheint über allen anderen Elementen
+- Unabhängig von Parent-Container `overflow` Einstellungen
+- Konsistentes Verhalten wie bei Radix UI Dropdowns
 
 ### Aufwand
-- 1 neue Komponente (~120 Zeilen)
-- 1 kleine Integration in ProtocolBundleCard (~5 Zeilen)
+~15 Zeilen Code-Änderung in einer Datei
 
