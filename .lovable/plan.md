@@ -1,108 +1,158 @@
 
 
-# Vollständiger CSV-Import: Amazon-Daten + Shop-URLs
+# Erweiterter CSV-Export mit allen Datenfeldern
 
-## Analyse-Ergebnis
+## Problem
 
-Die hochgeladene CSV `lovable_FINAL_v4_COMPLETE.csv` enthält 877 Produkte mit folgenden enriched Daten:
+Die aktuelle Export-Funktion in `src/utils/exportProductsCSV.ts` exportiert nur 25 von 54 verfuegbaren Produkt-Feldern. Wichtige Amazon-Daten und Qualitaetsmetriken fehlen.
 
-| Feld | CSV-Spalte | Eintraege gefuellt | Aktuell in DB |
-|------|------------|---------------------|---------------|
-| Amazon ASIN | `amazon_asin` | ~600 | 715 (teilweise falsch) |
-| Amazon Link | `amazon_url` | ~600 | 714 |
-| Amazon Bild | `amazon_image` | ~580 | ~580 |
-| Amazon Name | `amazon_name` | ~150 | ~150 |
-| Match Score | `match_score` | ~550 | ~550 |
-| **Shop URL** | `shop_url` | **~400** | **0** |
+## Fehlende Felder im aktuellen Export
 
-### Das Problem
+| Kategorie | Felder |
+|-----------|--------|
+| **Amazon-Daten** | `amazon_url`, `amazon_image`, `amazon_name`, `match_score` |
+| **Quality-Scores** | `quality_purity`, `quality_bioavailability`, `quality_dosage`, `quality_synergy`, `quality_research`, `quality_form`, `quality_value`, `quality_transparency` |
+| **Produkt-Metriken** | `bioavailability`, `potency`, `reviews`, `purity`, `value`, `lab_tests`, `impact_score_big8` |
+| **Sonstiges** | `short_description`, `origin`, `category`, `timing`, `is_gluten_free`, `country_of_origin`, `serving_size`, `servings_per_container`, `dosage_per_serving` |
 
-1. **Shop-URLs fehlen komplett** - Die CSV hat sie, die DB nicht
-2. **Manche ASINs sind Duplikate** - Muessen durch korrekte ersetzt werden
-3. **Die CSV hat IDs** - Damit koennen wir gezielt updaten
+## Loesung
 
-## Import-Strategie
+Die Export-Funktion erweitern um **alle 54 Felder** zu inkludieren.
 
-### Phase 1: Datenbank-Spalte anpassen
-
-Die CSV nutzt `shop_url`, aber die DB hat `product_url`. Wir mappen `shop_url` auf `product_url`.
-
-### Phase 2: Edge Function erweitern
-
-Die `update_amazon_data`-Funktion muss erweitert werden um:
-- `shop_url` → `product_url` zu mappen
-- Update per **ID** statt Name+Brand (zuverlaessiger)
-
-### Phase 3: Voll-Update ausfuehren
-
-Alle 877 Produkte werden aktualisiert mit:
-- Korrigierte `amazon_asin`
-- Korrigierte `amazon_url`
-- `amazon_image`
-- `amazon_name`
-- `match_score`
-- **NEU: `product_url`** (Shop-Links)
-
-## Technische Umsetzung
-
-### Dateien die geaendert werden
+## Dateien die geaendert werden
 
 | Datei | Aenderung |
 |-------|-----------|
-| `supabase/functions/import-products-csv/index.ts` | `full_update`-Modus mit ID-basiertem Update + shop_url Support |
+| `src/utils/exportProductsCSV.ts` | Alle fehlenden Felder zu CSV_HEADERS und productToCSVRow hinzufuegen |
 
-### Neue Update-Logik
+## Neue CSV-Struktur (vollstaendig)
 
-```typescript
-// Handle full product update from enriched CSV
-if (full_update && Array.isArray(full_update) && full_update.length > 0) {
-  for (const item of full_update) {
-    // Update by ID (most reliable)
-    if (item.id) {
-      await supabase
-        .from("supplement_products")
-        .update({
-          amazon_asin: cleanString(item.amazon_asin),
-          amazon_url: cleanString(item.amazon_url),
-          amazon_image: cleanString(item.amazon_image),
-          amazon_name: cleanString(item.amazon_name),
-          match_score: parseNumber(item.match_score),
-          product_url: cleanString(item.shop_url), // Map shop_url -> product_url
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", item.id);
-    }
-  }
-}
+### Produkt-Daten (54 Felder)
+
+```text
+id, brand_id, supplement_id, product_name, product_sku, pack_size, pack_unit,
+servings_per_pack, dose_per_serving, dose_unit, ingredients, price_eur,
+price_per_serving, form, is_vegan, is_organic, is_gluten_free, allergens,
+product_url, amazon_asin, amazon_url, amazon_image, amazon_name, match_score,
+is_verified, is_recommended, popularity_score, short_description,
+bioavailability, potency, reviews, origin, lab_tests, purity, value,
+impact_score_big8, category, serving_size, servings_per_container,
+dosage_per_serving, quality_purity, quality_bioavailability, quality_dosage,
+quality_synergy, quality_research, quality_form, quality_value,
+quality_transparency, timing, country_of_origin, quality_tags,
+created_at, updated_at
 ```
 
-## CSV-Felder die importiert werden
+### Plus verknuepfte Daten
 
-| CSV-Spalte | DB-Spalte | Beschreibung |
-|------------|-----------|--------------|
-| `id` | (Matching) | UUID fuer praezises Update |
-| `amazon_asin` | `amazon_asin` | Korrigierte/unique ASIN |
-| `amazon_url` | `amazon_url` | Amazon Produkt-Link |
-| `amazon_image` | `amazon_image` | Amazon Produktbild-URL |
-| `amazon_name` | `amazon_name` | Produktname auf Amazon |
-| `match_score` | `match_score` | ASIN-Match-Konfidenz |
-| `shop_url` | `product_url` | Direktlink zum Hersteller-Shop |
+- **Brand**: name, slug, country, website, price_tier, specialization, quality_certifications
+- **Supplement**: name, category, default_dosage, etc.
+
+## Implementierung
+
+### Schritt 1: CSV_HEADERS erweitern
+
+```typescript
+const CSV_HEADERS = [
+  // IDs
+  'id',
+  'brand_id',
+  'supplement_id',
+  
+  // Produkt-Basis
+  'product_name',
+  'product_sku',
+  'short_description',
+  'category',
+  
+  // Packung & Dosierung
+  'pack_size',
+  'pack_unit',
+  'servings_per_pack',
+  'serving_size',
+  'servings_per_container',
+  'dose_per_serving',
+  'dosage_per_serving',
+  'dose_unit',
+  'form',
+  'timing',
+  
+  // Preis
+  'price_eur',
+  'price_per_serving',
+  
+  // Amazon-Daten (NEU)
+  'amazon_asin',
+  'amazon_url',
+  'amazon_image',
+  'amazon_name',
+  'match_score',
+  
+  // Shop & Links
+  'product_url',
+  
+  // Eigenschaften
+  'is_vegan',
+  'is_organic',
+  'is_gluten_free',
+  'allergens',
+  'origin',
+  'country_of_origin',
+  
+  // Quality-Scores (NEU - 8 Felder)
+  'quality_purity',
+  'quality_bioavailability',
+  'quality_dosage',
+  'quality_synergy',
+  'quality_research',
+  'quality_form',
+  'quality_value',
+  'quality_transparency',
+  
+  // Metriken (NEU)
+  'bioavailability',
+  'potency',
+  'purity',
+  'value',
+  'reviews',
+  'lab_tests',
+  'impact_score_big8',
+  'popularity_score',
+  
+  // Status
+  'is_verified',
+  'is_recommended',
+  'quality_tags',
+  'ingredients',
+  
+  // Timestamps
+  'created_at',
+  'updated_at',
+  
+  // Brand-Daten
+  'brand_name',
+  'brand_slug',
+  // ...
+];
+```
+
+### Schritt 2: productToCSVRow anpassen
+
+Alle neuen Felder in der gleichen Reihenfolge hinzufuegen.
 
 ## Erwartetes Ergebnis
 
-Nach dem Import:
+| Vorher | Nachher |
+|--------|---------|
+| 25 Produkt-Felder | 54 Produkt-Felder |
+| Keine Amazon-URLs | Alle Amazon-Daten |
+| Keine Quality-Scores | 8 Quality-Scores |
+| ~45 Spalten total | ~70 Spalten total |
 
-| Metrik | Vorher | Nachher |
-|--------|--------|---------|
-| Produkte | 857 | 857 |
-| Mit Shop-URL | 0 | ~400 |
-| Mit Amazon-ASIN (korrigiert) | 715 (Duplikate) | ~600 (unique) |
-| Mit Amazon-URL | 714 | ~600 |
+## Export-Datei
 
-## Ablauf
-
-1. Edge Function deployen mit neuem `full_update`-Handler
-2. CSV parsen und alle 877 Zeilen als Update-Payload senden
-3. Per ID matchen und alle Felder aktualisieren
-4. Ergebnis pruefen
+- Dateiname: `ares_products_FULL_export_YYYY-MM-DD.csv`
+- Format: UTF-8 mit BOM fuer Excel
+- Trennzeichen: Komma
+- Arrays: Semikolon-getrennt in Anfuehrungszeichen
 
