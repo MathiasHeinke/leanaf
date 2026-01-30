@@ -1,93 +1,108 @@
 
 
-# ASIN-Korrektur via CSV-Import
+# Vollständiger CSV-Import: Amazon-Daten + Shop-URLs
 
-## Aktueller Status
+## Analyse-Ergebnis
 
-| Metrik | Wert |
-|--------|------|
-| Total Produkte | 857 |
-| Produkte mit fehlerhaften/duplizierten ASINs | 347 |
-| Produkte mit korrekten unique ASINs | 368 |
-| Produkte ohne ASIN | 142 |
+Die hochgeladene CSV `lovable_FINAL_v4_COMPLETE.csv` enthält 877 Produkte mit folgenden enriched Daten:
 
-## Neuer Ansatz
+| Feld | CSV-Spalte | Eintraege gefuellt | Aktuell in DB |
+|------|------------|---------------------|---------------|
+| Amazon ASIN | `amazon_asin` | ~600 | 715 (teilweise falsch) |
+| Amazon Link | `amazon_url` | ~600 | 714 |
+| Amazon Bild | `amazon_image` | ~580 | ~580 |
+| Amazon Name | `amazon_name` | ~150 | ~150 |
+| Match Score | `match_score` | ~550 | ~550 |
+| **Shop URL** | `shop_url` | **~400** | **0** |
 
-Statt die fehlerhaften ASINs zu loeschen, werden sie durch die korrekten Werte aus einer bereinigten CSV ersetzt.
+### Das Problem
 
-## Ablauf
+1. **Shop-URLs fehlen komplett** - Die CSV hat sie, die DB nicht
+2. **Manche ASINs sind Duplikate** - Muessen durch korrekte ersetzt werden
+3. **Die CSV hat IDs** - Damit koennen wir gezielt updaten
 
-1. Du sendest die korrigierte CSV mit den richtigen Amazon-Daten
-2. Die Edge Function liest die CSV und aktualisiert die Produkte
-3. Matching erfolgt ueber `product_name` + `brand_id` (oder `brand_slug`)
+## Import-Strategie
 
-## Dateien die geaendert werden
+### Phase 1: Datenbank-Spalte anpassen
 
-| Datei | Aenderung |
-|-------|-----------|
-| `supabase/functions/import-products-csv/index.ts` | Update-Logik fuer Amazon-Felder hinzufuegen |
+Die CSV nutzt `shop_url`, aber die DB hat `product_url`. Wir mappen `shop_url` auf `product_url`.
 
-## CSV-Format (erwartet)
+### Phase 2: Edge Function erweitern
 
-Die CSV sollte mindestens diese Spalten enthalten:
+Die `update_amazon_data`-Funktion muss erweitert werden um:
+- `shop_url` → `product_url` zu mappen
+- Update per **ID** statt Name+Brand (zuverlaessiger)
 
-| Spalte | Beschreibung | Pflicht |
-|--------|--------------|---------|
-| `product_name` | Produktname zum Matching | Ja |
-| `brand_slug` | Marken-Slug zum Matching | Ja |
-| `amazon_asin` | Korrigierte ASIN | Ja |
-| `amazon_url` | Korrigierter Amazon-Link | Optional |
-| `amazon_name` | Produktname auf Amazon | Optional |
-| `amazon_image_url` | Amazon Produktbild | Optional |
+### Phase 3: Voll-Update ausfuehren
+
+Alle 877 Produkte werden aktualisiert mit:
+- Korrigierte `amazon_asin`
+- Korrigierte `amazon_url`
+- `amazon_image`
+- `amazon_name`
+- `match_score`
+- **NEU: `product_url`** (Shop-Links)
 
 ## Technische Umsetzung
 
-### Neue Funktion in Edge Function
+### Dateien die geaendert werden
+
+| Datei | Aenderung |
+|-------|-----------|
+| `supabase/functions/import-products-csv/index.ts` | `full_update`-Modus mit ID-basiertem Update + shop_url Support |
+
+### Neue Update-Logik
 
 ```typescript
-// Handle Amazon data update from CSV
-if (body.update_amazon_data && Array.isArray(body.update_amazon_data)) {
-  const updates = body.update_amazon_data;
-  let updated = 0;
-  let notFound = 0;
-  
-  for (const item of updates) {
-    // Find product by name + brand
-    const { data: product } = await supabase
-      .from("supplement_products")
-      .select("id")
-      .eq("product_name", item.product_name)
-      .eq("brand_id", item.brand_id)
-      .single();
-    
-    if (product) {
+// Handle full product update from enriched CSV
+if (full_update && Array.isArray(full_update) && full_update.length > 0) {
+  for (const item of full_update) {
+    // Update by ID (most reliable)
+    if (item.id) {
       await supabase
         .from("supplement_products")
         .update({
-          amazon_asin: item.amazon_asin,
-          amazon_url: item.amazon_url,
-          amazon_name: item.amazon_name,
-          amazon_image_url: item.amazon_image_url
+          amazon_asin: cleanString(item.amazon_asin),
+          amazon_url: cleanString(item.amazon_url),
+          amazon_image: cleanString(item.amazon_image),
+          amazon_name: cleanString(item.amazon_name),
+          match_score: parseNumber(item.match_score),
+          product_url: cleanString(item.shop_url), // Map shop_url -> product_url
+          updated_at: new Date().toISOString(),
         })
-        .eq("id", product.id);
-      updated++;
-    } else {
-      notFound++;
+        .eq("id", item.id);
     }
   }
-  
-  return { success: true, updated, not_found: notFound };
 }
 ```
+
+## CSV-Felder die importiert werden
+
+| CSV-Spalte | DB-Spalte | Beschreibung |
+|------------|-----------|--------------|
+| `id` | (Matching) | UUID fuer praezises Update |
+| `amazon_asin` | `amazon_asin` | Korrigierte/unique ASIN |
+| `amazon_url` | `amazon_url` | Amazon Produkt-Link |
+| `amazon_image` | `amazon_image` | Amazon Produktbild-URL |
+| `amazon_name` | `amazon_name` | Produktname auf Amazon |
+| `match_score` | `match_score` | ASIN-Match-Konfidenz |
+| `shop_url` | `product_url` | Direktlink zum Hersteller-Shop |
 
 ## Erwartetes Ergebnis
 
 Nach dem Import:
-- 857 Produkte (unveraendert)
-- Alle ASINs sind unique und korrekt
-- Amazon-Links funktionieren fuer alle zugeordneten Produkte
 
-## Naechster Schritt
+| Metrik | Vorher | Nachher |
+|--------|--------|---------|
+| Produkte | 857 | 857 |
+| Mit Shop-URL | 0 | ~400 |
+| Mit Amazon-ASIN (korrigiert) | 715 (Duplikate) | ~600 (unique) |
+| Mit Amazon-URL | 714 | ~600 |
 
-Bitte sende die korrigierte CSV-Datei, dann fuehre ich das Update durch.
+## Ablauf
+
+1. Edge Function deployen mit neuem `full_update`-Handler
+2. CSV parsen und alle 877 Zeilen als Update-Payload senden
+3. Per ID matchen und alle Felder aktualisieren
+4. Ergebnis pruefen
 
