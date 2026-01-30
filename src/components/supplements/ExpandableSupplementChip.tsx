@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import { 
   Pencil, Trash2, X, Check, Droplets, Utensils, Moon, Sun, 
   Dumbbell, Clock, AlertCircle, RotateCcw, Sparkles, Pill, Disc,
@@ -31,6 +30,7 @@ import { BrandSelector } from './BrandSelector';
 import { SelectedProductCard } from './SelectedProductCard';
 import { SupplementDetailSheet } from './SupplementDetailSheet';
 import { RelevanceScorePopover } from './RelevanceScorePopover';
+import { AresInstantCheckDrawer } from './AresInstantCheckDrawer';
 
 // QualityStars moved to BrandSelector component
 
@@ -116,9 +116,9 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
   onDelete,
   className,
 }) => {
-  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showInstantCheck, setShowInstantCheck] = useState(false);
   
   // Fetch products for this supplement (only when expanded for performance)
   const { data: products = [], isLoading: productsLoading } = useSupplementProducts(
@@ -156,22 +156,11 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
   const [selectedProduct, setSelectedProduct] = useState<SupplementProduct | null>(null);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
 
-  // Handle ARES navigation with SHORT, focused prompt (NEW)
+  // Handle ARES Instant Check - Opens inline overlay (no redirect)
   const handleAskAres = useCallback(() => {
-    const brandName = selectedProduct?.brand?.name || 'unbekannt';
-    const prompt = `QUICK CHECK: ${item.name} (${brandName})
-- Dosis: ${dosage}${unit}
-- Timing: ${PREFERRED_TIMING_LABELS[preferredTiming]}
-
-TASK:
-1. Timing optimal für mein Ziel?
-2. Interaktionen mit meinem Stack?
-3. Hersteller-Qualität/Preis-Bewertung?
-
-CONSTRAINT: Halte dich extrem kurz (max 3 Sätze). Nur auf Nachfrage tiefer!`;
-    
-    navigate('/coach/ares', { state: { autoStartPrompt: prompt } });
-  }, [item.name, dosage, unit, preferredTiming, selectedProduct, navigate]);
+    haptics.light();
+    setShowInstantCheck(true);
+  }, []);
 
   // Get constraint badge info
   const constraint = item.supplement?.timing_constraint || 'any';
@@ -577,6 +566,20 @@ CONSTRAINT: Halte dich extrem kurz (max 3 Sätze). Nur auf Nachfrage tiefer!`;
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* ARES Instant Check Drawer - Inline Analysis Overlay */}
+      <AresInstantCheckDrawer
+        isOpen={showInstantCheck}
+        onClose={() => setShowInstantCheck(false)}
+        supplement={{
+          name: item.name,
+          dosage,
+          unit,
+          timing: preferredTiming,
+          brandName: selectedProduct?.brand?.name,
+          constraint: item.supplement?.timing_constraint,
+        }}
+      />
     </motion.div>
   );
 };
