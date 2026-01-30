@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
@@ -62,6 +64,18 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
+    }
+  }, [isOpen]);
   
   // Handle supplement selection with direct insert using the specified timing
   const handleSelect = useCallback(async (item: SupplementLibraryItem) => {
@@ -174,13 +188,20 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
         </Button>
       </div>
       
-      {/* Dropdown Results */}
-      {isOpen && filteredResults.length > 0 && (
-        <div className={cn(
-          'absolute top-full left-0 right-0 mt-1 z-[100]',
-          'bg-popover border border-border rounded-lg shadow-xl',
-          'max-h-60 overflow-y-auto'
-        )}>
+      {/* Dropdown Results - rendered via Portal */}
+      {isOpen && filteredResults.length > 0 && createPortal(
+        <div 
+          style={{
+            position: 'absolute',
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+          }}
+          className={cn(
+            'z-[9999] bg-popover border border-border rounded-lg shadow-xl',
+            'max-h-60 overflow-y-auto'
+          )}
+        >
           {filteredResults.map((item) => (
             <button
               key={item.id}
@@ -203,18 +224,27 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
               <Plus className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
       
-      {/* No results message */}
-      {isOpen && query.length >= 2 && filteredResults.length === 0 && !isLoading && (
-        <div className={cn(
-          'absolute top-full left-0 right-0 mt-1 z-50',
-          'bg-popover border border-border rounded-lg shadow-lg',
-          'px-3 py-4 text-center text-sm text-muted-foreground'
-        )}>
+      {/* No results message - also via Portal */}
+      {isOpen && query.length >= 2 && filteredResults.length === 0 && !isLoading && createPortal(
+        <div 
+          style={{
+            position: 'absolute',
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+          }}
+          className={cn(
+            'z-[9999] bg-popover border border-border rounded-lg shadow-lg',
+            'px-3 py-4 text-center text-sm text-muted-foreground'
+          )}
+        >
           Kein Supplement gefunden
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
