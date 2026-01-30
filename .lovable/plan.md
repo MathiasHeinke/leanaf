@@ -1,46 +1,54 @@
 
 
-# Fix: Edge Function Brand-Lookup korrigieren
+# Finalisierung: 1 Produkt manuell einfuegen + 37 Duplikate loeschen
 
-## Problem
+## Aktueller Status
 
-Die Edge Function `import-products-csv` sucht nach der Spalte `brand_slug` in der `supplement_brands` Tabelle, aber die Spalte heisst dort nur `slug`. Deshalb schlaegt der Lookup fehl und alle 877 Produkte bekommen den Fehler "Brand not found".
+| Metrik | Wert |
+|--------|------|
+| Produkte in DB | 876 |
+| Produkte mit enriched data | 876 (alle aktualisiert) |
+| 1 Fehler-Ursache | Neues Produkt hat leeren `brand_slug` in CSV |
 
-## Aktuelle fehlerhafte Zeilen
+## Phase 1: Neues Produkt manuell einfuegen
 
-```typescript
-// Zeile 135
-.select("id, brand_slug");  
-// Zeile 137
-const brandMap = new Map(brands?.map(b => [b.brand_slug, b.id]) || []);
-```
+Das Produkt "Magnesium Komplex 7 (7 Formen)" von Sunday Natural muss manuell eingefuegt werden, da der `brand_slug` in der CSV fehlt.
 
-## Loesung
+Produktdaten aus Zeile 878:
+- product_name: Magnesium Komplex 7 (7 Formen)
+- brand_id: Sunday Natural (slug: sunday-natural)
+- form: capsule
+- category: minerals
+- serving_size: 2 Kapseln
+- servings_per_container: 120
+- price: 18.9 EUR
+- dosage_per_serving: 400mg elementares Magnesium
+- is_vegan: true
+- is_gluten_free: true
+- country_of_origin: DE
+- amazon_asin: B0FMS3V43J
+- impact_score_big8: 8.8
+- short_description: Premium 7-Formen Magnesium-Komplex fuer optimale Aufnahme und Wirkung
 
-Aendern zu:
+## Phase 2: 37 Duplikate loeschen
 
-```typescript
-// Zeile 135
-.select("id, slug");  
-// Zeile 137
-const brandMap = new Map(brands?.map(b => [b.slug, b.id]) || []);
-```
+Die identifizierten Duplikate werden ueber die Admin-Seite `/admin/import-csv` geloescht (Button "37 Duplikate loeschen").
+
+## Phase 3: Finale Verifizierung
+
+Nach beiden Aktionen:
+- Erwartete Produktanzahl: 876 + 1 - 37 = **840 Produkte**
+- Alle mit enriched data
 
 ## Dateien die geaendert werden
 
 | Datei | Aenderung |
 |-------|-----------|
-| `supabase/functions/import-products-csv/index.ts` | Zeile 135 + 137: `brand_slug` zu `slug` |
+| Keine Code-Aenderungen | Nur Datenbank-Operationen |
 
-## Nach dem Fix
+## Ablauf
 
-1. Edge Function re-deployen
-2. Import erneut starten auf `/admin/import-csv`
-3. 37 Duplikate loeschen
-
-## Erwartetes Ergebnis
-
-- 876 Produkte aktualisiert
-- 1 Produkt neu eingefuegt (Sunday Natural Magnesium Komplex 7)
-- 0 Fehler
+1. SQL INSERT fuer das neue Magnesium-Produkt ausfuehren
+2. "37 Duplikate loeschen" Button auf Admin-Seite klicken
+3. Finale Produktzahl pruefen (soll 840 sein)
 
