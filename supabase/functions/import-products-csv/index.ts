@@ -109,7 +109,114 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    const { products, batch_name = "manual", delete_ids, update_amazon_data } = body;
+    const { products, batch_name = "manual", delete_ids, update_amazon_data, full_update } = body;
+
+    // ============================================
+    // FULL UPDATE MODE: ID-based update with all enriched fields
+    // Maps shop_url -> product_url
+    // ============================================
+    if (full_update && Array.isArray(full_update) && full_update.length > 0) {
+      console.log(`Full update mode: Processing ${full_update.length} products by ID`);
+      
+      let updated = 0;
+      let skipped = 0;
+      let errors = 0;
+      const errorDetails: string[] = [];
+      
+      for (const item of full_update) {
+        if (!item.id) {
+          skipped++;
+          continue;
+        }
+        
+        try {
+          const updateData: Record<string, any> = {
+            updated_at: new Date().toISOString(),
+          };
+          
+          // Amazon fields
+          if (item.amazon_asin !== undefined && item.amazon_asin !== null && item.amazon_asin !== "") {
+            updateData.amazon_asin = cleanString(item.amazon_asin);
+          }
+          if (item.amazon_url !== undefined && item.amazon_url !== null && item.amazon_url !== "") {
+            updateData.amazon_url = cleanString(item.amazon_url);
+          }
+          if (item.amazon_image !== undefined && item.amazon_image !== null && item.amazon_image !== "") {
+            updateData.amazon_image = cleanString(item.amazon_image);
+          }
+          if (item.amazon_name !== undefined && item.amazon_name !== null && item.amazon_name !== "") {
+            updateData.amazon_name = cleanString(item.amazon_name);
+          }
+          if (item.match_score !== undefined && item.match_score !== null && item.match_score !== "") {
+            updateData.match_score = parseNumber(item.match_score);
+          }
+          
+          // Shop URL -> product_url mapping
+          if (item.shop_url !== undefined && item.shop_url !== null && item.shop_url !== "") {
+            updateData.product_url = cleanString(item.shop_url);
+          }
+          
+          // Only update if we have fields to update (besides updated_at)
+          if (Object.keys(updateData).length > 1) {
+            const { error } = await supabase
+              .from("supplement_products")
+              .update(updateData)
+              .eq("id", item.id);
+            
+            if (error) {
+              errors++;
+              errorDetails.push(`ID ${item.id}: ${error.message}`);
+            } else {
+              updated++;
+            }
+          } else {
+            skipped++;
+          }
+        } catch (err) {
+          errors++;
+          errorDetails.push(`ID ${item.id}: ${err.message}`);
+        }
+      }
+      
+      // Get final stats
+      const { data: asinStats } = await supabase
+        .from("supplement_products")
+        .select("amazon_asin")
+        .not("amazon_asin", "is", null)
+        .neq("amazon_asin", "");
+      
+      const { data: urlStats } = await supabase
+        .from("supplement_products")
+        .select("product_url")
+        .not("product_url", "is", null)
+        .neq("product_url", "");
+      
+      const uniqueAsins = new Set(asinStats?.map(p => p.amazon_asin) || []);
+      
+      const { count: totalProducts } = await supabase
+        .from("supplement_products")
+        .select("*", { count: "exact", head: true });
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Full update complete: ${updated} updated, ${skipped} skipped, ${errors} errors`,
+          results: {
+            updated,
+            skipped,
+            errors,
+            error_details: errorDetails.slice(0, 20),
+          },
+          database_totals: {
+            products: totalProducts || 0,
+            products_with_asin: asinStats?.length || 0,
+            unique_asins: uniqueAsins.size,
+            products_with_shop_url: urlStats?.length || 0,
+          }
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Handle Amazon data update from CSV
     if (update_amazon_data && Array.isArray(update_amazon_data) && update_amazon_data.length > 0) {
