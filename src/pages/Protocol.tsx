@@ -17,7 +17,6 @@ import {
   AlertCircle,
   Pause,
   Play,
-  Settings2
 } from 'lucide-react';
 import { Phase0Checklist } from '@/components/protocol/phase-0/Phase0Checklist';
 import { Phase1Overview } from '@/components/protocol/phase-1/Phase1Overview';
@@ -65,7 +64,7 @@ export default function ProtocolPage() {
     canUnlockPhase1,
     pauseProtocol,
     resumeProtocol,
-    setProtocolMode,
+    
     unlockPhase1
   } = useProtocolStatus();
 
@@ -101,17 +100,6 @@ export default function ProtocolPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          {/* Mode Toggle */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setProtocolMode(status?.protocol_mode === 'advanced' ? 'analog' : 'advanced')}
-            className="hidden sm:flex"
-          >
-            <Settings2 className="w-4 h-4 mr-2" />
-            {status?.protocol_mode === 'advanced' ? 'Advanced' : 'Analog'}
-          </Button>
-          
           {/* Pause/Resume */}
           {currentPhase > 0 && (
             <Button
