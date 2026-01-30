@@ -1,66 +1,51 @@
 
 
-## Fix: Click auf Dropdown-Element schließt sofort das Dropdown
+## Fix: ARES Quick Check liefert keine Antwort
 
-### Problem
-Die `handleClickOutside` Logik prüft nur, ob der Click innerhalb von `containerRef` ist. Da das Portal-Dropdown aber in `document.body` gerendert wird (nicht im Container), wird jeder Click auf ein Suchergebnis als "Outside-Click" erkannt - das Dropdown schließt sich **bevor** `handleSelect` ausgeführt werden kann.
+### Problem-Ursache
+Der Memory-Summarizer in `coach-orchestrator-enhanced` verwendet ein **veraltetes/ungültiges Modell**:
+
+```
+model: 'google/gemini-2.5-flash-preview-05-20'
+```
+
+Der Lovable AI Gateway gibt zurück:
+```
+400 {"type":"bad_request","message":"invalid model: google/gemini-2.5-flash-preview-05-20"}
+```
+
+Dadurch schlägt der Memory-Summary-Prozess fehl, was dazu führt, dass ARES eine **leere Antwort** zurückgibt.
 
 ### Lösung
-Wir fügen eine zusätzliche Ref für das Dropdown hinzu und prüfen **beide** Container in der Outside-Click-Logik:
+Das ungültige Modell durch ein aktuelles ersetzen:
 
-```typescript
-const dropdownRef = useRef<HTMLDivElement>(null);
+| Datei | Zeile | Änderung |
+|-------|-------|----------|
+| `supabase/functions/coach-orchestrator-enhanced/memory.ts` | 176 | `google/gemini-2.5-flash-preview-05-20` → `google/gemini-2.5-flash` |
 
-const handleClickOutside = (event: MouseEvent) => {
-  const target = event.target as Node;
-  
-  // Ignore clicks inside the input container OR the dropdown
-  const isInsideContainer = containerRef.current?.contains(target);
-  const isInsideDropdown = dropdownRef.current?.contains(target);
-  
-  if (!isInsideContainer && !isInsideDropdown) {
-    setIsOpen(false);
-  }
-};
+### Erlaubte Modelle (Referenz)
+```text
+openai/gpt-5-mini
+openai/gpt-5
+openai/gpt-5-nano
+openai/gpt-5.2
+google/gemini-2.5-pro
+google/gemini-2.5-flash        ← Empfohlen für Memory-Summarizer
+google/gemini-2.5-flash-lite
+google/gemini-2.5-flash-image
+google/gemini-3-pro-preview
+google/gemini-3-flash-preview
+google/gemini-3-pro-image-preview
 ```
 
-### Datei-Änderungen
-
-| Datei | Änderung |
-|-------|----------|
-| `src/components/supplements/QuickSupplementSearch.tsx` | Dropdown-Ref hinzufügen und Outside-Click-Logik anpassen |
-
-### Technische Details
-
-1. **Neuer Ref für Dropdown:** `const dropdownRef = useRef<HTMLDivElement>(null);`
-2. **Ref an Portal-Div zuweisen:** `<div ref={dropdownRef} style={{...}} ...>`
-3. **Erweiterte Outside-Click-Prüfung:** Beide Refs checken
-
-### Erwartetes Verhalten
-
-| Vorher | Nachher |
-|--------|---------|
-| Click auf "Ashwagandha" → Dropdown schließt, nichts passiert | Click auf "Ashwagandha" → Supplement wird hinzugefügt, Toast erscheint |
-
-### Code-Änderungen (ca. 10 Zeilen)
+### Code-Änderung
 
 ```diff
-+ const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const handleClickOutside = (event: MouseEvent) => {
--   if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
--     setIsOpen(false);
--   }
-+   const target = event.target as Node;
-+   const isInsideContainer = containerRef.current?.contains(target);
-+   const isInsideDropdown = dropdownRef.current?.contains(target);
-+   if (!isInsideContainer && !isInsideDropdown) {
-+     setIsOpen(false);
-+   }
-  };
-
-// Im Portal:
-- <div style={{...}}>
-+ <div ref={dropdownRef} style={{...}}>
+// supabase/functions/coach-orchestrator-enhanced/memory.ts, Zeile 176
+- model: 'google/gemini-2.5-flash-preview-05-20',
++ model: 'google/gemini-2.5-flash',
 ```
+
+### Aufwand
+1 Zeile in 1 Datei
 
