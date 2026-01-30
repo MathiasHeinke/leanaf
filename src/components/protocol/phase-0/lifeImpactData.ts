@@ -26,19 +26,19 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
   toxin_free: {
     key: 'toxin_free',
     impact: {
-      years: -15,
-      label: '-10 bis -15 Jahre',
-      color: 'destructive',
+      years: 15,
+      label: '+10 bis +15 Jahre',
+      color: 'success',
     },
-    whyTitle: 'Biochemisches K.O.',
+    whyTitle: 'Biochemischer Reset',
     whyContent: [
-      'Alkohol stoppt Fettverbrennung sofort – Retatrutid kann nicht wirken, solange die Leber das Gift abbaut.',
-      'Alkohol zerstört REM-Schlaf = keine hormonelle Regeneration möglich.',
-      'Alkohol aromatisiert Testosteron zu Östrogen. Ihr Feierabendbier wächst Ihnen Brüste (Gynäkomastie).',
-      'Nikotin verengt Gefäße (Vasokonstriktion) – macht Citrullin, Cialis und TRT wirkungslos.',
-      'Rauchen zerstört Kollagen schneller als GHK-Cu es aufbauen kann. Rauchen = Falten.',
-      'Endokrine Disruptoren (PFOA, BPA, Phthalate) aus Plastik/Teflon senken Testosteron und stören Schilddrüse.',
-      'Sauna bei ≥80°C aktiviert Heat Shock Proteins (HSPs) – die zelluläre Reparatur-Truppe.',
+      'Alkohol stoppt Fettverbrennung sofort – ohne Alkohol kann Retatrutid voll wirken.',
+      'Ohne Alkohol: Volle REM-Schlaf-Regeneration für optimale Hormonproduktion.',
+      'Ohne Alkohol: Keine Aromatisierung von Testosteron zu Östrogen – keine Gynäkomastie.',
+      'Ohne Nikotin: Gefäße sind weit offen – Citrullin, Cialis und TRT wirken optimal.',
+      'Ohne Rauchen: Kollagen bleibt intakt, GHK-Cu kann aufbauen statt reparieren.',
+      'Ohne Plastik/Teflon: Keine endokrinen Disruptoren – stabiles Testosteron und Schilddrüse.',
+      'Mit Sauna (≥80°C): Heat Shock Proteins aktiviert – die zelluläre Reparatur-Truppe.',
       'Finnische Kuopio-Studie (20+ Jahre): 4-7× Sauna/Woche senkt Gesamtmortalität um ~40%, Demenz um 65%.',
       'Sauna erhöht Puls auf 120-150 bpm – fast identisch mit Zone 2 Cardio, nur entspannter.',
       'Im Schweiß werden Schwermetalle (Blei, Cadmium) und BPA ausgeschieden.',
@@ -52,7 +52,7 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
       { label: 'Wasserfilter installiert', explanation: 'Leitungswasser enthält Medikamentenrückstände' },
       { label: 'Regelmäßig Sauna (≥80°C)', explanation: '4-7×/Woche – Heat Shock Proteins, -40% Mortalität (Kuopio-Studie)' },
     ],
-    aresQuote: 'Retatrutid und TRT sind wirkungslos wenn du rauchst und trinkst. Du kannst ein schlechtes Fundament nicht wegspritzen.',
+    aresQuote: 'Toxinfrei leben bringt dir bis zu 15 zusätzliche Lebensjahre. Das ist der größte Hebel im ganzen Protokoll.',
   },
   
   sleep_score: {
@@ -83,16 +83,16 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
   bio_sanierung: {
     key: 'bio_sanierung',
     impact: {
-      years: -5,
-      label: '-3 bis -5 Jahre',
-      color: 'destructive',
+      years: 5,
+      label: '+3 bis +5 Jahre',
+      color: 'success',
     },
-    whyTitle: 'Biologische Brandherde',
+    whyTitle: 'Biologische Brandherde löschen',
     whyContent: [
-      'Eine unentdeckte Parodontitis ist eine permanente offene Wunde von der Größe eines Handtellers.',
-      'Bakterien wandern vom Mundraum direkt in die Herzklappen – erhöhtes Herzinfarkt-Risiko.',
-      'Amalgamfüllungen enthalten Quecksilber, ein potentes Neurotoxin.',
-      'Was Sie auf die Haut schmieren, landet im Blut – Parabene und chemische Filter wirken hormonell.',
+      'Sanierte Zähne = keine offene Wunde mehr, die dauerhaft Bakterien ins Blut schickt.',
+      'Ohne Parodontitis: Deutlich geringeres Herzinfarkt-Risiko.',
+      'Ohne Amalgam: Kein Quecksilber mehr, das dein Nervensystem belastet.',
+      'Mit Clean Beauty: Keine hormonaktiven Stoffe mehr, die dein System durcheinanderbringen.',
     ],
     subItems: [
       { label: 'Professionelle Zahnreinigung erledigt', explanation: 'Bevor zum Kardiologen – erst zum Zahnarzt' },
@@ -101,23 +101,23 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
       { label: 'Clean Beauty', explanation: 'Nur Inhaltsstoffe, die man theoretisch essen könnte' },
       { label: 'Mineralischen Sonnenschutz', explanation: 'Keine chemischen Filter mit hormoneller Wirkung' },
     ],
-    aresQuote: 'Dein Mund ist das Tor zu deinem Körper. Eine Baustelle dort vergiftet alles andere.',
+    aresQuote: 'Mit einem sanierten Körper gewinnst du 3-5 Jahre Lebenszeit. Keine offenen Baustellen mehr.',
   },
   
   psycho_hygiene: {
     key: 'psycho_hygiene',
     impact: {
-      years: -10,
-      label: '-10 Jahre',
-      color: 'destructive',
+      years: 10,
+      label: '+10 Jahre',
+      color: 'success',
     },
     whyTitle: 'Psycho-Neuro-Immunologie',
     whyContent: [
-      'Eine toxische Beziehung ist der stärkste Prädiktor für Herzkrankheiten – stärker als Rauchen!',
-      'Stress (Cortisol) frisst Testosteron und Progesteron zum Frühstück.',
-      'Sie brauchen keine "aufregende" Beziehung, sondern einen "Safe Haven".',
-      'Langjährige, tiefe Bindungen senken den Entzündungsmarker IL-6.',
-      'Sie sind der Durchschnitt der 5 Menschen, mit denen Sie sich umgeben.',
+      'Ein stabiles Umfeld ist der stärkste Schutzfaktor gegen Herzkrankheiten – stärker als Nichtrauchen!',
+      'Niedriges Cortisol = Testosteron und Progesteron können optimal wirken.',
+      'Ein "Safe Haven" senkt chronischen Stress und damit Entzündungsmarker.',
+      'Tiefe, langjährige Bindungen senken den Entzündungsmarker IL-6 messbar.',
+      'Du bist der Durchschnitt der 5 Menschen, mit denen du dich umgibst – wähle weise.',
     ],
     subItems: [
       { label: 'Safe Haven etabliert', explanation: 'Partner/Umfeld das echte Sicherheit gibt' },
@@ -126,22 +126,22 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
       { label: 'Stress-Job addressiert', explanation: 'Cortisol macht jede Intervention wirkungslos' },
       { label: 'Tägliche mentale Routine', explanation: 'Journaling, Meditation oder Atemübungen' },
     ],
-    aresQuote: 'Dein Cortisol ist so hoch, dass das Testosteron wirkungslos verpufft. Erst Stress-Quellen eliminieren.',
+    aresQuote: 'Ein stabiles Umfeld bringt dir 10 Jahre. Stress eliminieren ist der zweitgrößte Hebel.',
   },
   
   digital_hygiene: {
     key: 'digital_hygiene',
     impact: {
-      years: -2,
-      label: '-2 Jahre',
-      color: 'destructive',
+      years: 2,
+      label: '+2 Jahre',
+      color: 'success',
     },
-    whyTitle: 'Dopamin-Detox',
+    whyTitle: 'Dopamin-Reset',
     whyContent: [
-      'Doomscrolling hält Ihre Amygdala (Angstzentrum) dauerhaft aktiv → chronisches Cortisol.',
-      'Blaues Licht vor dem Schlafen unterdrückt Melatonin-Produktion.',
-      'Ständige Benachrichtigungen fragmentieren Aufmerksamkeit und erhöhen Stress.',
-      'Morgens direkt am Handy = reaktiver statt proaktiver Start in den Tag.',
+      'Ohne Doomscrolling: Amygdala entspannt, Cortisol sinkt auf gesundes Niveau.',
+      'Ohne Blaulicht vor dem Schlafen: Volle Melatonin-Produktion für regenerativen Schlaf.',
+      'Ohne ständige Benachrichtigungen: Fokussierte Aufmerksamkeit, weniger Stress.',
+      'Morgens ohne Handy: Proaktiver Start in den Tag statt reaktiver Modus.',
     ],
     subItems: [
       { label: 'Schlafzimmer = handyfreie Zone', explanation: 'Handy lädt in anderem Raum' },
@@ -150,7 +150,7 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
       { label: 'Benachrichtigungen deaktiviert', explanation: 'Nur wirklich wichtige Apps' },
       { label: 'Kein Doomscrolling', explanation: 'Bewusster, zeitlich begrenzter Konsum' },
     ],
-    aresQuote: 'Dein Handy programmiert dein Gehirn. Entscheide du, wer die Kontrolle hat.',
+    aresQuote: 'Digitale Hygiene bringt dir 2 Jahre. Dein Gehirn dankt es dir.',
   },
   
   protein_training: {
@@ -180,24 +180,24 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
   kfa_trend: {
     key: 'kfa_trend',
     impact: {
-      years: -5,
-      label: '-5 Jahre',
-      color: 'destructive',
+      years: 5,
+      label: '+5 Jahre',
+      color: 'success',
     },
-    whyTitle: 'Viszeralfett = Metabolische Zeitbombe',
+    whyTitle: 'Viszeralfett eliminieren',
     whyContent: [
-      'Bauchfett ist hormonell aktiv und produziert Entzündungsstoffe.',
-      'Hoher KFA korreliert mit Insulinresistenz, erhöhtem Östrogen und niedrigem Testosteron.',
-      'Jede Glukose-Spitze über 140 mg/dl karamellisiert Ihre Gefäße (Glykation).',
-      'Körperfett speichert fettlösliche Toxine – je mehr Fett, desto mehr Giftdepot.',
+      'Weniger Bauchfett = weniger Entzündungsstoffe im Körper.',
+      'Niedriger KFA = bessere Insulinsensitivität, höheres Testosteron, weniger Östrogen.',
+      'Stabile Glukose unter 140 mg/dl = keine Gefäß-Glykation.',
+      'Weniger Fett = weniger Speicher für fettlösliche Toxine.',
     ],
     subItems: [
       { label: 'KFA bekannt', explanation: 'Messung durch Caliper, DEXA oder Waage mit Impedanz' },
       { label: 'KFA <20% (Männer)', explanation: 'Ideal: <15%' },
       { label: 'KFA <25% (Frauen)', explanation: 'Ideal: <20%' },
-      { label: 'Trend fallend', explanation: 'Mindestens 2 Messungen zeigen Verbesserung' },
+      { label: 'Trend fallend', explanation: 'Mindestens 1 Messung zeigt Verbesserung' },
     ],
-    aresQuote: 'Ihr Bauchfett ist eine Hormonfabrik die gegen Sie arbeitet.',
+    aresQuote: 'Niedriger KFA bringt dir 5 Jahre. Dein Bauchfett arbeitet dann FÜR dich.',
   },
   
   bloodwork_baseline: {
