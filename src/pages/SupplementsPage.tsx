@@ -184,28 +184,17 @@ export default function SupplementsPage() {
   return (
     <div className="container max-w-2xl py-6 pb-24 space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 px-1">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 px-1">
           <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
             <Pill className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <h1 className="text-xl font-bold">Stack Architect</h1>
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                Layer 3
-              </Badge>
-            </div>
+            <h1 className="text-xl font-bold mb-0.5">Stack Architect</h1>
             <p className="text-muted-foreground text-xs">
               Optimiere dein Supplement-Timing für maximale Absorption
             </p>
           </div>
         </div>
-
-        <Button onClick={handleAdd} size="icon" variant="outline" className="shrink-0">
-          <Plus className="h-4 w-4" />
-        </Button>
-      </div>
 
       {/* Horizontal Scroll Stats */}
       <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 scrollbar-hide">
