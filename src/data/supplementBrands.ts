@@ -99,6 +99,26 @@ export const SUPPLEMENT_BRANDS: SupplementBrand[] = [
     description: 'Vegane Sport-Supplements. Günstig und qualitativ.'
   },
   {
+    name: 'Gloryfeel',
+    slug: 'gloryfeel',
+    country: 'DE',
+    website: 'gloryfeel.de',
+    price_tier: 'budget',
+    specialization: ['amazon', 'budget', 'multivitamin'],
+    quality_certifications: ['made-in-de', 'lab-tested'],
+    description: 'Amazon-Bestseller aus Deutschland. Budget-freundliche Vitamine mit hohen Bewertungen.'
+  },
+  {
+    name: 'GymBeam',
+    slug: 'gymbeam',
+    country: 'EU',
+    website: 'gymbeam.de',
+    price_tier: 'budget',
+    specialization: ['sport', 'budget', 'protein'],
+    quality_certifications: ['lab-tested'],
+    description: 'Slowakische Sport-Supplements. Günstige Basics wie Kreatin und Whey.'
+  },
+  {
     name: 'Bulk',
     slug: 'bulk',
     country: 'UK',
