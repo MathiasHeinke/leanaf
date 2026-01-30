@@ -37,6 +37,7 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -56,7 +57,11 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
   // Handle click outside to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const isInsideContainer = containerRef.current?.contains(target);
+      const isInsideDropdown = dropdownRef.current?.contains(target);
+      
+      if (!isInsideContainer && !isInsideDropdown) {
         setIsOpen(false);
       }
     };
@@ -191,6 +196,7 @@ export const QuickSupplementSearch: React.FC<QuickSupplementSearchProps> = ({
       {/* Dropdown Results - rendered via Portal */}
       {isOpen && filteredResults.length > 0 && createPortal(
         <div 
+          ref={dropdownRef}
           style={{
             position: 'absolute',
             top: dropdownPosition.top,
