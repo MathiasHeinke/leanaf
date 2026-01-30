@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { haptics } from '@/lib/haptics';
 import { ExpandableSupplementChip } from './ExpandableSupplementChip';
+import { QuickSupplementSearch } from './QuickSupplementSearch';
 import { useUpdateSupplement, useDeleteSupplement, useSupplementBrands } from '@/hooks/useSupplementLibrary';
 import type { UserStackItem, PreferredTiming } from '@/types/supplementLibrary';
 
@@ -146,7 +147,7 @@ export const ProtocolBundleCard: React.FC<ProtocolBundleCardProps> = ({
       </div>
       
       {/* Expandable Supplement Chips with Liquid Layout */}
-      <div className="px-4 pb-3">
+      <div className="px-4 pb-2">
         <LayoutGroup>
           <motion.div layout className="flex flex-col gap-2">
             {supplements.map((supplement) => (
@@ -161,6 +162,14 @@ export const ProtocolBundleCard: React.FC<ProtocolBundleCardProps> = ({
             ))}
           </motion.div>
         </LayoutGroup>
+      </div>
+      
+      {/* Quick Add Search Field */}
+      <div className="px-4 pb-3">
+        <QuickSupplementSearch 
+          timing={timing} 
+          onAdd={onRefetch} 
+        />
       </div>
       
       {/* Footer with cost and action */}
