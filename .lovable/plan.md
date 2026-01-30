@@ -1,63 +1,66 @@
 
 
-## Fix: Dropdown wird vom Container abgeschnitten
+## Fix: Click auf Dropdown-Element schließt sofort das Dropdown
 
 ### Problem
-Die `ProtocolBundleCard` verwendet `overflow-hidden` (Zeile 127), um die abgerundeten Ecken sauber darzustellen. Dies verhindert jedoch, dass das Such-Dropdown über die Container-Grenzen hinausragt.
+Die `handleClickOutside` Logik prüft nur, ob der Click innerhalb von `containerRef` ist. Da das Portal-Dropdown aber in `document.body` gerendert wird (nicht im Container), wird jeder Click auf ein Suchergebnis als "Outside-Click" erkannt - das Dropdown schließt sich **bevor** `handleSelect` ausgeführt werden kann.
 
 ### Lösung
-Die beste Lösung ist, das Dropdown mit einem **React Portal** zu rendern. Dadurch wird es außerhalb des DOM-Baums der Karte platziert und ist nicht mehr von `overflow-hidden` betroffen.
+Wir fügen eine zusätzliche Ref für das Dropdown hinzu und prüfen **beide** Container in der Outside-Click-Logik:
+
+```typescript
+const dropdownRef = useRef<HTMLDivElement>(null);
+
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as Node;
+  
+  // Ignore clicks inside the input container OR the dropdown
+  const isInsideContainer = containerRef.current?.contains(target);
+  const isInsideDropdown = dropdownRef.current?.contains(target);
+  
+  if (!isInsideContainer && !isInsideDropdown) {
+    setIsOpen(false);
+  }
+};
+```
 
 ### Datei-Änderungen
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/supplements/QuickSupplementSearch.tsx` | Dropdown in ein Portal wrappen |
+| `src/components/supplements/QuickSupplementSearch.tsx` | Dropdown-Ref hinzufügen und Outside-Click-Logik anpassen |
 
-### Technische Umsetzung
+### Technische Details
 
-Das Dropdown wird mit `ReactDOM.createPortal()` direkt in `document.body` gerendert. Die Position wird dynamisch basierend auf dem Suchfeld berechnet:
+1. **Neuer Ref für Dropdown:** `const dropdownRef = useRef<HTMLDivElement>(null);`
+2. **Ref an Portal-Div zuweisen:** `<div ref={dropdownRef} style={{...}} ...>`
+3. **Erweiterte Outside-Click-Prüfung:** Beide Refs checken
 
-```typescript
-import { createPortal } from 'react-dom';
+### Erwartetes Verhalten
 
-// In der Komponente:
-const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+| Vorher | Nachher |
+|--------|---------|
+| Click auf "Ashwagandha" → Dropdown schließt, nichts passiert | Click auf "Ashwagandha" → Supplement wird hinzugefügt, Toast erscheint |
 
-// Bei Fokus/Öffnen die Position berechnen:
-useEffect(() => {
-  if (isOpen && containerRef.current) {
-    const rect = containerRef.current.getBoundingClientRect();
-    setDropdownPosition({
-      top: rect.bottom + window.scrollY + 4, // 4px Abstand
-      left: rect.left + window.scrollX,
-      width: rect.width,
-    });
-  }
-}, [isOpen]);
+### Code-Änderungen (ca. 10 Zeilen)
 
-// Dropdown-Render mit Portal:
-{isOpen && filteredResults.length > 0 && createPortal(
-  <div 
-    style={{
-      position: 'absolute',
-      top: dropdownPosition.top,
-      left: dropdownPosition.left,
-      width: dropdownPosition.width,
-    }}
-    className="z-[9999] bg-popover border rounded-lg shadow-xl"
-  >
-    {/* Ergebnisliste */}
-  </div>,
-  document.body
-)}
+```diff
++ const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleClickOutside = (event: MouseEvent) => {
+-   if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+-     setIsOpen(false);
+-   }
++   const target = event.target as Node;
++   const isInsideContainer = containerRef.current?.contains(target);
++   const isInsideDropdown = dropdownRef.current?.contains(target);
++   if (!isInsideContainer && !isInsideDropdown) {
++     setIsOpen(false);
++   }
+  };
+
+// Im Portal:
+- <div style={{...}}>
++ <div ref={dropdownRef} style={{...}}>
 ```
-
-### Vorteile
-- Das Dropdown erscheint über allen anderen Elementen
-- Unabhängig von Parent-Container `overflow` Einstellungen
-- Konsistentes Verhalten wie bei Radix UI Dropdowns
-
-### Aufwand
-~15 Zeilen Code-Änderung in einer Datei
 
