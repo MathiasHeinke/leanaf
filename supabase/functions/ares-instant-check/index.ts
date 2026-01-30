@@ -51,6 +51,101 @@ const CONSTRAINT_LABELS: Record<string, string> = {
   any: 'Flexibel',
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PHASE CONTEXT - Machine-readable phase meanings for AI
+// ═══════════════════════════════════════════════════════════════════════════
+const PHASE_CONTEXT: Record<number, { name: string; focus: string; allowed: string; forbidden: string; supplements_priority: string }> = {
+  0: {
+    name: 'FUNDAMENT',
+    focus: 'Lifestyle-Basics: Schlaf optimieren, Bewegung etablieren, Ernährung stabilisieren',
+    allowed: 'Basis-Supplements: Vitamin D, Magnesium, Omega-3, Zink, Kreatin, Multivitamin',
+    forbidden: 'Keine Peptide, keine Longevity-Stacks, keine experimentellen Substanzen, keine Testosteron-Booster',
+    supplements_priority: 'Fokus auf Schlafqualität (Magnesium, Glycin), Grundversorgung (D3, Omega-3), Trainingsunterstützung (Kreatin)',
+  },
+  1: {
+    name: 'REKOMPOSITION',
+    focus: 'Aktiver Fettabbau mit GLP-1/Enhanced, Muskelerhalt im Defizit',
+    allowed: 'GLP-1-Support (Elektrolyte, Verdauungsenzyme, B-Vitamine), Muskelerhalt (HMB, EAA, Kreatin), Anti-Übelkeit (Ingwer)',
+    forbidden: 'Noch keine Longevity-Peptide (Epitalon), keine mTOR-Inhibitoren',
+    supplements_priority: 'Elektrolyte KRITISCH bei GLP-1, Proteinverdauung unterstützen, Muskelabbau verhindern',
+  },
+  2: {
+    name: 'FINE-TUNING',
+    focus: 'Peptid-Optimierung, Regeneration, Performance-Steigerung',
+    allowed: 'NAD+-Stack (NMN, NR), Kollagen-Synergie, BPC-157/TB-500 Support, MSM, Glycin',
+    forbidden: 'Noch kein Rapamycin oder aggressive mTOR-Inhibitoren',
+    supplements_priority: 'Regeneration maximieren, Peptid-Synergie nutzen, Kollagen für Gewebe',
+  },
+  3: {
+    name: 'LONGEVITY',
+    focus: 'Langlebigkeit, Senolytika, mTOR-Modulation, epigenetische Optimierung',
+    allowed: 'Rapamycin-Synergie, Ca-AKG, Senolytika (Fisetin, Quercetin), Spermidine, Metformin-Alternativen',
+    forbidden: 'Keine Einschränkungen für fortgeschrittene User mit ärztlicher Betreuung',
+    supplements_priority: 'Zelluläre Gesundheit, Autophagie-Förderung, Anti-Aging-Stack',
+  },
+};
+
+// GLP-1 Agents for detection
+const GLP1_AGENTS = ['retatrutide', 'tirzepatide', 'semaglutide', 'reta', 'tirze', 'sema', 'ozempic', 'wegovy', 'mounjaro', 'zepbound'];
+
+// TRT/HRT Agents for detection
+const TRT_AGENTS = ['testosterone', 'trt', 'test e', 'test c', 'enanthate', 'cypionate', 'sustanon', 'nebido', 'androgel', 'testogel'];
+
+// Detect GLP-1 status from active peptides
+function isOnGLP1(peptideNames: string[]): boolean {
+  return peptideNames.some(p => 
+    GLP1_AGENTS.some(agent => p.toLowerCase().includes(agent))
+  );
+}
+
+// Detect TRT status from protocol_mode or peptides
+function isOnTRT(protocolMode: string, peptideNames: string[]): boolean {
+  if (protocolMode?.includes('clinical')) return true;
+  return peptideNames.some(p => 
+    TRT_AGENTS.some(agent => p.toLowerCase().includes(agent))
+  );
+}
+
+// Calculate calorie deficit status
+function getCalorieStatus(tdee: number | null, target: number | null): { status: string; deficit: number | null; isAggressive: boolean } {
+  if (!tdee || !target) return { status: 'Unbekannt', deficit: null, isAggressive: false };
+  const deficit = tdee - target;
+  if (deficit > 0) {
+    const isAggressive = deficit > 500;
+    return { 
+      status: `Defizit -${deficit} kcal/Tag`, 
+      deficit, 
+      isAggressive 
+    };
+  } else if (deficit < -100) {
+    return { status: `Surplus +${Math.abs(deficit)} kcal/Tag`, deficit, isAggressive: false };
+  }
+  return { status: 'Maintenance', deficit: 0, isAggressive: false };
+}
+
+// Get Phase 0 progress from checklist
+function getPhase0Progress(checklist: Record<string, any> | null): { completed: number; total: number; missing: string[] } {
+  if (!checklist) return { completed: 0, total: 9, missing: ['Alle Items'] };
+  
+  const items = [
+    'toxin_free', 'sleep_score', 'bio_sanierung', 'psycho_hygiene', 
+    'digital_hygiene', 'protein_training', 'kfa_trend', 'bloodwork_baseline', 'tracking_measurement'
+  ];
+  
+  const missing: string[] = [];
+  let completed = 0;
+  
+  for (const item of items) {
+    if (checklist[item]?.completed) {
+      completed++;
+    } else {
+      missing.push(item);
+    }
+  }
+  
+  return { completed, total: items.length, missing };
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -116,11 +211,12 @@ Deno.serve(async (req) => {
       insightsResult,
       goalsResult,
       coachMemoryResult,
+      protocolStatusResult,
     ] = await Promise.all([
       // 1. User Profile (CORRECTED: removed 'phase', added coach_personality)
       svcClient
         .from('profiles')
-        .select('goal, weight, age, gender, protocol_mode, preferred_name, display_name, coach_personality, daily_calorie_target, protein_target_g')
+        .select('goal, weight, age, gender, protocol_mode, preferred_name, display_name, coach_personality, daily_calorie_target, protein_target_g, calorie_deficit, tdee')
         .eq('user_id', userId)
         .maybeSingle(),
 
@@ -160,7 +256,7 @@ Deno.serve(async (req) => {
       // 6. Daily Goals (check if calories/protein exist)
       svcClient
         .from('daily_goals')
-        .select('calories, protein, carbs, fats, fluid_goal_ml')
+        .select('calories, protein, carbs, fats, fluid_goal_ml, tdee, calorie_deficit')
         .eq('user_id', userId)
         .maybeSingle(),
 
@@ -168,6 +264,13 @@ Deno.serve(async (req) => {
       svcClient
         .from('coach_memory')
         .select('memory_data')
+        .eq('user_id', userId)
+        .maybeSingle(),
+
+      // 8. Protocol Status (NEW: Phase + Checklist for phase-aware recommendations)
+      svcClient
+        .from('user_protocol_status')
+        .select('current_phase, phase_0_checklist, phase_1_target_kfa, is_paused, protocol_mode')
         .eq('user_id', userId)
         .maybeSingle(),
     ]);
@@ -179,6 +282,53 @@ Deno.serve(async (req) => {
     const profile = profileResult.data || {};
     const goals = goalsResult.data || {};
     const coachMemory = coachMemoryResult.data?.memory_data as Record<string, any> || {};
+    const protocolStatus = protocolStatusResult.data || {};
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PHASE & BIOMARKER DETECTION
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // Get current phase (from protocol_status or default to 0)
+    const currentPhase = protocolStatus.current_phase ?? 0;
+    const phaseContext = PHASE_CONTEXT[currentPhase] || PHASE_CONTEXT[0];
+    const phase0Checklist = protocolStatus.phase_0_checklist || null;
+    const phase0Progress = getPhase0Progress(phase0Checklist);
+    const isPaused = protocolStatus.is_paused || false;
+
+    // Extract all peptide names for detection
+    const peptides = (peptidesResult.data || []).filter((p: any) => p.is_active);
+    const allPeptideNames: string[] = [];
+    for (const protocol of peptides) {
+      const peptideList = Array.isArray(protocol.peptides) ? protocol.peptides : [];
+      for (const pep of peptideList) {
+        const pepName = typeof pep === 'string' ? pep : (pep.name || pep.compound || '');
+        if (pepName) allPeptideNames.push(pepName);
+      }
+    }
+
+    // Detect biomarker status
+    const protocolMode = profile.protocol_mode || protocolStatus.protocol_mode || 'natural';
+    const glp1Active = isOnGLP1(allPeptideNames);
+    const trtActive = isOnTRT(protocolMode, allPeptideNames);
+    
+    // Calculate calorie status
+    const tdee = goals.tdee || profile.tdee || null;
+    const calorieTarget = goals.calories || profile.daily_calorie_target || null;
+    const calorieStatus = getCalorieStatus(tdee, calorieTarget);
+
+    // Determine protocol status label
+    let protocolStatusLabel = 'Natural (keine Peptide/TRT)';
+    if (trtActive && glp1Active) {
+      protocolStatusLabel = 'Combined (Enhanced + Clinical/TRT)';
+    } else if (trtActive) {
+      protocolStatusLabel = 'Clinical (TRT/HRT aktiv)';
+    } else if (glp1Active) {
+      protocolStatusLabel = 'Enhanced (GLP-1 aktiv, ohne TRT)';
+    } else if (protocolMode.includes('enhanced')) {
+      protocolStatusLabel = 'Enhanced-Modus (Peptide geplant, noch nicht aktiv)';
+    }
+
+    console.log(`[ARES-INSTANT-CHECK] Phase: ${currentPhase}, Protocol: ${protocolStatusLabel}, GLP-1: ${glp1Active}, TRT: ${trtActive}`);
 
     // ═══════════════════════════════════════════════════════════════════════════
     // LOAD PERSONA based on coach_personality
@@ -217,8 +367,7 @@ Deno.serve(async (req) => {
           .join('\n') || 'Noch keine anderen Supplements'
       : 'Noch keine Supplements eingetragen';
 
-    // Format peptides (CORRECTED: peptides is JSONB array)
-    const peptides = (peptidesResult.data || []).filter((p: any) => p.is_active);
+    // Format peptides (already extracted above for detection)
     let peptideSection = 'Keine aktiven Protokolle';
     if (peptides.length > 0) {
       const peptideLines: string[] = [];
@@ -315,18 +464,46 @@ ${personaStyleBlock}
 
 ANTWORT-REGELN:
 - Maximal 4 kurze Absätze, maximal 150 Wörter
-- Nutze Emojis für Struktur (✅ ⏰ 💊 ⚠️ 💡)
+- Nutze Emojis für Struktur (✅ ⏰ 💊 ⚠️ 💡 🔬 ⚡)
 - Keine Floskeln, keine Einleitungen wie "Klar" oder "Natürlich"
 - Starte direkt mit der Bewertung
+- Beziehe dich auf die aktuelle PHASE und den BIOMARKER-STATUS
 - Antworte IMMER auf Deutsch`;
 
-    // Get calorie target from goals or profile
-    const calorieTarget = goals.calories || profile.daily_calorie_target;
+    // Build phase status section
+    let phaseStatusSection = `## PHASE-STATUS
+- Aktuelle Phase: ${currentPhase} - ${phaseContext.name}
+- Fokus: ${phaseContext.focus}
+- Erlaubte Supplements: ${phaseContext.allowed}
+- Nicht empfohlen: ${phaseContext.forbidden}
+- Prioritäten: ${phaseContext.supplements_priority}`;
+
+    // Add Phase 0 progress if in Phase 0
+    if (currentPhase === 0) {
+      phaseStatusSection += `
+- Phase 0 Fortschritt: ${phase0Progress.completed}/${phase0Progress.total} Items abgeschlossen
+- Offene Items: ${phase0Progress.missing.slice(0, 3).join(', ')}${phase0Progress.missing.length > 3 ? '...' : ''}`;
+    }
+
+    if (isPaused) {
+      phaseStatusSection += `\n- ⚠️ PROTOKOLL PAUSIERT`;
+    }
+
+    // Build biomarker status section
+    let biomarkerSection = `## BIOMARKER-STATUS
+- Modus: ${protocolStatusLabel}
+- GLP-1 aktiv: ${glp1Active ? 'JA → Elektrolyte, Verdauungsenzyme, Übelkeits-Management KRITISCH' : 'Nein'}
+- TRT aktiv: ${trtActive ? 'JA → Testosteron-Booster SINNLOS, Estrogen-Management prüfen' : 'Nein'}
+- Kalorienstatus: ${calorieStatus.status}${calorieStatus.isAggressive ? ' → AGGRESSIV, Muskelschutz kritisch!' : ''}`;
 
     const userPrompt = `## USER KONTEXT
-- Protokoll: ${profile.protocol_mode || 'natural'}
+- Protokoll: ${protocolMode}
 - Ziel: ${profile.goal || 'nicht definiert'}${calorieTarget ? ` (${calorieTarget} kcal/Tag)` : ''}
 - Alter: ${profile.age || '?'} | Gewicht: ${profile.weight || '?'}kg | Geschlecht: ${profile.gender || '?'}
+
+${phaseStatusSection}
+
+${biomarkerSection}
 
 ## AKTUELLER STACK
 ${stackSection}
@@ -349,11 +526,12 @@ ${constraintLabel ? `- Einnahme-Hinweis: ${constraintLabel}` : ''}
 
 ## AUFGABE
 Bewerte dieses Supplement für ${userName}:
-1. Passt es zu den Zielen?
+1. Passt es zu den Zielen UND zur aktuellen Phase ${currentPhase}?
 2. Ist das Timing optimal?
 3. Ist die Dosis angemessen?
 4. Gibt es Interaktionen mit dem Stack/Peptiden?
-5. Qualität der Marke (falls bekannt)?`;
+5. Passt es zum Protokoll-Status (${protocolStatusLabel})?
+${currentPhase === 0 ? '6. Phase 0: Ist es ein sinnvolles Basis-Supplement oder verfrüht?' : ''}`;
 
     // Log the complete prompt for debugging
     console.log('[ARES-INSTANT-CHECK] === COMPLETE PROMPT ===');
