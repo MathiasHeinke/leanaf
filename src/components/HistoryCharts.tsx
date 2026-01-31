@@ -1,5 +1,6 @@
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area, ComposedChart } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, ComposedChart } from 'recharts';
+import { MacroStackedChart } from "./analytics/MacroStackedChart";
 
 
 interface DailyData {
@@ -221,36 +222,17 @@ export const HistoryCharts = ({ data, weightHistory, bodyMeasurementsHistory = [
         </div>
       )}
 
-      {/* Macros Bar Chart */}
+      {/* Macros Stacked Chart */}
       {showNutritionCharts && (
-        <div className="bg-gradient-to-r from-background to-accent/10 p-5 rounded-lg border">
-          <h3 className="text-lg font-semibold mb-4">Makros</h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis 
-                dataKey="date" 
-                fontSize={11}
-                angle={timeRange === 'year' ? -45 : 0}
-                textAnchor={timeRange === 'year' ? 'end' : 'middle'}
-                height={timeRange === 'year' ? 60 : 30}
-              />
-              <YAxis fontSize={11} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'hsl(var(--card))', 
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px'
-                }}
-              />
-              <Bar dataKey="Protein" fill="hsl(var(--protein))" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="Kohlenhydrate" fill="hsl(var(--carbs))" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="Fette" fill="hsl(var(--fats))" radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        </div>
+        <MacroStackedChart 
+          data={data.filter(day => day.meals.length > 0).map(day => ({
+            date: day.date,
+            displayDate: day.displayDate,
+            protein: day.protein,
+            carbs: day.carbs,
+            fats: day.fats,
+          })).reverse()}
+        />
       )}
 
       {/* Enhanced Weight Chart with Optimized 3-Line Overlap */}
