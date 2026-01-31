@@ -1,146 +1,115 @@
 
-# Wirkstoff-First Selection: Deduplizierung & 2-Schritt-Auswahl
+# Fix: SupplementGroupRow UI & Deduplizierungs-Probleme
 
-## Problem
+## Identifizierte Probleme
 
-Aktuell zeigt die Supplement-Liste **beides** als separate Einträge:
-- `CaAKG` (generischer Wirkstoff ohne Produkte)
-- `Ca-AKG (Rejuvant)` (mit MoleQlar-Produkten verknüpft)
+### 1. "Im Stack" Badge redundant
+Der Badge bei Zeile 166-170 in `SupplementGroupRow.tsx` ist überflüssig - der Switch zeigt bereits den Status.
 
-Das führt zu Verwirrung und doppelten Einträgen im User-Stack.
+### 2. Namen werden abgeschnitten
+`truncate` auf Zeile 128 kürzt die Namen. Beispiele: "Elekt...", "Ome...", "Vita..."
 
-**Datenbank-Befund:**
-- 111 Einträge in `supplement_database`
-- Nur 78 davon haben verknüpfte Produkte in `supplement_products`
-- 33 "Orphan"-Einträge ohne Produktverknüpfung (oft Duplikate oder generische Namen)
+**Lösung:** `truncate` entfernen, stattdessen mehr Platz für Namen lassen.
 
----
+### 3. Zink zeigt keine Gruppe
+**Problem:** Datenbank hat 3 Einträge:
+- `Zink` 
+- `Zink Bisglycinat`
+- `Zinc Complex` ← Englische Schreibweise matcht NICHT mit `^zink/i`
 
-## Lösungsansatz: Zweistufige Auswahl
-
-**Flow-Änderung:**
-
-```text
-VORHER (flach):
-┌─────────────────────────────────────┐
-│ [x] CaAKG                    8.5    │
-│ [x] Ca-AKG (Rejuvant)        8.5    │  ← Duplikat!
-│ [x] Magnesium                9.5    │
-│ [x] Magnesium Glycinat       9.5    │  ← Duplikat!
-└─────────────────────────────────────┘
-
-NACHHER (gruppiert):
-┌─────────────────────────────────────┐
-│ Ca-AKG                       8.5    │
-│   → MoleQlar Pulver   €0.45/Tag     │
-│   → MoleQlar Kapseln  €0.52/Tag     │
-│                                     │
-│ Magnesium                    9.5    │
-│   → Glycinat (Sunday)  €0.12/Tag    │
-│   → Citrat (Nature Love) €0.08/Tag  │
-└─────────────────────────────────────┘
-```
-
----
-
-## Technische Umsetzung
-
-### Phase 1: Datenbereinigung (SQL)
-
-Zuerst: Duplikate in der Datenbank konsolidieren.
-
-**Beispiel Ca-AKG:**
-```sql
--- 1. Alle Produkte auf den "richtigen" Wirkstoff umhängen
-UPDATE supplement_products
-SET supplement_id = '9e141771-56fa-497b-a437-4c55fb2c7ec1'  -- Ca-AKG (Rejuvant)
-WHERE supplement_id = '977958a3-7867-4dcf-9319-36d01d776f81'; -- CaAKG
-
--- 2. Duplikat-Wirkstoff umbenennen/deaktivieren
-UPDATE supplement_database
-SET name = 'Ca-AKG'
-WHERE id = '9e141771-56fa-497b-a437-4c55fb2c7ec1';
-
--- 3. Orphan löschen (oder soft-delete)
-DELETE FROM supplement_database
-WHERE id = '977958a3-7867-4dcf-9319-36d01d776f81';
-```
-
-**Systematische Duplikat-Analyse nötig** für alle 111 Einträge.
-
-### Phase 2: Frontend-Gruppierung aktivieren
-
-Die Utility `src/lib/supplementDeduplication.ts` existiert bereits, wird aber **nicht genutzt**!
-
-**Änderung in `useDynamicallySortedSupplements.ts`:**
-
+**Lösung:** Pattern in `supplementDeduplication.ts` erweitern:
 ```typescript
-import { groupByBaseName, getUniqueBaseNames } from '@/lib/supplementDeduplication';
+// Vorher:
+{ pattern: /^zink/i, baseName: 'Zink' },
 
-// Nach dem Scoring: Gruppieren nach Base-Name
-const baseGroups = getUniqueBaseNames(scoredItems);
+// Nachher:
+{ pattern: /^zink|^zinc/i, baseName: 'Zink' },
+```
 
-// Statt flache Liste: Gruppierte Struktur zurückgeben
-return {
-  groups: baseGroups,  // { baseName, variants[], topScore }
+### 4. Magnesium zeigt nur 2 statt 4 Varianten
+**Problem:** Die 4 DB-Einträge sind in VERSCHIEDENEN TIERS:
+- Essential: `Magnesium`, `Magnesium Glycinat` (vermutlich durch Scoring)
+- Optimizer: `Magnesium Komplex 11 Ultra`, `Magnesiumcitrat`
+
+Die Gruppierung erfolgt NACH der Tier-Sortierung, daher werden nur Varianten im selben Tier gruppiert.
+
+**Lösung:** Dies ist eigentlich korrektes Verhalten - Varianten mit niedrigerem Score erscheinen im Optimizer-Tab. Aber für bessere UX könnte man alle Magnesium-Varianten als eine Gruppe zeigen, unabhängig vom Tier.
+
+---
+
+## Technische Änderungen
+
+### Datei 1: `src/components/supplements/SupplementGroupRow.tsx`
+
+**Änderung A: "Im Stack" Badge entfernen (Zeile 166-170)**
+```typescript
+// ENTFERNEN:
+{hasActiveVariant && (
+  <span className="hidden sm:inline text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded whitespace-nowrap">
+    Im Stack
+  </span>
+)}
+```
+
+**Änderung B: Name nicht abschneiden (Zeile 128)**
+```typescript
+// Vorher:
+<span className="font-medium text-sm truncate">{baseName}</span>
+
+// Nachher:
+<span className="font-medium text-sm">{baseName}</span>
+```
+
+**Änderung C: Flex-Layout anpassen für mehr Platz**
+```typescript
+// Content-Container breiter machen, Score-Badge kompakter
+<div className="flex items-center gap-1.5 flex-wrap">
+  <span className="font-medium text-sm">{baseName}</span>
+  {getScoreBadge(topVariant)}
   ...
-};
+</div>
 ```
 
-### Phase 3: UI-Komponente für gruppierte Anzeige
+### Datei 2: `src/lib/supplementDeduplication.ts`
 
-**Neue/Angepasste Komponente: `SupplementGroupRow`**
-
+**Pattern für Zink erweitern (Zeile 13):**
 ```typescript
-interface SupplementGroupRowProps {
-  baseName: string;           // z.B. "Magnesium"
-  variants: ScoredSupplementItem[];  // Glycinat, Citrat, etc.
-  topScore: number;
-  isAnyActive: boolean;
-  onSelectVariant: (item: ScoredSupplementItem) => void;
-}
+// Vorher:
+{ pattern: /^zink/i, baseName: 'Zink' },
+
+// Nachher:
+{ pattern: /^zink|^zinc/i, baseName: 'Zink' },
 ```
 
-**Interaktion:**
-1. User sieht gruppierte Base-Namen mit Top-Score
-2. Klick expandiert die Gruppe → zeigt Varianten
-3. User wählt spezifische Variante
-4. Nach Auswahl → Produkt-Selektion (wie bereits in ExpandableChip)
-
-### Phase 4: SupplementInventory anpassen
-
+**Pattern für Omega-3 erweitern (Zeile 31):**
 ```typescript
-// Statt:
-filteredSupplements.map((item) => (
-  <SupplementToggleRow key={item.id} item={item} ... />
-))
+// Vorher:
+{ pattern: /^omega[- ]?3/i, baseName: 'Omega-3' },
 
-// Neu:
-baseNameGroups.map((group) => (
-  <SupplementGroupRow
-    key={group.baseName}
-    baseName={group.baseName}
-    variants={group.variants}
-    topScore={group.topScore}
-    isAnyActive={group.variants.some(v => activeIds.has(v.id))}
-    ...
-  />
-))
+// Nachher:  
+{ pattern: /^omega[- ]?3|fisch[öo]l|fish[- ]?oil/i, baseName: 'Omega-3' },
+```
+
+**Pattern für Vitamin D erweitern:**
+```typescript
+// Vorher:
+{ pattern: /^vitamin\s*d/i, baseName: 'Vitamin D' },
+
+// Nachher - auch D3, D3+K2 erfassen:
+{ pattern: /^vitamin\s*d|^d3\b/i, baseName: 'Vitamin D' },
 ```
 
 ---
 
-## Erweiterte Deduplizierungs-Patterns
+## Erwartetes Ergebnis
 
-Die bestehende `BASE_PATTERNS` Liste muss erweitert werden:
-
-```typescript
-// Hinzufügen:
-{ pattern: /^ca[- ]?akg|calcium[- ]?alpha[- ]?ketoglutarat|rejuvant/i, baseName: 'Ca-AKG' },
-{ pattern: /^nr[- ]?|niagen|nicotinamid[- ]?riboside?/i, baseName: 'NR (Niagen)' },
-{ pattern: /^eaa|essential[- ]?amino/i, baseName: 'EAA' },
-{ pattern: /^bcaa|branched[- ]?chain/i, baseName: 'BCAA' },
-```
+| Vorher | Nachher |
+|--------|---------|
+| "Elekt..." + "Im Stack" | "Elektrolyte" |
+| "Ome..." + "Im Stack" | "Omega-3" |
+| "Vita..." + "Im Stack" | "Vitamin D3 + K2" |
+| Zink ohne Gruppe | Zink → 3 Varianten |
+| Magnesium 2 Varianten | Bleibt 2 im Essential, 2 im Optimizer |
 
 ---
 
@@ -148,31 +117,5 @@ Die bestehende `BASE_PATTERNS` Liste muss erweitert werden:
 
 | Datei | Änderung |
 |-------|----------|
-| `src/lib/supplementDeduplication.ts` | Patterns erweitern (Ca-AKG, NR, etc.) |
-| `src/hooks/useDynamicallySortedSupplements.ts` | Gruppierung nach Base-Name aktivieren |
-| `src/components/supplements/SupplementGroupRow.tsx` | **NEU** - Expandierbare Gruppen-Komponente |
-| `src/components/supplements/SupplementInventory.tsx` | Gruppierte Anzeige statt flache Liste |
-| **DB Migration/Script** | Duplikate konsolidieren |
-
----
-
-## Vorteile
-
-| Aspekt | Vorher | Nachher |
-|--------|--------|---------|
-| Einträge | 111 (mit Duplikaten) | ~60-70 Base-Wirkstoffe |
-| Klarheit | Verwirrend (CaAKG + Ca-AKG Rejuvant) | Eindeutig (Ca-AKG → Produkte) |
-| Produkt-Auswahl | Versteckt im Chip | Prominent bei Varianten-Wahl |
-| Chip-Anzeige | "Ca-AKG (Rejuvant)" | "Ca-AKG · MoleQlar" |
-
----
-
-## Reihenfolge der Implementierung
-
-1. **Deduplizierungs-Patterns erweitern** (supplementDeduplication.ts)
-2. **Hook anpassen** für gruppierte Rückgabe
-3. **SupplementGroupRow** Komponente erstellen
-4. **SupplementInventory** auf Gruppen umstellen
-5. **(Optional) DB-Cleanup** für saubere Daten
-
-Soll ich mit Schritt 1 starten (Patterns erweitern + Hook-Gruppierung)?
+| `src/components/supplements/SupplementGroupRow.tsx` | "Im Stack" entfernen, `truncate` entfernen, Layout anpassen |
+| `src/lib/supplementDeduplication.ts` | Patterns für Zink, Omega-3, Vitamin D erweitern |
