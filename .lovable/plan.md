@@ -1,166 +1,139 @@
 
-# Impact Scores nachrechnen + Supplement-Verknuepfungen
+# Cost Per Day Berechnung fuer supplement_database
 
-## Zusammenfassung
+## Uebersicht
 
-Zwei Aufgaben:
-1. **175 Produkte** ohne `impact_score_big8` berechnen
-2. **259 Produkte** ohne `supplement_id` analysieren und verknuepfen
+Von den **73 Supplements ohne cost_per_day_eur** koennen wir:
+- **54 automatisch berechnen** - basierend auf verlinkten Produkten
+- **19 manuell schaetzen** - keine Produktdaten vorhanden
 
 ---
 
-## Teil 1: Impact Score Big8 Berechnung
+## Schritt 1: Automatische Berechnung (54 Supplements)
 
-### Formel
+Folgende Supplements haben verlinkte Produkte und bekommen ihren Durchschnittspreis:
 
-Der `impact_score_big8` ist der **gewichtete Durchschnitt** der 8 Qualitaetsmetriken:
-
-```text
-impact_score_big8 = AVG(
-  quality_bioavailability,
-  quality_purity,
-  quality_value,
-  quality_dosage,
-  quality_research,
-  quality_transparency,
-  quality_form,
-  quality_synergy
-)
-```
-
-### Betroffene Marken
-
-| Marke | Fehlende Scores |
-|-------|-----------------|
-| Profuel | 35 |
-| NOW Foods | 34 |
-| Gloryfeel | 23 |
-| Doctor's Best | 22 |
-| Bulk | 20 |
-| Life Extension | 20 |
-| Gymbeam | 19 |
-| ESN | 1 |
-| Biogena | 1 |
+| Supplement | Produkte | Avg Preis/Tag |
+|------------|----------|---------------|
+| Omega-3 | 37 | 0.40 EUR |
+| Magnesium | 35 | 0.35 EUR |
+| Vitamin D3 | 32 | 0.11 EUR |
+| Probiotika | 26 | 0.74 EUR |
+| Zink | 25 | 0.19 EUR |
+| Ashwagandha | 23 | 0.22 EUR |
+| Curcumin | 21 | 0.36 EUR |
+| Creatin | 20 | 0.22 EUR |
+| NAC | 18 | 0.15 EUR |
+| Vitamin C | 16 | 0.55 EUR |
+| Kollagen | 14 | 0.95 EUR |
+| Vitamin B12 | 13 | 0.23 EUR |
+| Melatonin | 12 | 0.26 EUR |
+| Eisen | 11 | 0.10 EUR |
+| BCAA | 9 | 0.32 EUR |
+| Berberin | 8 | 0.33 EUR |
+| Lions Mane | 8 | 0.31 EUR |
+| NMN | 6 | 1.49 EUR |
+| Resveratrol | 5 | 0.65 EUR |
+| ... | ... | ... |
 
 ### SQL Migration
 
 ```sql
-UPDATE supplement_products
-SET impact_score_big8 = ROUND(
-  (COALESCE(quality_bioavailability, 7.0) +
-   COALESCE(quality_purity, 7.0) +
-   COALESCE(quality_value, 7.0) +
-   COALESCE(quality_dosage, 7.0) +
-   COALESCE(quality_research, 7.0) +
-   COALESCE(quality_transparency, 7.0) +
-   COALESCE(quality_form, 7.0) +
-   COALESCE(quality_synergy, 7.0)) / 8,
-  2
-)
-WHERE is_deprecated = false
-  AND impact_score_big8 IS NULL;
+UPDATE supplement_database sd
+SET cost_per_day_eur = subquery.avg_price
+FROM (
+  SELECT 
+    sp.supplement_id,
+    ROUND(AVG(sp.price_per_serving)::numeric, 2) as avg_price
+  FROM supplement_products sp
+  WHERE sp.supplement_id IS NOT NULL
+  GROUP BY sp.supplement_id
+) subquery
+WHERE sd.id = subquery.supplement_id
+  AND sd.cost_per_day_eur IS NULL;
 ```
 
 ---
 
-## Teil 2: Supplement-Verknuepfungen
+## Schritt 2: Manuelle Schaetzungen (19 Supplements)
 
-### Analyse der 259 fehlenden Links
+Diese Supplements haben keine verlinkten Produkte und bekommen realistische Schaetzwerte:
 
-| Erkanntes Supplement | Anzahl |
-|---------------------|--------|
-| Creatin | 16 |
-| Selen | 13 |
-| Protein (Whey) | 12 |
-| B-Komplex | 11 |
-| MSM | 8 |
-| Alpha Liponsaeure | 8 |
-| Reishi | 7 |
-| Glucosamin | 6 |
-| Folat | 6 |
-| Cordyceps | 6 |
-| Rhodiola | 5 |
-| Boswellia | 5 |
-| L-Carnitin | 5 |
-| CoQ10 | 5 |
-| Hyaluron | 5 |
-| TMG | 4 |
-| NAC | 4 |
-| 5-HTP | 4 |
-| ... | ... |
-| **UNMATCHED** | **87** |
+| Supplement | Geschaetzter Preis | Begruendung |
+|------------|-------------------|-------------|
+| Alpha-Ketoglutarat (AKG) | 0.80 EUR | Aehnlich Ca-AKG |
+| CaAKG | 1.50 EUR | Rejuvant Premium |
+| Astaxanthin + Coenzym Q10 | 0.70 EUR | Kombi-Praeparat |
+| Methylenblau 1% | 0.30 EUR | Tropfen sehr ergiebig |
+| HMB 3000 | 0.50 EUR | Sport-Supplement |
+| Turkesterone Max | 0.80 EUR | Premium-Preis |
+| Vitamin B Komplex | 0.25 EUR | Standard B-Komplex |
+| Vitamin D Balance | 0.15 EUR | Aehnlich D3 |
+| Vitamin D3 + K2 Tropfen | 0.10 EUR | Tropfen guenstig |
+| Magnesiumcitrat | 0.20 EUR | Budget-Magnesium |
+| Magnesium Komplex 11 | 0.45 EUR | Premium-Komplex |
+| Eisen + Vitamin C | 0.15 EUR | Kombi guenstig |
+| Pinienrinden Extrakt | 0.35 EUR | Pycnogenol-Preis |
+| Nootropic | 0.60 EUR | Stack-Produkt |
+| Pre-Workout Komplex | 0.50 EUR | Sport-Durchschnitt |
+| Protein Pulver | 0.80 EUR | 30g Serving |
+| Probiona Kulturen | 0.40 EUR | Premium Probiotika |
+| Schwarzkuemmeloel 1000 | 0.25 EUR | Kapseln |
+| Beauty | 0.50 EUR | Kombipraeparat |
 
-### Matching-Strategie
-
-Die 172 matchbaren Produkte werden ueber Keyword-Matching verknuepft.
-
-Die 87 UNMATCHED Produkte sind:
-- **Komplexprodukte**: A-Z Depot, Multivitamin, Gelenk-Formeln
-- **Nischenprodukte**: Inositol, Lithiumorotat, Urolithin A, Maitake
-- **Sport-Spezielles**: Casein, MCT Oel, Pre-Workout Stacks
-- **Marken-Formeln**: Orthomol Mental, MoleQlar ONE, Biogena Arthro
-
-### SQL Matching Migration
+### SQL fuer manuelle Werte
 
 ```sql
--- Match products to supplement_database
-WITH matches AS (
-  SELECT 
-    sp.id as product_id,
-    sd.id as supplement_id,
-    sd.name as supplement_name
-  FROM supplement_products sp
-  CROSS JOIN supplement_database sd
-  WHERE sp.is_deprecated = false 
-    AND sp.supplement_id IS NULL
-    AND (
-      -- Direct name matches
-      sp.product_name ILIKE '%' || sd.name || '%'
-      -- Pattern-based matches
-      OR (sd.name = 'Creatin' AND (sp.product_name ILIKE '%kreatin%' OR sp.product_name ILIKE '%creatine%'))
-      OR (sd.name = 'Selen' AND sp.product_name ILIKE '%selen%')
-      OR (sd.name = 'Vitamin B-Komplex' AND (sp.product_name ILIKE '%b-komplex%' OR sp.product_name ILIKE '%b-complex%'))
-      -- ... weitere Regeln
-    )
-)
-UPDATE supplement_products sp
-SET supplement_id = m.supplement_id
-FROM matches m
-WHERE sp.id = m.product_id;
+UPDATE supplement_database
+SET cost_per_day_eur = CASE name
+  WHEN 'Alpha-Ketoglutarat (AKG)' THEN 0.80
+  WHEN 'CaAKG' THEN 1.50
+  WHEN 'Astaxanthin + Coenzym Q10' THEN 0.70
+  WHEN 'Methylenblau 1%' THEN 0.30
+  WHEN 'HMB 3000' THEN 0.50
+  WHEN 'Turkesterone Max' THEN 0.80
+  WHEN 'Vitamin B Komplex (hochdosiert)' THEN 0.25
+  WHEN 'Vitamin D Balance' THEN 0.15
+  WHEN 'Vitamin D3 + K2 MK7 Tropfen' THEN 0.10
+  WHEN 'Magnesiumcitrat' THEN 0.20
+  WHEN 'Magnesium Komplex 11 Ultra' THEN 0.45
+  WHEN 'Eisen + Vitamin C' THEN 0.15
+  WHEN 'Pinienrinden Extrakt' THEN 0.35
+  WHEN 'Nootropic' THEN 0.60
+  WHEN 'Pre-Workout Komplex' THEN 0.50
+  WHEN 'Protein Pulver' THEN 0.80
+  WHEN 'Probiona Kulturen Komplex' THEN 0.40
+  WHEN 'Schwarzkümmelöl 1000' THEN 0.25
+  WHEN 'Beauty' THEN 0.50
+END
+WHERE cost_per_day_eur IS NULL
+  AND name IN (
+    'Alpha-Ketoglutarat (AKG)', 'CaAKG', 'Astaxanthin + Coenzym Q10',
+    'Methylenblau 1%', 'HMB 3000', 'Turkesterone Max',
+    'Vitamin B Komplex (hochdosiert)', 'Vitamin D Balance',
+    'Vitamin D3 + K2 MK7 Tropfen', 'Magnesiumcitrat',
+    'Magnesium Komplex 11 Ultra', 'Eisen + Vitamin C',
+    'Pinienrinden Extrakt', 'Nootropic', 'Pre-Workout Komplex',
+    'Protein Pulver', 'Probiona Kulturen Komplex',
+    'Schwarzkümmelöl 1000', 'Beauty'
+  );
 ```
 
 ---
 
-## Technische Umsetzung
-
-### Schritt 1: Impact Scores berechnen
-
-Eine Migration berechnet `impact_score_big8` fuer alle 175 Produkte basierend auf den vorhandenen Big8-Qualitaetsmetriken.
-
-### Schritt 2: Einfache Matches verknuepfen
-
-172 Produkte mit eindeutigem Keyword-Match werden automatisch verknuepft:
-- Creatin -> supplement_database `Creatin`
-- Selen -> supplement_database `Selen`
-- etc.
-
-### Schritt 3: Komplexprodukte kategorisieren
-
-Die 87 nicht-matchbaren Produkte werden in Kategorien eingeteilt:
-- **Multivitamin** (A-Z Depot, Multivitamin Hochdosiert)
-- **Gelenke** (Arthro Formula, Gelenk 1200)
-- **Longevity Stacks** (ONE Daily, NAD+ Regenerator)
-- **Sport** (Pre-Workout, Casein, MCT)
-- **Speziell** (Inositol, Lithium, Urolithin)
-
----
-
-## Erwartete Ergebnisse
+## Erwartetes Ergebnis
 
 | Metrik | Vorher | Nachher |
 |--------|--------|---------|
-| Produkte ohne Impact Score | 175 | 0 |
-| Produkte ohne Supplement-Link | 259 | ~87 |
-| Verlinkte Produkte | 491 | ~663 |
+| Supplements ohne cost_per_day_eur | 73 | 0 |
+| Supplements mit Preisdaten | 38 | 111 (100%) |
 
-Die verbleibenden 87 Produkte sind Komplex-Formeln oder Nischenprodukte, die manuell kategorisiert werden sollten.
+Nach der Migration werden alle Protocol-Bundles (Morning, Noon, etc.) korrekte Tageskosten anzeigen.
+
+---
+
+## Technische Details
+
+- Beide Updates werden als eine Migration ausgefuehrt
+- Keine Schema-Aenderungen noetig (cost_per_day_eur existiert bereits)
+- UI zeigt sofort korrekte Summen in den Protocol Cards
