@@ -47,6 +47,13 @@ export interface RelevanceMatrix {
   
   // Explanation templates for UI
   explanation_templates?: Record<string, string>;
+  
+  // Scientific evidence notes (for Info-Overlay display)
+  evidence_notes?: {
+    sources?: string[];           // ["PMC9415500", "MDPI 2024"]
+    critical_insight?: string;    // "Nur bei Low-T effektiv"
+    validation_status?: 'validated' | 'pending' | 'disputed';
+  };
 }
 
 /**
