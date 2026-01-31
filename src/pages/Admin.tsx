@@ -320,15 +320,15 @@ export const AdminPage = () => {
                 </CardContent>
               </Card>
 
-              {/* CSV Matrix Import v2.3 Card */}
+              {/* CSV Matrix Import v3.0 Card */}
               <Card className="bg-background border-border dark:bg-card dark:border-border">
                 <CardHeader>
                   <CardTitle className="flex items-center text-foreground dark:text-foreground">
                     <Database className="w-5 h-5 mr-2" />
-                    Matrix Import v2.3
+                    Matrix Import v3.0
                   </CardTitle>
                   <CardDescription>
-                    86 Wirkstoffe mit wissenschaftlich validierten Modifiern (Phase 1-4). NAD+/GLP-1/TRT/Goals/Peptid-Synergien.
+                    110 Compounds (OTC + Rx + Peptide) mit Rx-Dosierung, Monitoring-Anforderungen und Peptid-Routen.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -340,12 +340,12 @@ export const AdminPage = () => {
                     {isImportingCSV ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Importiere Matrix v2.3...
+                        Importiere Matrix v3.0...
                       </>
                     ) : (
                       <>
                         <FileSpreadsheet className="w-4 h-4 mr-2" />
-                        CSV Matrix v2.3 importieren
+                        CSV Matrix v3.0 importieren
                       </>
                     )}
                   </Button>
