@@ -1,161 +1,102 @@
 
-# Datenbank-Anreicherung: Vollstaendige Abdeckung
+# PDF-Daten Import: Produkt-spezifische Interaktionen
 
-## Aktuelle Situation
+## Uebersicht
 
-Nach Analyse der Datenbank:
+Das PDF enthaelt detaillierte Interaktionsdaten fuer 755 Produkte - deutlich granularer als die bisherigen Wirkstoff-Mappings:
 
-| Problem | Status | Loesung |
-|---------|--------|---------|
-| 178 Produkte ohne `supplement_id` | Unverknuepft | Keyword-Matcher erweitern + rerun |
-| `synergies` Felder leer (99%) | Leere Arrays `{}` | Aus `supplementInteractions.ts` befuellen |
-| `blockers` Felder leer (100%) | Leere Arrays `{}` | Aus `supplementInteractions.ts` befuellen |
-| `cycling_protocol` leer | null | Statische Daten einfuegen |
-| 2 leere Brands | Keine Produkte | Aufraemen |
-| 36 verwaiste Supplements | Keine Produktlinks | Zu erwarten bei Spezial-Wirkstoffen |
+| Daten im PDF | Anzahl |
+|--------------|--------|
+| Produkte mit Synergien | 755 |
+| Produkte mit Blockern | 317 |
+| Einzigartige Synergien | 15+ (magnesium, zinc, omega 3...) |
+| Einzigartige Blocker | 15+ (calcium, iron, copper...) |
 
----
+## Aenderungen
 
-## Loesung: Neue Edge Function `enrich-supplement-data`
+### 1. Datenbank-Migration
 
-Eine einzige Function die alle drei Probleme loest:
+Neue Spalten auf `supplement_products`:
 
-### Task 1: Produkt-Linking
-
-Erweiterte Keyword-Matching-Logik (bereits in `run-matrix-import` vorhanden):
-
-```typescript
-// Nutze die MANUAL_OVERRIDES aus run-matrix-import
-// Matche supplement_products.ingredients gegen supplement_database.name
-// Update supplement_id fuer alle unverknuepften Produkte
-
-// Beispiel: "vit_b_complex" in ingredients -> findet "Vitamin B-Komplex" in DB
+```text
+synergies text[] - Array der Synergie-Supplements
+blockers text[]  - Array der Blocker-Supplements  
 ```
 
-### Task 2: Synergies und Blockers aus TypeScript-Daten
+### 2. Neue Edge Function: `import-product-interactions`
 
-Die Daten existieren bereits in `src/data/supplementInteractions.ts`:
+Dedizierte Function fuer den PDF-Import:
 
-```typescript
-// SYNERGIES Array:
-{ supplements: ['Vitamin D3', 'Vitamin K2', 'Magnesium'], reason: '...', importance: 'pflicht' }
-{ supplements: ['NMN', 'TMG (Betain)'], reason: '...', importance: 'pflicht' }
-// ... 10 Eintraege
+**Funktionalitaet:**
+- Akzeptiert JSON-Array mit extrahierten PDF-Daten
+- Matched Produkte per `product_name` (fuzzy) + `brand_name`
+- Schreibt `synergies[]` und `blockers[]` auf `supplement_products`
+- Normalisiert alle Namen (lowercase, trim)
+- Returned detaillierte Import-Statistiken
 
-// BLOCKERS Array:
-{ supplement: 'Eisen', blockers: ['Kaffee', 'Tee', 'Milch', 'Kalzium'], severity: 'kritisch' }
-{ supplement: 'Zink', blockers: ['Phytate', 'Kalzium', 'Eisen'], severity: 'moderat' }
-// ... 8 Eintraege
+**Datenstruktur pro Eintrag:**
+```text
+{
+  supplement: "5-HTP"
+  product: "5-HTP 200mg"
+  brand: "Natural Elements"
+  category: "Schlaf"
+  synergies: ["b6", "magnesium"]
+  blockers: ["ssri"]
+}
 ```
 
-Die Function importiert diese Daten direkt in `supplement_database.synergies` und `supplement_database.blockers`.
+### 3. PDF-Daten als JSON
 
-### Task 3: Cleanup
+Ich extrahiere alle Tabellen aus dem PDF direkt in die Edge Function als konstante Arrays:
 
-- Leere Brands loeschen (`amazon-generic`, `nordic-naturals`)
-- Deprecated-Produkte flaggen falls noetig
-
----
-
-## Technische Umsetzung
-
-### Neue Edge Function: `enrich-supplement-data`
-
-```typescript
-// supabase/functions/enrich-supplement-data/index.ts
-
-serve(async (req) => {
-  const { task } = await req.json();
-  // task: 'link_products' | 'sync_interactions' | 'cleanup' | 'all'
-  
-  switch (task) {
-    case 'link_products':
-      // 1. Hole alle Produkte ohne supplement_id
-      // 2. Parse ingredients Feld
-      // 3. Matche gegen MANUAL_OVERRIDES + supplement_database.name
-      // 4. Update supplement_id
-      break;
-      
-    case 'sync_interactions':
-      // 1. SYNERGIES_DATA als konstante (aus supplementInteractions.ts)
-      // 2. BLOCKERS_DATA als konstante
-      // 3. Fuer jeden Eintrag: Finde Supplement in DB
-      // 4. Update synergies/blockers Arrays
-      break;
-      
-    case 'cleanup':
-      // 1. Loesche Brands ohne Produkte
-      // 2. Optional: Deprecated-Flag fuer verwaiste Produkte
-      break;
-      
-    case 'all':
-      // Alle drei Tasks sequentiell
-      break;
-  }
-});
+**SYNERGIES_DATA (755 Eintraege):**
+```text
+{ product: "5-HTP 200mg", brand: "Natural Elements", synergies: ["b6", "magnesium"] }
+{ product: "A-Z Complete Depot 40 Tabletten", brand: "Doppelherz", synergies: ["coq10", "omega 3", "probiotics"] }
+{ product: "NMN Pulver", brand: "MoleQlar", synergies: ["resveratrol", "tmg", "quercetin"] }
+...
 ```
 
-### Synergies/Blockers Datenstruktur
-
-Die Function enthaelt die Daten direkt (Copy aus supplementInteractions.ts):
-
-```typescript
-const SYNERGIES_MAP: Record<string, string[]> = {
-  'Vitamin D3': ['Vitamin K2', 'Magnesium'],
-  'Vitamin K2': ['Vitamin D3', 'Magnesium'],
-  'Magnesium': ['Vitamin D3', 'Vitamin K2'],
-  'NMN': ['TMG', 'Resveratrol'],
-  'Curcumin': ['Piperin'],
-  'Kollagen': ['Vitamin C'],
-  'Eisen': ['Vitamin C'],
-  'PQQ': ['CoQ10', 'Ubiquinol'],
-  'Zink': ['Kupfer'],
-  "Lion's Mane": ['Alpha-GPC'],
-  'Omega-3': ['Vitamin E'],
-  'Kreatin': ['Kohlenhydrate'],
-};
-
-const BLOCKERS_MAP: Record<string, string[]> = {
-  'Eisen': ['Kaffee', 'Tee', 'Milch', 'Kalzium', 'Phytate'],
-  'Zink': ['Phytate', 'Kalzium', 'Eisen'],
-  'Kalzium': ['Eisen', 'Zink', 'Magnesium'],
-  '5-HTP': ['SSRIs', 'MAO-Hemmer', 'Tramadol'],
-  'Berberin': ['Metformin'],
-};
+**BLOCKERS_DATA (317 Eintraege):**
+```text
+{ product: "5-HTP 200mg", brand: "Natural Elements", blockers: ["ssri"] }
+{ product: "Berberin HCL 500mg", brand: "Amazon Generic", blockers: ["cyclosporin", "metformin"] }
+{ product: "Eisen + Vitamin C", brand: "Doppelherz", blockers: ["caffeine", "calcium", "copper high dose", "magnesium", "zinc"] }
+...
 ```
 
----
+## Technische Details
+
+### Matching-Logik
+
+```text
+1. Exact Match: product_name === pdf.product
+2. Fuzzy Match: Levenshtein-Distanz <= 3
+3. Brand Match: brand_name LIKE '%pdf.brand%'
+4. Kombiniert: Score aus Name + Brand Match
+```
+
+### Import-Flow
+
+```text
+1. Migration ausfuehren (synergies/blockers Spalten)
+2. Edge Function deployen
+3. Function aufrufen - importiert alle PDF-Daten
+4. Verifizieren via Admin-UI
+```
 
 ## Erwartetes Ergebnis
 
 | Metrik | Vorher | Nachher |
 |--------|--------|---------|
-| Produkte mit supplement_id | 572 (76%) | ~720 (96%) |
-| Supplements mit synergies | 1 (1%) | ~40 (35%) |
-| Supplements mit blockers | 0 (0%) | ~20 (17%) |
-| Leere Brands | 2 | 0 |
-
----
+| Produkte mit Synergien | 0 | 755 |
+| Produkte mit Blockern | 0 | 317 |
+| Produkt-Abdeckung | 0% | ~100% |
 
 ## Dateiaenderungen
 
-1. **NEU: `supabase/functions/enrich-supplement-data/index.ts`**
-   - Drei Tasks: link_products, sync_interactions, cleanup
-   - MANUAL_OVERRIDES aus run-matrix-import uebernehmen
-   - SYNERGIES_MAP und BLOCKERS_MAP Konstanten
-   - Fuzzy-Matching fuer supplement_database Namen
-
-2. **Frontend Trigger (optional)**
-   - Button auf `/admin/seed-supplements` hinzufuegen
-   - Oder manuell via curl/Supabase Dashboard aufrufen
-
----
-
-## Ablauf
-
-1. Edge Function deployen
-2. Aufruf mit `{ "task": "all" }` - fuehrt alle drei Tasks aus
-3. Response zeigt:
-   - Anzahl verknuepfter Produkte
-   - Anzahl aktualisierter Synergies/Blockers
-   - Geloeschte Brands
+| Datei | Aenderung |
+|-------|-----------|
+| Migration | `synergies text[]`, `blockers text[]` auf supplement_products |
+| `supabase/functions/import-product-interactions/index.ts` | NEU - Import-Logic mit PDF-Daten |
