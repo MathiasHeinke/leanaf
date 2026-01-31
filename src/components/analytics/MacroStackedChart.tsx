@@ -65,7 +65,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         <div className="space-y-1 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm bg-[hsl(var(--protein))]" />
-            <span>Protein: {Math.round(payload[0]?.value || 0)}g</span>
+            <span>Protein: {Math.round(payload[2]?.value || 0)}g</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm bg-[hsl(var(--carbs))]" />
@@ -73,7 +73,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-sm bg-[hsl(var(--fats))]" />
-            <span>Fette: {Math.round(payload[2]?.value || 0)}g</span>
+            <span>Fette: {Math.round(payload[0]?.value || 0)}g</span>
           </div>
         </div>
       </div>
@@ -183,10 +183,10 @@ export const MacroStackedChart = ({ data }: MacroStackedChartProps) => {
             <Tooltip content={<CustomTooltip />} />
             <Area
               type="monotone"
-              dataKey="Protein"
+              dataKey="Fette"
               stackId="1"
-              stroke="hsl(var(--protein))"
-              fill="url(#proteinGradient)"
+              stroke="hsl(var(--fats))"
+              fill="url(#fatsGradient)"
               strokeWidth={2}
             />
             <Area
@@ -199,10 +199,10 @@ export const MacroStackedChart = ({ data }: MacroStackedChartProps) => {
             />
             <Area
               type="monotone"
-              dataKey="Fette"
+              dataKey="Protein"
               stackId="1"
-              stroke="hsl(var(--fats))"
-              fill="url(#fatsGradient)"
+              stroke="hsl(var(--protein))"
+              fill="url(#proteinGradient)"
               strokeWidth={2}
             />
           </AreaChart>
