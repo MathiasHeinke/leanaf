@@ -1,91 +1,101 @@
 
-# Big 8 Anreicherung fuer 3 neue Produkte
 
-## Uebersicht
+# Chip zeigt keine Brand-Daten - Diagnose und Loesung
 
-Die 3 neu importierten Produkte haben Basis-Daten, aber keine Big 8 Quality Scores. Diese muessen manuell berechnet und eingefuegt werden.
+## Diagnose
 
-## Daten zur Anreicherung
+Nach der Analyse habe ich das Problem identifiziert:
 
-### 1. Kobho Labs Astaxanthin + CoQ10
-
-| Metrik | Score | Begruendung |
-|--------|-------|-------------|
-| quality_bioavailability | 9.2 | Softgel mit Olivenoel, fettloeslich, optimale Absorption |
-| quality_form | 9.0 | Softgel-Perlen (beste Form fuer Carotinoide) |
-| quality_dosage | 8.5 | Standarddosis Astaxanthin + CoQ10 Kombi |
-| quality_research | 8.0 | AstaPure patentiert, gute Studienlage |
-| quality_transparency | 8.5 | IFS/GMP zertifiziert, klare Deklaration |
-| quality_purity | 9.0 | GMO-frei, Allergenfrei, reine Inhaltsstoffe |
-| quality_synergy | 9.5 | Astaxanthin + CoQ10 + Olivenoel = perfekte Synergie |
-| quality_value | 7.5 | 0.43€/Portion - Mid-Range |
-| **impact_score_big8** | **8.59** | Durchschnitt |
-
-### 2. Nature Love Vitamin B Komplex Forte
-
-| Metrik | Score | Begruendung |
-|--------|-------|-------------|
-| quality_bioavailability | 9.5 | Bioaktive Formen: Methylcobalamin, Quatrefolic |
-| quality_form | 8.0 | Kapseln (Standard) |
-| quality_dosage | 9.0 | 10x hoeher dosiert als Standardprodukte |
-| quality_research | 8.5 | Quatrefolic patentiert, klinisch geprueft |
-| quality_transparency | 9.0 | Made in Germany, laborgeprüft, alle Formen deklariert |
-| quality_purity | 9.0 | Vegan, keine Fuellstoffe, reine B-Vitamine |
-| quality_synergy | 8.0 | Alle 8 B-Vitamine im Komplex |
-| quality_value | 8.5 | 0.17€/Portion - sehr guenstig |
-| **impact_score_big8** | **8.69** | Durchschnitt |
-
-### 3. Nature Love Probiona Kulturen Komplex
-
-| Metrik | Score | Begruendung |
-|--------|-------|-------------|
-| quality_bioavailability | 9.0 | Magensaftresistente Kapseln |
-| quality_form | 9.0 | Magensaftresistent (optimal fuer Probiotika) |
-| quality_dosage | 8.5 | 20 Mrd. KBE - gute Dosis |
-| quality_research | 8.0 | 20 Staemme, Bio-Inulin aus Italien |
-| quality_transparency | 9.0 | Made in Germany, laborgeprüft |
-| quality_purity | 8.5 | Vegan, Bio-Inulin, keine Zusaetze |
-| quality_synergy | 9.0 | Probiotika + Praebiotika (Inulin) Kombi |
-| quality_value | 8.0 | 0.30€/Portion - fair |
-| **impact_score_big8** | **8.63** | Durchschnitt |
-
-## Aenderungen
-
-### SQL Migration
-
-Ein UPDATE-Statement fuer alle 3 Produkte mit den berechneten Big 8 Scores:
+### Aktuelle Architektur
 
 ```text
-Produkt 1: Astaxanthin + CoQ10 (ASIN: B0DNN2PHTZ)
-- 8 Quality-Scores setzen
-- impact_score_big8 = 8.59
-
-Produkt 2: Vitamin B Komplex Forte (ASIN: B0725X1B5D, neueres Produkt)
-- 8 Quality-Scores setzen
-- impact_score_big8 = 8.69
-
-Produkt 3: Probiona Kulturen Komplex (ASIN: B06XXGNMHB, neueres Produkt)
-- 8 Quality-Scores setzen
-- impact_score_big8 = 8.63
+user_supplements --> supplement_database --> (keine Verknuepfung zu) --> supplement_products/supplement_brands
+       |                    |
+       |                    +-- name: "Vitamin B Komplex (hochdosiert)"
+       |
+       +-- name: kommt von supplement_database
 ```
 
-### Amazon-Bilder hinzufuegen
+### Das Problem
 
-Ich hole die Amazon-Bilder fuer alle 3 Produkte:
-- B0DNN2PHTZ: Amazon-Bild extrahieren
-- B0725X1B5D: Amazon-Bild extrahieren (fuer neues Produkt)
-- B06XXGNMHB: Amazon-Bild extrahieren (fuer neues Produkt)
+1. **Fehlende Verknuepfung**: Die Tabelle `user_supplements` hat keine Spalte `product_id` - sie weiss nicht, welches spezifische Produkt der User nutzt
+2. **Brand-Daten sind isoliert**: Die Brands sind in `supplement_products.brand_id` gespeichert, aber nicht mit dem User-Stack verbunden
+3. **Collapsed-Chip zeigt nur Basis-Daten**: Name, Dosierung, Einheit und Timing-Constraint - keine Brand-Info
+4. **BrandSelector-Auswahl wird nicht persistiert**: Beim Oeffnen des Chips ist der lokale State `selectedProduct` immer leer
+
+### Warum "Ca-AKG (Rejuvant)" funktioniert
+
+Bei diesem Eintrag ist die Brand **direkt im Namen** in der `supplement_database` eingetragen. Das ist ein manueller Workaround, nicht die Standard-Architektur.
+
+## Loesungsvorschlag
+
+### Option A: Product-Verknuepfung in user_supplements (Empfohlen)
+
+1. **Schema-Erweiterung**: Neue Spalte `selected_product_id` in `user_supplements`
+2. **Beim Speichern**: BrandSelector-Auswahl in `selected_product_id` persistieren
+3. **Beim Laden**: Product + Brand-Daten joinen
+4. **Im Chip anzeigen**: Brand-Name neben dem Supplement-Namen
+
+### Option B: Brand im Namen einbetten (Quick-Fix)
+
+Wenn ein User ein Produkt waehlt, den Namen in `user_supplements.name` auf "Vitamin B Komplex (Nature Love)" aendern. 
+
+**Nachteil**: Verliert die strukturierte Verknuepfung fuer Reporting/Analytics.
+
+## Empfohlene Umsetzung (Option A)
+
+### 1. Datenbank-Migration
+
+Neue Spalte hinzufuegen:
+
+```text
+ALTER TABLE user_supplements
+ADD COLUMN selected_product_id UUID REFERENCES supplement_products(id);
+```
+
+### 2. Hook erweitern (useUserStack)
+
+Join erweitern um Product + Brand:
+
+```text
+user_supplements
+  -> supplement_database (bestehend)
+  -> supplement_products (neu)
+     -> supplement_brands (neu)
+```
+
+### 3. ExpandableSupplementChip anpassen
+
+- **onSave**: `selected_product_id` mitschicken wenn ein Produkt gewaehlt wurde
+- **Collapsed-State**: Brand-Name aus dem gejointen Product anzeigen
+- **Initial-State**: `selectedProduct` aus den gejointen Daten initialisieren
+
+### 4. Collapsed-Chip UI
+
+Neues Layout:
+
+```text
+[Pill-Icon] Vitamin B Komplex (hochdosiert) | 1 Kapsel | Nature Love | Nuechtern
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^   ^^^^^^^^^^^   ^^^^^^^^^
+            Name                                 Dosierung  Brand (NEU)   Constraint
+```
 
 ## Dateiaenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| Migration | UPDATE supplement_products SET quality_* WHERE amazon_asin IN (...) |
+| `Migration` | ALTER TABLE user_supplements ADD COLUMN selected_product_id |
+| `src/hooks/useSupplementLibrary.ts` | Join um supplement_products + supplement_brands erweitern |
+| `src/components/supplements/ExpandableSupplementChip.tsx` | Brand im Collapsed-State anzeigen, onSave erweitern |
+| `src/types/supplementLibrary.ts` | UserStackItem Interface um product/brand erweitern |
 
 ## Erwartetes Ergebnis
 
-| Produkt | Big 8 | Impact Score | Amazon-Bild |
-|---------|-------|--------------|-------------|
-| Astaxanthin + CoQ10 | 8/8 ✅ | 8.59 | ✅ |
-| Vitamin B Komplex Forte | 8/8 ✅ | 8.69 | ✅ |
-| Probiona Kulturen Komplex | 8/8 ✅ | 8.63 | ✅ |
+Nach der Implementierung:
+
+| Vorher | Nachher |
+|--------|---------|
+| `Vitamin B Komplex (hochdosiert) 1Kapsel` | `Vitamin B Komplex (hochdosiert) 1Kapsel · Nature Love` |
+| BrandSelector-Auswahl geht verloren | Auswahl wird persistent gespeichert |
+| Kein Produkt-Tracking | Analytics-faehige Produkt-Verknuepfung |
+
