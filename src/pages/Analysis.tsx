@@ -7,7 +7,7 @@ import { TrainingAnalysis } from "@/components/TrainingAnalysis";
 import { RPERecoveryWidget } from "@/components/RPERecoveryWidget";
 import StepsAnalysisWidget from "@/components/StepsAnalysisWidget";
 import { HydrationWidget } from "@/components/HydrationWidget";
-import { SupplementComplianceWidget } from "@/components/SupplementComplianceWidget";
+import { SupplementAnalyticsWidget } from "@/components/analytics/SupplementAnalyticsWidget";
 import { GoalsProgressWidget } from "@/components/GoalsProgressWidget";
 import { AdvancedAnalyticsSection } from "@/components/analytics/AdvancedAnalyticsSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -271,7 +271,7 @@ const Analysis = () => {
             {/* Intake Widgets */}
             <div className="grid grid-cols-1 gap-6">
               <HydrationWidget />
-              <SupplementComplianceWidget />
+              <SupplementAnalyticsWidget />
             </div>
             
             {/* Nutrition Charts */}
