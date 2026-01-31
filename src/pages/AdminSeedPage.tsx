@@ -9,9 +9,39 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { COMPLETE_PRODUCT_SEED, COMPLETE_SEED_STATS } from '@/data/seeds';
-import { Database, Loader2, Play, CheckCircle2, XCircle, RefreshCw, Download } from 'lucide-react';
+import { Database, Loader2, Play, CheckCircle2, XCircle, RefreshCw, Download, Sparkles } from 'lucide-react';
 import { exportAllProductsToCSV } from '@/utils/exportProductsCSV';
 import { toast } from 'sonner';
+
+interface EnrichResult {
+  success: boolean;
+  task: string;
+  link_products?: {
+    total_unlinked: number;
+    linked: number;
+    skipped: number;
+    sample_links: Array<{product: string, supplement: string}>;
+  };
+  sync_interactions?: {
+    synergies_updated: number;
+    blockers_updated: number;
+    sample_updates: Array<{name: string, synergies: string[], blockers: string[]}>;
+  };
+  cleanup?: {
+    empty_brands_found: number;
+    brands_deleted: number;
+    deleted_brands: string[];
+  };
+  database_stats?: {
+    total_products: number;
+    linked_products: number;
+    link_rate: number;
+    total_supplements: number;
+    supplements_with_synergies: number;
+    supplements_with_blockers: number;
+    total_brands: number;
+  };
+}
 interface SeedResult {
   success: boolean;
   results: {
@@ -36,6 +66,8 @@ export default function AdminSeedPage() {
   const [dbStatus, setDbStatus] = useState<{ products: number; supplements: number; brands: number } | null>(null);
   const [results, setResults] = useState<{ added: number; skipped: number; errors: string[] } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [enrichStats, setEnrichStats] = useState<EnrichResult['database_stats'] | null>(null);
 
   const addLog = (msg: string) => {
     setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
@@ -210,7 +242,92 @@ export default function AdminSeedPage() {
                   </>
                 )}
               </Button>
+              <Button 
+                onClick={async () => {
+                  setIsEnriching(true);
+                  addLog('✨ Starte Daten-Anreicherung (alle Tasks)...');
+                  try {
+                    const { data, error } = await supabase.functions.invoke<EnrichResult>('enrich-supplement-data', {
+                      body: { task: 'all' },
+                    });
+                    
+                    if (error) throw error;
+                    
+                    if (data?.success) {
+                      // Log results
+                      if (data.link_products) {
+                        addLog(`🔗 Produkt-Linking: ${data.link_products.linked} verknüpft, ${data.link_products.skipped} übersprungen`);
+                      }
+                      if (data.sync_interactions) {
+                        addLog(`🔄 Synergies: ${data.sync_interactions.synergies_updated} aktualisiert`);
+                        addLog(`🔄 Blockers: ${data.sync_interactions.blockers_updated} aktualisiert`);
+                      }
+                      if (data.cleanup) {
+                        addLog(`🧹 Cleanup: ${data.cleanup.brands_deleted} leere Brands gelöscht`);
+                      }
+                      if (data.database_stats) {
+                        setEnrichStats(data.database_stats);
+                        addLog(`📊 Link-Rate: ${data.database_stats.link_rate}% (${data.database_stats.linked_products}/${data.database_stats.total_products})`);
+                      }
+                      toast.success('Daten-Anreicherung abgeschlossen!');
+                    } else {
+                      throw new Error('Anreicherung fehlgeschlagen');
+                    }
+                  } catch (err) {
+                    addLog(`❌ Enrichment Error: ${err instanceof Error ? err.message : 'Unknown'}`);
+                    toast.error(`Anreicherung fehlgeschlagen: ${err instanceof Error ? err.message : 'Unbekannter Fehler'}`);
+                  }
+                  setIsEnriching(false);
+                }} 
+                variant="default"
+                className="bg-primary"
+                disabled={isSeeding || isExporting || isEnriching}
+              >
+                {isEnriching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Anreichern...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Daten anreichern
+                  </>
+                )}
+              </Button>
             </div>
+
+            {/* Enrichment Stats */}
+            {enrichStats && (
+              <Card className="border-primary/50">
+                <CardHeader className="py-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Sparkles className="h-4 w-4" />
+                    Anreicherungs-Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <div className="text-xl font-bold text-primary">{enrichStats.link_rate}%</div>
+                      <div className="text-xs text-muted-foreground">Produkt-Verlinkung</div>
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold">{enrichStats.linked_products}/{enrichStats.total_products}</div>
+                      <div className="text-xs text-muted-foreground">Verknüpfte Produkte</div>
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold">{enrichStats.supplements_with_synergies}</div>
+                      <div className="text-xs text-muted-foreground">Synergies</div>
+                    </div>
+                    <div>
+                      <div className="text-xl font-bold">{enrichStats.supplements_with_blockers}</div>
+                      <div className="text-xs text-muted-foreground">Blockers</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Progress */}
             {isSeeding && (
