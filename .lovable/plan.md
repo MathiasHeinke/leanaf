@@ -1,74 +1,126 @@
 
-
-# Quality-Scores Anreicherung: 7-Item zu 8-Item Mapping
+# Bulk JSON Import: CSV Runner erweitern
 
 ## Ausgangslage
 
-Die MoleQlar/Naturtreu-Produkte haben bereits 7 Item-Scores befuellt:
-- `bioavailability`, `potency`, `purity`, `value`, `reviews`, `origin`, `lab_tests`
+Der CSV Runner kann aktuell nur einzelne JSON-Dateien pro Marke importieren. Es kommen 17 Marken-JSONs (790 Produkte gesamt, MoleQlar bereits erledigt).
 
-Die 8 Quality-Scores sind jedoch alle NULL:
-- `quality_bioavailability`, `quality_purity`, `quality_value`, `quality_dosage`, `quality_form`, `quality_synergy`, `quality_research`, `quality_transparency`
+### Hauptprobleme
 
-## Loesung: Automatisches Mapping
+1. **Fehlende Marke**: `amazon_generic` existiert nicht in der DB
+2. **Slug-Mismatch**: JSON verwendet Unterstriche (`doctors_best`), DB verwendet Bindestriche (`doctors-best`)
+3. **Keine Bulk-Funktion**: Aktuell muss jede JSON einzeln hochgeladen werden
 
-Eine SQL-Migration, die die vorhandenen 7-Item Scores auf die 8-Item Quality Scores mappt:
+## Loesung
 
-| Quelle (7-Item) | Ziel (8-Item) | Logik |
-|-----------------|---------------|-------|
-| `bioavailability` | `quality_bioavailability` | Direkt |
-| `purity` | `quality_purity` | Direkt |
-| `value` | `quality_value` | Direkt |
-| `potency` | `quality_dosage` | Direkt (Potency = Dosierungsstaerke) |
-| `lab_tests` | `quality_research` | Direkt (Lab = Forschung/Nachweis) |
-| `origin` | `quality_transparency` | Direkt (Herkunft = Transparenz) |
-| `form` | `quality_form` | Basierend auf Produktform-Mapping |
-| (Durchschnitt) | `quality_synergy` | Berechnet aus Synergy-Feld oder Default 8.0 |
-
-## Technische Umsetzung
-
-### Migration SQL
+### 1. Neue Marke hinzufuegen (Migration)
 
 ```sql
-UPDATE supplement_products
-SET 
-  quality_bioavailability = bioavailability,
-  quality_purity = purity,
-  quality_value = value,
-  quality_dosage = potency,
-  quality_research = lab_tests,
-  quality_transparency = origin,
-  quality_form = CASE 
-    WHEN form = 'liposomal' THEN 10.0
-    WHEN form = 'liquid' THEN 9.5
-    WHEN form = 'powder' THEN 9.0
-    WHEN form = 'softgel' THEN 8.5
-    WHEN form = 'capsule' THEN 8.0
-    WHEN form = 'tablet' THEN 7.0
-    WHEN form = 'gummy' THEN 6.0
-    ELSE 8.0
-  END,
-  quality_synergy = 8.0
-WHERE 
-  bioavailability IS NOT NULL 
-  AND quality_bioavailability IS NULL;
+INSERT INTO supplement_brands (name, slug, country, website, price_tier, description)
+VALUES ('Amazon Generic', 'amazon-generic', 'DE', 'amazon.de', 'budget', 
+        'Amazon Eigenmarken und generische Produkte');
+```
+
+### 2. Slug-Mapping im Frontend
+
+Automatische Konvertierung: `doctors_best` wird zu `doctors-best`
+
+```typescript
+const normalizeSlug = (slug: string) => slug.replace(/_/g, '-');
+```
+
+### 3. Bulk Upload Mode
+
+Neuer Modus: Mehrere JSON-Dateien gleichzeitig hochladen und sequentiell verarbeiten.
+
+```
++------------------------------------------+
+|  Bulk Brand Sync                         |
++------------------------------------------+
+|  [Dateien waehlen] 0 von 17 ausgewaehlt  |
+|                                          |
+|  Erkannte Marken:                        |
+|  - biogena.json (37 Produkte)            |
+|  - bulk.json (20 Produkte)               |
+|  - doctors_best.json (22 Produkte)       |
+|  ...                                     |
+|                                          |
+|  [==========----------] 5/17             |
+|  Aktuell: esn.json (64 Produkte)         |
+|                                          |
+|  [Bulk Import starten]                   |
++------------------------------------------+
+```
+
+### 4. BRAND_OPTIONS erweitern
+
+Alle 18 Marken (exkl. MoleQlar da bereits erledigt, aber trotzdem in Liste):
+
+```typescript
+const BRAND_OPTIONS = [
+  { slug: "amazon-generic", name: "Amazon Generic" },
+  { slug: "biogena", name: "Biogena" },
+  { slug: "bulk", name: "Bulk" },
+  { slug: "doctors-best", name: "Doctor's Best" },
+  { slug: "doppelherz", name: "Doppelherz" },
+  { slug: "esn", name: "ESN" },
+  { slug: "gloryfeel", name: "Gloryfeel" },
+  { slug: "gymbeam", name: "GymBeam" },
+  { slug: "lebenskraft-pur", name: "Lebenskraft Pur" },
+  { slug: "life-extension", name: "Life Extension" },
+  { slug: "moleqlar", name: "MoleQlar" },
+  { slug: "more-nutrition", name: "More Nutrition" },
+  { slug: "natural-elements", name: "Natural Elements" },
+  { slug: "nature-love", name: "Nature Love" },
+  { slug: "naturtreu", name: "Naturtreu" },
+  { slug: "nordic-naturals", name: "Nordic Naturals" },
+  { slug: "now-foods", name: "Now Foods" },
+  { slug: "orthomol", name: "Orthomol" },
+  { slug: "profuel", name: "ProFuel" },
+  { slug: "sunday-natural", name: "Sunday Natural" },
+];
 ```
 
 ## Dateien die geaendert werden
 
 | Datei | Aenderung |
 |-------|-----------|
-| Migration (neu) | SQL-Update fuer Quality-Score Mapping |
+| `supabase/migrations/xxx.sql` | INSERT amazon-generic Brand |
+| `src/pages/admin/ImportCSVRunner.tsx` | Bulk Upload Mode + Slug-Mapping + alle Marken |
+
+## Technische Details
+
+### Bulk Upload Flow
+
+1. User waehlt mehrere JSON-Dateien (z.B. alle 17 auf einmal)
+2. System erkennt Marke aus Dateiname (`biogena.json` oder `biogena-2.json`)
+3. Slug wird normalisiert (Unterstriche zu Bindestriche)
+4. Sequentielle Verarbeitung mit Progress-Anzeige
+5. Zusammenfassung am Ende mit Gesamt-Stats
+
+### Dateiname-zu-Marke Mapping
+
+```typescript
+// biogena-2.json -> biogena
+// doctors_best.json -> doctors-best
+const extractBrandFromFilename = (filename: string) => {
+  const base = filename.replace(/\.json$/, '').replace(/-\d+$/, '');
+  return base.replace(/_/g, '-');
+};
+```
 
 ## Erwartetes Ergebnis
 
 | Vorher | Nachher |
 |--------|---------|
-| quality_* = NULL fuer ~170 Produkte | quality_* befuellt basierend auf 7-Item Scores |
+| 5 Marken im Dropdown | 20 Marken im Dropdown |
+| Einzelner JSON-Upload | Bulk-Upload (mehrere Dateien) |
+| Manuelles Marken-Matching | Automatisches Filename-zu-Slug Mapping |
+| amazon_generic nicht vorhanden | amazon-generic Brand in DB |
 
 ## Ablauf
 
-1. Migration ausfuehren
-2. Verifizieren: Alle Produkte mit 7-Item Scores haben jetzt auch 8-Item Quality Scores
-3. Pruefen ob `impact_score_big8` Berechnung angepasst werden muss
-
+1. Migration: amazon-generic Brand hinzufuegen
+2. ImportCSVRunner.tsx: Bulk Mode implementieren
+3. Testen mit 2-3 JSONs
+4. Alle 17 verbleibenden Marken importieren
