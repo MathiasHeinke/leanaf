@@ -95,9 +95,10 @@ async function scrapeWithFirecrawl(url: string): Promise<string | null> {
   }
 
   try {
-    console.log('[SCRAPE] Calling RapidAPI Firecrawl for:', url);
+    console.log('[SCRAPE] Calling RapidAPI Firecrawl /scrape with waitFor for:', url);
     
-    const response = await fetch('https://firecrawl-mcp.p.rapidapi.com/extract', {
+    // Use /scrape endpoint with JS rendering wait time for dynamic content
+    const response = await fetch('https://firecrawl-mcp.p.rapidapi.com/scrape', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,7 +106,12 @@ async function scrapeWithFirecrawl(url: string): Promise<string | null> {
         'x-rapidapi-host': 'firecrawl-mcp.p.rapidapi.com',
         'x-rapidapi-key': RAPIDAPI_KEY,
       },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ 
+        url,
+        formats: ['markdown', 'html'],
+        waitFor: 3000, // Wait 3s for JS rendering (prices, dynamic content)
+        onlyMainContent: true,
+      }),
     });
 
     if (!response.ok) {
@@ -116,8 +122,11 @@ async function scrapeWithFirecrawl(url: string): Promise<string | null> {
     const data = await response.json();
     console.log('[SCRAPE] Firecrawl response received, length:', JSON.stringify(data).length);
     
-    // Extract markdown or text content
-    return data.markdown || data.content || data.text || JSON.stringify(data);
+    // Handle nested data structure (v1 API returns data.data)
+    const content = data.data?.markdown || data.data?.content || data.markdown || data.content || data.text || JSON.stringify(data);
+    console.log('[SCRAPE] Extracted content length:', content?.length || 0);
+    
+    return content;
   } catch (error) {
     console.error('[SCRAPE] Firecrawl exception:', error);
     return null;
@@ -137,7 +146,7 @@ async function classifyAndExtractWithLLM(
   // Truncate content to avoid token limits
   const truncatedContent = rawContent.slice(0, 12000);
 
-  const prompt = `Analysiere diese Produktseite und extrahiere die Daten.
+  const prompt = `Analysiere diese Produktseite und extrahiere ALLE verfügbaren Daten. 
 
 URL: ${url}
 Domain: ${domain}
@@ -145,32 +154,37 @@ Domain: ${domain}
 INHALT:
 ${truncatedContent}
 
-AUFGABEN:
-1. Prüfe ob es sich um ein Nahrungsergänzungsmittel (Supplement) handelt
-2. Falls ja, extrahiere alle Produktdaten
+KRITISCHE DATEN - MUSS extrahiert werden (suche aktiv danach):
+1. PREIS: Suche nach "€", "EUR", Zahlen mit Komma vor/nach Währungssymbolen (z.B. "34,99 €", "€29.95")
+2. PACKUNGSGRÖSSE: Anzahl Kapseln/Tabletten, Gramm, ml (z.B. "60 Kapseln", "500g", "120 Tabletten")
+3. PORTIONEN: "Portionen", "Servings", "für X Tage", "reicht für" (z.B. "60 Portionen", "für 30 Tage")
+4. DOSIS: "pro Portion", "per serving", mg/mcg/IU Werte (z.B. "5000 IU", "400mg pro Portion")
 
-Antworte NUR mit validem JSON in diesem Format:
+Antworte NUR mit validem JSON:
 {
   "is_supplement": boolean,
   "reason": "Begründung (max 50 Zeichen)",
   "product": {
     "product_name": "Vollständiger Produktname",
     "brand_name": "Markenname oder null",
-    "price_eur": Preis als Zahl oder null,
-    "pack_size": Anzahl Kapseln/Tabletten als Zahl oder null,
-    "pack_unit": "Kapseln" oder "Tabletten" oder "g" etc.,
+    "price_eur": Preis als Zahl (34.99) oder null - WICHTIG: Suche nach € Symbol!,
+    "pack_size": Anzahl Kapseln/Tabletten/Gramm als Zahl oder null,
+    "pack_unit": "Kapseln" oder "Tabletten" oder "g" oder "ml" etc.,
     "dose_per_serving": Dosis pro Portion als Zahl oder null,
     "dose_unit": "mg" oder "mcg" oder "IU" etc.,
-    "servings_per_pack": Portionen pro Packung als Zahl oder null,
+    "servings_per_pack": Portionen pro Packung als Zahl oder null - WICHTIG: Oft gleich pack_size bei Kapseln!,
     "is_vegan": boolean,
     "is_organic": boolean,
-    "quality_tags": ["GMP", "Made in Germany", etc.],
+    "quality_tags": ["GMP", "Made in Germany", "Lab-tested", etc.],
     "ingredients": ["Hauptwirkstoff 1", "Hauptwirkstoff 2"],
     "description": "Kurze Produktbeschreibung (max 200 Zeichen) oder null"
   }
 }
 
-Falls kein Supplement: setze "product" auf null.`;
+REGELN:
+- Falls ein Wert NICHT gefunden wird, setze null - NIEMALS raten!
+- Bei Kapseln/Tabletten: servings_per_pack ist oft = pack_size (1 Kapsel = 1 Portion)
+- Falls kein Supplement: setze "product" auf null`;
 
   try {
     console.log('[LLM] Calling OpenAI for classification...');

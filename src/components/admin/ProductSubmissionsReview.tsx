@@ -47,8 +47,10 @@ import {
   FlaskConical,
   Shield,
   Timer,
-  TrendingUp
+  TrendingUp,
+  Edit2
 } from 'lucide-react';
+import { ManualProductEntryDialog } from './ManualProductEntryDialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -110,9 +112,24 @@ export function ProductSubmissionsReview() {
 
   const [selectedSubmission, setSelectedSubmission] = useState<ProductSubmission | null>(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showManualEntryDialog, setShowManualEntryDialog] = useState(false);
+  const [manualEntrySubmission, setManualEntrySubmission] = useState<ProductSubmission | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [enrichingId, setEnrichingId] = useState<string | null>(null);
+
+  const handleManualEntry = (submission: ProductSubmission) => {
+    setManualEntrySubmission(submission);
+    setShowManualEntryDialog(true);
+  };
+
+  const handleManualEntrySuccess = () => {
+    refresh();
+    // Update selected submission if it was modified
+    if (selectedSubmission?.id === manualEntrySubmission?.id) {
+      setSelectedSubmission(null);
+    }
+  };
 
   const handleEnrich = async (submission: ProductSubmission) => {
     setEnrichingId(submission.id);
@@ -319,6 +336,15 @@ export function ProductSubmissionsReview() {
                                   ) : (
                                     <Sparkles className="w-4 h-4" />
                                   )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                                  onClick={() => handleManualEntry(sub)}
+                                  title="Manuell ergänzen"
+                                >
+                                  <Edit2 className="w-4 h-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -814,6 +840,14 @@ export function ProductSubmissionsReview() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Manual Entry Dialog */}
+      <ManualProductEntryDialog
+        open={showManualEntryDialog}
+        onOpenChange={setShowManualEntryDialog}
+        submission={manualEntrySubmission}
+        onSuccess={handleManualEntrySuccess}
+      />
     </div>
   );
 }
