@@ -7,19 +7,36 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const RAPIDAPI_KEY = Deno.env.get('RAPIDAPI_KEY');
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 
-// Supported domains whitelist
+// Supported domains whitelist (85+ shops)
 const SUPPORTED_DOMAINS = [
-  'amazon.de', 'amazon.com',
-  'iherb.com',
-  'sunday-natural.de', 'sunday.de',
-  'moleqlar.de',
-  'vitaminexpress.org',
-  'bulk.com',
-  'myprotein.de', 'myprotein.com',
-  'nu3.de',
-  'nature-love.de',
-  'natural-elements.de',
-  'vitafy.de',
+  // Amazon/Marketplace
+  'amazon.de', 'amazon.com', 'amazon.co.uk', 'amazon.at',
+  // International
+  'iherb.com', 'vitacost.com', 'swansonvitamins.com', 'pipingrock.com', 'evitamins.com',
+  // Premium/Longevity Hersteller
+  'sunday-natural.de', 'sunday.de', 'moleqlar.de', 'biogena.com', 'lifeextension.com',
+  'thorne.com', 'nordicnaturals.com', 'purecaps.net', 'pureencapsulations.com',
+  'jarrow.com', 'now-foods.de', 'nowfoods.com',
+  // Mid-Range Hersteller
+  'naturtreu.de', 'naturelove.de', 'nature-love.de', 'natural-elements.de',
+  'gloryfeel.de', 'doppelherz.de', 'orthomol.de', 'abtei.de', 'centrum.de',
+  // Sport & Fitness
+  'esn.com', 'morenutrition.de', 'profuel.de', 'gymbeam.de', 'gymbeam.com',
+  'bodylab24.de', 'body-attack.de', 'bulk.com', 'myprotein.de', 'myprotein.com',
+  'fitmart.de', 'zecplus.de', 'rocka-nutrition.de', 'ironmaxx.de', 'prozis.com',
+  'foodspring.de', 'got7nutrition.de', 'peak-performance.de',
+  // Vitaminversand & Shops
+  'vitaminversand24.com', 'vitamin360.com', 'vitaworld24.de', 'medicom.de',
+  'vit4ever.de', 'nutri-plus.de', 'fairvital.com', 'vitabay.de', 'biovea.com',
+  'vitaminexpress.org', 'vitamaze.shop', 'zeinpharma.de', 'effective-nature.com',
+  'nu3.de', 'vitafy.de', 'feelgood-shop.com', 'amazon-apa.de',
+  // Online Apotheken
+  'shop-apotheke.com', 'docmorris.de', 'medpex.de', 'aponeo.de', 'sanicare.de',
+  'apo-rot.de', 'apodiscounter.de', 'mycare.de', 'delmed.de', 'disapo.de',
+  'versandapo.de', 'zur-rose.de', 'eurapon.de',
+  // Longevity & Biohacking
+  'braineffect.com', 'edubily.de', 'primal-state.de', 'do-not-age.com',
+  'alive-by-science.com', 'humanx.de', 'bio360.de', 'longevity-supplements.de',
 ];
 
 interface ScrapedProduct {

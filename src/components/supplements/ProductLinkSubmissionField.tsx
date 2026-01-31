@@ -145,7 +145,7 @@ export const ProductLinkSubmissionField: React.FC<ProductLinkSubmissionFieldProp
             </div>
             
             <p className="text-xs text-muted-foreground">
-              Unterstützt: Amazon, iHerb, Sunday Natural, Moleqlar
+              Unterstützt: Amazon, iHerb, Sunday Natural, ESN, More Nutrition, DocMorris, Shop-Apotheke + 50 weitere
             </p>
 
             {/* Error Message */}
