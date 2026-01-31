@@ -109,7 +109,189 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    const { products, batch_name = "manual", delete_ids, update_amazon_data, full_update } = body;
+    const { products, batch_name = "manual", delete_ids, update_amazon_data, full_update, brand_sync } = body;
+
+    // ============================================
+    // BRAND SYNC MODE: Full product update by brand with orphan detection
+    // Updates all products from JSON, marks missing DB products as deprecated
+    // ============================================
+    if (brand_sync && brand_sync.brand_slug && Array.isArray(brand_sync.products)) {
+      const { brand_slug, products: syncProducts } = brand_sync;
+      console.log(`Brand sync mode: Processing ${syncProducts.length} products for brand ${brand_slug}`);
+
+      // 1. Get brand_id
+      const { data: brand, error: brandError } = await supabase
+        .from("supplement_brands")
+        .select("id")
+        .eq("slug", brand_slug)
+        .single();
+
+      if (brandError || !brand) {
+        return new Response(
+          JSON.stringify({ success: false, error: `Brand not found: ${brand_slug}` }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // 2. Get all current product IDs for this brand
+      const { data: existingProducts } = await supabase
+        .from("supplement_products")
+        .select("id")
+        .eq("brand_id", brand.id);
+
+      const existingIds = new Set(existingProducts?.map(p => p.id) || []);
+      const jsonIds = new Set(syncProducts.map((p: any) => p.id).filter(Boolean));
+
+      let updated = 0;
+      let errors = 0;
+      const errorDetails: string[] = [];
+
+      // Helper to parse semicolon-separated quality_tags string to array
+      function parseQualityTags(val: any): string[] | null {
+        if (!val || val === "NaN") return null;
+        if (Array.isArray(val)) return val;
+        if (typeof val === "string") {
+          return val.split(";").map((s: string) => s.trim()).filter(Boolean);
+        }
+        return null;
+      }
+
+      // Helper to clean NaN values
+      function cleanNaN(val: any): any {
+        if (val === "NaN" || (typeof val === "number" && isNaN(val))) return null;
+        return val;
+      }
+
+      // 3. Update all products from JSON
+      for (const product of syncProducts) {
+        if (!product.id) {
+          errors++;
+          errorDetails.push(`Product without ID: ${product.product_name || "unknown"}`);
+          continue;
+        }
+
+        try {
+          const updateData: Record<string, any> = {
+            product_name: cleanString(cleanNaN(product.product_name)),
+            product_sku: cleanString(cleanNaN(product.product_sku)),
+            pack_size: parseNumber(cleanNaN(product.pack_size)),
+            pack_unit: cleanString(cleanNaN(product.pack_unit)),
+            servings_per_pack: parseNumber(cleanNaN(product.servings_per_pack)),
+            dose_per_serving: parseNumber(cleanNaN(product.dose_per_serving)),
+            dose_unit: cleanString(cleanNaN(product.dose_unit)),
+            price_eur: parseNumber(cleanNaN(product.price_eur)),
+            price_per_serving: parseNumber(cleanNaN(product.price_per_serving)),
+            form: cleanString(cleanNaN(product.form)),
+            is_vegan: parseBoolean(cleanNaN(product.is_vegan)),
+            is_organic: parseBoolean(cleanNaN(product.is_organic)),
+            allergens: parseArray(cleanNaN(product.allergens)),
+            // shop_url -> product_url mapping
+            product_url: cleanString(cleanNaN(product.shop_url)) || cleanString(cleanNaN(product.product_url)),
+            amazon_asin: cleanString(cleanNaN(product.amazon_asin)),
+            amazon_url: cleanString(cleanNaN(product.amazon_url)),
+            amazon_image: cleanString(cleanNaN(product.amazon_image)),
+            amazon_name: cleanString(cleanNaN(product.amazon_name)),
+            match_score: parseNumber(cleanNaN(product.match_score)),
+            is_verified: parseBoolean(cleanNaN(product.is_verified)),
+            is_recommended: parseBoolean(cleanNaN(product.is_recommended)),
+            popularity_score: parseNumber(cleanNaN(product.popularity_score)),
+            quality_tags: parseQualityTags(cleanNaN(product.quality_tags)),
+            ingredients: cleanString(cleanNaN(product.ingredients)),
+            short_description: cleanString(cleanNaN(product.short_description)),
+            bioavailability: parseNumber(cleanNaN(product.bioavailability)),
+            potency: parseNumber(cleanNaN(product.potency)),
+            reviews: parseNumber(cleanNaN(product.reviews)),
+            origin: parseNumber(cleanNaN(product.origin)),
+            lab_tests: parseNumber(cleanNaN(product.lab_tests)),
+            purity: parseNumber(cleanNaN(product.purity)),
+            value: parseNumber(cleanNaN(product.value)),
+            impact_score_big8: parseNumber(cleanNaN(product.impact_score_big8)),
+            category: cleanString(cleanNaN(product.category)),
+            serving_size: cleanString(cleanNaN(product.serving_size)),
+            servings_per_container: parseNumber(cleanNaN(product.servings_per_container)),
+            dosage_per_serving: cleanString(cleanNaN(product.dosage_per_serving)),
+            quality_purity: parseNumber(cleanNaN(product.quality_purity)),
+            quality_bioavailability: parseNumber(cleanNaN(product.quality_bioavailability)),
+            quality_dosage: parseNumber(cleanNaN(product.quality_dosage)),
+            quality_synergy: parseNumber(cleanNaN(product.quality_synergy)),
+            quality_research: parseNumber(cleanNaN(product.quality_research)),
+            quality_form: parseNumber(cleanNaN(product.quality_form)),
+            quality_value: parseNumber(cleanNaN(product.quality_value)),
+            quality_transparency: parseNumber(cleanNaN(product.quality_transparency)),
+            timing: cleanString(cleanNaN(product.timing)),
+            is_gluten_free: parseBoolean(cleanNaN(product.is_gluten_free)),
+            country_of_origin: cleanString(cleanNaN(product.country_of_origin)),
+            is_deprecated: false, // Explicitly reset deprecated flag
+            updated_at: new Date().toISOString(),
+          };
+
+          const { error } = await supabase
+            .from("supplement_products")
+            .update(updateData)
+            .eq("id", product.id);
+
+          if (error) {
+            errors++;
+            errorDetails.push(`Update failed for ${product.id}: ${error.message}`);
+          } else {
+            updated++;
+          }
+        } catch (err: any) {
+          errors++;
+          errorDetails.push(`Error processing ${product.id}: ${err.message}`);
+        }
+      }
+
+      // 4. Mark orphans as deprecated (products in DB but not in JSON)
+      const orphanIds = [...existingIds].filter(id => !jsonIds.has(id));
+      let deprecated = 0;
+
+      if (orphanIds.length > 0) {
+        const { error: deprecateError } = await supabase
+          .from("supplement_products")
+          .update({ is_deprecated: true, updated_at: new Date().toISOString() })
+          .in("id", orphanIds);
+
+        if (deprecateError) {
+          errorDetails.push(`Failed to deprecate orphans: ${deprecateError.message}`);
+        } else {
+          deprecated = orphanIds.length;
+        }
+      }
+
+      // Get final stats
+      const { count: totalProducts } = await supabase
+        .from("supplement_products")
+        .select("*", { count: "exact", head: true })
+        .eq("brand_id", brand.id);
+
+      const { count: deprecatedCount } = await supabase
+        .from("supplement_products")
+        .select("*", { count: "exact", head: true })
+        .eq("brand_id", brand.id)
+        .eq("is_deprecated", true);
+
+      console.log(`Brand sync complete: ${updated} updated, ${deprecated} deprecated, ${errors} errors`);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Brand sync complete for ${brand_slug}`,
+          results: {
+            updated,
+            deprecated,
+            errors,
+            error_details: errorDetails.slice(0, 30),
+            orphan_ids: orphanIds.slice(0, 20),
+          },
+          database_totals: {
+            brand_products: totalProducts || 0,
+            brand_deprecated: deprecatedCount || 0,
+          }
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // ============================================
     // FULL UPDATE MODE: ID-based update with all enriched fields
