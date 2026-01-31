@@ -1,161 +1,74 @@
 
 
-# Marken-Update mit JSON-Import: Naturtreu + MoleQlar
+# Quality-Scores Anreicherung: 7-Item zu 8-Item Mapping
 
-## Uebersicht der JSON-Dateien
+## Ausgangslage
 
-| Datei | Marke | Produkte im JSON | Produkte in DB |
-|-------|-------|------------------|----------------|
-| `naturtreu-2.json` | Naturtreu | ~89 (7389 Zeilen / 83 Zeilen pro Eintrag) | 92 |
-| `moleqlar-2.json` | MoleQlar | ~85 (7057 Zeilen / 83 Zeilen pro Eintrag) | 86 |
+Die MoleQlar/Naturtreu-Produkte haben bereits 7 Item-Scores befuellt:
+- `bioavailability`, `potency`, `purity`, `value`, `reviews`, `origin`, `lab_tests`
 
-**Differenz:** Es gibt in der DB mehr Produkte als in den JSON-Dateien. Diese sollen zum Loeschen markiert werden.
+Die 8 Quality-Scores sind jedoch alle NULL:
+- `quality_bioavailability`, `quality_purity`, `quality_value`, `quality_dosage`, `quality_form`, `quality_synergy`, `quality_research`, `quality_transparency`
 
-## Anforderungen
+## Loesung: Automatisches Mapping
 
-1. **Produkte updaten:** Alle Produkte in den JSON-Dateien per ID-Matching aktualisieren
-2. **Orphans flaggen:** Produkte in der DB, die NICHT in den JSONs vorkommen, zum Loeschen markieren
+Eine SQL-Migration, die die vorhandenen 7-Item Scores auf die 8-Item Quality Scores mappt:
+
+| Quelle (7-Item) | Ziel (8-Item) | Logik |
+|-----------------|---------------|-------|
+| `bioavailability` | `quality_bioavailability` | Direkt |
+| `purity` | `quality_purity` | Direkt |
+| `value` | `quality_value` | Direkt |
+| `potency` | `quality_dosage` | Direkt (Potency = Dosierungsstaerke) |
+| `lab_tests` | `quality_research` | Direkt (Lab = Forschung/Nachweis) |
+| `origin` | `quality_transparency` | Direkt (Herkunft = Transparenz) |
+| `form` | `quality_form` | Basierend auf Produktform-Mapping |
+| (Durchschnitt) | `quality_synergy` | Berechnet aus Synergy-Feld oder Default 8.0 |
 
 ## Technische Umsetzung
 
-### Phase 1: Datenbank-Spalte hinzufuegen
-
-Eine neue Spalte `is_deprecated` (boolean, default false) zur `supplement_products` Tabelle hinzufuegen.
+### Migration SQL
 
 ```sql
-ALTER TABLE supplement_products 
-ADD COLUMN is_deprecated BOOLEAN DEFAULT false;
+UPDATE supplement_products
+SET 
+  quality_bioavailability = bioavailability,
+  quality_purity = purity,
+  quality_value = value,
+  quality_dosage = potency,
+  quality_research = lab_tests,
+  quality_transparency = origin,
+  quality_form = CASE 
+    WHEN form = 'liposomal' THEN 10.0
+    WHEN form = 'liquid' THEN 9.5
+    WHEN form = 'powder' THEN 9.0
+    WHEN form = 'softgel' THEN 8.5
+    WHEN form = 'capsule' THEN 8.0
+    WHEN form = 'tablet' THEN 7.0
+    WHEN form = 'gummy' THEN 6.0
+    ELSE 8.0
+  END,
+  quality_synergy = 8.0
+WHERE 
+  bioavailability IS NOT NULL 
+  AND quality_bioavailability IS NULL;
 ```
-
-### Phase 2: Edge Function erweitern
-
-Neuer Modus `brand_sync` in der `import-products-csv` Edge Function:
-
-```text
-Ablauf:
-1. Empfange: brand_slug + Array von Produkten (mit IDs)
-2. Update alle Produkte per ID mit allen Feldern
-3. Hole alle Produkt-IDs dieser Marke aus DB
-4. Vergleiche: DB-IDs minus JSON-IDs = Orphans
-5. Setze is_deprecated = true fuer alle Orphans
-6. Return: updated, deprecated, errors
-```
-
-### Phase 3: Admin-UI erweitern
-
-`ImportCSVRunner.tsx` um JSON-Upload erweitern:
-
-- Datei-Upload fuer JSON
-- Brand-Auswahl (Naturtreu/MoleQlar)
-- Button "Brand Sync starten"
-- Anzeige: Aktualisiert / Deprecated
-
-## Datenmapping (JSON zu DB)
-
-Die JSON-Dateien haben identische Felder wie die DB, mit folgenden Besonderheiten:
-
-| JSON-Feld | DB-Feld | Transformation |
-|-----------|---------|----------------|
-| `shop_url` | `product_url` | Direktes Mapping |
-| `is_vegan` = "Ja" | `is_vegan` = true | String zu Boolean |
-| `NaN` | NULL | NaN-Werte zu NULL |
-| `quality_tags` = "a; b; c" | `quality_tags` = ["a","b","c"] | String zu Array (;-getrennt) |
 
 ## Dateien die geaendert werden
 
 | Datei | Aenderung |
 |-------|-----------|
-| Migration (neu) | `is_deprecated` Spalte hinzufuegen |
-| `supabase/functions/import-products-csv/index.ts` | `brand_sync` Modus hinzufuegen |
-| `src/pages/admin/ImportCSVRunner.tsx` | JSON-Upload + Brand-Sync UI |
-
-## Implementierungsdetails
-
-### Edge Function: brand_sync Modus
-
-```typescript
-if (brand_sync && brand_sync.brand_slug && brand_sync.products) {
-  const { brand_slug, products } = brand_sync;
-  
-  // 1. Get brand_id
-  const { data: brand } = await supabase
-    .from("supplement_brands")
-    .select("id")
-    .eq("slug", brand_slug)
-    .single();
-  
-  // 2. Get all current product IDs for this brand
-  const { data: existingProducts } = await supabase
-    .from("supplement_products")
-    .select("id")
-    .eq("brand_id", brand.id);
-  
-  const existingIds = new Set(existingProducts.map(p => p.id));
-  const jsonIds = new Set(products.map(p => p.id));
-  
-  // 3. Update all products from JSON
-  for (const product of products) {
-    await supabase
-      .from("supplement_products")
-      .update({
-        product_name: product.product_name,
-        price_eur: product.price_eur,
-        product_url: product.shop_url, // shop_url -> product_url
-        bioavailability: product.bioavailability,
-        // ... alle weiteren Felder
-        is_deprecated: false, // Explizit auf false setzen
-      })
-      .eq("id", product.id);
-  }
-  
-  // 4. Mark orphans as deprecated
-  const orphanIds = [...existingIds].filter(id => !jsonIds.has(id));
-  
-  for (const orphanId of orphanIds) {
-    await supabase
-      .from("supplement_products")
-      .update({ is_deprecated: true })
-      .eq("id", orphanId);
-  }
-  
-  return { updated: jsonIds.size, deprecated: orphanIds.length };
-}
-```
-
-### Admin UI Erweiterung
-
-```text
-+--------------------------------------------------+
-| Brand Product Sync                               |
-+--------------------------------------------------+
-| [Upload JSON]     [v Naturtreu ]  [Sync starten] |
-|                                                  |
-| Status: Bereit                                   |
-|                                                  |
-| +------------+  +------------+  +------------+   |
-| | Aktualisiert | | Deprecated | | Fehler     |   |
-| |     85       | |     4      | |    0       |   |
-| +------------+  +------------+  +------------+   |
-+--------------------------------------------------+
-```
+| Migration (neu) | SQL-Update fuer Quality-Score Mapping |
 
 ## Erwartetes Ergebnis
 
-Nach dem Sync fuer beide Marken:
-
-| Marke | Vorher | Aktualisiert | Deprecated |
-|-------|--------|--------------|------------|
-| Naturtreu | 92 | ~89 | ~3 |
-| MoleQlar | 86 | ~85 | ~1 |
-
-Die deprecateten Produkte koennen dann manuell geprueft und geloescht werden.
+| Vorher | Nachher |
+|--------|---------|
+| quality_* = NULL fuer ~170 Produkte | quality_* befuellt basierend auf 7-Item Scores |
 
 ## Ablauf
 
-1. Migration ausfuehren: `is_deprecated` Spalte
-2. Edge Function deployen mit `brand_sync` Modus  
-3. Admin-UI aktualisieren mit JSON-Upload
-4. `naturtreu-2.json` hochladen und syncen
-5. `moleqlar-2.json` hochladen und syncen
-6. Deprecated-Produkte pruefen
+1. Migration ausfuehren
+2. Verifizieren: Alle Produkte mit 7-Item Scores haben jetzt auch 8-Item Quality Scores
+3. Pruefen ob `impact_score_big8` Berechnung angepasst werden muss
 
