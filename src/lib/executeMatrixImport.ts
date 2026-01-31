@@ -267,8 +267,8 @@ export async function executeMatrixImportFromCSV(): Promise<BatchImportResult> {
 
   try {
     // Step 1: Load and parse CSV
-    console.log('[Matrix Import CSV] Loading matrix v2.2 (PHASE 1+2 COMPLETE | NAD+/GLP-1/TRT validated)...');
-    const csvModule = await import('@/data/ares-matrix-v2.2.csv?raw');
+    console.log('[Matrix Import CSV] Loading matrix v2.3 FINAL (PHASE 1-4 COMPLETE | Goals + Peptide Synergies validated)...');
+    const csvModule = await import('@/data/ares-matrix-v2.3.csv?raw');
     const csvContent = csvModule.default;
     
     const parseResult = parseMatrixCSV(csvContent);

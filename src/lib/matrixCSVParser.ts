@@ -1,6 +1,7 @@
 // =====================================================
-// ARES Matrix CSV Parser: v2.2 VALIDATED (PHASE 1+2 COMPLETE)
+// ARES Matrix CSV Parser: v2.3 FINAL (PHASE 1-4 COMPLETE)
 // NAD+ Age-Calibration, GLP-1 Lean Mass Protection, TRT Support
+// Goal Weighting (Fat Loss/Muscle Gain/Cognitive), Peptide Synergies
 // =====================================================
 
 import type { RelevanceMatrix } from '@/types/relevanceMatrix';

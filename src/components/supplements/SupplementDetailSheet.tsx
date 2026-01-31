@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets, BookOpen } from 'lucide-react';
+import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets, BookOpen, Goal, Dna } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -297,11 +297,17 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
           {/* Blutwert-Trigger Section */}
           <BloodworkTriggersSection matrix={item.relevance_matrix} />
 
+          {/* Goal-spezifische Relevanz Section (Phase 3) */}
+          <GoalRelevanceSection matrix={item.relevance_matrix} />
+
           {/* Demografische Relevanz Section (Phase 2) */}
           <DemographicRelevanceSection matrix={item.relevance_matrix} />
 
           {/* Compound Synergies Section (Phase 2) */}
           <CompoundSynergiesSection matrix={item.relevance_matrix} />
+
+          {/* Peptide Class Synergies Section (Phase 4) */}
+          <PeptideClassSynergiesSection matrix={item.relevance_matrix} />
 
           {/* Personalized ARES Score & Cost */}
           <Separator />
@@ -388,6 +394,29 @@ const SYNERGY_LABELS: Record<string, string> = {
   tb_500: 'TB-500',
   cjc_1295: 'CJC-1295',
   ipamorelin: 'Ipamorelin',
+};
+
+const GOAL_LABELS: Record<string, string> = {
+  fat_loss: 'Fettabbau',
+  muscle_gain: 'Muskelaufbau',
+  recomposition: 'Rekomposition',
+  maintenance: 'Erhaltung',
+  longevity: 'Longevity',
+  performance: 'Leistung',
+  cognitive: 'Kognition',
+  sleep: 'Schlaf',
+  gut_health: 'Darmgesundheit',
+};
+
+const PEPTIDE_CLASS_LABELS: Record<string, string> = {
+  gh_secretagogue: 'GH-Sekretagog (MK-677/CJC)',
+  healing: 'Heilung (BPC-157/TB-500)',
+  longevity: 'Longevity (Epitalon)',
+  nootropic: 'Nootropic (Semax)',
+  metabolic: 'Metabolisch (GLP-1)',
+  immune: 'Immunsystem (TA1)',
+  testo: 'Testosteron',
+  skin: 'Haut (GHK-Cu)',
 };
 
 const BLOODWORK_LABELS: Record<string, string> = {
@@ -683,7 +712,162 @@ const CompoundSynergiesSection: React.FC<CompoundSynergiesSectionProps> = ({ mat
 };
 
 // =====================================================
-// Scientific Sources Section (for v2.1+ evidence_notes)
+// Goal Relevance Section (Phase 3: Goal Weighting)
+// =====================================================
+
+interface GoalRelevanceSectionProps {
+  matrix?: RelevanceMatrix | null;
+}
+
+const GoalRelevanceSection: React.FC<GoalRelevanceSectionProps> = ({ matrix }) => {
+  const goalModifiers = matrix?.goal_modifiers;
+  
+  const relevantGoals = useMemo(() => {
+    if (!goalModifiers) return [];
+    
+    return Object.entries(GOAL_LABELS)
+      .filter(([key]) => {
+        const value = goalModifiers[key as keyof typeof goalModifiers];
+        return value !== undefined && value !== 0;
+      })
+      .map(([key, label]) => ({
+        key,
+        label,
+        value: goalModifiers[key as keyof typeof goalModifiers] as number,
+      }))
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      .slice(0, 6); // Show top 6
+  }, [goalModifiers]);
+  
+  if (relevantGoals.length === 0) return null;
+  
+  return (
+    <>
+      <Separator />
+      <div>
+        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+          <Goal className="h-4 w-4 text-emerald-500" />
+          Ziel-spezifische Relevanz
+        </h4>
+        <div className="grid grid-cols-2 gap-1.5">
+          {relevantGoals.map(({ key, label, value }) => (
+            <div 
+              key={key}
+              className={cn(
+                "flex items-center justify-between p-2 rounded-lg text-xs",
+                value >= 3.5 
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" 
+                  : value >= 2.0
+                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                    : value > 0
+                      ? "bg-muted/50 text-muted-foreground"
+                      : "bg-red-500/10 text-red-700 dark:text-red-400"
+              )}
+            >
+              <span className="truncate mr-1">{label}</span>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs font-mono shrink-0",
+                  value >= 3.5 
+                    ? "border-emerald-500/40 text-emerald-600" 
+                    : value >= 2.0
+                      ? "border-emerald-500/30 text-emerald-600"
+                      : value > 0
+                        ? "border-muted text-muted-foreground"
+                        : "border-red-500/30 text-red-600"
+                )}
+              >
+                {value > 0 ? '+' : ''}{value.toFixed(1)}
+              </Badge>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+          ISSN: Creatine ist das effektivste ergogene Supplement. Muskelerhalt {'>'} Thermogenese.
+        </p>
+      </div>
+    </>
+  );
+};
+
+// =====================================================
+// Peptide Class Synergies Section (Phase 4: Peptide Categories)
+// =====================================================
+
+interface PeptideClassSynergiesSectionProps {
+  matrix?: RelevanceMatrix | null;
+}
+
+const PeptideClassSynergiesSection: React.FC<PeptideClassSynergiesSectionProps> = ({ matrix }) => {
+  const peptideModifiers = matrix?.peptide_class_modifiers;
+  
+  const relevantClasses = useMemo(() => {
+    if (!peptideModifiers) return [];
+    
+    return Object.entries(PEPTIDE_CLASS_LABELS)
+      .filter(([key]) => {
+        const value = peptideModifiers[key as keyof typeof peptideModifiers];
+        return value !== undefined && value !== 0;
+      })
+      .map(([key, label]) => ({
+        key,
+        label,
+        value: peptideModifiers[key as keyof typeof peptideModifiers] as number,
+      }))
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  }, [peptideModifiers]);
+  
+  if (relevantClasses.length === 0) return null;
+  
+  return (
+    <>
+      <Separator />
+      <div>
+        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+          <Dna className="h-4 w-4 text-pink-500" />
+          Peptid-Klassen-Relevanz
+        </h4>
+        <div className="space-y-1.5">
+          {relevantClasses.map(({ key, label, value }) => (
+            <div 
+              key={key}
+              className={cn(
+                "flex items-center justify-between p-2 rounded-lg text-xs",
+                value >= 2.0 
+                  ? "bg-pink-500/10 text-pink-700 dark:text-pink-400" 
+                  : value > 0
+                    ? "bg-muted/50 text-muted-foreground"
+                    : "bg-red-500/10 text-red-700 dark:text-red-400"
+              )}
+            >
+              <span>{label}</span>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs font-mono",
+                  value >= 2.0 
+                    ? "border-pink-500/30 text-pink-600" 
+                    : value > 0
+                      ? "border-muted text-muted-foreground"
+                      : "border-red-500/30 text-red-600"
+                )}
+              >
+                {value > 0 ? '+' : ''}{value.toFixed(1)}
+              </Badge>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+          GH-Sekretagoge: MK-677 erhöht IGF-1 um +40%. Epitalon: +33% Telomerlänge.
+        </p>
+      </div>
+    </>
+  );
+};
+
+// =====================================================
+// Scientific Sources Section (for v2.3+ evidence_notes)
 // =====================================================
 
 interface ScientificSourcesSectionProps {
