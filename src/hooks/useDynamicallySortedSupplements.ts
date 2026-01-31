@@ -118,7 +118,8 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
         item.impact_score ?? 5.0,
         item.relevance_matrix,
         context,
-        markers
+        markers,
+        item.name  // Pass name for Core 7 bypass check
       );
 
       return { ...item, scoreResult };

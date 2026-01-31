@@ -186,6 +186,15 @@ export function useUserRelevanceContext(): {
       estimatedProteinPerKg = 2.2; // Higher protein needs with peptides/TRT
     }
     
+    // Data Confidence v2: Profile completeness checks
+    const hasBloodworkData = bloodworkFlags.length > 0;
+    const hasBasicProfile = !!(profile?.age && (profile?.goal_type || dailyGoals?.goal_type) && profile?.weight);
+    
+    const profileCompleteness: 'full' | 'basic' | 'minimal' = 
+      hasBloodworkData ? 'full' :
+      hasBasicProfile ? 'basic' :
+      'minimal';
+    
     return {
       isTrueNatural,
       isEnhancedNoTRT,
@@ -205,6 +214,10 @@ export function useUserRelevanceContext(): {
       goal: profile?.goal_type || dailyGoals?.goal_type || 'maintenance',
       bloodworkFlags,
       dailyProteinPerKg: estimatedProteinPerKg,
+      // Data Confidence v2
+      hasBloodworkData,
+      hasBasicProfile,
+      profileCompleteness,
     };
   }, [user?.id, profile, protocolStatus, peptideProtocols, bloodwork, dailyGoals]);
   

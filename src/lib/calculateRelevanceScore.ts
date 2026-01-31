@@ -1,5 +1,6 @@
 // =====================================================
-// ARES Matrix-Scoring: Relevance Score Calculation Engine (Extended v4)
+// ARES Matrix-Scoring: Relevance Score Calculation Engine (Extended v5)
+// Data Confidence Penalty System with Core 7 + Context Exceptions
 // =====================================================
 
 import type { 
@@ -16,6 +17,80 @@ import { PEPTIDE_CLASS_LABELS } from '@/types/relevanceMatrix';
 // =====================================================
 const MAX_SINGLE_MODIFIER = 4.0;  // Kein einzelner Modifier > 4.0
 const MAX_TOTAL_BOOST = 12.0;     // Gesamt-Boost gecapped (verhindert Optimizer > Essential)
+
+// =====================================================
+// Core 7 Whitelist: Supplements with universal evidence (bypass caps)
+// =====================================================
+const CORE_7_PATTERNS = [
+  'kreatin', 'creatine', 'creatin',           // #1 Universal
+  'magnesium',                                // #2 70%+ defizitär
+  'omega', 'fish oil', 'fischöl',             // #3 Western diet = deficient
+  'vitamin d', 'd3',                          // #4 Northern latitude
+  'zink', 'zinc',                             // #5 Training = increased need
+  'vitamin b', 'b-komplex', 'b12', 'b komplex', // #6 60%+ defizitär
+  'elektrolyte', 'electrolyte', 'lmnt',       // #7 Training = loss
+];
+
+/**
+ * Check if supplement name matches Core 7 whitelist
+ */
+function isCore7(name: string): boolean {
+  const normalized = name.toLowerCase();
+  return CORE_7_PATTERNS.some(pattern => normalized.includes(pattern));
+}
+
+/**
+ * Check if supplement should bypass data confidence cap
+ * Core 7 always bypass, plus context-sensitive exceptions
+ */
+function shouldBypassCap(
+  name: string, 
+  context: UserRelevanceContext | null
+): { bypass: boolean; reason?: string } {
+  const normalized = name.toLowerCase();
+  
+  // Core 7 always bypass
+  if (isCore7(normalized)) {
+    return { bypass: true, reason: 'Core 7 Supplement' };
+  }
+  
+  if (!context) return { bypass: false };
+  
+  // GLP-1 Users: Elektrolyte + EAA are CRITICAL (muscle loss is real!)
+  if (context.isOnGLP1) {
+    if (normalized.includes('elektrolyt') || normalized.includes('electrolyte')) {
+      return { bypass: true, reason: 'GLP-1 → Elektrolyte kritisch' };
+    }
+    if (normalized.includes('eaa') || normalized.includes('essential amino')) {
+      return { bypass: true, reason: 'GLP-1 → EAA für Muskelschutz' };
+    }
+  }
+  
+  // Age-based exceptions without bloodwork
+  if (context.ageOver50) {
+    if (normalized.includes('nmn') || normalized.includes('nad')) {
+      return { bypass: true, reason: 'Alter 50+ → NAD+ Support' };
+    }
+  }
+  
+  return { bypass: false };
+}
+
+/**
+ * Get data confidence cap based on profile completeness
+ */
+function getDataConfidenceCap(context: UserRelevanceContext | null): number {
+  if (!context) return 7.5;
+  
+  // Full bloodwork = no cap
+  if (context.hasBloodworkData) return 10.0;
+  
+  // Basic profile (age, goals, weight) = soft cap
+  if (context.hasBasicProfile) return 8.5;
+  
+  // Minimal/anonymous = harder cap
+  return 7.5;
+}
 
 /**
  * Clamp a single modifier to MAX_SINGLE_MODIFIER
@@ -99,11 +174,13 @@ export function calculateRelevanceScore(
   baseImpactScore: number,
   matrix: RelevanceMatrix | null | undefined,
   context: UserRelevanceContext | null,
-  markers?: SupplementMarkers
+  markers?: SupplementMarkers,
+  supplementName?: string
 ): RelevanceScoreResult {
   const baseTier = getDynamicTier(baseImpactScore);
+  const dataConfidenceCap = getDataConfidenceCap(context);
   
-  // If no matrix or no context, return base score
+  // If no matrix or no context, return base score with data confidence info
   if (!matrix || !context) {
     return { 
       score: baseImpactScore, 
@@ -111,7 +188,9 @@ export function calculateRelevanceScore(
       dynamicTier: baseTier,
       reasons: [], 
       warnings: [],
-      isPersonalized: false
+      isPersonalized: false,
+      isLimitedByMissingData: false,
+      dataConfidenceCap,
     };
   }
   
@@ -273,8 +352,34 @@ export function calculateRelevanceScore(
     }
   }
   
-  // Clamp score to 0-10
-  const clampedScore = Math.max(0, Math.min(10, score));
+  // Clamp score to 0-10 BEFORE data confidence penalty
+  let clampedScore = Math.max(0, Math.min(10, score));
+  
+  // =====================================================
+  // Data Confidence Penalty v2: Cap scores without full data
+  // =====================================================
+  let isLimitedByMissingData = false;
+  let potentialScore: number | undefined;
+  let upgradeTrigger: string | undefined;
+  
+  const bypassInfo = shouldBypassCap(supplementName || '', context);
+  
+  if (!bypassInfo.bypass && clampedScore >= dataConfidenceCap && dataConfidenceCap < 10.0) {
+    potentialScore = clampedScore;  // Store what it COULD be
+    clampedScore = dataConfidenceCap;
+    isLimitedByMissingData = true;
+    
+    // Generate upgrade hint from bloodwork triggers
+    if (matrix.bloodwork_triggers && Object.keys(matrix.bloodwork_triggers).length > 0) {
+      const firstTrigger = Object.keys(matrix.bloodwork_triggers)[0];
+      upgradeTrigger = `Mit ${getBloodworkFlagLabel(firstTrigger)}: Essential möglich`;
+    } else {
+      upgradeTrigger = 'Mit Blutbild: Höherer Score möglich';
+    }
+    
+    reasons.push(`Daten-Cap: ${dataConfidenceCap.toFixed(1)}`);
+    warnings.push('Score vorläufig – Blutbild für volle Personalisierung empfohlen');
+  }
   
   return { 
     score: clampedScore,
@@ -282,7 +387,11 @@ export function calculateRelevanceScore(
     dynamicTier: getDynamicTier(clampedScore),
     reasons,
     warnings,
-    isPersonalized: reasons.length > 0
+    isPersonalized: reasons.length > 0,
+    isLimitedByMissingData,
+    dataConfidenceCap,
+    potentialScore,
+    upgradeTrigger,
   };
 }
 

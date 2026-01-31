@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SupplementToggleRow } from './SupplementToggleRow';
 import { SupplementDetailSheet } from './SupplementDetailSheet';
+import { MissingBloodworkBanner } from './MissingBloodworkBanner';
 import { useUserStack, useSupplementToggle } from '@/hooks/useSupplementLibrary';
 import { useDynamicallySortedSupplements, type ScoredSupplementItem } from '@/hooks/useDynamicallySortedSupplements';
+import { useUserRelevanceContext } from '@/hooks/useUserRelevanceContext';
 import { META_CATEGORIES, type MetaCategoryKey } from '@/lib/categoryMapping';
-import { DYNAMIC_TIER_CONFIG, getDynamicTier } from '@/lib/calculateRelevanceScore';
+import { DYNAMIC_TIER_CONFIG } from '@/lib/calculateRelevanceScore';
 import type { DynamicTier } from '@/types/relevanceMatrix';
 import type { SupplementLibraryItem, UserStackItem } from '@/types/supplementLibrary';
 
@@ -41,6 +43,7 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
   const { essentials, optimizers, niche, tierCounts, isLoading: libraryLoading } = useDynamicallySortedSupplements();
   const { data: userStack } = useUserStack();
   const { toggleSupplement, isToggling } = useSupplementToggle();
+  const { context } = useUserRelevanceContext();
 
   // Create a set of active supplement IDs for quick lookup
   const activeSupplementIds = useMemo(() => {
@@ -196,6 +199,15 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
           );
         })}
       </div>
+
+      {/* Missing Data Banner */}
+      {context && context.profileCompleteness !== 'full' && 
+       (activeTier === 'essential' || activeTier === 'optimizer') && (
+        <MissingBloodworkBanner 
+          profileCompleteness={context.profileCompleteness}
+          activeTier={activeTier}
+        />
+      )}
 
       {/* Tier Description */}
       <div

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
-import { RefreshCw, Check, Info, Sparkles } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { RefreshCw, Check, Info, Sparkles, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getScheduleLabel } from '@/lib/schedule-utils';
 import { getMetaCategory, META_CATEGORIES } from '@/lib/categoryMapping';
@@ -71,22 +72,54 @@ export const SupplementToggleRow: React.FC<SupplementToggleRowProps> = ({
   // Get dynamic score badge (if scoreResult available)
   const getScoreBadge = () => {
     if (!item.scoreResult) return null;
-    const { score, dynamicTier, isPersonalized } = item.scoreResult;
+    const { 
+      score, 
+      dynamicTier, 
+      isPersonalized, 
+      isLimitedByMissingData, 
+      potentialScore, 
+      upgradeTrigger 
+    } = item.scoreResult;
     const tierConfig = DYNAMIC_TIER_CONFIG[dynamicTier];
     
-    return (
+    const badge = (
       <span 
         className={cn(
           "text-[10px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5",
           tierConfig.bgClass,
-          tierConfig.textClass
+          tierConfig.textClass,
+          isLimitedByMissingData && "border border-dashed border-current/50 opacity-80"
         )}
-        title={isPersonalized ? 'Personalisierter Score' : 'Basis-Score'}
       >
-        {isPersonalized && <Sparkles className="h-2.5 w-2.5" />}
+        {isPersonalized && !isLimitedByMissingData && <Sparkles className="h-2.5 w-2.5" />}
+        {isLimitedByMissingData && <Lock className="h-2.5 w-2.5" />}
         {score.toFixed(1)}
       </span>
     );
+    
+    // Tooltip for capped scores
+    if (isLimitedByMissingData && upgradeTrigger) {
+      return (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button type="button" className="cursor-help">
+                {badge}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[200px]">
+              <p className="text-xs">
+                <strong>Score vorläufig</strong><br/>
+                {upgradeTrigger}
+                {potentialScore && ` (Potenzial: ${potentialScore.toFixed(1)})`}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+    
+    return badge;
   };
 
   return (
