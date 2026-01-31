@@ -10,7 +10,7 @@ import type { SupplementLibraryItem, NecessityTier } from '@/types/supplementLib
 const BASE_PATTERNS: Array<{ pattern: RegExp; baseName: string }> = [
   // Minerals
   { pattern: /^magnesium/i, baseName: 'Magnesium' },
-  { pattern: /^zink/i, baseName: 'Zink' },
+  { pattern: /^zink|^zinc/i, baseName: 'Zink' },
   { pattern: /^eisen/i, baseName: 'Eisen' },
   { pattern: /^selen/i, baseName: 'Selen' },
   { pattern: /^jod/i, baseName: 'Jod' },
@@ -20,7 +20,7 @@ const BASE_PATTERNS: Array<{ pattern: RegExp; baseName: string }> = [
   { pattern: /^elektrolyt/i, baseName: 'Elektrolyte' },
   
   // Vitamins
-  { pattern: /^vitamin\s*d/i, baseName: 'Vitamin D' },
+  { pattern: /^vitamin\s*d|^d3\b/i, baseName: 'Vitamin D' },
   { pattern: /^vitamin\s*k/i, baseName: 'Vitamin K' },
   { pattern: /^vitamin\s*b/i, baseName: 'Vitamin B' },
   { pattern: /^vitamin\s*c/i, baseName: 'Vitamin C' },
@@ -28,7 +28,7 @@ const BASE_PATTERNS: Array<{ pattern: RegExp; baseName: string }> = [
   { pattern: /^vitamin\s*a/i, baseName: 'Vitamin A' },
   
   // Omega-3
-  { pattern: /^omega[- ]?3/i, baseName: 'Omega-3' },
+  { pattern: /^omega[- ]?3|fisch[öo]l|fish[- ]?oil/i, baseName: 'Omega-3' },
   
   // Amino Acids
   { pattern: /^eaa|^essential[- ]?amino/i, baseName: 'EAA' },
