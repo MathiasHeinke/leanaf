@@ -5193,6 +5193,81 @@ export type Database = {
         }
         Relationships: []
       }
+      product_submissions: {
+        Row: {
+          brand_name: string | null
+          created_at: string
+          created_product_id: string | null
+          extracted_data: Json | null
+          id: string
+          price_eur: number | null
+          product_name: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          servings: number | null
+          source_domain: string
+          status: Database["public"]["Enums"]["product_submission_status"]
+          submitted_url: string
+          supplement_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand_name?: string | null
+          created_at?: string
+          created_product_id?: string | null
+          extracted_data?: Json | null
+          id?: string
+          price_eur?: number | null
+          product_name?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          servings?: number | null
+          source_domain: string
+          status?: Database["public"]["Enums"]["product_submission_status"]
+          submitted_url: string
+          supplement_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand_name?: string | null
+          created_at?: string
+          created_product_id?: string | null
+          extracted_data?: Json | null
+          id?: string
+          price_eur?: number | null
+          product_name?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          servings?: number | null
+          source_domain?: string
+          status?: Database["public"]["Enums"]["product_submission_status"]
+          submitted_url?: string
+          supplement_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_submissions_created_product_id_fkey"
+            columns: ["created_product_id"]
+            isOneToOne: false
+            referencedRelation: "supplement_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_submissions_supplement_id_fkey"
+            columns: ["supplement_id"]
+            isOneToOne: false
+            referencedRelation: "supplement_database"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_reminder_log: {
         Row: {
           clicked_at: string | null
@@ -9486,6 +9561,12 @@ export type Database = {
         | "support"
         | "super_admin"
       client_event_status: "RECEIVED" | "FINAL" | "CANCELLED" | "STALE"
+      product_submission_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "duplicate"
+        | "invalid"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -9622,6 +9703,13 @@ export const Constants = {
         "super_admin",
       ],
       client_event_status: ["RECEIVED", "FINAL", "CANCELLED", "STALE"],
+      product_submission_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "duplicate",
+        "invalid",
+      ],
     },
   },
 } as const
