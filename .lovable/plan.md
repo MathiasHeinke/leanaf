@@ -1,62 +1,101 @@
 
-# Cleanup: Generische Marketing-Kategorien entfernen
+# Fix: Multivitamin-Gruppierung & Detail-Sheet Score
 
-## Übersicht
+## Identifizierte Probleme
 
-Die Datenbank enthält 6 "Marketing-Kategorien" statt echter Wirkstoffe:
+### Problem 1: A-Z und Multivitamin werden nicht gruppiert
+Die `extractBaseName()` Funktion erkennt "A-Z" nicht als Multivitamin-Variante.
 
-| Kategorie | Produkte | Aktion |
-|-----------|----------|--------|
-| **Schlaf** | 2 | Produkte umhängen auf Magnesium |
-| **Augen** | 2 | Produkte umhängen auf neuen Wirkstoff "Lutein & Zeaxanthin" |
-| **Frauen** | 2 | Produkte umhängen auf Multivitamin |
-| **Gelenke** | 2 | Produkte umhängen auf neuen Wirkstoff "Glucosamin & Chondroitin" |
-| **Haare** | 1 | Produkt umhängen auf Biotin |
-| **Beauty** | 0 | Direkt löschen (Orphan) |
+**Datenbank:**
+| Name | impact_score | ingredient_ids |
+|------|--------------|----------------|
+| Multivitamin | 5.0 | [Vitamin A, B, C, D, E, Zink, Magnesium] |
+| A-Z Komplex | 7.0 | [Vitamin A, B, C, D, E, K, Zink, Magnesium, Selen] |
+
+Diese beiden sollten unter "Multivitamin" gruppiert werden.
+
+### Problem 2: Detail-Sheet zeigt falschen Score
+- **Liste**: Zeigt korrekt 9.5 (via `calculateComboScore` im Hook)
+- **Detail-Sheet**: Zeigt statischen `impact_score` (5.0 / 7.0) weil es die Combo-Logik nicht nutzt
+
+Das Detail-Sheet ruft nur `calculateRelevanceScore()` auf, aber nicht die spezielle `calculateComboScore()` Funktion für Multi-Ingredient-Produkte.
+
+---
 
 ## Lösung
 
-### Phase 1: Fehlende Wirkstoffe anlegen
+### Phase 1: Gruppierungs-Pattern erweitern
 
-Zwei spezialisierte Kombi-Wirkstoffe werden benötigt:
+**Datei:** `src/lib/supplementDeduplication.ts`
 
-**Lutein & Zeaxanthin (Augen-Gesundheit)**
-- Impact Score: 7.5
-- Kategorie: Augengesundheit
-- Evidence: Starke Evidenz für Makulaschutz
+Neues Pattern hinzufügen:
+```typescript
+// Multi-Vitamins
+{ pattern: /^(multi-?vitamin|a-z\s*(komplex)?|multivit)/i, baseName: 'Multivitamin' },
+```
 
-**Glucosamin & Chondroitin (Gelenk-Gesundheit)**
-- Impact Score: 7.0
-- Kategorie: Gelenke
-- Evidence: Moderate Evidenz für Gelenkfunktion
+Dies gruppiert automatisch:
+- Multivitamin
+- A-Z Komplex
+- A-Z (falls vorhanden)
+- Multivit...
 
-### Phase 2: Produkte umhängen
+### Phase 2: Detail-Sheet Combo-Score Integration
 
-| Produkt | Von | Zu |
-|---------|-----|-----|
-| Schlafgold Baldrian | Schlaf | Magnesium |
-| Orthomol Nemuri night | Schlaf | Magnesium |
-| Augen Vital 90 | Augen | Lutein & Zeaxanthin |
-| Orthomol AMD extra | Augen | Lutein & Zeaxanthin |
-| Orthomol Femin 60 | Frauen | Multivitamin |
-| Orthomol Vital f | Frauen | Multivitamin |
-| Glucosamin 1200 | Gelenke | Glucosamin & Chondroitin |
-| Orthomol Chondroplus | Gelenke | Glucosamin & Chondroitin |
-| Orthomol Hair Intense | Haare | Biotin |
+**Datei:** `src/components/supplements/SupplementDetailSheet.tsx`
 
-### Phase 3: Generische Einträge löschen
+Das `scoreResult` muss prüfen, ob das Item `ingredient_ids` hat und entsprechend `calculateComboScore()` nutzen:
 
-Alle 6 Marketing-Kategorien aus `supplement_database` entfernen.
+```typescript
+const scoreResult = useMemo(() => {
+  if (!item) return null;
+  
+  // Prüfe auf Kombinations-Produkt
+  if (item.ingredient_ids?.length) {
+    // Hole Ingredient-Daten aus Context oder Props
+    const comboResult = calculateComboScore(ingredientData, userContext);
+    return {
+      score: comboResult.score,
+      baseScore: item.impact_score ?? 5.0,
+      dynamicTier: getDynamicTier(comboResult.score),
+      reasons: comboResult.breakdown,
+      warnings: [],
+      isPersonalized: true,
+      isLimitedByMissingData: false,
+      dataConfidenceCap: 10.0,
+    };
+  }
+  
+  // Standard für Einzel-Wirkstoffe
+  return calculateRelevanceScore(
+    item.impact_score ?? 5.0,
+    item.relevance_matrix,
+    userContext
+  );
+}, [item, userContext]);
+```
+
+**Problem:** Das Detail-Sheet hat keinen Zugriff auf die Library-Daten für die Ingredient-Lookups.
+
+**Lösung:** Den `ScoredSupplementItem` Type (der bereits den `scoreResult` enthält) an das Sheet übergeben, anstatt nur `SupplementLibraryItem`.
+
+---
 
 ## Betroffene Dateien
 
 | Datei | Änderung |
 |-------|----------|
-| Neue Migration | Schema: INSERT für neue Wirkstoffe |
-| Daten-Update | UPDATE Produkte + DELETE Orphans (via SQL-Tool) |
+| `src/lib/supplementDeduplication.ts` | Pattern für A-Z/Multivitamin hinzufügen |
+| `src/components/supplements/SupplementDetailSheet.tsx` | Props erweitern um optionalen vorkalkuierten `scoreResult` |
+| `src/components/supplements/SupplementInventory.tsx` | `ScoredSupplementItem` an Detail-Sheet übergeben |
+| `src/components/supplements/SupplementGroupRow.tsx` | Info-Click mit vollständigem ScoredItem |
+
+---
 
 ## Erwartetes Ergebnis
 
-- Keine generischen "Schlaf", "Augen" etc. mehr in der Liste
-- Alle Produkte auf sinnvolle Wirkstoffe gemappt
-- Saubere, wirkstoff-basierte Hierarchie
+| Vorher | Nachher |
+|--------|---------|
+| A-Z und Multivitamin als separate Gruppen | Gruppiert unter "Multivitamin" mit 2 Varianten |
+| Detail-Sheet: Score 5.0 / 7.0 | Detail-Sheet: Score 9.5 (konsistent mit Liste) |
+| Verwirrende Diskrepanz zwischen Liste und Details | Volle Transparenz - gleicher Score überall |
