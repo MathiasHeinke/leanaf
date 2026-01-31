@@ -21,7 +21,7 @@ interface EnrichedProduct {
   is_organic?: boolean | string;
   is_verified?: boolean | string;
   is_recommended?: boolean | string;
-  quality_tags?: string;
+  quality_tags?: string | string[];
   supplement_name?: string;
   supplement_id?: string;
   
@@ -40,6 +40,35 @@ interface EnrichedProduct {
   amazon_url?: string;
   amazon_image?: string;
   amazon_name?: string;
+  
+  // Hyper-Scoring Quality (8 Felder)
+  quality_bioavailability?: number;
+  quality_dosage?: number;
+  quality_form?: number;
+  quality_purity?: number;
+  quality_research?: number;
+  quality_synergy?: number;
+  quality_transparency?: number;
+  quality_value?: number;
+  
+  // Produkt-Details
+  category?: string;
+  country_of_origin?: string;
+  ingredients?: unknown;
+  product_url?: string;
+  short_description?: string;
+  timing?: string;
+  serving_size?: string;
+  servings_per_container?: number;
+  dosage_per_serving?: string;
+  
+  // Flags und Meta
+  is_deprecated?: boolean | string;
+  is_gluten_free?: boolean | string;
+  match_score?: number;
+  popularity_score?: number;
+  product_sku?: string;
+  allergens?: string | string[];
 }
 
 // Convert NaN, "NaN", undefined to null
@@ -71,6 +100,33 @@ function parseNumber(val: unknown): number | null {
     if (val.toLowerCase() === 'nan' || val === '') return null;
     const num = parseFloat(val);
     return isNaN(num) ? null : num;
+  }
+  return null;
+}
+
+// Parse JSON field (ingredients)
+function parseJson(val: unknown): unknown | null {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'object') return val;
+  if (typeof val === 'string') {
+    if (val.toLowerCase() === 'nan' || val === '') return null;
+    try {
+      return JSON.parse(val);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Parse string array (allergens, quality_tags)
+function parseStringArray(val: unknown): string[] | null {
+  if (val === null || val === undefined) return null;
+  if (Array.isArray(val)) return val.map(String);
+  if (typeof val === 'string') {
+    if (val.toLowerCase() === 'nan' || val === '') return null;
+    // Handle "item1; item2; item3" or "item1, item2" format
+    return val.split(/[;,]/).map(s => s.trim()).filter(Boolean);
   }
   return null;
 }
@@ -163,8 +219,8 @@ serve(async (req) => {
           is_verified: parseBoolean(product.is_verified),
           is_recommended: parseBoolean(product.is_recommended),
           
-          // Quality
-          quality_tags: sanitizeValue(product.quality_tags),
+          // Quality tags (as array)
+          quality_tags: parseStringArray(product.quality_tags),
           
           // Big8 Scores
           bioavailability: parseNumber(product.bioavailability),
@@ -181,6 +237,35 @@ serve(async (req) => {
           amazon_url: sanitizeValue(product.amazon_url),
           amazon_image: sanitizeValue(product.amazon_image),
           amazon_name: sanitizeValue(product.amazon_name),
+          
+          // Hyper-Scoring Quality (8 Felder)
+          quality_bioavailability: parseNumber(product.quality_bioavailability),
+          quality_dosage: parseNumber(product.quality_dosage),
+          quality_form: parseNumber(product.quality_form),
+          quality_purity: parseNumber(product.quality_purity),
+          quality_research: parseNumber(product.quality_research),
+          quality_synergy: parseNumber(product.quality_synergy),
+          quality_transparency: parseNumber(product.quality_transparency),
+          quality_value: parseNumber(product.quality_value),
+          
+          // Produkt-Details
+          category: sanitizeValue(product.category),
+          country_of_origin: sanitizeValue(product.country_of_origin),
+          ingredients: parseJson(product.ingredients),
+          product_url: sanitizeValue(product.product_url),
+          short_description: sanitizeValue(product.short_description),
+          timing: sanitizeValue(product.timing),
+          serving_size: sanitizeValue(product.serving_size),
+          servings_per_container: parseNumber(product.servings_per_container),
+          dosage_per_serving: sanitizeValue(product.dosage_per_serving),
+          
+          // Flags und Meta
+          is_deprecated: parseBoolean(product.is_deprecated),
+          is_gluten_free: parseBoolean(product.is_gluten_free),
+          match_score: parseNumber(product.match_score),
+          popularity_score: parseNumber(product.popularity_score),
+          product_sku: sanitizeValue(product.product_sku),
+          allergens: parseStringArray(product.allergens),
         };
 
         if (existing) {
