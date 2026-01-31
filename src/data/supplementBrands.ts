@@ -56,17 +56,6 @@ export const SUPPLEMENT_BRANDS: SupplementBrand[] = [
     quality_certifications: ['vegan', 'organic', 'made-in-de'],
     description: 'Natürlich, vegan, Made in Germany. Gutes Preis-Leistungs-Verhältnis.'
   },
-  {
-    name: 'Lebenskraft-pur',
-    slug: 'lebenskraft-pur',
-    country: 'DE',
-    website: 'lebenskraft-pur.de',
-    price_tier: 'premium',
-    specialization: ['holistic', 'naturopathy'],
-    quality_certifications: ['organic', 'vegan'],
-    description: 'Ganzheitliche Naturheilkunde. Premium-Qualität.'
-  },
-
   // Tier 2: Sport & Fitness
   {
     name: 'ESN',
