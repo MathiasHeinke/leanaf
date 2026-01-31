@@ -6476,6 +6476,7 @@ export type Database = {
           id: string
           impact_score_big8: number | null
           ingredients: Json | null
+          is_deprecated: boolean | null
           is_gluten_free: boolean | null
           is_organic: boolean | null
           is_recommended: boolean | null
@@ -6531,6 +6532,7 @@ export type Database = {
           id?: string
           impact_score_big8?: number | null
           ingredients?: Json | null
+          is_deprecated?: boolean | null
           is_gluten_free?: boolean | null
           is_organic?: boolean | null
           is_recommended?: boolean | null
@@ -6586,6 +6588,7 @@ export type Database = {
           id?: string
           impact_score_big8?: number | null
           ingredients?: Json | null
+          is_deprecated?: boolean | null
           is_gluten_free?: boolean | null
           is_organic?: boolean | null
           is_recommended?: boolean | null
