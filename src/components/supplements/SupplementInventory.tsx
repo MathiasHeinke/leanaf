@@ -3,11 +3,15 @@ import { Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { SupplementToggleRow } from './SupplementToggleRow';
+import { SupplementGroupRow } from './SupplementGroupRow';
 import { SupplementDetailSheet } from './SupplementDetailSheet';
 import { MissingBloodworkBanner } from './MissingBloodworkBanner';
 import { useUserStack, useSupplementToggle } from '@/hooks/useSupplementLibrary';
-import { useDynamicallySortedSupplements, type ScoredSupplementItem } from '@/hooks/useDynamicallySortedSupplements';
+import { 
+  useDynamicallySortedSupplements, 
+  type ScoredSupplementItem,
+  type BaseNameGroup 
+} from '@/hooks/useDynamicallySortedSupplements';
 import { useUserRelevanceContext } from '@/hooks/useUserRelevanceContext';
 import { META_CATEGORIES, type MetaCategoryKey } from '@/lib/categoryMapping';
 import { DYNAMIC_TIER_CONFIG } from '@/lib/calculateRelevanceScore';
@@ -39,8 +43,14 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [detailItem, setDetailItem] = useState<SupplementLibraryItem | null>(null);
 
-  // Use dynamic scoring hook instead of static library
-  const { essentials, optimizers, niche, tierCounts, isLoading: libraryLoading } = useDynamicallySortedSupplements();
+  // Use dynamic scoring hook - now with grouped output
+  const { 
+    essentialGroups, 
+    optimizerGroups, 
+    nicheGroups,
+    tierCounts, 
+    isLoading: libraryLoading 
+  } = useDynamicallySortedSupplements();
   const { data: userStack } = useUserStack();
   const { toggleSupplement, isToggling } = useSupplementToggle();
   const { context } = useUserRelevanceContext();
@@ -54,68 +64,73 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
     );
   }, [userStack]);
 
-  // Get items for active tier (dynamically grouped)
-  const tierItems = useMemo((): ScoredSupplementItem[] => {
+  // Get groups for active tier
+  const tierGroups = useMemo((): BaseNameGroup[] => {
     switch (activeTier) {
       case 'essential':
-        return essentials;
+        return essentialGroups;
       case 'optimizer':
-        return optimizers;
+        return optimizerGroups;
       case 'niche':
-        return niche;
+        return nicheGroups;
       default:
         return [];
     }
-  }, [activeTier, essentials, optimizers, niche]);
+  }, [activeTier, essentialGroups, optimizerGroups, nicheGroups]);
 
-  // Filter by meta category and search query
-  const filteredSupplements = useMemo(() => {
-    let items = tierItems;
+  // Filter groups by meta category and search query
+  const filteredGroups = useMemo(() => {
+    let groups = tierGroups;
     
-    // Meta-Kategorie-Filter
+    // Meta-Kategorie-Filter: Keep groups that have at least one variant matching
     if (activeMetaCategory !== 'all') {
       const allowedCategories = META_CATEGORIES[activeMetaCategory].categories;
-      items = items.filter(item => 
-        allowedCategories.some(cat => 
-          cat.toLowerCase() === (item.category || '').toLowerCase()
-        )
-      );
+      groups = groups
+        .map(group => ({
+          ...group,
+          variants: group.variants.filter(item =>
+            allowedCategories.some(cat =>
+              cat.toLowerCase() === (item.category || '').toLowerCase()
+            )
+          ),
+        }))
+        .filter(group => group.variants.length > 0);
     }
 
     // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      items = items.filter(
-        (item) =>
-          item.name.toLowerCase().includes(query) ||
-          item.category?.toLowerCase().includes(query) ||
-          item.description?.toLowerCase().includes(query)
-      );
+      groups = groups
+        .map(group => ({
+          ...group,
+          variants: group.variants.filter(
+            (item) =>
+              item.name.toLowerCase().includes(query) ||
+              group.baseName.toLowerCase().includes(query) ||
+              item.category?.toLowerCase().includes(query) ||
+              item.description?.toLowerCase().includes(query)
+          ),
+        }))
+        .filter(group => group.variants.length > 0);
     }
 
-    return items;
-  }, [tierItems, activeMetaCategory, searchQuery]);
+    return groups;
+  }, [tierGroups, activeMetaCategory, searchQuery]);
 
-  // Count active items per dynamic tier
+  // Count active groups per dynamic tier
   const dynamicTierCounts = useMemo(() => {
-    const counts: Record<DynamicTier, { total: number; active: number }> = {
-      essential: { total: essentials.length, active: 0 },
-      optimizer: { total: optimizers.length, active: 0 },
-      niche: { total: niche.length, active: 0 },
+    const countActiveInGroups = (groups: BaseNameGroup[]): number => {
+      return groups.filter(g => 
+        g.variants.some(v => activeSupplementIds.has(v.id))
+      ).length;
     };
 
-    essentials.forEach(item => {
-      if (activeSupplementIds.has(item.id)) counts.essential.active++;
-    });
-    optimizers.forEach(item => {
-      if (activeSupplementIds.has(item.id)) counts.optimizer.active++;
-    });
-    niche.forEach(item => {
-      if (activeSupplementIds.has(item.id)) counts.niche.active++;
-    });
-
-    return counts;
-  }, [essentials, optimizers, niche, activeSupplementIds]);
+    return {
+      essential: { total: essentialGroups.length, active: countActiveInGroups(essentialGroups) },
+      optimizer: { total: optimizerGroups.length, active: countActiveInGroups(optimizerGroups) },
+      niche: { total: nicheGroups.length, active: countActiveInGroups(nicheGroups) },
+    };
+  }, [essentialGroups, optimizerGroups, nicheGroups, activeSupplementIds]);
 
   // Handle toggle
   const handleToggle = async (item: ScoredSupplementItem, activate: boolean) => {
@@ -222,13 +237,13 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
         <span className="text-muted-foreground">{currentConfig.description}</span>
       </div>
 
-      {/* Supplement List */}
+      {/* Supplement Groups List */}
       <div className="space-y-2">
         {libraryLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : filteredSupplements.length === 0 ? (
+        ) : filteredGroups.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground text-sm">
             {searchQuery
               ? `Keine Ergebnisse für "${searchQuery}"`
@@ -237,12 +252,12 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
               : `Keine ${currentConfig.shortLabel} verfügbar`}
           </div>
         ) : (
-          filteredSupplements.map((item) => (
-            <SupplementToggleRow
-              key={item.id}
-              item={item}
-              isActive={activeSupplementIds.has(item.id)}
-              onToggle={(id, active) => handleToggle(item, active)}
+          filteredGroups.map((group) => (
+            <SupplementGroupRow
+              key={group.baseName}
+              group={group}
+              activeVariantIds={activeSupplementIds}
+              onToggle={handleToggle}
               onInfoClick={setDetailItem}
               isLoading={isToggling}
             />

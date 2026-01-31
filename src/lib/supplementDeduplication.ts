@@ -6,51 +6,85 @@ import type { SupplementLibraryItem, NecessityTier } from '@/types/supplementLib
 // =====================================================
 
 // Pattern-based base name extraction
+// These patterns group variants under a single base substance name
 const BASE_PATTERNS: Array<{ pattern: RegExp; baseName: string }> = [
+  // Minerals
   { pattern: /^magnesium/i, baseName: 'Magnesium' },
-  { pattern: /^omega[- ]?3/i, baseName: 'Omega-3' },
+  { pattern: /^zink/i, baseName: 'Zink' },
+  { pattern: /^eisen/i, baseName: 'Eisen' },
+  { pattern: /^selen/i, baseName: 'Selen' },
+  { pattern: /^jod/i, baseName: 'Jod' },
+  { pattern: /^kalium/i, baseName: 'Kalium' },
+  { pattern: /^natrium/i, baseName: 'Natrium' },
+  { pattern: /^boron|^bor$/i, baseName: 'Bor' },
+  { pattern: /^elektrolyt/i, baseName: 'Elektrolyte' },
+  
+  // Vitamins
   { pattern: /^vitamin\s*d/i, baseName: 'Vitamin D' },
   { pattern: /^vitamin\s*k/i, baseName: 'Vitamin K' },
   { pattern: /^vitamin\s*b/i, baseName: 'Vitamin B' },
   { pattern: /^vitamin\s*c/i, baseName: 'Vitamin C' },
   { pattern: /^vitamin\s*e/i, baseName: 'Vitamin E' },
   { pattern: /^vitamin\s*a/i, baseName: 'Vitamin A' },
-  { pattern: /^creatin/i, baseName: 'Creatine' },
-  { pattern: /^ashwagandha/i, baseName: 'Ashwagandha' },
-  { pattern: /^curcumin|^kurkuma/i, baseName: 'Curcumin' },
-  { pattern: /^kollagen/i, baseName: 'Kollagen' },
-  { pattern: /^probiotik/i, baseName: 'Probiotika' },
-  { pattern: /^nmn/i, baseName: 'NMN' },
-  { pattern: /^coq10|^ubiquinol|^ubiquinon/i, baseName: 'CoQ10' },
-  { pattern: /^hmb/i, baseName: 'HMB' },
-  { pattern: /^eisen/i, baseName: 'Eisen' },
-  { pattern: /^zink/i, baseName: 'Zink' },
-  { pattern: /^selen/i, baseName: 'Selen' },
-  { pattern: /^jod/i, baseName: 'Jod' },
-  { pattern: /^alpha[- ]?lipons/i, baseName: 'Alpha-Liponsäure' },
-  { pattern: /^resveratrol/i, baseName: 'Resveratrol' },
-  { pattern: /^quercetin/i, baseName: 'Quercetin' },
-  { pattern: /^fisetin/i, baseName: 'Fisetin' },
-  { pattern: /^berber/i, baseName: 'Berberin' },
-  { pattern: /^apigenin/i, baseName: 'Apigenin' },
-  { pattern: /^elektrolyt/i, baseName: 'Elektrolyte' },
-  { pattern: /^natrium/i, baseName: 'Natrium' },
-  { pattern: /^kalium/i, baseName: 'Kalium' },
+  
+  // Omega-3
+  { pattern: /^omega[- ]?3/i, baseName: 'Omega-3' },
+  
+  // Amino Acids
+  { pattern: /^eaa|^essential[- ]?amino/i, baseName: 'EAA' },
+  { pattern: /^bcaa|^branched[- ]?chain/i, baseName: 'BCAA' },
   { pattern: /^l[- ]?glutamin/i, baseName: 'L-Glutamin' },
   { pattern: /^l[- ]?carnitin/i, baseName: 'L-Carnitin' },
   { pattern: /^l[- ]?theanin/i, baseName: 'L-Theanin' },
   { pattern: /^glycin/i, baseName: 'Glycin' },
   { pattern: /^taurin/i, baseName: 'Taurin' },
-  { pattern: /^tmg|^betain/i, baseName: 'TMG/Betain' },
-  { pattern: /^nad\+?|^nicotinamid/i, baseName: 'NAD+' },
-  { pattern: /^pterostilben/i, baseName: 'Pterostilben' },
-  { pattern: /^spermid/i, baseName: 'Spermidin' },
-  { pattern: /^calcium[- ]?d[- ]?glucarat/i, baseName: 'Calcium-D-Glucarat' },
-  { pattern: /^dim/i, baseName: 'DIM' },
-  { pattern: /^citrus[- ]?bergamot/i, baseName: 'Citrus Bergamot' },
-  { pattern: /^boron|^bor$/i, baseName: 'Bor' },
+  
+  // Performance
+  { pattern: /^creatin/i, baseName: 'Creatin' },
+  { pattern: /^hmb/i, baseName: 'HMB' },
+  { pattern: /^citrullin/i, baseName: 'Citrullin' },
+  { pattern: /^beta[- ]?alanin/i, baseName: 'Beta-Alanin' },
+  
+  // Adaptogens
+  { pattern: /^ashwagandha|^ksm[- ]?66|^withania/i, baseName: 'Ashwagandha' },
+  { pattern: /^rhodiola/i, baseName: 'Rhodiola' },
   { pattern: /^tongkat/i, baseName: 'Tongkat Ali' },
   { pattern: /^fadogia/i, baseName: 'Fadogia Agrestis' },
+  { pattern: /^mucuna/i, baseName: 'Mucuna Pruriens' },
+  { pattern: /^shilajit/i, baseName: 'Shilajit' },
+  
+  // Longevity / NAD+
+  { pattern: /^ca[- ]?akg|^calcium[- ]?alpha[- ]?ketoglutarat|rejuvant/i, baseName: 'Ca-AKG' },
+  { pattern: /^nmn/i, baseName: 'NMN' },
+  { pattern: /^nr[- ]?|^niagen|^nicotinamid[- ]?riboside?/i, baseName: 'NR (Niagen)' },
+  { pattern: /^nad\+?|^nicotinamid(?![- ]?riboside)/i, baseName: 'NAD+' },
+  { pattern: /^resveratrol/i, baseName: 'Resveratrol' },
+  { pattern: /^pterostilben/i, baseName: 'Pterostilben' },
+  { pattern: /^spermid/i, baseName: 'Spermidin' },
+  { pattern: /^fisetin/i, baseName: 'Fisetin' },
+  { pattern: /^quercetin/i, baseName: 'Quercetin' },
+  
+  // CoQ10
+  { pattern: /^coq10|^ubiquinol|^ubiquinon/i, baseName: 'CoQ10' },
+  
+  // Anti-Inflammatory / Curcumin
+  { pattern: /^curcumin|^kurkuma/i, baseName: 'Curcumin' },
+  { pattern: /^berber/i, baseName: 'Berberin' },
+  { pattern: /^alpha[- ]?lipons/i, baseName: 'Alpha-Liponsäure' },
+  
+  // Sleep / Calm
+  { pattern: /^apigenin/i, baseName: 'Apigenin' },
+  { pattern: /^melatonin/i, baseName: 'Melatonin' },
+  { pattern: /^gaba/i, baseName: 'GABA' },
+  
+  // Other
+  { pattern: /^kollagen/i, baseName: 'Kollagen' },
+  { pattern: /^probiotik/i, baseName: 'Probiotika' },
+  { pattern: /^tmg|^betain/i, baseName: 'TMG/Betain' },
+  { pattern: /^calcium[- ]?d[- ]?glucarat|^cdg/i, baseName: 'Calcium-D-Glucarat' },
+  { pattern: /^dim/i, baseName: 'DIM' },
+  { pattern: /^citrus[- ]?bergamot/i, baseName: 'Citrus Bergamot' },
+  { pattern: /^sulforaphan/i, baseName: 'Sulforaphan' },
 ];
 
 /**
