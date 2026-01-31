@@ -40,7 +40,7 @@ const BASE_PATTERNS: Array<{ pattern: RegExp; baseName: string }> = [
   { pattern: /^taurin/i, baseName: 'Taurin' },
   
   // Performance
-  { pattern: /^creatin/i, baseName: 'Creatin' },
+  { pattern: /^creatin|^kreatin/i, baseName: 'Creatin' },
   { pattern: /^hmb/i, baseName: 'HMB' },
   { pattern: /^citrullin/i, baseName: 'Citrullin' },
   { pattern: /^beta[- ]?alanin/i, baseName: 'Beta-Alanin' },
@@ -52,6 +52,9 @@ const BASE_PATTERNS: Array<{ pattern: RegExp; baseName: string }> = [
   { pattern: /^fadogia/i, baseName: 'Fadogia Agrestis' },
   { pattern: /^mucuna/i, baseName: 'Mucuna Pruriens' },
   { pattern: /^shilajit/i, baseName: 'Shilajit' },
+  
+  // GlyNAC
+  { pattern: /^gly[- ]?nac/i, baseName: 'GlyNAC' },
   
   // Longevity / NAD+
   { pattern: /^ca[- ]?akg|^calcium[- ]?alpha[- ]?ketoglutarat|rejuvant/i, baseName: 'Ca-AKG' },
