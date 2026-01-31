@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets, BookOpen, Goal, Dna } from 'lucide-react';
+import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets, BookOpen, Goal, Dna, Package } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -320,6 +320,47 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
 
           {/* Peptide Class Synergies Section (Phase 4) */}
           <PeptideClassSynergiesSection matrix={item.relevance_matrix} />
+
+          {/* Ingredient Breakdown for Combo Products */}
+          {item.ingredient_ids && item.ingredient_ids.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" />
+                  Enthaltene Wirkstoffe
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {item.ingredient_ids.map(name => {
+                    const isOverlapping = scoreResult?.overlappingIngredients?.includes(name);
+                    return (
+                      <Badge 
+                        key={name}
+                        variant={isOverlapping ? "destructive" : "secondary"}
+                        className={cn(
+                          "text-xs",
+                          isOverlapping && "bg-destructive/10 border-destructive/30"
+                        )}
+                      >
+                        {isOverlapping && "⚠️ "}
+                        {name}
+                        {isOverlapping && " (aktiv)"}
+                      </Badge>
+                    );
+                  })}
+                </div>
+                {scoreResult?.overlapPenalty && scoreResult.overlapPenalty < 0 && (
+                  <div className="mt-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="text-xs text-destructive flex items-center gap-1.5">
+                      <AlertTriangle className="h-3 w-3" />
+                      Score-Abzug: {scoreResult.overlapPenalty.toFixed(1)} 
+                      {' '}({scoreResult.overlappingIngredients?.length} Wirkstoffe bereits in deinem Stack)
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           {/* Personalized ARES Score & Cost */}
           <Separator />

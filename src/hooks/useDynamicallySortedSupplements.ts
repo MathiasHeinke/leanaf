@@ -2,10 +2,11 @@
 // ARES Dynamic Supplement Sorting Hook
 // Groups supplements by CALCULATED score tier, not static DB tier
 // Now also groups by BASE SUBSTANCE NAME for deduplication
+// Stack-aware: detects ingredient overlap for combo products
 // =====================================================
 
 import { useMemo } from 'react';
-import { useSupplementLibrary } from './useSupplementLibrary';
+import { useSupplementLibrary, useUserStack } from './useSupplementLibrary';
 import { useUserRelevanceContext } from './useUserRelevanceContext';
 import { calculateRelevanceScore, calculateComboScore, getDynamicTier } from '@/lib/calculateRelevanceScore';
 import type { IngredientScoreData } from '@/lib/calculateRelevanceScore';
@@ -151,7 +152,19 @@ function groupByBaseNameWithScores(items: ScoredSupplementItem[]): BaseNameGroup
  */
 export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
   const { data: library = [], isLoading: libraryLoading } = useSupplementLibrary();
+  const { data: userStack = [] } = useUserStack();
   const { context, isLoading: contextLoading } = useUserRelevanceContext();
+
+  // Extract active supplement names from user's stack for overlap detection
+  const activeStackNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const stackItem of userStack) {
+      if (stackItem.is_active && stackItem.supplement?.name) {
+        names.add(stackItem.supplement.name);
+      }
+    }
+    return names;
+  }, [userStack]);
 
   return useMemo(() => {
     const result: DynamicSupplementGroups = {
@@ -194,9 +207,9 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
           })
           .filter((d): d is IngredientScoreData => d !== null);
         
-        // If we found at least one ingredient, calculate combo score
+        // If we found at least one ingredient, calculate combo score with stack awareness
         if (ingredientData.length > 0) {
-          const comboResult = calculateComboScore(ingredientData, context);
+          const comboResult = calculateComboScore(ingredientData, context, activeStackNames);
           
           return {
             ...item,
@@ -205,10 +218,14 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
               baseScore: item.impact_score ?? 5.0,
               dynamicTier: getDynamicTier(comboResult.score),
               reasons: comboResult.breakdown,
-              warnings: [],
+              warnings: comboResult.overlappingIngredients.length > 0 
+                ? [`${comboResult.overlappingIngredients.length} Wirkstoffe bereits im Stack`]
+                : [],
               isPersonalized: true,
               isLimitedByMissingData: false,
               dataConfidenceCap: 10.0,
+              overlappingIngredients: comboResult.overlappingIngredients,
+              overlapPenalty: comboResult.overlapPenalty,
             },
           };
         }
@@ -274,7 +291,7 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
     result.all = scoredItems;
     result.allGroups = allGroups;
     return result;
-  }, [library, context, libraryLoading, contextLoading]);
+  }, [library, context, libraryLoading, contextLoading, activeStackNames]);
 }
 
 /**

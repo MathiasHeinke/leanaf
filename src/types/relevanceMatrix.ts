@@ -162,6 +162,10 @@ export interface RelevanceScoreResult {
   dataConfidenceCap: number;         // The applied cap (7.5, 8.5, or 10.0)
   potentialScore?: number;           // What score COULD be with bloodwork
   upgradeTrigger?: string;           // "Mit Vitamin D Blutwert: Essential möglich"
+  
+  // Combo Overlap Detection (v3.0)
+  overlappingIngredients?: string[]; // Ingredients already in user's active stack
+  overlapPenalty?: number;           // Score penalty applied for redundancy
 }
 
 /**
