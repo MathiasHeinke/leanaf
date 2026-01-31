@@ -18,9 +18,13 @@ import {
   Loader2,
   Users,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Wrench,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import { exportSupplementMatrixCSV } from '@/utils/exportMatrixCSV';
+import { executeMatrixCleanup, verifyMatrixCleanup } from '@/utils/matrixCleanupQueries';
 import { Link } from 'react-router-dom';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
 import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
@@ -43,6 +47,8 @@ export const AdminPage = () => {
   const { user } = useAuth();
   const { isAdmin, loading: adminLoading, error: adminError } = useSecureAdminAccess('admin_panel');
   const [isExporting, setIsExporting] = useState(false);
+  const [isCleaningMatrix, setIsCleaningMatrix] = useState(false);
+  const [cleanupResults, setCleanupResults] = useState<Array<{success: boolean; step: string; error?: string}> | null>(null);
 
   const handleMatrixExport = async () => {
     setIsExporting(true);
@@ -53,6 +59,27 @@ export const AdminPage = () => {
       }
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleMatrixCleanup = async () => {
+    setIsCleaningMatrix(true);
+    setCleanupResults(null);
+    try {
+      const results = await executeMatrixCleanup();
+      setCleanupResults(results);
+      
+      // Verify the cleanup
+      const verification = await verifyMatrixCleanup();
+      console.log('Matrix Cleanup Verification:', verification);
+      console.log(`Total: ${verification.totalSupplements}, Mit Matrix: ${verification.withMatrix}`);
+      console.log('Kategorien:', verification.uniqueCategories);
+      console.log('Evidence Levels:', verification.evidenceLevels);
+    } catch (err) {
+      console.error('Cleanup failed:', err);
+      setCleanupResults([{ success: false, step: 'Allgemein', error: String(err) }]);
+    } finally {
+      setIsCleaningMatrix(false);
     }
   };
 
@@ -211,6 +238,64 @@ export const AdminPage = () => {
                       </>
                     )}
                   </Button>
+                </CardContent>
+              </Card>
+
+              {/* Matrix Cleanup Card */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                    <Wrench className="w-5 h-5 mr-2" />
+                    Matrix Cleanup
+                  </CardTitle>
+                  <CardDescription>
+                    Duplikate entfernen, Sprache vereinheitlichen, Kategorien normalisieren
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button 
+                    onClick={handleMatrixCleanup} 
+                    disabled={isCleaningMatrix}
+                    variant="destructive"
+                    className="w-full"
+                  >
+                    {isCleaningMatrix ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Bereinige Matrix...
+                      </>
+                    ) : (
+                      <>
+                        <Wrench className="w-4 h-4 mr-2" />
+                        Quick Wins ausführen
+                      </>
+                    )}
+                  </Button>
+                  
+                  {cleanupResults && (
+                    <div className="space-y-2 mt-4">
+                      {cleanupResults.map((result, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`flex items-center gap-2 text-sm p-2 rounded ${
+                            result.success 
+                              ? 'bg-green-500/10 text-green-600 dark:text-green-400' 
+                              : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                          }`}
+                        >
+                          {result.success ? (
+                            <CheckCircle className="w-4 h-4" />
+                          ) : (
+                            <XCircle className="w-4 h-4" />
+                          )}
+                          <span>{result.step}</span>
+                          {result.error && (
+                            <span className="text-xs opacity-75">- {result.error}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
