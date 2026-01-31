@@ -6290,6 +6290,7 @@ export type Database = {
           id: string
           image_url: string | null
           impact_score: number | null
+          ingredient_ids: string[] | null
           interaction_tags: string[] | null
           name: string
           necessity_tier: string | null
@@ -6323,6 +6324,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           impact_score?: number | null
+          ingredient_ids?: string[] | null
           interaction_tags?: string[] | null
           name: string
           necessity_tier?: string | null
@@ -6356,6 +6358,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           impact_score?: number | null
+          ingredient_ids?: string[] | null
           interaction_tags?: string[] | null
           name?: string
           necessity_tier?: string | null
