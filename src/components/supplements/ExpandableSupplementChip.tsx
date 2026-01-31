@@ -496,16 +496,21 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
                     scoreResult={scoreResult}
                     supplementName={item.name}
                   >
-                    <Badge 
-                      variant="outline" 
-                      className={cn(
-                        'text-[10px] shrink-0 cursor-pointer hover:opacity-80',
-                        tierConfig.borderClass,
-                        tierConfig.textClass
-                      )}
+                    <button
+                      type="button"
+                      className="focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                     >
-                      {tierConfig.labelShort}
-                    </Badge>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          'text-[10px] shrink-0 cursor-pointer hover:opacity-80',
+                          tierConfig.borderClass,
+                          tierConfig.textClass
+                        )}
+                      >
+                        {tierConfig.labelShort}
+                      </Badge>
+                    </button>
                   </RelevanceScorePopover>
                 </div>
               )}
