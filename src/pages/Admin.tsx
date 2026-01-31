@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,13 +14,13 @@ import {
   BarChart3,
   MessageSquare,
   RefreshCw,
-  Route,
-  Bug,
   Settings,
-  Check,
   Loader2,
-  Users
+  Users,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
+import { exportSupplementMatrixCSV } from '@/utils/exportMatrixCSV';
 import { Link } from 'react-router-dom';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
 import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
@@ -42,6 +42,19 @@ import { Label } from '@/components/ui/label';
 export const AdminPage = () => {
   const { user } = useAuth();
   const { isAdmin, loading: adminLoading, error: adminError } = useSecureAdminAccess('admin_panel');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleMatrixExport = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportSupplementMatrixCSV();
+      if (!result.success) {
+        console.error('Export failed:', result.error);
+      }
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   
   // Mock performance metrics for the dashboard
@@ -168,6 +181,38 @@ export const AdminPage = () => {
                   </CardHeader>
                 </Card>
               </Link>
+
+              {/* Matrix Export Card */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                    <FileSpreadsheet className="w-5 h-5 mr-2" />
+                    Relevance Matrix Export
+                  </CardTitle>
+                  <CardDescription>
+                    Alle 111 Wirkstoffe mit ~55 Gewichtungs-Modifikatoren als CSV
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    onClick={handleMatrixExport} 
+                    disabled={isExporting}
+                    className="w-full"
+                  >
+                    {isExporting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Exportiere...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Matrix als CSV exportieren
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
 
               {/* Embedding Status & RAG System */}
               <EmbeddingStatus />
