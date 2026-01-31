@@ -301,11 +301,12 @@ const Analysis = () => {
             
             {/* Weight & Body Measurements Charts */}
             <HistoryCharts 
-              data={[]} // Empty nutrition data for more tab
+              data={[]}
               weightHistory={weightHistory}
               bodyMeasurementsHistory={bodyMeasurementsHistory}
               timeRange="month"
               loading={loading}
+              showNutritionCharts={false}
             />
             
             <AdvancedAnalyticsSection />
