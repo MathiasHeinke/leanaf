@@ -23,6 +23,8 @@ import { haptics } from '@/lib/haptics';
 import { useSupplementProducts } from '@/hooks/useSupplementLibrary';
 import { useUserRelevanceContext } from '@/hooks/useUserRelevanceContext';
 import { calculateRelevanceScore, getScoreTierConfig } from '@/lib/calculateRelevanceScore';
+import { getCycleStatusForStackItem } from '@/hooks/useCyclingStatus';
+import { CyclingStatusIndicator } from './CyclingStatusBadge';
 import type { UserStackItem, PreferredTiming, TimingConstraint, SupplementBrand, SupplementProduct } from '@/types/supplementLibrary';
 import { PREFERRED_TIMING_LABELS, NECESSITY_TIER_CONFIG } from '@/types/supplementLibrary';
 import { TimingCircleSelector } from './TimingCircleSelector';
@@ -138,6 +140,10 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
   }, [item.supplement?.impact_score, item.supplement?.relevance_matrix, userContext]);
   
   const tierConfig = useMemo(() => getScoreTierConfig(scoreResult.score), [scoreResult.score]);
+  
+  // Calculate cycling status
+  const cycleStatus = useMemo(() => getCycleStatusForStackItem(item), [item]);
+  const isOffCycle = cycleStatus && !cycleStatus.isOnCycle;
   
   // Form state
   const [dosage, setDosage] = useState(item.dosage || '');
@@ -265,7 +271,8 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
               'bg-background/80 border border-border/50',
               'hover:border-primary/30',
               'transition-colors duration-200 cursor-pointer',
-              'min-h-[44px]' // Touch-friendly
+              'min-h-[44px]', // Touch-friendly
+              isOffCycle && 'opacity-50 bg-muted/30' // Dim off-cycle supplements
             )}
             onClick={handleExpand}
             role="button"
@@ -312,8 +319,13 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
                 </span>
               )}
               
-              {/* Timing Constraint Badge */}
-              {constraint !== 'any' && constraintBadge && (
+              {/* Cycling Status Indicator */}
+              {cycleStatus && (
+                <CyclingStatusIndicator status={cycleStatus} />
+              )}
+              
+              {/* Timing Constraint Badge (hide when cycling is shown) */}
+              {!cycleStatus && constraint !== 'any' && constraintBadge && (
                 <Badge 
                   variant="secondary" 
                   className={cn(

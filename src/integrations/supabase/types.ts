@@ -6280,7 +6280,10 @@ export type Database = {
           cost_per_day_eur: number | null
           created_at: string
           cycling_protocol: string | null
+          cycling_reason: string | null
           cycling_required: boolean | null
+          default_cycle_off_days: number | null
+          default_cycle_on_days: number | null
           default_dosage: string | null
           default_unit: string
           description: string | null
@@ -6314,7 +6317,10 @@ export type Database = {
           cost_per_day_eur?: number | null
           created_at?: string
           cycling_protocol?: string | null
+          cycling_reason?: string | null
           cycling_required?: boolean | null
+          default_cycle_off_days?: number | null
+          default_cycle_on_days?: number | null
           default_dosage?: string | null
           default_unit?: string
           description?: string | null
@@ -6348,7 +6354,10 @@ export type Database = {
           cost_per_day_eur?: number | null
           created_at?: string
           cycling_protocol?: string | null
+          cycling_reason?: string | null
           cycling_required?: boolean | null
+          default_cycle_off_days?: number | null
+          default_cycle_on_days?: number | null
           default_dosage?: string | null
           default_unit?: string
           description?: string | null
