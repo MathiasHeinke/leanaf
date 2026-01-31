@@ -1,112 +1,145 @@
 
-
-# Fix: MissingBloodworkBanner zeigt falschen Status
+# Wirkstoff-First Selection: Deduplizierung & 2-Schritt-Auswahl
 
 ## Problem
 
-Der Banner zeigt "Profil unvollständig" obwohl das Profil komplett ausgefüllt ist. Es fehlen nur die Blutwerte.
+Aktuell zeigt die Supplement-Liste **beides** als separate Einträge:
+- `CaAKG` (generischer Wirkstoff ohne Produkte)
+- `Ca-AKG (Rejuvant)` (mit MoleQlar-Produkten verknüpft)
 
-**Ursachen:**
-1. **Query-Bug in `useUserRelevanceContext.ts`**: Zeile 35 verwendet `.eq('id', user.id)` aber die Profiles-Tabelle hat `id` ≠ `user_id`. Die Auth-UUID steht in `user_id`, nicht in `id`!
-2. **Generische Meldung**: Der Banner unterscheidet nur zwischen "minimal" und "basic", sagt aber nicht was konkret fehlt
+Das führt zu Verwirrung und doppelten Einträgen im User-Stack.
 
-## Lösung
+**Datenbank-Befund:**
+- 111 Einträge in `supplement_database`
+- Nur 78 davon haben verknüpfte Produkte in `supplement_products`
+- 33 "Orphan"-Einträge ohne Produktverknüpfung (oft Duplikate oder generische Namen)
 
-### Schritt 1: Query-Bug fixen
+---
 
-**Datei:** `src/hooks/useUserRelevanceContext.ts` (Zeile 35)
+## Lösungsansatz: Zweistufige Auswahl
 
-```typescript
-// Vorher:
-.eq('id', user.id)
+**Flow-Änderung:**
 
-// Nachher:
-.eq('user_id', user.id)
+```text
+VORHER (flach):
+┌─────────────────────────────────────┐
+│ [x] CaAKG                    8.5    │
+│ [x] Ca-AKG (Rejuvant)        8.5    │  ← Duplikat!
+│ [x] Magnesium                9.5    │
+│ [x] Magnesium Glycinat       9.5    │  ← Duplikat!
+└─────────────────────────────────────┘
+
+NACHHER (gruppiert):
+┌─────────────────────────────────────┐
+│ Ca-AKG                       8.5    │
+│   → MoleQlar Pulver   €0.45/Tag     │
+│   → MoleQlar Kapseln  €0.52/Tag     │
+│                                     │
+│ Magnesium                    9.5    │
+│   → Glycinat (Sunday)  €0.12/Tag    │
+│   → Citrat (Nature Love) €0.08/Tag  │
+└─────────────────────────────────────┘
 ```
 
-### Schritt 2: Banner intelligenter machen
+---
 
-**Datei:** `src/components/supplements/MissingBloodworkBanner.tsx`
+## Technische Umsetzung
 
-Statt generischer Meldungen zeigen wir an was **konkret** fehlt:
+### Phase 1: Datenbereinigung (SQL)
 
-| Fehlende Daten | Meldung |
-|----------------|---------|
-| Nur Blutwerte | "Blutwerte fehlen" → Für volle Personalisierung |
-| Profil + Blutwerte | "Profil unvollständig" → Alter, Ziele, Gewicht ergänzen |
-| Nur bestimmte Felder | Spezifische Hinweise: "Alter fehlt", "Gewicht fehlt" |
+Zuerst: Duplikate in der Datenbank konsolidieren.
 
-**Erweiterte Props:**
+**Beispiel Ca-AKG:**
+```sql
+-- 1. Alle Produkte auf den "richtigen" Wirkstoff umhängen
+UPDATE supplement_products
+SET supplement_id = '9e141771-56fa-497b-a437-4c55fb2c7ec1'  -- Ca-AKG (Rejuvant)
+WHERE supplement_id = '977958a3-7867-4dcf-9319-36d01d776f81'; -- CaAKG
+
+-- 2. Duplikat-Wirkstoff umbenennen/deaktivieren
+UPDATE supplement_database
+SET name = 'Ca-AKG'
+WHERE id = '9e141771-56fa-497b-a437-4c55fb2c7ec1';
+
+-- 3. Orphan löschen (oder soft-delete)
+DELETE FROM supplement_database
+WHERE id = '977958a3-7867-4dcf-9319-36d01d776f81';
+```
+
+**Systematische Duplikat-Analyse nötig** für alle 111 Einträge.
+
+### Phase 2: Frontend-Gruppierung aktivieren
+
+Die Utility `src/lib/supplementDeduplication.ts` existiert bereits, wird aber **nicht genutzt**!
+
+**Änderung in `useDynamicallySortedSupplements.ts`:**
 
 ```typescript
-interface MissingBloodworkBannerProps {
-  profileCompleteness: 'full' | 'basic' | 'minimal';
-  activeTier: DynamicTier;
-  missingProfileFields?: string[];  // NEU: Konkrete fehlende Felder
+import { groupByBaseName, getUniqueBaseNames } from '@/lib/supplementDeduplication';
+
+// Nach dem Scoring: Gruppieren nach Base-Name
+const baseGroups = getUniqueBaseNames(scoredItems);
+
+// Statt flache Liste: Gruppierte Struktur zurückgeben
+return {
+  groups: baseGroups,  // { baseName, variants[], topScore }
+  ...
+};
+```
+
+### Phase 3: UI-Komponente für gruppierte Anzeige
+
+**Neue/Angepasste Komponente: `SupplementGroupRow`**
+
+```typescript
+interface SupplementGroupRowProps {
+  baseName: string;           // z.B. "Magnesium"
+  variants: ScoredSupplementItem[];  // Glycinat, Citrat, etc.
+  topScore: number;
+  isAnyActive: boolean;
+  onSelectVariant: (item: ScoredSupplementItem) => void;
 }
 ```
 
-**Dynamische Anzeige:**
+**Interaktion:**
+1. User sieht gruppierte Base-Namen mit Top-Score
+2. Klick expandiert die Gruppe → zeigt Varianten
+3. User wählt spezifische Variante
+4. Nach Auswahl → Produkt-Selektion (wie bereits in ExpandableChip)
+
+### Phase 4: SupplementInventory anpassen
 
 ```typescript
-// Wenn nur Blutwerte fehlen (Profil ist komplett)
-if (profileCompleteness === 'basic' && (!missingProfileFields || missingProfileFields.length === 0)) {
-  return (
-    <Banner 
-      icon={FlaskConical}
-      title="Blutwerte fehlen"
-      text="Für personalisierte Empfehlungen basierend auf deinen Biomarkern, lade dein Blutbild hoch."
-      link="/bloodwork"
-      linkText="Blutwerte hinzufügen"
-    />
-  );
-}
+// Statt:
+filteredSupplements.map((item) => (
+  <SupplementToggleRow key={item.id} item={item} ... />
+))
 
-// Wenn Profil-Felder fehlen
-if (missingProfileFields && missingProfileFields.length > 0) {
-  const fieldLabels = missingProfileFields.map(f => FIELD_LABELS[f]).join(', ');
-  return (
-    <Banner 
-      icon={User}
-      title="Profil unvollständig"
-      text={`Ergänze ${fieldLabels} für bessere Empfehlungen.`}
-      link="/profile"
-      linkText="Profil vervollständigen"
-    />
-  );
-}
+// Neu:
+baseNameGroups.map((group) => (
+  <SupplementGroupRow
+    key={group.baseName}
+    baseName={group.baseName}
+    variants={group.variants}
+    topScore={group.topScore}
+    isAnyActive={group.variants.some(v => activeIds.has(v.id))}
+    ...
+  />
+))
 ```
 
-### Schritt 3: Context erweitern
+---
 
-**Datei:** `src/hooks/useUserRelevanceContext.ts`
+## Erweiterte Deduplizierungs-Patterns
 
-Neue Felder im Return:
-
-```typescript
-// Konkrete fehlende Profil-Felder
-missingProfileFields: string[];
-
-// Berechnung:
-const missingProfileFields: string[] = [];
-if (!profile?.age) missingProfileFields.push('age');
-if (!profile?.gender) missingProfileFields.push('gender');
-if (!profile?.weight) missingProfileFields.push('weight');
-if (!profile?.goal_type && !dailyGoals?.goal_type) missingProfileFields.push('goal');
-```
-
-### Schritt 4: SupplementInventory anpassen
-
-**Datei:** `src/components/supplements/SupplementInventory.tsx`
-
-Die `missingProfileFields` an den Banner übergeben:
+Die bestehende `BASE_PATTERNS` Liste muss erweitert werden:
 
 ```typescript
-<MissingBloodworkBanner 
-  profileCompleteness={context.profileCompleteness}
-  activeTier={activeTier}
-  missingProfileFields={context.missingProfileFields}
-/>
+// Hinzufügen:
+{ pattern: /^ca[- ]?akg|calcium[- ]?alpha[- ]?ketoglutarat|rejuvant/i, baseName: 'Ca-AKG' },
+{ pattern: /^nr[- ]?|niagen|nicotinamid[- ]?riboside?/i, baseName: 'NR (Niagen)' },
+{ pattern: /^eaa|essential[- ]?amino/i, baseName: 'EAA' },
+{ pattern: /^bcaa|branched[- ]?chain/i, baseName: 'BCAA' },
 ```
 
 ---
@@ -115,25 +148,31 @@ Die `missingProfileFields` an den Banner übergeben:
 
 | Datei | Änderung |
 |-------|----------|
-| `src/hooks/useUserRelevanceContext.ts` | Query-Fix (`user_id` statt `id`) + `missingProfileFields` Array |
-| `src/types/relevanceMatrix.ts` | `missingProfileFields?: string[]` zum Interface |
-| `src/components/supplements/MissingBloodworkBanner.tsx` | Intelligentere Anzeige mit konkreten Hinweisen |
-| `src/components/supplements/SupplementInventory.tsx` | Props durchreichen |
+| `src/lib/supplementDeduplication.ts` | Patterns erweitern (Ca-AKG, NR, etc.) |
+| `src/hooks/useDynamicallySortedSupplements.ts` | Gruppierung nach Base-Name aktivieren |
+| `src/components/supplements/SupplementGroupRow.tsx` | **NEU** - Expandierbare Gruppen-Komponente |
+| `src/components/supplements/SupplementInventory.tsx` | Gruppierte Anzeige statt flache Liste |
+| **DB Migration/Script** | Duplikate konsolidieren |
 
 ---
 
-## Erwartetes Ergebnis
+## Vorteile
 
-**Dein Profil (komplett, keine Blutwerte):**
-- Meldung: "🔬 Blutwerte fehlen"
-- Text: "Für personalisierte Empfehlungen basierend auf deinen Biomarkern, lade dein Blutbild hoch."
-- Link: → /bloodwork
+| Aspekt | Vorher | Nachher |
+|--------|--------|---------|
+| Einträge | 111 (mit Duplikaten) | ~60-70 Base-Wirkstoffe |
+| Klarheit | Verwirrend (CaAKG + Ca-AKG Rejuvant) | Eindeutig (Ca-AKG → Produkte) |
+| Produkt-Auswahl | Versteckt im Chip | Prominent bei Varianten-Wahl |
+| Chip-Anzeige | "Ca-AKG (Rejuvant)" | "Ca-AKG · MoleQlar" |
 
-**User ohne Alter/Gewicht:**
-- Meldung: "👤 Profil unvollständig"
-- Text: "Ergänze Alter, Gewicht für bessere Empfehlungen."
-- Link: → /profile
+---
 
-**User mit allem:**
-- Kein Banner
+## Reihenfolge der Implementierung
 
+1. **Deduplizierungs-Patterns erweitern** (supplementDeduplication.ts)
+2. **Hook anpassen** für gruppierte Rückgabe
+3. **SupplementGroupRow** Komponente erstellen
+4. **SupplementInventory** auf Gruppen umstellen
+5. **(Optional) DB-Cleanup** für saubere Daten
+
+Soll ich mit Schritt 1 starten (Patterns erweitern + Hook-Gruppierung)?
