@@ -75,7 +75,7 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl flex flex-col">
         <SheetHeader className="pb-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -95,7 +95,7 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
           </div>
         </SheetHeader>
 
-        <div className="space-y-5 overflow-y-auto pb-8">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-5 pb-8">
           {/* Beschreibung */}
           {item.description && (
             <div>
