@@ -1,47 +1,44 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Building2, Target, FlaskConical, Loader2 } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SupplementToggleRow } from './SupplementToggleRow';
 import { SupplementDetailSheet } from './SupplementDetailSheet';
-import { useSupplementLibrary, useUserStack } from '@/hooks/useSupplementLibrary';
-import { useSupplementToggle } from '@/hooks/useSupplementLibrary';
+import { useUserStack, useSupplementToggle } from '@/hooks/useSupplementLibrary';
+import { useDynamicallySortedSupplements, type ScoredSupplementItem } from '@/hooks/useDynamicallySortedSupplements';
 import { META_CATEGORIES, type MetaCategoryKey } from '@/lib/categoryMapping';
-import {
-  NECESSITY_TIER_CONFIG,
-  type NecessityTier,
-  type SupplementLibraryItem,
-  type UserStackItem,
-} from '@/types/supplementLibrary';
+import { DYNAMIC_TIER_CONFIG, getDynamicTier } from '@/lib/calculateRelevanceScore';
+import type { DynamicTier } from '@/types/relevanceMatrix';
+import type { SupplementLibraryItem, UserStackItem } from '@/types/supplementLibrary';
 
 interface SupplementInventoryProps {
   groupedByCategory: Record<string, UserStackItem[]>;
   onAdd?: () => void;
 }
 
-// Tier icons for navigation
-const TIER_ICONS: Record<NecessityTier, React.ElementType> = {
-  essential: Building2,
-  optimizer: Target,
-  specialist: FlaskConical,
+// Icons for dynamic tiers
+const TIER_ICONS: Record<DynamicTier, string> = {
+  essential: '🚨',
+  optimizer: '🎯',
+  niche: '💭',
 };
 
 /**
- * SupplementInventory - Blueprint Tab (Premium UX v2)
- * Shows the master supplement library grouped by tier with toggle activation
+ * SupplementInventory - Blueprint Tab (Premium UX v3)
+ * Shows supplements grouped by CALCULATED DYNAMIC TIER based on user context
  */
 export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
   groupedByCategory,
   onAdd,
 }) => {
-  const [activeTier, setActiveTier] = useState<NecessityTier>('essential');
+  const [activeTier, setActiveTier] = useState<DynamicTier>('essential');
   const [activeMetaCategory, setActiveMetaCategory] = useState<MetaCategoryKey | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [detailItem, setDetailItem] = useState<SupplementLibraryItem | null>(null);
 
-  // Fetch master library and user stack
-  const { data: library, isLoading: libraryLoading } = useSupplementLibrary();
+  // Use dynamic scoring hook instead of static library
+  const { essentials, optimizers, niche, tierCounts, isLoading: libraryLoading } = useDynamicallySortedSupplements();
   const { data: userStack } = useUserStack();
   const { toggleSupplement, isToggling } = useSupplementToggle();
 
@@ -54,36 +51,23 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
     );
   }, [userStack]);
 
-  // Group library by tier
-  const groupedByTier = useMemo(() => {
-    const groups: Record<NecessityTier, SupplementLibraryItem[]> = {
-      essential: [],
-      optimizer: [],
-      specialist: [],
-    };
-
-    (library || []).forEach((item) => {
-      // Defensive: Map unknown tiers to 'specialist'
-      let tier = item.necessity_tier || 'optimizer';
-      if (!(tier in groups)) {
-        tier = 'specialist';
-      }
-      groups[tier as NecessityTier].push(item);
-    });
-
-    // Sort each tier by impact score (descending)
-    Object.keys(groups).forEach((tier) => {
-      groups[tier as NecessityTier].sort(
-        (a, b) => (b.impact_score || 0) - (a.impact_score || 0)
-      );
-    });
-
-    return groups;
-  }, [library]);
+  // Get items for active tier (dynamically grouped)
+  const tierItems = useMemo((): ScoredSupplementItem[] => {
+    switch (activeTier) {
+      case 'essential':
+        return essentials;
+      case 'optimizer':
+        return optimizers;
+      case 'niche':
+        return niche;
+      default:
+        return [];
+    }
+  }, [activeTier, essentials, optimizers, niche]);
 
   // Filter by meta category and search query
   const filteredSupplements = useMemo(() => {
-    let items = groupedByTier[activeTier] || [];
+    let items = tierItems;
     
     // Meta-Kategorie-Filter
     if (activeMetaCategory !== 'all') {
@@ -107,32 +91,35 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
     }
 
     return items;
-  }, [groupedByTier, activeTier, activeMetaCategory, searchQuery]);
+  }, [tierItems, activeMetaCategory, searchQuery]);
 
-  // Count active items per tier
-  const tierCounts = useMemo(() => {
-    const counts: Record<NecessityTier, { total: number; active: number }> = {
-      essential: { total: 0, active: 0 },
-      optimizer: { total: 0, active: 0 },
-      specialist: { total: 0, active: 0 },
+  // Count active items per dynamic tier
+  const dynamicTierCounts = useMemo(() => {
+    const counts: Record<DynamicTier, { total: number; active: number }> = {
+      essential: { total: essentials.length, active: 0 },
+      optimizer: { total: optimizers.length, active: 0 },
+      niche: { total: niche.length, active: 0 },
     };
 
-    Object.entries(groupedByTier).forEach(([tier, items]) => {
-      counts[tier as NecessityTier].total = items.length;
-      counts[tier as NecessityTier].active = items.filter((item) =>
-        activeSupplementIds.has(item.id)
-      ).length;
+    essentials.forEach(item => {
+      if (activeSupplementIds.has(item.id)) counts.essential.active++;
+    });
+    optimizers.forEach(item => {
+      if (activeSupplementIds.has(item.id)) counts.optimizer.active++;
+    });
+    niche.forEach(item => {
+      if (activeSupplementIds.has(item.id)) counts.niche.active++;
     });
 
     return counts;
-  }, [groupedByTier, activeSupplementIds]);
+  }, [essentials, optimizers, niche, activeSupplementIds]);
 
   // Handle toggle
-  const handleToggle = async (item: SupplementLibraryItem, activate: boolean) => {
+  const handleToggle = async (item: ScoredSupplementItem, activate: boolean) => {
     await toggleSupplement(item, activate);
   };
 
-  const currentConfig = NECESSITY_TIER_CONFIG[activeTier];
+  const currentConfig = DYNAMIC_TIER_CONFIG[activeTier];
 
   return (
     <div className="space-y-4">
@@ -147,12 +134,11 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
         />
       </div>
 
-      {/* Tier Pills (Horizontal Scrollable) */}
+      {/* Dynamic Tier Pills (Horizontal Scrollable) */}
       <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-2 -mx-1 px-1 scrollbar-hide">
-        {(Object.keys(NECESSITY_TIER_CONFIG) as NecessityTier[]).map((tier) => {
-          const config = NECESSITY_TIER_CONFIG[tier];
-          const Icon = TIER_ICONS[tier];
-          const counts = tierCounts[tier];
+        {(Object.keys(DYNAMIC_TIER_CONFIG) as DynamicTier[]).map((tier) => {
+          const config = DYNAMIC_TIER_CONFIG[tier];
+          const counts = dynamicTierCounts[tier];
 
           return (
             <button
@@ -165,8 +151,8 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
                   : "bg-card text-muted-foreground border-border hover:bg-card/80"
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{config.shortLabel || config.label.split(' ')[0]}</span>
+              <span className="text-base">{config.icon}</span>
+              <span className="hidden sm:inline">{config.shortLabel}</span>
               <span className="text-xs opacity-70">
                 {counts.active}/{counts.total}
               </span>
@@ -235,7 +221,7 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
               ? `Keine Ergebnisse für "${searchQuery}"`
               : activeMetaCategory !== 'all'
               ? `Keine ${META_CATEGORIES[activeMetaCategory].shortLabel} in ${currentConfig.shortLabel}`
-              : `Keine ${currentConfig.shortLabel || currentConfig.label} verfügbar`}
+              : `Keine ${currentConfig.shortLabel} verfügbar`}
           </div>
         ) : (
           filteredSupplements.map((item) => (

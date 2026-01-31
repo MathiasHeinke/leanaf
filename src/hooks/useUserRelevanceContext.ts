@@ -177,6 +177,15 @@ export function useUserRelevanceContext(): {
     // Get active peptide classes
     const activePeptideClasses = getPeptideCategories(activePeptideNames);
     
+    // Estimate daily protein per kg based on available data
+    // TODO: Connect to actual nutrition logs when available
+    let estimatedProteinPerKg = 1.5; // Baseline
+    if (phase === 3) estimatedProteinPerKg = 1.8; // Mastery phase
+    if (profile?.goal_type === 'muscle_gain') estimatedProteinPerKg = 2.0;
+    if (protocolModes.includes('enhanced') || protocolModes.includes('clinical')) {
+      estimatedProteinPerKg = 2.2; // Higher protein needs with peptides/TRT
+    }
+    
     return {
       isTrueNatural,
       isEnhancedNoTRT,
@@ -195,6 +204,7 @@ export function useUserRelevanceContext(): {
       activePeptides: activePeptideNames,
       goal: profile?.goal_type || dailyGoals?.goal_type || 'maintenance',
       bloodworkFlags,
+      dailyProteinPerKg: estimatedProteinPerKg,
     };
   }, [user?.id, profile, protocolStatus, peptideProtocols, bloodwork, dailyGoals]);
   

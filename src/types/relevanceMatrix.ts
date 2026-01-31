@@ -80,7 +80,25 @@ export interface UserRelevanceContext {
   activePeptides: string[];   // ['retatrutide', 'bpc_157', etc.]
   goal: string;               // 'fat_loss', 'muscle_gain', etc.
   bloodworkFlags: string[];   // ['cortisol_high', 'hdl_low', etc.]
+  
+  // Nutritional context (for BCAA/EAA logic)
+  dailyProteinPerKg?: number; // Estimated protein intake per kg bodyweight
 }
+
+/**
+ * Marker flags for special supplement categories
+ * Used for targeted modifiers (T-booster penalty, BCAA penalty, etc.)
+ */
+export interface SupplementMarkers {
+  isNaturalTestoBooster?: boolean;
+  isBCAA?: boolean;
+  isEAA?: boolean;
+}
+
+/**
+ * Dynamic tier based on calculated score
+ */
+export type DynamicTier = 'essential' | 'optimizer' | 'niche';
 
 /**
  * Result of relevance score calculation
@@ -88,6 +106,7 @@ export interface UserRelevanceContext {
 export interface RelevanceScoreResult {
   score: number;              // Final score (0-10, clamped)
   baseScore: number;          // Original impact_score before modifiers
+  dynamicTier: DynamicTier;   // Calculated tier based on final score
   reasons: string[];          // Human-readable reasons for modifiers
   warnings: string[];         // Important warnings (e.g., "TRT makes this redundant")
   isPersonalized: boolean;    // Whether user context was applied
