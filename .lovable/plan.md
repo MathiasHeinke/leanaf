@@ -1,239 +1,161 @@
 
-# Import-Erweiterung auf alle 76 Felder (3 Tabellen)
+# Datenbank-Anreicherung: Vollstaendige Abdeckung
 
-## Analyse der 76 Felder
+## Aktuelle Situation
 
-Die Dokumentation zeigt folgende Verteilung:
+Nach Analyse der Datenbank:
 
-| Kategorie | Felder | Ziel-Tabelle |
-|-----------|--------|--------------|
-| Identifikation | 3 | products, database |
-| Marke | 9 | **brands** |
-| Preise | 5 | products, database |
-| Dosierung | 10 | products, database |
-| Quality Big8 | 8 | products |
-| Quality Detail | 8 | products, database |
-| Scores | 5 | products, database |
-| Klassifikation | 7 | database |
-| Timing | 4 | products, database |
-| Interaktionen | 3 | database |
-| Flags | 6 | products |
-| URLs | 6 | products |
-| Meta | 3 | products |
-
----
-
-## Fehlende Felder - Detaillierte Auflistung
-
-### 1. supplement_products - Noch fehlend (6 Felder)
-
-| JSON-Feld | DB-Spalte | Typ | Status |
-|-----------|-----------|-----|--------|
-| shop_url | product_url | text | Bereits gemappt (product_url) |
-| price | price_eur | numeric | Bereits gemappt |
-| origin | origin | text | Typ-Korrektur noetig (ist TEXT, nicht numeric) |
-
-Die `supplement_products` Tabelle ist fast vollstaendig abgedeckt.
-
-### 2. supplement_database - Updates hinzufuegen (14 Felder)
-
-| JSON-Feld | DB-Spalte | Typ |
-|-----------|-----------|-----|
-| synergies | synergies | text[] |
-| blockers | blockers | text[] |
-| cycling_protocol | cycling_protocol | text |
-| cycling_required | cycling_required | boolean |
-| impact_score | impact_score | numeric |
-| priority_score | priority_score | integer |
-| protocol_phase | protocol_phase | integer |
-| evidence_level | evidence_level | text |
-| necessity_tier | necessity_tier | text |
-| hallmarks_addressed | hallmarks_addressed | text[] |
-| cost_per_day_eur | cost_per_day_eur | numeric |
-| default_dosage | default_dosage | text |
-| default_unit | default_unit | text |
-| timing_constraint | timing_constraint | text |
-| form_quality | form_quality | text |
-
-### 3. supplement_brands - Updates hinzufuegen (7 Felder)
-
-| JSON-Feld | DB-Spalte | Typ |
-|-----------|-----------|-----|
-| brand_country | country | text |
-| brand_website | website | text |
-| brand_price_tier | price_tier | text |
-| brand_specialization | specialization | text[] |
-| brand_certifications | quality_certifications | text[] |
-| brand_quality_certifications | quality_certifications | text[] |
-
----
-
-## Implementierung
-
-### Schritt 1: Interface um alle 76 Felder erweitern
-
-```typescript
-interface EnrichedProduct {
-  // ... bestehende Felder ...
-  
-  // === NEU: supplement_database Felder ===
-  synergies?: string | string[];
-  blockers?: string | string[];
-  cycling_protocol?: string;
-  cycling_required?: boolean | string;
-  impact_score?: number;
-  priority_score?: number;
-  protocol_phase?: number;
-  evidence_level?: string;
-  necessity_tier?: string;
-  hallmarks_addressed?: string | string[];
-  cost_per_day_eur?: number;
-  default_dosage?: string;
-  default_unit?: string;
-  timing_constraint?: string;
-  form_quality?: string;
-  supplement_category?: string;
-  
-  // === NEU: supplement_brands Felder ===
-  brand_country?: string;
-  brand_website?: string;
-  brand_price_tier?: string;
-  brand_specialization?: string | string[];
-  brand_certifications?: string | string[];
-  brand_quality_certifications?: string | string[];
-  
-  // === NEU: Fehlende Produkt-Felder ===
-  shop_url?: string;
-  price?: number;
-  currency?: string;
-}
-```
-
-### Schritt 2: supplement_database Updates
-
-Nach dem Product-Upsert wird `supplement_database` aktualisiert:
-
-```typescript
-// Check ob relevante supplement_database Daten vorhanden sind
-function hasSupplementData(product: EnrichedProduct): boolean {
-  return !!(
-    product.synergies ||
-    product.blockers ||
-    product.cycling_protocol ||
-    product.impact_score ||
-    product.priority_score ||
-    product.cost_per_day_eur ||
-    product.evidence_level ||
-    product.hallmarks_addressed
-  );
-}
-
-// Update supplement_database
-if (supplementId && hasSupplementData(product)) {
-  await supabase
-    .from('supplement_database')
-    .update({
-      synergies: parseStringArray(product.synergies),
-      blockers: parseStringArray(product.blockers),
-      cycling_protocol: sanitizeValue(product.cycling_protocol),
-      cycling_required: parseBoolean(product.cycling_required),
-      impact_score: parseNumber(product.impact_score),
-      priority_score: parseNumber(product.priority_score),
-      protocol_phase: parseNumber(product.protocol_phase),
-      evidence_level: sanitizeValue(product.evidence_level),
-      necessity_tier: sanitizeValue(product.necessity_tier),
-      hallmarks_addressed: parseStringArray(product.hallmarks_addressed),
-      cost_per_day_eur: parseNumber(product.cost_per_day_eur),
-      default_dosage: sanitizeValue(product.default_dosage),
-      default_unit: sanitizeValue(product.default_unit),
-      timing_constraint: sanitizeValue(product.timing_constraint),
-      form_quality: sanitizeValue(product.form_quality),
-    })
-    .eq('id', supplementId);
-  
-  supplementsUpdated++;
-}
-```
-
-### Schritt 3: supplement_brands Updates
-
-Marken-Daten werden bei Bedarf aktualisiert:
-
-```typescript
-function hasBrandData(product: EnrichedProduct): boolean {
-  return !!(
-    product.brand_country ||
-    product.brand_website ||
-    product.brand_price_tier ||
-    product.brand_specialization ||
-    product.brand_certifications
-  );
-}
-
-if (brandId && hasBrandData(product)) {
-  await supabase
-    .from('supplement_brands')
-    .update({
-      country: sanitizeValue(product.brand_country),
-      website: sanitizeValue(product.brand_website),
-      price_tier: sanitizeValue(product.brand_price_tier),
-      specialization: parseStringArray(product.brand_specialization),
-      quality_certifications: parseStringArray(product.brand_certifications) 
-        || parseStringArray(product.brand_quality_certifications),
-    })
-    .eq('id', brandId);
-  
-  brandsUpdated++;
-}
-```
-
-### Schritt 4: Response erweitern
-
-```typescript
-return new Response(
-  JSON.stringify({
-    success: true,
-    batch_name,
-    results: {
-      products_imported: imported,
-      products_updated: updated,
-      supplements_updated: supplementsUpdated,  // NEU
-      brands_updated: brandsUpdated,            // NEU
-      skipped,
-      errors: errors.slice(0, 10),
-    },
-    database_totals: { ... },
-  }),
-  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-);
-```
-
----
-
-## Zusammenfassung
-
-| Aenderung | Beschreibung |
-|-----------|--------------|
-| Interface erweitern | +23 neue Felder im EnrichedProduct Interface |
-| supplement_database Updates | 15 Felder werden nach supplement_database geschrieben |
-| supplement_brands Updates | 5 Felder werden nach supplement_brands geschrieben |
-| Response erweitern | Neue Counter fuer supplements_updated, brands_updated |
-| Typ-Korrektur origin | Von parseNumber zu sanitizeValue (ist TEXT in DB) |
-
-### Datei-Aenderungen
-
-1. `supabase/functions/import-enriched-products/index.ts`
-   - Interface um 23 neue Felder erweitern
-   - Helper-Funktionen `hasSupplementData()` und `hasBrandData()`
-   - Update-Logik fuer supplement_database
-   - Update-Logik fuer supplement_brands
-   - Erweiterte Response mit neuen Countern
-
-### Ergebnis
-
-| Tabelle | Vorher | Nachher |
+| Problem | Status | Loesung |
 |---------|--------|---------|
-| supplement_products | ~48 Felder | 54 Felder (100%) |
-| supplement_database | 0 Updates | 15 Felder |
-| supplement_brands | 0 Updates | 5 Felder |
-| **Gesamt** | ~48 | **76 Felder (100%)** |
+| 178 Produkte ohne `supplement_id` | Unverknuepft | Keyword-Matcher erweitern + rerun |
+| `synergies` Felder leer (99%) | Leere Arrays `{}` | Aus `supplementInteractions.ts` befuellen |
+| `blockers` Felder leer (100%) | Leere Arrays `{}` | Aus `supplementInteractions.ts` befuellen |
+| `cycling_protocol` leer | null | Statische Daten einfuegen |
+| 2 leere Brands | Keine Produkte | Aufraemen |
+| 36 verwaiste Supplements | Keine Produktlinks | Zu erwarten bei Spezial-Wirkstoffen |
+
+---
+
+## Loesung: Neue Edge Function `enrich-supplement-data`
+
+Eine einzige Function die alle drei Probleme loest:
+
+### Task 1: Produkt-Linking
+
+Erweiterte Keyword-Matching-Logik (bereits in `run-matrix-import` vorhanden):
+
+```typescript
+// Nutze die MANUAL_OVERRIDES aus run-matrix-import
+// Matche supplement_products.ingredients gegen supplement_database.name
+// Update supplement_id fuer alle unverknuepften Produkte
+
+// Beispiel: "vit_b_complex" in ingredients -> findet "Vitamin B-Komplex" in DB
+```
+
+### Task 2: Synergies und Blockers aus TypeScript-Daten
+
+Die Daten existieren bereits in `src/data/supplementInteractions.ts`:
+
+```typescript
+// SYNERGIES Array:
+{ supplements: ['Vitamin D3', 'Vitamin K2', 'Magnesium'], reason: '...', importance: 'pflicht' }
+{ supplements: ['NMN', 'TMG (Betain)'], reason: '...', importance: 'pflicht' }
+// ... 10 Eintraege
+
+// BLOCKERS Array:
+{ supplement: 'Eisen', blockers: ['Kaffee', 'Tee', 'Milch', 'Kalzium'], severity: 'kritisch' }
+{ supplement: 'Zink', blockers: ['Phytate', 'Kalzium', 'Eisen'], severity: 'moderat' }
+// ... 8 Eintraege
+```
+
+Die Function importiert diese Daten direkt in `supplement_database.synergies` und `supplement_database.blockers`.
+
+### Task 3: Cleanup
+
+- Leere Brands loeschen (`amazon-generic`, `nordic-naturals`)
+- Deprecated-Produkte flaggen falls noetig
+
+---
+
+## Technische Umsetzung
+
+### Neue Edge Function: `enrich-supplement-data`
+
+```typescript
+// supabase/functions/enrich-supplement-data/index.ts
+
+serve(async (req) => {
+  const { task } = await req.json();
+  // task: 'link_products' | 'sync_interactions' | 'cleanup' | 'all'
+  
+  switch (task) {
+    case 'link_products':
+      // 1. Hole alle Produkte ohne supplement_id
+      // 2. Parse ingredients Feld
+      // 3. Matche gegen MANUAL_OVERRIDES + supplement_database.name
+      // 4. Update supplement_id
+      break;
+      
+    case 'sync_interactions':
+      // 1. SYNERGIES_DATA als konstante (aus supplementInteractions.ts)
+      // 2. BLOCKERS_DATA als konstante
+      // 3. Fuer jeden Eintrag: Finde Supplement in DB
+      // 4. Update synergies/blockers Arrays
+      break;
+      
+    case 'cleanup':
+      // 1. Loesche Brands ohne Produkte
+      // 2. Optional: Deprecated-Flag fuer verwaiste Produkte
+      break;
+      
+    case 'all':
+      // Alle drei Tasks sequentiell
+      break;
+  }
+});
+```
+
+### Synergies/Blockers Datenstruktur
+
+Die Function enthaelt die Daten direkt (Copy aus supplementInteractions.ts):
+
+```typescript
+const SYNERGIES_MAP: Record<string, string[]> = {
+  'Vitamin D3': ['Vitamin K2', 'Magnesium'],
+  'Vitamin K2': ['Vitamin D3', 'Magnesium'],
+  'Magnesium': ['Vitamin D3', 'Vitamin K2'],
+  'NMN': ['TMG', 'Resveratrol'],
+  'Curcumin': ['Piperin'],
+  'Kollagen': ['Vitamin C'],
+  'Eisen': ['Vitamin C'],
+  'PQQ': ['CoQ10', 'Ubiquinol'],
+  'Zink': ['Kupfer'],
+  "Lion's Mane": ['Alpha-GPC'],
+  'Omega-3': ['Vitamin E'],
+  'Kreatin': ['Kohlenhydrate'],
+};
+
+const BLOCKERS_MAP: Record<string, string[]> = {
+  'Eisen': ['Kaffee', 'Tee', 'Milch', 'Kalzium', 'Phytate'],
+  'Zink': ['Phytate', 'Kalzium', 'Eisen'],
+  'Kalzium': ['Eisen', 'Zink', 'Magnesium'],
+  '5-HTP': ['SSRIs', 'MAO-Hemmer', 'Tramadol'],
+  'Berberin': ['Metformin'],
+};
+```
+
+---
+
+## Erwartetes Ergebnis
+
+| Metrik | Vorher | Nachher |
+|--------|--------|---------|
+| Produkte mit supplement_id | 572 (76%) | ~720 (96%) |
+| Supplements mit synergies | 1 (1%) | ~40 (35%) |
+| Supplements mit blockers | 0 (0%) | ~20 (17%) |
+| Leere Brands | 2 | 0 |
+
+---
+
+## Dateiaenderungen
+
+1. **NEU: `supabase/functions/enrich-supplement-data/index.ts`**
+   - Drei Tasks: link_products, sync_interactions, cleanup
+   - MANUAL_OVERRIDES aus run-matrix-import uebernehmen
+   - SYNERGIES_MAP und BLOCKERS_MAP Konstanten
+   - Fuzzy-Matching fuer supplement_database Namen
+
+2. **Frontend Trigger (optional)**
+   - Button auf `/admin/seed-supplements` hinzufuegen
+   - Oder manuell via curl/Supabase Dashboard aufrufen
+
+---
+
+## Ablauf
+
+1. Edge Function deployen
+2. Aufruf mit `{ "task": "all" }` - fuehrt alle drei Tasks aus
+3. Response zeigt:
+   - Anzahl verknuepfter Produkte
+   - Anzahl aktualisierter Synergies/Blockers
+   - Geloeschte Brands
