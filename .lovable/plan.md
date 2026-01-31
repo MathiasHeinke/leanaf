@@ -1,115 +1,124 @@
 
-# Fix: SupplementGroupRow UI & Deduplizierungs-Probleme
+# Fix: Supplement-Duplikate über alle Tiers hinweg
 
-## Identifizierte Probleme
+## Problem-Zusammenfassung
 
-### 1. "Im Stack" Badge redundant
-Der Badge bei Zeile 166-170 in `SupplementGroupRow.tsx` ist überflüssig - der Switch zeigt bereits den Status.
+**Das System zeigt identische Substanzen mehrfach in verschiedenen Listen:**
 
-### 2. Namen werden abgeschnitten
-`truncate` auf Zeile 128 kürzt die Namen. Beispiele: "Elekt...", "Ome...", "Vita..."
+| Substanz | Essential (Score 10) | Optimizer (Score 8.5) | Niche (Score 5.0) |
+|----------|---------------------|----------------------|-------------------|
+| Creatin | `Creatine Monohydrat` ✓ | — | `Creatin` ✓ |
+| Omega-3 | `Omega-3 (EPA/DHA)` ✓ | — | `Omega-3` ✓ |
+| Vitamin D | `Vitamin D3 + K2` ✓ | — | `Vitamin D3`, `Vitamin D Balance`, `Vitamin D3 + K2 MK7 Tropfen` ✓ |
+| HMB | — | `HMB` ✓ | `HMB 3000` ✓ |
+| GlyNAC | — | `GlyNAC` ✓ | `GLY-NAC` ✓ |
 
-**Lösung:** `truncate` entfernen, stattdessen mehr Platz für Namen lassen.
+**Ursachen:**
 
-### 3. Zink zeigt keine Gruppe
-**Problem:** Datenbank hat 3 Einträge:
-- `Zink` 
-- `Zink Bisglycinat`
-- `Zinc Complex` ← Englische Schreibweise matcht NICHT mit `^zink/i`
+1. **Datenbank-Duplikate**: Die `supplement_database` enthält mehrere Einträge für dieselbe Substanz mit unterschiedlichen Namen und Impact-Scores
+2. **Gruppierung NACH Tier-Aufteilung**: Die aktuelle Logik:
+   - Berechnet Scores für alle 111 Supplements
+   - Teilt in 3 Tiers auf (Essential/Optimizer/Niche)
+   - Gruppiert erst **danach innerhalb jedes Tiers**
 
-**Lösung:** Pattern in `supplementDeduplication.ts` erweitern:
-```typescript
-// Vorher:
-{ pattern: /^zink/i, baseName: 'Zink' },
+Das bedeutet: `Creatin` (Score 5.0 → Niche) und `Creatine Monohydrat` (Score 10.0 → Essential) werden NIE zusammen gruppiert!
 
-// Nachher:
-{ pattern: /^zink|^zinc/i, baseName: 'Zink' },
+---
+
+## Lösung: Gruppierung VOR Tier-Zuweisung
+
+**Neuer Flow:**
+
+```text
+VORHER (falsch):
+Alle Items → Score berechnen → In Tiers aufteilen → Pro Tier gruppieren
+                                      ↓
+                            [Duplikate in mehreren Tiers]
+
+NACHHER (korrekt):
+Alle Items → Score berechnen → Nach BaseName gruppieren → Tier basierend auf TOP-Score
+                                      ↓
+                            [Eine Gruppe pro Substanz, im richtigen Tier]
 ```
-
-### 4. Magnesium zeigt nur 2 statt 4 Varianten
-**Problem:** Die 4 DB-Einträge sind in VERSCHIEDENEN TIERS:
-- Essential: `Magnesium`, `Magnesium Glycinat` (vermutlich durch Scoring)
-- Optimizer: `Magnesium Komplex 11 Ultra`, `Magnesiumcitrat`
-
-Die Gruppierung erfolgt NACH der Tier-Sortierung, daher werden nur Varianten im selben Tier gruppiert.
-
-**Lösung:** Dies ist eigentlich korrektes Verhalten - Varianten mit niedrigerem Score erscheinen im Optimizer-Tab. Aber für bessere UX könnte man alle Magnesium-Varianten als eine Gruppe zeigen, unabhängig vom Tier.
 
 ---
 
 ## Technische Änderungen
 
-### Datei 1: `src/components/supplements/SupplementGroupRow.tsx`
+### Datei 1: `src/hooks/useDynamicallySortedSupplements.ts`
 
-**Änderung A: "Im Stack" Badge entfernen (Zeile 166-170)**
+**Kernänderung: Gruppierung ZUERST, dann Tier-Zuweisung**
+
 ```typescript
-// ENTFERNEN:
-{hasActiveVariant && (
-  <span className="hidden sm:inline text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded whitespace-nowrap">
-    Im Stack
-  </span>
-)}
-```
-
-**Änderung B: Name nicht abschneiden (Zeile 128)**
-```typescript
-// Vorher:
-<span className="font-medium text-sm truncate">{baseName}</span>
-
-// Nachher:
-<span className="font-medium text-sm">{baseName}</span>
-```
-
-**Änderung C: Flex-Layout anpassen für mehr Platz**
-```typescript
-// Content-Container breiter machen, Score-Badge kompakter
-<div className="flex items-center gap-1.5 flex-wrap">
-  <span className="font-medium text-sm">{baseName}</span>
-  {getScoreBadge(topVariant)}
+// VORHER (Zeile 186-201):
+// 3. Group into dynamic tiers (ITEMS)
+for (const item of scoredItems) {
+  const tier = item.scoreResult.dynamicTier;
+  if (tier === 'essential') result.essentials.push(item);
   ...
-</div>
+}
+// 4. Create base-name groups for each tier (TOO LATE!)
+result.essentialGroups = groupByBaseNameWithScores(result.essentials, 'essential');
+
+// NACHHER:
+// 3. ZUERST alle Items nach BaseName gruppieren
+const allGroups = groupByBaseNameWithScores(scoredItems);
+
+// 4. DANN Gruppen in Tiers aufteilen basierend auf TOP-Score
+for (const group of allGroups) {
+  const topScore = group.topScore;
+  if (topScore >= 9.0) {
+    group.dynamicTier = 'essential';
+    result.essentialGroups.push(group);
+  } else if (topScore >= 6.0) {
+    group.dynamicTier = 'optimizer';
+    result.optimizerGroups.push(group);
+  } else {
+    group.dynamicTier = 'niche';
+    result.nicheGroups.push(group);
+  }
+}
 ```
+
+**Vorteile:**
+- `Creatin` (5.0) + `Creatine Monohydrat` (10.0) → Eine "Creatin"-Gruppe mit Score 10.0 → Essential
+- `Omega-3` (5.0) + `Omega-3 (EPA/DHA)` (9.2) → Eine "Omega-3"-Gruppe mit Score 9.2 → Essential
+- Alle Vitamin-D-Varianten in EINER Gruppe
 
 ### Datei 2: `src/lib/supplementDeduplication.ts`
 
-**Pattern für Zink erweitern (Zeile 13):**
+**Zusätzliche Patterns für besseres Matching:**
+
 ```typescript
-// Vorher:
-{ pattern: /^zink/i, baseName: 'Zink' },
+// GlyNAC-Varianten zusammenfassen
+{ pattern: /^gly[- ]?nac/i, baseName: 'GlyNAC' },
 
-// Nachher:
-{ pattern: /^zink|^zinc/i, baseName: 'Zink' },
-```
-
-**Pattern für Omega-3 erweitern (Zeile 31):**
-```typescript
-// Vorher:
-{ pattern: /^omega[- ]?3/i, baseName: 'Omega-3' },
-
-// Nachher:  
-{ pattern: /^omega[- ]?3|fisch[öo]l|fish[- ]?oil/i, baseName: 'Omega-3' },
-```
-
-**Pattern für Vitamin D erweitern:**
-```typescript
-// Vorher:
-{ pattern: /^vitamin\s*d/i, baseName: 'Vitamin D' },
-
-// Nachher - auch D3, D3+K2 erfassen:
-{ pattern: /^vitamin\s*d|^d3\b/i, baseName: 'Vitamin D' },
+// Creatine/Kreatin alle Schreibweisen
+{ pattern: /^creatin|^kreatin/i, baseName: 'Creatin' },
 ```
 
 ---
 
-## Erwartetes Ergebnis
+## Erwartetes Ergebnis nach Fix
 
-| Vorher | Nachher |
-|--------|---------|
-| "Elekt..." + "Im Stack" | "Elektrolyte" |
-| "Ome..." + "Im Stack" | "Omega-3" |
-| "Vita..." + "Im Stack" | "Vitamin D3 + K2" |
-| Zink ohne Gruppe | Zink → 3 Varianten |
-| Magnesium 2 Varianten | Bleibt 2 im Essential, 2 im Optimizer |
+### Essential Tab (Score ≥ 9.0):
+| Gruppe | Varianten | Top-Score |
+|--------|-----------|-----------|
+| Creatin | `Creatine Monohydrat`, `Creatin` | 10.0 |
+| Omega-3 | `Omega-3 (EPA/DHA)`, `Omega-3` | 10.0 |
+| Vitamin D | `Vitamin D3 + K2`, `Vitamin D3`, `Vitamin D Balance`, `Vitamin D3 + K2 MK7 Tropfen` | 10.0 |
+| Elektrolyte | ... | 10.0 |
+
+### Optimizer Tab (Score 6.0-8.9):
+| Gruppe | Varianten | Top-Score |
+|--------|-----------|-----------|
+| HMB | `HMB`, `HMB 3000` | 8.5 |
+| GlyNAC | `GlyNAC`, `GLY-NAC` | 8.5 |
+| Kollagen | ... | 8.5 |
+
+### Niche Tab (Score < 6.0):
+- Nur Substanzen die WIRKLICH niedrige Scores haben
+- Keine "Phantom-Duplikate" mehr
 
 ---
 
@@ -117,5 +126,30 @@ Die Gruppierung erfolgt NACH der Tier-Sortierung, daher werden nur Varianten im 
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/supplements/SupplementGroupRow.tsx` | "Im Stack" entfernen, `truncate` entfernen, Layout anpassen |
-| `src/lib/supplementDeduplication.ts` | Patterns für Zink, Omega-3, Vitamin D erweitern |
+| `src/hooks/useDynamicallySortedSupplements.ts` | Gruppierung VOR Tier-Zuweisung; Tier basiert auf Group-Top-Score |
+| `src/lib/supplementDeduplication.ts` | Pattern für GlyNAC hinzufügen |
+
+---
+
+## Optional: DB-Cleanup (Empfohlen)
+
+Nach dem Frontend-Fix sollten auch die echten Duplikate in der Datenbank konsolidiert werden:
+
+```sql
+-- Beispiel: Creatin-Duplikat zusammenführen
+-- 1. Produkte auf den aktiven Eintrag umhängen
+UPDATE supplement_products
+SET supplement_id = 'b8f4c710-8562-44ee-9bb4-45e624fcc3d6'  -- Creatin (mit 21 Produkten)
+WHERE supplement_id = '9fe98fee-961b-4e71-bbcd-a09c95e6f3f8'; -- Creatine Monohydrat (Orphan)
+
+-- 2. Impact-Score auf den höheren Wert setzen
+UPDATE supplement_database
+SET impact_score = 9.8
+WHERE id = 'b8f4c710-8562-44ee-9bb4-45e624fcc3d6';
+
+-- 3. Orphan löschen (optional)
+DELETE FROM supplement_database
+WHERE id = '9fe98fee-961b-4e71-bbcd-a09c95e6f3f8';
+```
+
+Dies ist aber nicht zwingend - der Frontend-Fix löst das visuelle Problem sofort.
