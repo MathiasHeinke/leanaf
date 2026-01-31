@@ -1,183 +1,196 @@
 
-# ARES Matrix-Optimierung: Quick Wins Umsetzung
+# ARES Relevance Matrix: Dokumentation und Export-Optimierung
 
-## Analyse-Ergebnis (basierend auf PDF)
+## Ziel
 
-Die Matrix mit 111 Wirkstoffen zeigt 6 kritische Problembereiche. Folgende Quick Wins werden SOFORT umgesetzt:
-
----
-
-## Quick Win 1: Duplikate bereinigen (SQL-Migrations-Script)
-
-| Wirkstoff | Zu entfernende Duplikate | Behalten |
-|-----------|--------------------------|----------|
-| NMN | `NMN (Nicotinamid Mononukleotid)` (5.0), `NMN sublingual` (5.5) | `NMN` (9.0, specialist) |
-| Magnesium | `Magnesium` (5.0), `Magnesiumcitrat` (5.0), `Magnesium Komplex 11` (5.0) | `Magnesium Glycinat` (9.5, essential) |
-| Creatin | `Creatin` (5.0) | `Creatine Monohydrat` (9.8, essential) |
-| Omega-3 | `Omega-3` (5.0) | `Omega-3 (EPA/DHA)` (9.2, essential) |
-| Vitamin D | `Vitamin D3` (5.0), `Vitamin D Balance` (5.0), `Vitamin D3 + K2 MK7 Tropfen` (5.0) | `Vitamin D3 + K2` (9.0, essential) |
-| EAA | - | Beide behalten (EAA 8.5, EAA Komplex 8.0 - Produktvarianten) |
-| HMB | `HMB 3000` (5.0) | `HMB` (7.5, optimizer) |
-| Alpha-Liponsaeure | `Alpha-Ketoglutarat (AKG)` ist separate Substanz | Pruefen ob beide noetig |
-| CaAKG | `Ca-AKG (Rejuvant)` (6.0) | `CaAKG` (8.5, specialist) |
-| GlyNAC | `GLY-NAC` (5.0) | `GlyNAC` (8.5, specialist) |
-| Ashwagandha | `Ashwagandha` (5.0) | `Ashwagandha KSM-66` (7.8, optimizer) |
-| Alpha-Liponsaeure | `Alpha Liponsaeure` (7.5, antioxidant) | Pruefen gegenueber `Alpha-Liponsaeure` (6.8, Energie) |
-
-**Aktion**: SQL-Script erstellt, das `relevance_matrix` von Duplikaten auf NULL setzt (entfernt sie aus Matrix-Export, aber behaelt Produkt-Links)
+1. **Export-Card aktualisieren**: Beschreibung von "111 Wirkstoffe" auf die tatsaechliche Anzahl (~98 nach Cleanup) aendern
+2. **Matrix-Dokumentation erstellen**: Eine umfassende Erklaerung aller Matrix-Spalten und deren Bedeutung hinzufuegen, damit auch Aussenstehende die CSV sofort verstehen
+3. **CSV-Header mit Erklaerungen versehen**: Optional einen Kommentar-Block am Anfang der CSV einfuegen
 
 ---
 
-## Quick Win 2: Sprache vereinheitlichen
+## Aktuelle Matrix-Struktur nach Cleanup
 
-**Aktueller Stand**:
-- `evidence_level`: 60x `moderat`, 18x `moderate`, 22x `stark`, 11x `strong`
-
-**Mapping**:
-```text
-moderat   → moderate (60 Zeilen)
-stark     → strong (22 Zeilen)
-```
-
-**Aktion**: SQL UPDATE Statement
+| Kategorie | Aktueller Stand |
+|-----------|-----------------|
+| Gesamt mit Matrix | 98 Wirkstoffe |
+| Evidence Levels | `moderate` (65), `strong` (33) |
+| Tiers | `optimizer` (64), `specialist` (21), `essential` (13) |
+| Kategorien | 32 eindeutige (deutsch normalisiert) |
 
 ---
 
-## Quick Win 3: Kategorien normalisieren
+## Matrix-Spalten-Dokumentation (55 Spalten)
 
-**Aktueller Stand (42 unique Kategorien mit Mix)**:
-- `longevity` (8x) vs `Longevity` (2x)
-- `sleep` (1x) vs `Schlaf` (6x)
-- `brain` (2x) vs `cognitive` (1x)
-- `antioxidant` (3x) vs `Antioxidantien` (4x)
-- `sport` (5x) vs `Performance` (4x)
-- `metabolic` (1x) vs `Energie` (4x)
-- `recovery` (1x) vs `Muskelerhalt` (3x)
+### Basis-Daten (6 Spalten)
 
-**Mapping (Deutsch als Standard)**:
-```text
-longevity      → Longevity
-sleep          → Schlaf
-brain          → Kognition
-cognitive      → Kognition
-antioxidant    → Antioxidantien
-recovery       → Muskelerhalt
-specialized    → Spezialisiert
-musculoskeletal → Gelenke
-hormonal       → Hormone
-liver          → Leber
-```
+| Spalte | Beschreibung | Wertebereich |
+|--------|--------------|--------------|
+| `name` | Wirkstoffname (z.B. "Creatine Monohydrat") | Text |
+| `category` | Funktionskategorie (z.B. "Longevity", "Schlaf") | Text |
+| `impact_score` | Basis-Relevanz ohne Personalisierung | 0.0 - 10.0 |
+| `necessity_tier` | Wichtigkeitsstufe | essential, optimizer, specialist |
+| `evidence_level` | Wissenschaftliche Evidenz | moderate, strong |
+| `protocol_phase` | Empfohlene ARES-Phase | 0, 1, 2, 3 |
 
-**Aktion**: SQL UPDATE Statements
+### Phase-Modifikatoren (4 Spalten)
+
+Passen den Score je nach aktueller Protokoll-Phase an:
+
+| Spalte | Bedeutung | Beispiel |
+|--------|-----------|----------|
+| `phase_0` | Fundament-Phase (Lifestyle-Basics) | +1.0 = relevant in Phase 0 |
+| `phase_1` | Rekomposition (aktiver Fettabbau) | +2.0 = sehr relevant fuer Fettabbau |
+| `phase_2` | Fine-Tuning (Peptid-Optimierung) | +0.5 = leicht erhoehte Relevanz |
+| `phase_3` | Longevity (fortgeschrittene Protokolle) | +1.0 = Longevity-relevant |
+
+### Kontext-Modifikatoren (4 Spalten)
+
+Hierarchie: TRT ueberschreibt Enhanced ueberschreibt Natural
+
+| Spalte | Bedeutung | Typische Werte |
+|--------|-----------|----------------|
+| `ctx_true_natural` | 100% Natural (keine Peptide, kein TRT) | +1.0 bis +3.5 |
+| `ctx_enhanced_no_trt` | Peptide OHNE TRT (Risikogruppe!) | +2.0 bis +5.0 |
+| `ctx_on_trt` | TRT/HRT aktiv | -4.0 bis +1.0 |
+| `ctx_on_glp1` | GLP-1-Agonist aktiv (Reta/Tirze/Sema) | -2.0 bis +4.0 |
+
+### Ziel-Modifikatoren (9 Spalten)
+
+Passen Score je nach primaeerem Nutzerziel an:
+
+| Spalte | Ziel | Wann relevant? |
+|--------|------|----------------|
+| `goal_fat_loss` | Fettabbau | Aktive Diaet |
+| `goal_muscle_gain` | Muskelaufbau | Aufbauphase |
+| `goal_recomposition` | Rekomposition | Gleichzeitig Fett ab + Muskel auf |
+| `goal_maintenance` | Erhaltung | Stabiles Gewicht |
+| `goal_longevity` | Langlebigkeit | Anti-Aging Fokus |
+| `goal_performance` | Leistung | Sport/Athletik |
+| `goal_cognitive` | Kognition | Mentale Klarheit |
+| `goal_sleep` | Schlaf | Schlafoptimierung |
+| `goal_gut_health` | Darmgesundheit | Verdauung/Mikrobiom |
+
+### Kalorien-Status (2 Spalten)
+
+| Spalte | Bedeutung | Beispiel |
+|--------|-----------|----------|
+| `cal_in_deficit` | Kaloriendefizit aktiv | +3.0 fuer Muskelschutz bei Creatine |
+| `cal_in_surplus` | Kalorien-Ueberschuss | +2.0 fuer Aufbau-Unterstuetzung |
+
+### Demografische Modifikatoren (5 Spalten)
+
+| Spalte | Bedeutung | Wissenschaft |
+|--------|-----------|--------------|
+| `demo_age_over_40` | Alter 40+ | NAD+ sinkt, Mitochondrien altern |
+| `demo_age_over_50` | Alter 50+ | Hormonspiegel fallen deutlich |
+| `demo_age_over_60` | Alter 60+ | Maximale Longevity-Relevanz |
+| `demo_is_male` | Maennlich | Testosteron-Fokus |
+| `demo_is_female` | Weiblich | Hormonbalance, Eisen-Fokus |
+
+### Peptid-Klassen-Modifikatoren (8 Spalten)
+
+Synergien mit aktiven Peptid-Protokollen:
+
+| Spalte | Peptid-Klasse | Beispiele |
+|--------|---------------|-----------|
+| `pep_gh_secretagogue` | GH-Stimulation | CJC-1295, Ipamorelin, MK-677 |
+| `pep_healing` | Heilung/Regeneration | BPC-157, TB-500 |
+| `pep_longevity` | Langlebigkeit | Epitalon, MOTS-c |
+| `pep_nootropic` | Kognition | Semax, Selank |
+| `pep_metabolic` | Stoffwechsel/GLP-1 | Retatrutide, Tirzepatide |
+| `pep_immune` | Immunsystem | Thymosin Alpha-1 |
+| `pep_testo` | Testosteron | Kisspeptin, Gonadorelin |
+| `pep_skin` | Haut/Kosmetik | GHK-Cu, Melanotan |
+
+### Blutwert-Trigger (17 Spalten)
+
+Werden aktiviert, wenn Blutwerte ausserhalb der Norm liegen:
+
+| Spalte | Bedingung | Empfehlung bei Trigger |
+|--------|-----------|------------------------|
+| `bw_cortisol_high` | Cortisol > 25 | Adaptogene erhoehen |
+| `bw_testosterone_low` | Testosteron < 300 ng/dL | T-Support erhoehen |
+| `bw_vitamin_d_low` | Vitamin D < 30 ng/mL | D3+K2 kritisch |
+| `bw_magnesium_low` | Mg < 0.85 mmol/L | Glycinat priorisieren |
+| `bw_triglycerides_high` | TG > 150 mg/dL | Omega-3 essenziell |
+| `bw_inflammation_high` | hs-CRP > 1 mg/L | Antioxidantien |
+| `bw_glucose_high` | Nuechtern-Glukose > 100 | Berberin relevant |
+| `bw_insulin_resistant` | HOMA-IR > 2.5 | Metabolic Support |
+| `bw_hdl_low` | HDL < 40 mg/dL | Lipid-Support |
+| `bw_ldl_high` | LDL > 130 mg/dL | Citrus Bergamot |
+| `bw_apob_high` | ApoB > 100 mg/dL | Kardio-Fokus |
+| `bw_ferritin_high` | Ferritin > 300 | Blutspende empfohlen |
+| `bw_homocysteine_high` | Homocystein > 10 | B-Vitamin-Komplex |
+| `bw_nad_low` | NAD-Marker niedrig | NMN/NR kritisch |
+| `bw_b12_low` | B12 < 400 pg/mL | Methylcobalamin |
+| `bw_iron_low` | Eisen < 60 ug/dL | Eisen-Bisglycinat |
+| `bw_thyroid_slow` | TSH > 4 mIU/L | Selen/Jod pruefen |
+
+### Verbindungs-Synergien (9 Spalten)
+
+Spezifische Synergien mit aktiven Substanzen:
+
+| Spalte | Substanz | Typischer Effekt |
+|--------|----------|------------------|
+| `syn_retatrutide` | Retatrutide (Triple-GLP-1) | +4.0 fuer HMB (Muskelschutz) |
+| `syn_tirzepatide` | Tirzepatide (Dual-GLP-1) | +3.0 fuer Elektrolyte |
+| `syn_semaglutide` | Semaglutide (Ozempic) | +3.0 fuer B-Vitamine |
+| `syn_epitalon` | Epitalon | +2.0 fuer Longevity-Stack |
+| `syn_mots_c` | MOTS-c | +2.0 fuer Mitochondrien |
+| `syn_bpc_157` | BPC-157 | +1.5 fuer Heilung-Stack |
+| `syn_tb_500` | TB-500 | +1.5 fuer Regeneration |
+| `syn_cjc_1295` | CJC-1295 | +1.0 fuer GH-Optimierung |
+| `syn_ipamorelin` | Ipamorelin | +1.0 fuer GH-Optimierung |
 
 ---
 
-## Quick Win 4: Kritische Modifier-Neugewichtung
-
-Basierend auf der wissenschaftlichen Analyse im PDF:
-
-### A) NMN - Alters-Modifier begrenzen
+## Scoring-Logik (Hintergrund)
 
 ```text
-Vorher:
-  demo_age_over_50: +3.0
-  demo_age_over_60: +4.0
-  bw_nad_low: +4.0
-  MAX = +16.0 (viel zu hoch!)
+Finaler Score = Base Impact Score + Sum(Modifikatoren)
 
-Nachher:
-  demo_age_over_40: +1.0 (NEU)
-  demo_age_over_50: +2.0 (war 3.0)
-  demo_age_over_60: +3.0 (war 4.0)
-  bw_nad_low: +4.0 (bleibt)
-  MAX = +10.0
+Sicherheits-Constraints:
+- MAX_SINGLE_MODIFIER = 4.0 (kein einzelner Boost > 4.0)
+- MAX_TOTAL_BOOST = 12.0 (Gesamt-Boost gedeckelt)
+- Score geclampt auf 0.0 - 10.0
 ```
 
-### B) HMB - GLP-1 Modifier korrigieren
-
-```text
-Vorher:
-  ctx_enhanced_no_trt: +5.0 (falsche Spalte!)
-  
-Nachher:
-  ctx_on_glp1: +4.0 (NEU - richtige Spalte)
-  syn_semaglutide: +3.0 (NEU)
-  syn_tirzepatide: +3.0 (NEU)
-  syn_retatrutide: +4.0 (bleibt)
-  ctx_enhanced_no_trt: +2.0 (war 5.0)
-```
-
-### C) Tongkat Ali - Natural-Boost reduzieren
-
-```text
-Vorher:
-  ctx_true_natural: +3.5 (zu hoch fuer normalen T)
-  
-Nachher:
-  ctx_true_natural: +1.5 (war 3.5)
-  bw_testosterone_low: +4.0 (bleibt)
-  demo_is_male: +1.0 (NEU)
-```
-
-### D) Berberin - Insulin-Modifier ergaenzen
-
-```text
-Vorher:
-  bw_glucose_high: +3.5
-  bw_insulin_resistant: 0 (fehlt!)
-  
-Nachher:
-  bw_glucose_high: +3.0 (war 3.5)
-  bw_insulin_resistant: +4.0 (NEU)
-```
-
-**Aktion**: SQL UPDATE Statements fuer relevance_matrix JSONB
-
----
-
-## Quick Win 5: Modifier-Cap im Scoring-Code
-
-Um zu verhindern, dass Optimizer/Specialists die Essentials ueberholen:
-
-```typescript
-// In calculateRelevanceScore.ts
-const MAX_SINGLE_MODIFIER = 4.0;  // Kein einzelner Modifier > 4.0
-const MAX_TOTAL_BOOST = 12.0;     // Gesamt-Boost gecapped
-```
-
-**Aktion**: Code-Update in `src/lib/calculateRelevanceScore.ts`
+**Tier-Schwellen:**
+- Essential: Score >= 9.0
+- Optimizer: Score >= 6.0 und < 9.0  
+- Niche: Score < 6.0
 
 ---
 
 ## Technische Umsetzung
 
-### Neue Dateien
-
-| Datei | Beschreibung |
-|-------|--------------|
-| `src/utils/matrixCleanupQueries.ts` | SQL-Statements fuer alle Quick Win Korrekturen |
-
-### Geaenderte Dateien
+### Datei-Aenderungen
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/lib/calculateRelevanceScore.ts` | MAX_SINGLE_MODIFIER und MAX_TOTAL_BOOST Caps einfuegen |
-| `src/pages/Admin.tsx` | Button fuer "Matrix Cleanup ausfuehren" hinzufuegen |
+| `src/pages/Admin.tsx` | Export-Card Beschreibung auf "~98 Wirkstoffe" aktualisieren |
+| `src/utils/exportMatrixCSV.ts` | Dokumentations-Header in CSV einfuegen (optional) |
 
----
+### Export-Card Text aktualisieren
 
-## Ablauf
+Zeile 219-220 in Admin.tsx:
+```text
+Vorher: "Alle 111 Wirkstoffe mit ~55 Gewichtungs-Modifikatoren als CSV"
+Nachher: "~100 bereinigte Wirkstoffe mit 55 Scoring-Modifikatoren. Duplikate entfernt, Sprache normalisiert."
+```
 
-1. Erstelle `matrixCleanupQueries.ts` mit allen SQL-Statements
-2. Fuege Modifier-Caps in `calculateRelevanceScore.ts` ein
-3. Fuege Admin-Button hinzu zum Ausfuehren der Cleanup-Queries
-4. Teste mit CSV-Export: Sollten ~90 unique Wirkstoffe statt 111 sein
+### Optionaler CSV-Dokumentations-Header
+
+Am Anfang der CSV eine Erklaerungszeile einfuegen:
+```text
+# ARES Matrix Export | Legende: phase_X = Phasen-Boost | ctx_* = Kontext | goal_* = Ziele | bw_* = Blutwert-Trigger | syn_* = Synergien | Positive Werte = Boost | Negative = Penalty
+```
 
 ---
 
 ## Erwartetes Ergebnis
 
-- **~20 weniger Eintraege** (Duplikate entfernt)
-- **Konsistente Sprache**: Nur `moderate`/`strong`, Deutsche Kategorien
-- **Faire Rankings**: Essentials bleiben an der Spitze, auch bei 60+ Longevity-Profilen
-- **Praezisere Modifier**: GLP-1-User bekommen korrekte HMB-Empfehlung
+1. Admin-UI zeigt korrekte Anzahl (~100 statt 111)
+2. CSV ist selbsterklaerend durch Header-Kommentar
+3. Dokumentation hier dient als Referenz fuer externe Nutzer
