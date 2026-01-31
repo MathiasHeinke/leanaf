@@ -27,15 +27,9 @@ import { exportSupplementMatrixCSV } from '@/utils/exportMatrixCSV';
 import { executeMatrixCleanup, verifyMatrixCleanup } from '@/utils/matrixCleanupQueries';
 import { Link } from 'react-router-dom';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
-import { PerformanceMonitoringDashboard } from '@/components/PerformanceMonitoringDashboard';
 import { SecurityMonitor } from '@/components/SecurityMonitor';
 import { AppHealthCheck } from '@/components/AppHealthCheck';
 import { FeatureFlagsManager } from '@/components/FeatureFlagsManager';
-import { StreamingDashboard } from '@/components/StreamingDashboard';
-import { CoachConversationMonitor } from '@/components/CoachConversationMonitor';
-import OpenAIPerformanceDashboard from '@/components/OpenAIPerformanceDashboard';
-import RAGPerformanceMonitor from '@/components/RAGPerformanceMonitor';
-import RealTimeTelemetryDashboard from '@/components/RealTimeTelemetryDashboard';
 import EnhancedPerformanceDashboard from '@/components/EnhancedPerformanceDashboard';
 
 import { EmbeddingStatus } from '@/components/EmbeddingStatus';
@@ -84,20 +78,6 @@ export const AdminPage = () => {
   };
 
   
-  // Mock performance metrics for the dashboard
-  const performanceMetrics = {
-    averageResponseTime: 1200,
-    successRate: 97.5,
-    errorPatterns: { 'timeout': 5, 'rate_limit': 3 },
-    totalRequests: 1500
-  };
-  
-  const streamingMetrics = {
-    avgResponseTime: 800,
-    streamingSuccess: 98.2,
-    totalMessages: 2400,
-    p95ResponseTime: 1500
-  };
 
   // Show loading state while checking admin access
   if (adminLoading) {
@@ -341,21 +321,6 @@ export const AdminPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Streaming Analytics */}
-              <Card className="bg-background border-border dark:bg-card dark:border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
-                    <BarChart3 className="w-5 h-5 mr-2" />
-                    Streaming Analytics
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <StreamingDashboard 
-                    metrics={streamingMetrics}
-                    isStreaming={false}
-                  />
-                </CardContent>
-              </Card>
             </div>
           </TabsContent>
         </Tabs>

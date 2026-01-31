@@ -30,8 +30,6 @@ import NotFound from "./pages/NotFound";
 import { AdminPage } from "./pages/Admin";
 import { PersonaEditor } from "./pages/Admin/PersonaEditor";
 import ConversationAnalytics from "./pages/Admin/ConversationAnalytics";
-import ImportMatrixPage from "./pages/Admin/ImportMatrixPage";
-import ExecuteImportPage from "./pages/Admin/ExecuteImportPage";
 import MatrixImportRunner from "./pages/Admin/MatrixImportRunner";
 import AdminSeedPage from "./pages/AdminSeedPage";
 import AdminImportCSVPage from "./pages/AdminImportCSVPage";
@@ -103,8 +101,6 @@ const App = () => (
                       <Route path="/admin" element={<AdminPage />} />
                       <Route path="/admin/personas" element={<PersonaEditor />} />
                       <Route path="/admin/conversation-analytics" element={<ConversationAnalytics />} />
-                      <Route path="/admin/import-matrix" element={<ImportMatrixPage />} />
-                      <Route path="/admin/execute-import" element={<ExecuteImportPage />} />
                       <Route path="/admin/matrix-runner" element={<MatrixImportRunner />} />
                       <Route path="/admin/seed-supplements" element={<AdminSeedPage />} />
                       <Route path="/admin/import-csv" element={<AdminImportCSVPage />} />
