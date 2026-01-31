@@ -230,6 +230,21 @@ export const AdminPage = () => {
                 </Card>
               </Link>
 
+              {/* Product Submissions Review Link */}
+              <Link to="/admin/product-submissions">
+                <Card className="bg-background border-border dark:bg-card dark:border-border hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                      <Database className="w-5 h-5 mr-2" />
+                      Produkt-Einreichungen
+                    </CardTitle>
+                    <CardDescription>
+                      Community-eingereichte Produkte prüfen, genehmigen oder ablehnen
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+
               {/* Matrix Export Card */}
               <Card className="bg-background border-border dark:bg-card dark:border-border">
                 <CardHeader>
