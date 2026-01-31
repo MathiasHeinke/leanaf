@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets, BookOpen, Goal, Dna, Package } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets, BookOpen, Goal, Dna, Package, Link2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -8,6 +8,7 @@ import { getMetaCategory, META_CATEGORIES } from '@/lib/categoryMapping';
 import { useUserRelevanceContext } from '@/hooks/useUserRelevanceContext';
 import { calculateRelevanceScore, getScoreTierConfig } from '@/lib/calculateRelevanceScore';
 import { RelevanceScorePopover } from './RelevanceScorePopover';
+import { ProductLinkSubmissionField } from './ProductLinkSubmissionField';
 import {
   EVIDENCE_LEVEL_CONFIG,
   NECESSITY_TIER_CONFIG,
@@ -411,6 +412,23 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
                 <p className="text-lg font-bold">€{item.cost_per_day_eur.toFixed(2)}</p>
               </div>
             )}
+          </div>
+
+          {/* Product Submission CTA */}
+          <Separator />
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-primary" />
+              Dein Lieblingsprodukt fehlt?
+            </h4>
+            <ProductLinkSubmissionField
+              supplementId={item.id}
+              supplementName={item.name}
+              compact
+              onSuccess={() => {
+                // Could show a toast or update UI
+              }}
+            />
           </div>
         </div>
       </SheetContent>

@@ -16,7 +16,8 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage 
 } from '@/components/ui/breadcrumb';
-import { Pill, Plus, Clock, CheckCircle, ChevronRight, ArrowLeft, Star, Sparkles, FlaskConical } from 'lucide-react';
+import { Pill, Plus, Clock, CheckCircle, ChevronRight, ArrowLeft, Star, Sparkles, FlaskConical, Link2 } from 'lucide-react';
+import { ProductLinkSubmissionField } from '@/components/supplements/ProductLinkSubmissionField';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -457,6 +458,18 @@ export const SupplementTrackingModal = ({ isOpen, onClose, contextData }: Supple
             <Plus className="h-4 w-4" />
             <span>Eigenes Produkt / Manuell eingeben</span>
           </button>
+          
+          {/* Product Link Submission Option */}
+          <div className="mt-3 pt-3 border-t border-border">
+            <ProductLinkSubmissionField
+              supplementId={selectedVariant?.id}
+              supplementName={selectedVariant?.name}
+              compact
+              onSuccess={() => {
+                // Show success and close modal or stay
+              }}
+            />
+          </div>
         </>
       )}
     </div>
