@@ -8,12 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   Shield, 
-  Activity, 
   Database, 
-  Flag,
-  Monitor,
-  BarChart3,
-  MessageSquare,
   RefreshCw,
   Settings,
   Loader2,
@@ -22,17 +17,13 @@ import {
   FileSpreadsheet,
   Wrench,
   CheckCircle,
-  XCircle
+  XCircle,
+  MessageSquare
 } from 'lucide-react';
 import { exportSupplementMatrixCSV } from '@/utils/exportMatrixCSV';
 import { executeMatrixCleanup, verifyMatrixCleanup } from '@/utils/matrixCleanupQueries';
 import { executeMatrixImportFromCSV } from '@/lib/executeMatrixImport';
 import { Link } from 'react-router-dom';
-import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
-import { SecurityMonitor } from '@/components/SecurityMonitor';
-import { AppHealthCheck } from '@/components/AppHealthCheck';
-import { FeatureFlagsManager } from '@/components/FeatureFlagsManager';
-import EnhancedPerformanceDashboard from '@/components/EnhancedPerformanceDashboard';
 
 import { EmbeddingStatus } from '@/components/EmbeddingStatus';
 import { Switch } from '@/components/ui/switch';
@@ -165,36 +156,16 @@ export const AdminPage = () => {
     <div className="min-h-screen bg-background">
       {/* 📊 FULL-WIDTH DESKTOP, MOBILE-FIRST LAYOUT */}
       <div className="w-full px-4 py-6 md:px-8 lg:px-12">
-        <Tabs defaultValue="production" className="w-full">
-          {/* 🎛️ COMPACT TAB NAVIGATION - 4 tabs */}
+        <Tabs defaultValue="system" className="w-full">
+          {/* 🎛️ COMPACT TAB NAVIGATION */}
           <div className="w-full mb-8">
-            <TabsList className="grid w-full grid-cols-3 bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm overflow-hidden">
-              <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-auto min-h-[56px] px-1 sm:px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                <Monitor className="w-4 h-4 shrink-0" />
-                <span className="truncate">Production</span>
-              </TabsTrigger>
-              <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-auto min-h-[56px] px-1 sm:px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                <Activity className="w-4 h-4 shrink-0" />
-                <span className="truncate">Performance</span>
-              </TabsTrigger>
-              <TabsTrigger value="system" className="flex flex-col items-center justify-center gap-1 h-auto min-h-[56px] px-1 sm:px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+            <TabsList className="w-fit bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm overflow-hidden">
+              <TabsTrigger value="system" className="flex items-center justify-center gap-2 h-auto min-h-[40px] px-4 rounded-md text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
                 <Settings className="w-4 h-4 shrink-0" />
-                <span className="truncate">System</span>
+                <span>Admin Tools</span>
               </TabsTrigger>
             </TabsList>
           </div>
-
-          {/* 🔥 PRODUCTION MONITORING - MAIN TAB */}
-          <TabsContent value="production" className="space-y-6 mt-6 safe-area-pb-6">
-            <ProductionMonitoringDashboard />
-          </TabsContent>
-
-
-
-          {/* 📊 PERFORMANCE MONITORING */}
-          <TabsContent value="performance" className="space-y-6 mt-6 safe-area-pb-6">
-            <EnhancedPerformanceDashboard />
-          </TabsContent>
 
           {/* 🔒🏥 SYSTEM & SECURITY - Combined Overview */}
           <TabsContent value="system" className="space-y-6 mt-6 safe-area-pb-6">
@@ -402,45 +373,6 @@ export const AdminPage = () => {
 
               {/* Embedding Status & RAG System */}
               <EmbeddingStatus />
-              
-              {/* Security Monitor */}
-              <Card className="bg-background border-border dark:bg-card dark:border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
-                    <Shield className="w-5 h-5 mr-2" />
-                    Security Monitor
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SecurityMonitor />
-                </CardContent>
-              </Card>
-
-              {/* System Health */}
-              <Card className="bg-background border-border dark:bg-card dark:border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
-                    <Database className="w-5 h-5 mr-2" />
-                    System Health
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AppHealthCheck />
-                </CardContent>
-              </Card>
-
-              {/* Feature Flags */}
-              <Card className="bg-background border-border dark:bg-card dark:border-border">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
-                    <Flag className="w-5 h-5 mr-2" />
-                    Feature Flags
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <FeatureFlagsManager />
-                </CardContent>
-              </Card>
 
             </div>
           </TabsContent>
