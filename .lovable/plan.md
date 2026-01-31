@@ -1,265 +1,103 @@
 
-# Analyse-Seite Redesign: Supplements Analytics + Makro-Visualisierung
+# Fix: Produkt-Scraping und Anreicherung
 
-## Übersicht
+## Problem
 
-Das alte `SupplementComplianceWidget` mit der Lucy-Analyse wird komplett ersetzt durch ein modernes Analytics-Widget mit Heatmap und Ranking. Die Makro-Darstellung bekommt ein Stacked-Area-Chart Upgrade.
+Das Scraping liefert unvollständige Daten (keine Preise, Packungsgrößen, Portionen), weil:
 
----
+1. **Firecrawl** den Seiteninhalt oft ohne dynamische JS-Inhalte lädt
+2. **LLM-Extraktion** diese fehlenden Daten nicht "erfinden" kann
+3. **Enrichment** zwar läuft, aber mit leeren Eingabedaten arbeitet
 
-## Aktuelle Struktur (wird ersetzt)
-
-```text
-/analyse → Intake Tab
-├── Overview
-├── HydrationWidget  
-├── SupplementComplianceWidget ← ERSETZEN
-│   ├── Heute eingenommen (Progress)
-│   ├── Supplement-Liste  
-│   └── Lucy's Supplement-Analyse ← WEG!
-└── HistoryCharts
-    ├── Kalorien Verlauf (Area)
-    └── Makros (Bar Chart) ← UPGRADE
-```
+Die DB zeigt: `price_eur: null`, `pack_size: null`, `servings: null` für das Clear Whey Produkt.
 
 ---
 
-## Neue Struktur
+## Lösung: Zweistufige Scraping-Strategie
 
-```text
-/analyse → Intake Tab
-├── Overview
-├── HydrationWidget (unverändert)
-├── SupplementAnalyticsWidget ← NEU
-│   ├── Header mit Period-Toggle [7T][30T]
-│   ├── Compliance Heatmap (Calendar-Grid)
-│   ├── Top 5 Supplements Ranking
-│   └── Insights-Stats
-└── HistoryCharts
-    ├── Kalorien Verlauf (unverändert)
-    └── MacroStackedChart ← NEU
+### A) Primär: Verbesserter Firecrawl-Request
+
+Aktuell wird nur `/extract` verwendet. Der API hat auch einen `/scrape` Endpoint mit erweiterten Optionen:
+
+```typescript
+// Statt nur extract, auch mit render/wait-Optionen
+const response = await fetch('https://firecrawl-mcp.p.rapidapi.com/scrape', {
+  method: 'POST',
+  headers: { ... },
+  body: JSON.stringify({ 
+    url,
+    formats: ['markdown', 'html'],
+    waitFor: 2000, // Warte 2s für JS-Rendering
+    includeTags: ['main', 'article', 'product'], 
+  }),
+});
 ```
 
----
+### B) Fallback: Domain-spezifische Extraktion
 
-## 1. Neues SupplementAnalyticsWidget
+Für bekannte Shops (ruehl24.de, esn.com, etc.) können wir strukturierte Selektoren nutzen:
 
-### A) Compliance Heatmap
-
-GitHub-Style Calendar-Grid das Einnahme-Konsistenz visualisiert:
-
-```text
-┌────────────────────────────────────────────┐
-│ 💊 Supplement Analytics    [7 Tage][30 Tage]│
-├────────────────────────────────────────────┤
-│                                            │
-│  Compliance Heatmap                        │
-│  ┌──┬──┬──┬──┬──┬──┬──┐                   │
-│  │Mo│Di│Mi│Do│Fr│Sa│So│  KW 4            │
-│  │██│██│▓▓│██│░░│██│██│                   │
-│  └──┴──┴──┴──┴──┴──┴──┘                   │
-│                                            │
-│  ██ 100%  ▓▓ 50-99%  ░░ <50%  □ Keine     │
-└────────────────────────────────────────────┘
+```typescript
+const DOMAIN_SELECTORS: Record<string, RegExp[]> = {
+  'ruehl24.de': [
+    /€?\s*(\d+[,.]\d{2})\s*€?/,           // Preis
+    /(\d+)\s*(?:Portion|Serving)/i,        // Portionen
+    /(\d+)\s*(?:g|Gramm|ml)/i,             // Packungsgröße
+  ],
+  // weitere Domains...
+};
 ```
 
-- Farbintensität = Compliance-Rate des Tages
-- Hover-Tooltip: "Mo 27.01: 5/6 (83%)"
-- Responsive: Bei 7 Tagen 1 Zeile, bei 30 Tagen 4-5 Zeilen
+### C) LLM-Prompt Verbesserung
 
-### B) Top Supplements Ranking
-
-Horizontale Fortschrittsbalken sortiert nach Einnahme-Häufigkeit:
+Der aktuelle Prompt ist zu allgemein. Spezifischere Anweisungen helfen:
 
 ```text
-┌────────────────────────────────────────────┐
-│ Regelmäßigkeit                             │
-├────────────────────────────────────────────┤
-│ Vitamin D3   ████████████████  100% (7/7)  │
-│ Omega-3      ██████████████░░   85% (6/7)  │
-│ Magnesium    ████████████░░░░   71% (5/7)  │
-│ Zink         ██████████░░░░░░   57% (4/7)  │
-│ Ashwagandha  ████████░░░░░░░░   43% (3/7)  │
-└────────────────────────────────────────────┘
+KRITISCHE DATEN (MUSS extrahiert werden):
+1. PREIS: Suche nach "€", "EUR", Zahlen vor/nach Währungssymbolen
+2. PACKUNGSGRÖSSE: Anzahl Kapseln/Tabletten, Gramm, ml
+3. PORTIONEN: "Portionen", "Servings", "für X Tage"
+4. DOSIS: "pro Portion", "per serving", mg/mcg/IU
+
+Falls ein Wert NICHT gefunden wird, setze null - NIEMALS raten!
 ```
 
-- Farbkodierung: Grün >80%, Gelb 50-80%, Rot <50%
-- Max 5 Supplements anzeigen
+### D) Retry-Mechanismus mit Benutzer-Feedback
 
-### C) Insights-Stats
+Wenn kritische Felder fehlen, dem Admin eine "Manuell ergänzen" Option anbieten:
 
-```text
-┌─────────────┬─────────────┬─────────────┐
-│ Ø Compliance│ Beste Serie │ Konsistent  │
-│    78%      │   5 Tage    │ Vitamin D3  │
-└─────────────┴─────────────┴─────────────┘
+```typescript
+// In ProductSubmissionsReview.tsx
+{!submission.extracted_data?.price_eur && (
+  <Button onClick={() => openManualEntryDialog(submission.id)}>
+    <Edit2 className="mr-2 h-4 w-4" />
+    Daten manuell ergänzen
+  </Button>
+)}
 ```
 
 ---
 
-## 2. MacroStackedChart (ersetzt Bar Chart)
-
-Stacked Area Chart mit Summary-Cards:
-
-```text
-┌────────────────────────────────────────────┐
-│ Makro-Verteilung                           │
-├────────────────────────────────────────────┤
-│                                            │
-│     ████████████████████████████           │ 
-│     ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓           │ Protein
-│     ░░░░░░░░░░░░░░░░░░░░░░░░░░░           │ Carbs
-│     ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒           │ Fette
-│     Mo   Di   Mi   Do   Fr   Sa   So      │
-│                                            │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐      │
-│  │ Protein │ │  Carbs  │ │  Fette  │      │
-│  │ Ø 142g  │ │ Ø 185g  │ │  Ø 62g  │      │
-│  │  +12%↑  │ │   -5%↓  │ │  stabil │      │
-│  └─────────┘ └─────────┘ └─────────┘      │
-└────────────────────────────────────────────┘
-```
-
-**Vorteile:**
-- Zeigt Gesamtkalorien UND Makro-Verteilung
-- Trend-Indikatoren vs. Vorwoche
-- Kompaktere Darstellung als grouped bars
-
----
-
-## Technische Umsetzung
-
-### Neue Dateien
-
-| Datei | Beschreibung |
-|-------|--------------|
-| `src/components/analytics/SupplementAnalyticsWidget.tsx` | Hauptkomponente mit Period-Toggle |
-| `src/components/analytics/SupplementHeatmap.tsx` | Calendar-Grid Visualisierung |
-| `src/components/analytics/SupplementRanking.tsx` | Horizontale Bar-Charts |
-| `src/components/analytics/MacroStackedChart.tsx` | Stacked Area + Summary Cards |
-
-### Zu bearbeitende Dateien
+## Dateien zu ändern
 
 | Datei | Änderung |
 |-------|----------|
-| `src/pages/Analysis.tsx` | Import SupplementAnalyticsWidget statt SupplementComplianceWidget |
-| `src/components/HistoryCharts.tsx` | Bar Chart durch MacroStackedChart ersetzen |
+| `supabase/functions/scrape-product-link/index.ts` | Firecrawl-Optionen verbessern, LLM-Prompt präzisieren |
+| `supabase/functions/enrich-product-submission/index.ts` | Stage 1 mit Re-Scrape Fallback erweitern |
+| `src/components/admin/ProductSubmissionsReview.tsx` | "Manuell ergänzen" Button für fehlende Felder |
+| `src/components/admin/ManualProductEntryDialog.tsx` | NEU - Dialog für manuelle Dateneingabe |
 
 ---
 
-## Datenabfrage
+## Quick-Fix Option
 
-```typescript
-// Hook: useSupplementAnalytics.ts
-// Lädt Supplement-Intake-Daten für Heatmap + Ranking
-
-const { data } = await supabase
-  .from('supplement_intake_log')
-  .select(`
-    date,
-    user_supplement_id,
-    taken,
-    timing,
-    user_supplements!inner(
-      id,
-      custom_name,
-      name,
-      supplement_database(name)
-    )
-  `)
-  .eq('user_id', userId)
-  .gte('date', startDate)
-  .order('date', { ascending: true });
-
-// Berechnung:
-// 1. dailyCompliance: { date, rate, taken, total }[]
-// 2. supplementRanking: { name, compliance, days }[]  
-// 3. averageCompliance, bestStreak, mostConsistent
-```
-
----
-
-## UI/UX Details
-
-### Heatmap-Farbskala
-
-| Compliance | Farbe | Tailwind |
-|------------|-------|----------|
-| 100% | Dunkelgrün | `bg-green-500` |
-| 80-99% | Hellgrün | `bg-green-400` |
-| 50-79% | Gelb | `bg-yellow-400` |
-| 1-49% | Rot | `bg-red-400` |
-| 0% / Keine | Grau | `bg-muted` |
-
-### Responsive Verhalten
-
-- **Mobile**: Heatmap horizontal scrollbar
-- **Desktop**: Alle Elemente sichtbar
-
-### Dark Mode
-
-Alle Farben mit `dark:` Varianten für konsistentes Theme.
-
----
-
-## Komponenten-Struktur
-
-```typescript
-// SupplementAnalyticsWidget.tsx
-interface SupplementAnalyticsData {
-  dailyCompliance: {
-    date: string;
-    rate: number;
-    taken: number;
-    total: number;
-  }[];
-  supplementRanking: {
-    id: string;
-    name: string;
-    compliance: number;
-    daysCount: number;
-    totalDays: number;
-  }[];
-  stats: {
-    averageCompliance: number;
-    bestStreak: number;
-    mostConsistent: string;
-  };
-}
-
-// MacroStackedChart.tsx  
-interface MacroData {
-  date: string;
-  protein: number;
-  carbs: number;
-  fats: number;
-  total: number;
-}
-
-interface MacroSummary {
-  avgProtein: number;
-  avgCarbs: number;
-  avgFats: number;
-  proteinTrend: number; // % change
-  carbsTrend: number;
-  fatsTrend: number;
-}
-```
-
----
-
-## Zu entfernende Elemente
-
-1. **SupplementComplianceWidget.tsx** - Wird nicht mehr importiert (Datei bleibt, falls benötigt)
-2. **Lucy's Supplement-Analyse** - Komplett entfernt
-3. **Grouped Bar Chart** in HistoryCharts - Ersetzt durch Stacked Area
+Falls keine API-Änderungen gewünscht: Nur den **Manuellen Ergänzen Dialog** implementieren, damit Admins fehlende Daten nachtragen können. Das ist schneller (15min) und löst das Problem pragmatisch.
 
 ---
 
 ## Geschätzter Aufwand
 
-- SupplementAnalyticsWidget + Heatmap + Ranking: ~20 Minuten
-- MacroStackedChart: ~10 Minuten  
-- Integration in Analysis.tsx: ~5 Minuten
+- **Quick-Fix (Manual Entry)**: 15 Minuten
+- **Vollständige Lösung (Scraping + Fallbacks)**: 45-60 Minuten
 
-**Gesamt: ~35 Minuten**
+Welche Variante soll ich implementieren?
