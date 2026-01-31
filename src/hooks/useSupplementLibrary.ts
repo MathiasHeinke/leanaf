@@ -160,7 +160,7 @@ export const useSupplementBrands = () => {
   });
 };
 
-// Fetch user's supplement stack with enhanced fields
+// Fetch user's supplement stack with enhanced fields + selected product/brand
 export const useUserStack = () => {
   const { user } = useAuth();
 
@@ -200,6 +200,37 @@ export const useUserStack = () => {
             underrated_score,
             warnung,
             relevance_matrix
+          ),
+          supplement_products(
+            id,
+            brand_id,
+            supplement_id,
+            product_name,
+            pack_size,
+            pack_unit,
+            servings_per_pack,
+            dose_per_serving,
+            dose_unit,
+            price_eur,
+            price_per_serving,
+            form,
+            is_vegan,
+            is_recommended,
+            is_verified,
+            amazon_asin,
+            product_url,
+            supplement_brands(
+              id,
+              name,
+              slug,
+              country,
+              website,
+              price_tier,
+              specialization,
+              quality_certifications,
+              description,
+              logo_url
+            )
           )
         `)
         .eq('user_id', user.id)
@@ -209,6 +240,8 @@ export const useUserStack = () => {
 
       return (data || []).map((item: any) => {
         const supplement = item.supplement_database;
+        const selectedProduct = item.supplement_products;
+        
         return {
           id: item.id,
           user_id: item.user_id,
@@ -228,6 +261,7 @@ export const useUserStack = () => {
           schedule: item.schedule,
           created_at: item.created_at,
           updated_at: item.updated_at,
+          selected_product_id: item.selected_product_id,
           supplement: supplement ? {
             id: supplement.id,
             name: supplement.name,
@@ -257,6 +291,38 @@ export const useUserStack = () => {
             warnung: supplement.warnung || null,
             // ARES Matrix-Scoring
             relevance_matrix: supplement.relevance_matrix || null,
+          } : null,
+          // Selected product with brand (joined via selected_product_id)
+          selected_product: selectedProduct ? {
+            id: selectedProduct.id,
+            brand_id: selectedProduct.brand_id,
+            supplement_id: selectedProduct.supplement_id,
+            product_name: selectedProduct.product_name,
+            pack_size: selectedProduct.pack_size,
+            pack_unit: selectedProduct.pack_unit,
+            servings_per_pack: selectedProduct.servings_per_pack,
+            dose_per_serving: selectedProduct.dose_per_serving,
+            dose_unit: selectedProduct.dose_unit,
+            price_eur: selectedProduct.price_eur,
+            price_per_serving: selectedProduct.price_per_serving,
+            form: selectedProduct.form,
+            is_vegan: selectedProduct.is_vegan,
+            is_recommended: selectedProduct.is_recommended,
+            is_verified: selectedProduct.is_verified,
+            amazon_asin: selectedProduct.amazon_asin,
+            product_url: selectedProduct.product_url,
+            brand: selectedProduct.supplement_brands ? {
+              id: selectedProduct.supplement_brands.id,
+              name: selectedProduct.supplement_brands.name,
+              slug: selectedProduct.supplement_brands.slug,
+              country: selectedProduct.supplement_brands.country,
+              website: selectedProduct.supplement_brands.website,
+              price_tier: selectedProduct.supplement_brands.price_tier,
+              specialization: selectedProduct.supplement_brands.specialization,
+              quality_certifications: selectedProduct.supplement_brands.quality_certifications,
+              description: selectedProduct.supplement_brands.description,
+              logo_url: selectedProduct.supplement_brands.logo_url,
+            } : null,
           } : null,
         };
       });
@@ -645,6 +711,7 @@ export const useUpdateSupplement = () => {
       preferred_timing?: PreferredTiming;
       notes?: string | null;
       schedule?: { type: string; cycle_on_days?: number; cycle_off_days?: number; start_date?: string };
+      selected_product_id?: string | null;
     }
   ): Promise<void> => {
     if (!user?.id) throw new Error('Not authenticated');
@@ -659,6 +726,7 @@ export const useUpdateSupplement = () => {
     if (updates.preferred_timing !== undefined) updateData.preferred_timing = updates.preferred_timing;
     if (updates.notes !== undefined) updateData.notes = updates.notes;
     if (updates.schedule !== undefined) updateData.schedule = updates.schedule;
+    if (updates.selected_product_id !== undefined) updateData.selected_product_id = updates.selected_product_id;
 
     const { error } = await supabase
       .from('user_supplements')

@@ -152,8 +152,10 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
     (item.schedule as any)?.cycle_off_days || 2
   );
   
-  // Selected product state
-  const [selectedProduct, setSelectedProduct] = useState<SupplementProduct | null>(null);
+  // Selected product state - initialize from persisted data
+  const [selectedProduct, setSelectedProduct] = useState<SupplementProduct | null>(
+    item.selected_product || null
+  );
   const [showDetailSheet, setShowDetailSheet] = useState(false);
 
   // Handle ARES Instant Check - Opens inline overlay (no redirect)
@@ -181,6 +183,8 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
     setIsCyclic(item.schedule?.type === 'cycle' || item.schedule?.type === 'cyclic');
     setCycleOnDays((item.schedule as any)?.cycle_on_days || 5);
     setCycleOffDays((item.schedule as any)?.cycle_off_days || 2);
+    // Reset selected product from persisted data
+    setSelectedProduct(item.selected_product || null);
   }, [item]);
 
   // Handle expand
@@ -208,6 +212,8 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
         preferred_timing: preferredTiming,
         notes: notes || null,
         schedule,
+        // Persist selected product ID for brand display
+        selected_product_id: selectedProduct?.id || null,
       });
       
       haptics.success();
@@ -218,7 +224,7 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
     } finally {
       setIsSaving(false);
     }
-  }, [item.id, dosage, unit, preferredTiming, notes, isCyclic, cycleOnDays, cycleOffDays, onSave]);
+  }, [item.id, dosage, unit, preferredTiming, notes, isCyclic, cycleOnDays, cycleOffDays, selectedProduct, onSave]);
 
   // Handle delete
   const handleDelete = useCallback(async () => {
@@ -298,6 +304,13 @@ export const ExpandableSupplementChip: React.FC<ExpandableSupplementChipProps> =
               <span className="text-xs text-muted-foreground">
                 {dosage}{unit}
               </span>
+              
+              {/* Brand Name (from persisted selected_product) */}
+              {item.selected_product?.brand?.name && (
+                <span className="text-xs text-primary font-medium">
+                  · {item.selected_product.brand.name}
+                </span>
+              )}
               
               {/* Timing Constraint Badge */}
               {constraint !== 'any' && constraintBadge && (

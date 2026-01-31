@@ -8083,6 +8083,7 @@ export type Database = {
           rating: number | null
           schedule: Json | null
           schedule_type: string | null
+          selected_product_id: string | null
           source: string | null
           stock_count: number | null
           supplement_id: string | null
@@ -8110,6 +8111,7 @@ export type Database = {
           rating?: number | null
           schedule?: Json | null
           schedule_type?: string | null
+          selected_product_id?: string | null
           source?: string | null
           stock_count?: number | null
           supplement_id?: string | null
@@ -8137,6 +8139,7 @@ export type Database = {
           rating?: number | null
           schedule?: Json | null
           schedule_type?: string | null
+          selected_product_id?: string | null
           source?: string | null
           stock_count?: number | null
           supplement_id?: string | null
@@ -8146,6 +8149,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_supplements_selected_product_id_fkey"
+            columns: ["selected_product_id"]
+            isOneToOne: false
+            referencedRelation: "supplement_products"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_supplements_supplement_id_fkey"
             columns: ["supplement_id"]

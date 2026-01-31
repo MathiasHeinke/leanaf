@@ -260,8 +260,12 @@ export interface UserStackItem {
   schedule?: Record<string, unknown> | null;
   created_at?: string;
   updated_at?: string;
+  // Selected product ID (persists brand/product selection)
+  selected_product_id?: string | null;
   // Joined data from supplement_database
   supplement?: SupplementLibraryItem | null;
+  // Joined data from supplement_products (when selected_product_id exists)
+  selected_product?: SupplementProduct | null;
 }
 
 // Timing Constraint Labels für UI (bedtime removed)
