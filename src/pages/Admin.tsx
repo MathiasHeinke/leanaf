@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSecureAdminAccess } from '@/hooks/useSecureAdminAccess';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 import { exportSupplementMatrixCSV } from '@/utils/exportMatrixCSV';
 import { executeMatrixCleanup, verifyMatrixCleanup } from '@/utils/matrixCleanupQueries';
+import { executeMatrixImportFromCSV } from '@/lib/executeMatrixImport';
 import { Link } from 'react-router-dom';
 import { ProductionMonitoringDashboard } from '@/components/ProductionMonitoringDashboard';
 import { SecurityMonitor } from '@/components/SecurityMonitor';
@@ -42,7 +44,17 @@ export const AdminPage = () => {
   const { isAdmin, loading: adminLoading, error: adminError } = useSecureAdminAccess('admin_panel');
   const [isExporting, setIsExporting] = useState(false);
   const [isCleaningMatrix, setIsCleaningMatrix] = useState(false);
+  const [isImportingCSV, setIsImportingCSV] = useState(false);
   const [cleanupResults, setCleanupResults] = useState<Array<{success: boolean; step: string; error?: string}> | null>(null);
+  const [csvImportResults, setCSVImportResults] = useState<{
+    success: boolean;
+    totalParsed: number;
+    totalMatched: number;
+    totalUpdated: number;
+    totalSkipped: number;
+    totalErrors: number;
+    errors: string[];
+  } | null>(null);
 
   const handleMatrixExport = async () => {
     setIsExporting(true);
@@ -77,7 +89,36 @@ export const AdminPage = () => {
     }
   };
 
-  
+  const handleCSVMatrixImport = async () => {
+    setIsImportingCSV(true);
+    setCSVImportResults(null);
+    try {
+      const result = await executeMatrixImportFromCSV();
+      setCSVImportResults({
+        success: result.success,
+        totalParsed: result.totalParsed,
+        totalMatched: result.totalMatched,
+        totalUpdated: result.totalUpdated,
+        totalSkipped: result.totalSkipped,
+        totalErrors: result.totalErrors,
+        errors: result.errors.slice(0, 5), // Show first 5 errors
+      });
+      console.log('CSV Matrix Import complete:', result);
+    } catch (err) {
+      console.error('CSV Import failed:', err);
+      setCSVImportResults({
+        success: false,
+        totalParsed: 0,
+        totalMatched: 0,
+        totalUpdated: 0,
+        totalSkipped: 0,
+        totalErrors: 1,
+        errors: [String(err)],
+      });
+    } finally {
+      setIsImportingCSV(false);
+    }
+  };
 
   // Show loading state while checking admin access
   if (adminLoading) {
@@ -274,6 +315,71 @@ export const AdminPage = () => {
                           )}
                         </div>
                       ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* CSV Matrix Import v2.0 Card */}
+              <Card className="bg-background border-border dark:bg-card dark:border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-foreground dark:text-foreground">
+                    <Database className="w-5 h-5 mr-2" />
+                    Matrix Import v2.0
+                  </CardTitle>
+                  <CardDescription>
+                    84 Wirkstoffe mit kalibrierten Phase-Boosts, neuen bw_ Modifiern. Aktualisiert auch impact_score, necessity_tier, evidence_level.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Button 
+                    onClick={handleCSVMatrixImport} 
+                    disabled={isImportingCSV}
+                    className="w-full"
+                  >
+                    {isImportingCSV ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Importiere Matrix v2.0...
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        CSV Matrix v2.0 importieren
+                      </>
+                    )}
+                  </Button>
+                  
+                  {csvImportResults && (
+                    <div className={cn(
+                      "p-3 rounded-lg text-sm space-y-2",
+                      csvImportResults.success 
+                        ? "bg-green-500/10 text-green-600 dark:text-green-400" 
+                        : "bg-red-500/10 text-red-600 dark:text-red-400"
+                    )}>
+                      <div className="flex items-center gap-2">
+                        {csvImportResults.success ? (
+                          <CheckCircle className="w-4 h-4" />
+                        ) : (
+                          <XCircle className="w-4 h-4" />
+                        )}
+                        <span className="font-medium">
+                          {csvImportResults.success ? 'Import erfolgreich!' : 'Import mit Fehlern'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>Geparst: {csvImportResults.totalParsed}</div>
+                        <div>Gematcht: {csvImportResults.totalMatched}</div>
+                        <div>Aktualisiert: {csvImportResults.totalUpdated}</div>
+                        <div>Übersprungen: {csvImportResults.totalSkipped}</div>
+                      </div>
+                      {csvImportResults.errors.length > 0 && (
+                        <div className="text-xs mt-2 opacity-75">
+                          {csvImportResults.errors.map((err, i) => (
+                            <div key={i}>• {err}</div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>

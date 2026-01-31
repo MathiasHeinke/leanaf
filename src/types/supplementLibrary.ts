@@ -52,6 +52,7 @@ export const EVIDENCE_LEVEL_CONFIG: Record<EvidenceLevel, {
   label: string; 
   color: string; 
   description: string;
+  longDescription: string;
   bgClass: string;
   textClass: string;
 }> = {
@@ -59,6 +60,7 @@ export const EVIDENCE_LEVEL_CONFIG: Record<EvidenceLevel, {
     label: 'Starke Evidenz', 
     color: 'green',
     description: 'Meta-Analysen & RCTs bestätigen Wirkung',
+    longDescription: 'Mehrere randomisierte kontrollierte Studien (RCTs) und Meta-Analysen bestätigen die Wirksamkeit. Höchste wissenschaftliche Qualität.',
     bgClass: 'bg-green-500/10',
     textClass: 'text-green-600'
   },
@@ -66,6 +68,7 @@ export const EVIDENCE_LEVEL_CONFIG: Record<EvidenceLevel, {
     label: 'Moderate Evidenz', 
     color: 'yellow',
     description: 'Einzelne RCTs oder starke mechanistische Daten',
+    longDescription: 'Begrenzte RCTs, aber konsistente Ergebnisse aus Beobachtungsstudien und mechanistischen Daten. Solide Grundlage für Anwendung.',
     bgClass: 'bg-yellow-500/10',
     textClass: 'text-yellow-600'
   },
@@ -73,6 +76,7 @@ export const EVIDENCE_LEVEL_CONFIG: Record<EvidenceLevel, {
     label: 'Anekdotisch', 
     color: 'orange',
     description: 'Tierstudien oder N=1 Erfahrungsberichte',
+    longDescription: 'Primär auf Tierstudien oder Erfahrungsberichten basierend. Mechanistische Plausibilität, aber unzureichende Humanstudien.',
     bgClass: 'bg-orange-500/10',
     textClass: 'text-orange-600'
   }

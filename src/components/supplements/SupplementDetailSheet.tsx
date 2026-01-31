@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap } from 'lucide-react';
+import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -16,6 +16,7 @@ import {
   type SupplementLibraryItem,
   type EvidenceLevel,
 } from '@/types/supplementLibrary';
+import type { RelevanceMatrix } from '@/types/relevanceMatrix';
 
 interface SupplementDetailSheetProps {
   item: SupplementLibraryItem | null;
@@ -257,6 +258,42 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
             </>
           )}
 
+          {/* Wissenschaftliche Evidenz - Extended Section */}
+          {evidenceConfig && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                  <FlaskConical className="h-4 w-4 text-primary" />
+                  Wissenschaftliche Evidenz
+                </h4>
+                <div className={cn(
+                  "p-3 rounded-lg border",
+                  evidenceConfig.bgClass,
+                  "border-opacity-30"
+                )}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge 
+                      variant="outline" 
+                      className={cn("text-xs", evidenceConfig.textClass)}
+                    >
+                      {item.evidence_level === 'stark' ? '🔬' : item.evidence_level === 'moderat' ? '📊' : '💡'} {evidenceConfig.label}
+                    </Badge>
+                  </div>
+                  <p className={cn("text-xs leading-relaxed", evidenceConfig.textClass)}>
+                    {evidenceConfig.longDescription}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Kontext-Relevanz Section */}
+          <ContextRelevanceSection matrix={item.relevance_matrix} />
+
+          {/* Blutwert-Trigger Section */}
+          <BloodworkTriggersSection matrix={item.relevance_matrix} />
+
           {/* Personalized ARES Score & Cost */}
           <Separator />
           <div className="grid grid-cols-2 gap-3">
@@ -310,6 +347,163 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
         </div>
       </SheetContent>
     </Sheet>
+  );
+};
+
+// =====================================================
+// Sub-Components for Matrix Info Display
+// =====================================================
+
+const CONTEXT_LABELS: Record<string, string> = {
+  true_natural: 'True Natural',
+  enhanced_no_trt: 'Enhanced ohne TRT',
+  on_trt: 'Bei TRT/HRT',
+  on_glp1: 'Bei GLP-1 (Reta/Tirze/Sema)',
+};
+
+const BLOODWORK_LABELS: Record<string, string> = {
+  cortisol_high: 'Cortisol erhöht',
+  testosterone_low: 'Testosteron niedrig',
+  vitamin_d_low: 'Vitamin D niedrig',
+  magnesium_low: 'Magnesium niedrig',
+  triglycerides_high: 'Triglyceride erhöht',
+  inflammation_high: 'Entzündungswerte erhöht',
+  glucose_high: 'Blutzucker erhöht',
+  insulin_resistant: 'Insulinresistenz',
+  hdl_low: 'HDL niedrig',
+  ldl_high: 'LDL erhöht',
+  apob_high: 'ApoB erhöht',
+  ferritin_high: 'Ferritin erhöht',
+  homocysteine_high: 'Homocystein erhöht',
+  nad_low: 'NAD+ niedrig',
+  b12_low: 'B12 niedrig',
+  iron_low: 'Eisen niedrig',
+  thyroid_slow: 'Schilddrüse verlangsamt',
+};
+
+interface ContextRelevanceSectionProps {
+  matrix?: RelevanceMatrix | null;
+}
+
+const ContextRelevanceSection: React.FC<ContextRelevanceSectionProps> = ({ matrix }) => {
+  const ctxModifiers = matrix?.context_modifiers;
+  
+  const relevantContexts = useMemo(() => {
+    if (!ctxModifiers) return [];
+    
+    return Object.entries(CONTEXT_LABELS)
+      .filter(([key]) => {
+        const value = ctxModifiers[key as keyof typeof ctxModifiers];
+        return value !== undefined && value !== 0;
+      })
+      .map(([key, label]) => ({
+        key,
+        label,
+        value: ctxModifiers[key as keyof typeof ctxModifiers] as number,
+      }))
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  }, [ctxModifiers]);
+  
+  if (relevantContexts.length === 0) return null;
+  
+  return (
+    <>
+      <Separator />
+      <div>
+        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+          <Target className="h-4 w-4 text-blue-500" />
+          Wann besonders relevant
+        </h4>
+        <div className="space-y-1.5">
+          {relevantContexts.map(({ key, label, value }) => (
+            <div 
+              key={key}
+              className={cn(
+                "flex items-center justify-between p-2 rounded-lg text-xs",
+                value > 0 
+                  ? "bg-green-500/10 text-green-700 dark:text-green-400" 
+                  : "bg-red-500/10 text-red-700 dark:text-red-400"
+              )}
+            >
+              <span>{label}</span>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs font-mono",
+                  value > 0 
+                    ? "border-green-500/30 text-green-600" 
+                    : "border-red-500/30 text-red-600"
+                )}
+              >
+                {value > 0 ? '+' : ''}{value.toFixed(1)}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
+interface BloodworkTriggersSectionProps {
+  matrix?: RelevanceMatrix | null;
+}
+
+const BloodworkTriggersSection: React.FC<BloodworkTriggersSectionProps> = ({ matrix }) => {
+  const bwTriggers = matrix?.bloodwork_triggers;
+  
+  const relevantTriggers = useMemo(() => {
+    if (!bwTriggers) return [];
+    
+    return Object.entries(bwTriggers)
+      .filter(([, value]) => value !== undefined && value !== 0)
+      .map(([key, value]) => ({
+        key,
+        label: BLOODWORK_LABELS[key] || key.replace(/_/g, ' '),
+        value: value as number,
+      }))
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      .slice(0, 6); // Show top 6
+  }, [bwTriggers]);
+  
+  if (relevantTriggers.length === 0) return null;
+  
+  return (
+    <>
+      <Separator />
+      <div>
+        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+          <Droplets className="h-4 w-4 text-purple-500" />
+          Blutwert-basierte Empfehlung
+        </h4>
+        <div className="grid grid-cols-2 gap-1.5">
+          {relevantTriggers.map(({ key, label, value }) => (
+            <div 
+              key={key}
+              className={cn(
+                "flex items-center justify-between p-2 rounded-lg text-xs",
+                value > 0 
+                  ? "bg-purple-500/10 text-purple-700 dark:text-purple-400" 
+                  : "bg-orange-500/10 text-orange-700 dark:text-orange-400"
+              )}
+            >
+              <span className="truncate mr-1">{label}</span>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs font-mono shrink-0",
+                  value > 0 
+                    ? "border-purple-500/30 text-purple-600" 
+                    : "border-orange-500/30 text-orange-600"
+                )}
+              >
+                {value > 0 ? '+' : ''}{value.toFixed(1)}
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 };
 
