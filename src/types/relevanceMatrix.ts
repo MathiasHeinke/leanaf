@@ -128,6 +128,7 @@ export interface UserRelevanceContext {
   hasBloodworkData: boolean;      // bloodworkFlags.length > 0
   hasBasicProfile: boolean;       // age, goal, weight available
   profileCompleteness: 'full' | 'basic' | 'minimal';
+  missingProfileFields: string[]; // ['age', 'weight', 'goal'] - for UI hints
 }
 
 /**
