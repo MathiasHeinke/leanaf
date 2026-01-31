@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useProtocolStatus } from '@/hooks/useProtocolStatus';
@@ -17,12 +16,22 @@ import {
   AlertCircle,
   Pause,
   Play,
+  Info,
 } from 'lucide-react';
 import { Phase0Checklist } from '@/components/protocol/phase-0/Phase0Checklist';
 import { Phase1Overview } from '@/components/protocol/phase-1/Phase1Overview';
 import { Phase2Overview } from '@/components/protocol/phase-2/Phase2Overview';
 import { Phase3Overview } from '@/components/protocol/phase-3/Phase3Overview';
+import { ViaNegativaSheet } from '@/components/protocol/phase-0/ViaNegativaSheet';
 import { cn } from '@/lib/utils';
+
+// Phase-specific headlines for the compact card
+const PHASE_HEADLINES: Record<number, { title: string; cta: string }> = {
+  0: { title: 'Erst entfernen, was schadet', cta: 'Das Multiplikator-Prinzip' },
+  1: { title: 'Die aggressive Transformation', cta: 'Protokoll-Details' },
+  2: { title: 'Feinschliff für Langlebigkeit', cta: 'Advanced Settings' },
+  3: { title: 'Lebenslanges Maintenance', cta: 'Longevity Stack' },
+};
 
 const PHASE_INFO = [
   { 
@@ -64,9 +73,10 @@ export default function ProtocolPage() {
     canUnlockPhase1,
     pauseProtocol,
     resumeProtocol,
-    
     unlockPhase1
   } = useProtocolStatus();
+  
+  const [showPhaseInfo, setShowPhaseInfo] = useState(false);
 
   if (authLoading || loading) {
     return (
@@ -168,11 +178,11 @@ export default function ProtocolPage() {
             })}
           </div>
           
-          {/* Current Phase Info */}
+          {/* Current Phase Info - Compact with Info Button */}
           <div className="mt-6 p-4 rounded-lg bg-muted/50">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant={isPaused ? 'secondary' : 'default'}>
                     Phase {currentPhase}: {PHASE_INFO[currentPhase].name}
                   </Badge>
@@ -183,17 +193,31 @@ export default function ProtocolPage() {
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {PHASE_INFO[currentPhase].description}
+                
+                {/* Phase Headline */}
+                <p className="text-base font-medium mt-2">
+                  {PHASE_HEADLINES[currentPhase]?.title}
                 </p>
+                
+                {/* Info Button Row */}
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    onClick={() => setShowPhaseInfo(true)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                    <span>{PHASE_HEADLINES[currentPhase]?.cta}</span>
+                  </button>
+                </div>
               </div>
               
+              {/* Progress Display */}
               {currentPhase === 0 && (
-                <div className="text-right flex items-center gap-4">
+                <div className="text-right flex items-center gap-3 flex-shrink-0">
                   <div>
-                    <div className="text-2xl font-bold">{phase0Progress}/8</div>
+                    <div className="text-2xl font-bold">{phase0Progress}/10</div>
                     <div className="text-xs text-muted-foreground">Checks erfüllt</div>
-                    <Progress value={(phase0Progress / 8) * 100} className="w-24 mt-1" />
+                    <Progress value={(phase0Progress / 10) * 100} className="w-20 mt-1" />
                   </div>
                   {canUnlockPhase1 && (
                     <Button onClick={() => unlockPhase1()} size="sm">
@@ -206,6 +230,11 @@ export default function ProtocolPage() {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Via Negativa Sheet (Phase 0 only) */}
+      {currentPhase === 0 && (
+        <ViaNegativaSheet open={showPhaseInfo} onOpenChange={setShowPhaseInfo} />
+      )}
 
       {/* Phase Content - Direct based on currentPhase */}
       <div className="mt-6">
