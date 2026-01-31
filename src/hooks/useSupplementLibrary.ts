@@ -71,6 +71,8 @@ export const useSupplementLibrary = () => {
         warnung: item.warnung || null,
         // ARES Matrix-Scoring
         relevance_matrix: item.relevance_matrix || null,
+        // Combo products: ingredient references
+        ingredient_ids: item.ingredient_ids || null,
       }));
     },
     staleTime: 1000 * 60 * 10, // 10 minutes - library rarely changes
