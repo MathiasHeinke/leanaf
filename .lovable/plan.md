@@ -1,197 +1,230 @@
 
+# Phase 0 Profil-Vervollständigung: Lifestyle-Screening + Disclaimer
 
-# Deep Enrichment System: Vollstandige Produktanreicherung
+## Ubersicht
 
-## Problem
+Phase 0 braucht eine neue Checklist-Karte "Profil vollstandig", die erst als erfüllt gilt, wenn:
+1. Basisdaten ausgefüllt sind (Gewicht, Größe, Alter, Geschlecht, Aktivität)
+2. Lifestyle-Screening abgeschlossen wurde (Alkohol, Rauchen, Medikamente)
+3. Der rechtliche Disclaimer akzeptiert wurde
 
-Das aktuelle "Anreichern" fullt nur 17 von 54+ Feldern aus und die Big8 Scores werden ohne echte Datengrundlage geschatzt.
-
-### Aktuell erfasste Felder (17)
-```text
-product_name, brand_name, price_eur, pack_size, pack_unit,
-dose_per_serving, dose_unit, servings_per_pack, price_per_serving,
-amazon_asin, amazon_image, is_vegan, is_organic, quality_tags,
-ingredients, description + 8 Big8 Scores (geschatzt)
-```
-
-### Fehlende Felder (37+)
-```text
-PRODUKT: form, category, product_sku, serving_size, dosage_per_serving,
-         is_gluten_free, is_verified, is_recommended, allergens,
-         country_of_origin, short_description, timing, popularity_score
-
-QUALITY: bioavailability, potency, reviews, origin, lab_tests, purity, value
-
-AMAZON: amazon_url, amazon_name, match_score
-
-INTERAKTIONEN: synergies, blockers (von supplement_database)
-
-BRAND: country, website, price_tier, certifications (von supplement_brands)
-```
+### Aktueller Stand
+- `Phase0Checklist.tsx`: Hat 9 Items (toxin_free, sleep_score, bio_sanierung, etc.)
+- `Profile.tsx`: Hat Körper-Basics und MedicalScreening (für Vorerkrankungen/Medikamente)
+- `profiles` Tabelle: Hat bereits `protocol_mode`, aber **keine** Lifestyle-Felder (Alkohol, Rauchen)
+- `user_medical_profile` Tabelle: Hat medizinische Daten, aber nicht Lifestyle/Toxine
 
 ---
 
-## Losung: 3-Stufen Deep Enrichment
+## Losung: Neue Struktur
 
-### Stufe 1: Smart Product Analysis
+### 1. Profil-Seite Neustrukturierung
 
-Detaillierte LLM-Analyse mit produktspezifischen Daten:
-- Form-Erkennung (Kapsel/Tablette/Pulver/Liposomal/Softgel)
-- Ingredientien-Parsing (aktive vs. Fullstoffe)
-- Qualitats-Flag-Erkennung (GMP, Made in Germany, Lab-tested)
-- Allergen-Erkennung
-
-### Stufe 2: Database Context Enrichment
-
-Daten aus der `supplement_database` ubernehmen:
-- Synergies und Blockers vom gematchten Wirkstoff
-- Evidence Level, Impact Score, Necessity Tier
-- Timing Constraints, Cycling Protocol
-- Hallmarks Addressed
-
-### Stufe 3: Brand Intelligence
-
-Daten aus der `supplement_brands` Tabelle:
-- Country of Origin, Price Tier
-- Quality Certifications
-- Automatische Brand-Zuordnung oder Neu-Erstellung
-
-### Stufe 4: Smart Big8 Scoring
-
-Regelbasierte + KI-gestutzte Berechnung basierend auf:
-
-| Score | Regel-Faktoren |
-|-------|----------------|
-| Bioavailability | Form (Liposomal=10, Chelat=9, Citrat=8.5, Oxid=5) |
-| Dosage | Dosis vs. klinischer Standard aus supplement_database |
-| Form | Produkt-Form Mapping |
-| Purity | Zusatzstoffe-Count, Quality Tags |
-| Research | Evidence Level von supplement_database |
-| Synergy | Vorhandene Synergies Count |
-| Transparency | Lab-Tests, Zertifikate, COA |
-| Value | Preis pro klinischer Dosis im Marktvergleich |
-
----
-
-## Technische Umsetzung
-
-### Edge Function: `enrich-product-submission/index.ts`
-
-Komplett-Neuschreibung mit 4 Stufen:
+Die Reihenfolge der Sektionen in Profile.tsx andern zu:
 
 ```text
-STEP 1: Re-analyze scraped content
-        - Besseres LLM-Prompt fur alle Felder
-        - Form/Category/Allergen-Erkennung
-
-STEP 2: Database lookup
-        - supplement_database fur Wirkstoff-Daten
-        - supplement_brands fur Marken-Daten (oder create new)
-
-STEP 3: Calculate Big8 with real data
-        - Regelbasiert wo moglich
-        - KI nur fur Lucken
-
-STEP 4: Merge all data into enriched_data
+1. Profil & Identitat (Name, Avatar) - BESTEHT
+2. Körper-Basics (Gewicht, Große, Alter, Geschlecht, Aktivitat, Training) - BESTEHT
+3. 🆕 LIFESTYLE-SCREENING (Alkohol, Rauchen/Vapen, Drogen)
+4. 🆕 DISCLAIMER-AKZEPTANZ (Gesundheits-Haftungsausschluss)
+5. Medizinische Informationen (Vorerkrankungen, Medikamente) - BESTEHT (verschoben)
+6. ARES Protokoll-Modus - BESTEHT
+7. Ziele - BESTEHT
+8. Kalorien & Makros - BESTEHT
+9. Protokoll-Intensitat - BESTEHT
+10. Longevity Settings (Phase 3+) - BESTEHT
+11. Coach Persona - BESTEHT
 ```
 
-### UI Update: `ProductSubmissionsReview.tsx`
+### 2. Neue Komponente: LifestyleScreening.tsx
 
-Erweiterte Anzeige mit Tabs:
+Erfasst Toxin-relevante Lifestyle-Daten:
 
 ```text
-+-------------------------------------------+
-| [Basis] [Qualitat] [Wirkstoff] [Marke]   |
-+-------------------------------------------+
-| Produkt: Clear Whey Protein Isolat        |
-| Marke: Ruhls Bestes                       |
-| Preis: €39.99 | Portionen: 30             |
-| Form: Pulver | Dosis: 30g                 |
-| Timing: Post-Workout                      |
-| Category: Protein                         |
-+-------------------------------------------+
-| QUALITAT:                                 |
-| - GMP Zertifiziert: Ja                    |
-| - Lab-Tested: Unknown                     |
-| - Allergens: Milch                        |
-| - Quality Tags: Isolat, Clear             |
-+-------------------------------------------+
-| WIRKSTOFF (Whey Protein):                 |
-| - Synergies: Creatin, BCAA                |
-| - Evidence: High                          |
-| - Timing: Post-Workout                    |
-+-------------------------------------------+
-| MARKE (Ruhls Bestes):                     |
-| - Land: Deutschland                       |
-| - Tier: Mid                               |
-| - Status: NEU (wird erstellt)             |
-+-------------------------------------------+
-| BIG8 SCORES:                              |
-| Bio: 8.5 (Isolat-Form)                    |
-| Dos: 9.0 (30g = optimal)                  |
-| ...                                       |
-+-------------------------------------------+
++------------------------------------------+
+| 🚬 LIFESTYLE & TOXINE                    |
++------------------------------------------+
+| Rauchst/Vapest du?                       |
+| [○ Nein] [○ Gelegentlich] [○ Regelmäßig] |
+| Menge (wenn ja): [___ Zigaretten/Tag]    |
++------------------------------------------+
+| Wie oft trinkst du Alkohol?              |
+| [○ Nie] [○ <2x/Jahr] [○ Monatlich]       |
+| [○ Wöchentlich] [○ Täglich]              |
+| Menge (wenn ja): [___ Drinks/Woche]      |
++------------------------------------------+
+| Konsumierst du andere Substanzen?        |
+| [○ Nein] [○ Gelegentlich] [○ Regelmäßig] |
+| Welche (optional): [___________]         |
++------------------------------------------+
 ```
 
-### Neue Funktionen im Hook
+### 3. Neue Komponente: HealthDisclaimer.tsx
+
+Rechtlicher Disclaimer mit Checkbox-Akzeptanz:
+
+```text
++------------------------------------------+
+| ⚖️ RECHTLICHER HINWEIS                    |
++------------------------------------------+
+| Diese App dient ausschließlich der       |
+| Unterhaltung und dem personlichen        |
+| Logging. Sie ersetzt KEINEN Arzt oder    |
+| medizinische Beratung.                   |
+|                                          |
+| Bei gesundheitlichen Problemen muss      |
+| IMMER ein qualifizierter Arzt            |
+| konsultiert werden.                      |
+|                                          |
+| [✓] Ich bestatige, dass ich für meine    |
+|     Gesundheit selbst verantwortlich     |
+|     bin und diese App nur zur            |
+|     Dokumentation nutze.                 |
+|                                          |
+| [✓] Ich verstehe, dass diese App keine   |
+|     medizinische Beratung darstellt.     |
++------------------------------------------+
+```
+
+### 4. Datenbank-Erweiterung
+
+Neue Spalten in `profiles` Tabelle:
+
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| `smoking_status` | text | 'never', 'occasional', 'regular', 'quit' |
+| `smoking_amount` | integer | Zigaretten/Tag (nullable) |
+| `smoking_quit_date` | date | Aufhördatum (nullable) |
+| `vaping_status` | text | 'never', 'occasional', 'regular' |
+| `alcohol_frequency` | text | 'never', 'rare', 'monthly', 'weekly', 'daily' |
+| `alcohol_drinks_per_week` | integer | Durchschnittliche Drinks/Woche |
+| `substance_use` | text | 'none', 'occasional', 'regular' |
+| `substance_details` | text | Freitext für Details |
+| `disclaimer_accepted_at` | timestamp | Zeitpunkt der Disclaimer-Akzeptanz |
+| `lifestyle_screening_completed` | boolean | Flag für Abschluss |
+
+### 5. Phase 0 Checklist Integration
+
+Neues Item in `CHECKLIST_ITEMS`:
 
 ```typescript
-// useProductSubmissionsAdmin.ts
-enrichSubmission(id: string): Promise<EnrichedData>
-  // Ruft enrich-product-submission auf
+{
+  key: 'profile_complete',
+  title: 'Profil vollständig',
+  description: 'Basisdaten + Lifestyle + Disclaimer ausgefüllt',
+  icon: User,
+  autoValidate: true
+}
+```
 
-// EnrichedData interface erweitert auf 54+ Felder
-interface ExtendedEnrichedData {
-  // === PRODUKT (20 Felder) ===
-  product_name, brand_name, form, category,
-  pack_size, pack_unit, servings_per_pack,
-  dose_per_serving, dose_unit, dosage_per_serving,
-  serving_size, price_eur, price_per_serving,
-  is_vegan, is_organic, is_gluten_free,
-  allergens, quality_tags, timing,
-  short_description,
+Erweiterung von `Phase0Checklist` in `useProtocolStatus.ts`:
 
-  // === AMAZON (5 Felder) ===
-  amazon_asin, amazon_url, amazon_image,
-  amazon_name, match_score,
+```typescript
+profile_complete: { 
+  completed: boolean; 
+  basics_done: boolean;
+  lifestyle_done: boolean;
+  disclaimer_accepted: boolean;
+  validated_at: string | null;
+}
+```
 
-  // === BIG8 (8 Felder) ===
-  quality_bioavailability, quality_dosage,
-  quality_form, quality_purity,
-  quality_research, quality_synergy,
-  quality_transparency, quality_value,
+### 6. Life Impact Data Erweiterung
 
-  // === LEGACY QUALITY (7 Felder) ===
-  bioavailability, potency, reviews,
-  origin, lab_tests, purity, value,
+Neuer Eintrag in `lifeImpactData.ts`:
 
-  // === SCORES (3 Felder) ===
-  impact_score_big8, popularity_score, match_score,
+```typescript
+profile_complete: {
+  key: 'profile_complete',
+  impact: {
+    years: 0,
+    label: 'Fundament',
+    color: 'success',
+  },
+  whyTitle: 'Dein Ausgangspunkt',
+  whyContent: [
+    'Ohne vollständiges Profil keine personalisierten Empfehlungen.',
+    'Lifestyle-Daten ermöglichen präzise Toxin-Analyse.',
+    'Der Disclaimer schützt dich und uns rechtlich.',
+  ],
+  subItems: [
+    { label: 'Basisdaten erfasst', explanation: 'Gewicht, Größe, Alter, Geschlecht' },
+    { label: 'Lifestyle-Screening abgeschlossen', explanation: 'Rauchen, Alkohol, Substanzen' },
+    { label: 'Disclaimer akzeptiert', explanation: 'Rechtliche Verantwortung bestätigt' },
+  ],
+  aresQuote: 'Ohne Daten bin ich blind. Gib mir die Infos – dann zeig ich dir den Weg.',
+}
+```
 
-  // === WIRKSTOFF (aus supplement_database) ===
-  synergies, blockers, timing_constraint,
-  cycling_protocol, evidence_level,
-  necessity_tier, hallmarks_addressed,
+### 7. Auto-Validierung Logik
 
-  // === MARKE (aus supplement_brands) ===
-  brand_country, brand_price_tier,
-  brand_certifications, brand_id (UUID oder 'new')
+In `Phase0Checklist.tsx` neue Validation hinzufügen:
+
+```typescript
+// Validate Profile Completion
+const { data: profileData } = await supabase
+  .from('profiles')
+  .select('weight, height, age, gender, activity_level, ' +
+          'smoking_status, alcohol_frequency, ' +
+          'disclaimer_accepted_at, lifestyle_screening_completed')
+  .eq('user_id', user.id)
+  .maybeSingle();
+
+if (profileData) {
+  const basicsComplete = !!(profileData.weight && profileData.height && 
+                           profileData.age && profileData.gender);
+  const lifestyleComplete = !!profileData.lifestyle_screening_completed;
+  const disclaimerAccepted = !!profileData.disclaimer_accepted_at;
+  
+  if (basicsComplete && lifestyleComplete && disclaimerAccepted) {
+    await updatePhase0Check('profile_complete', {
+      completed: true,
+      basics_done: true,
+      lifestyle_done: true,
+      disclaimer_accepted: true,
+      validated_at: new Date().toISOString()
+    });
+  }
 }
 ```
 
 ---
 
-## Dateistruktur
+## Technische Umsetzung
+
+### Dateien
 
 | Datei | Anderung |
 |-------|----------|
-| `supabase/functions/enrich-product-submission/index.ts` | Komplett-Neuschreibung mit 4-Stufen-System |
-| `src/hooks/useProductSubmissionsAdmin.ts` | Erweiterte Interface und Approval-Logic |
-| `src/components/admin/ProductSubmissionsReview.tsx` | Erweiterte Detail-Ansicht mit Tabs |
+| `src/components/profile/LifestyleScreening.tsx` | NEU - Alkohol/Rauchen/Substanzen-Erfassung |
+| `src/components/profile/HealthDisclaimer.tsx` | NEU - Disclaimer-Komponente mit Checkboxen |
+| `src/pages/Profile.tsx` | Neue Komponenten einfügen, Reihenfolge andern |
+| `src/components/protocol/phase-0/Phase0Checklist.tsx` | Neues Item + Auto-Validation |
+| `src/components/protocol/phase-0/lifeImpactData.ts` | Neuer Eintrag profile_complete |
+| `src/hooks/useProtocolStatus.ts` | Erweiterung Phase0Checklist Interface |
+| Datenbank-Migration | Neue Spalten für profiles Tabelle |
+
+### Ablauf für User
+
+1. User öffnet Profil
+2. Füllt Basisdaten aus (Gewicht, Größe, etc.)
+3. Scrollt zu Lifestyle-Screening → Rauchen, Alkohol, Substanzen
+4. Disclaimer wird angezeigt → Checkboxen akzeptieren
+5. **Erst jetzt** kann der Disclaimer-Button aktiviert werden
+6. Nach Speichern: `lifestyle_screening_completed = true`, `disclaimer_accepted_at = now()`
+7. Phase 0 Checklist zeigt "Profil vollstandig" als erfullt
+
+### Verbindung zu Toxin-Free Item
+
+Das bestehende "Toxin-Frei + Sauna" Item bleibt **manuell bestatigbar**, aber die Lifestyle-Daten aus dem Profil können als **Warnung** angezeigt werden:
+
+```text
+⚠️ Du hast angegeben, wöchentlich Alkohol zu trinken.
+   Für "+15 Jahre" muss Alkohol auf max. 2×/Jahr reduziert werden.
+```
 
 ---
 
 ## Geschatzter Aufwand
 
-45-60 Minuten fur das vollstandige Deep Enrichment System.
-
+30-40 Minuten für die komplette Implementation inkl. DB-Migration.
