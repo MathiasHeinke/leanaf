@@ -92,10 +92,7 @@ export const SupplementGroupRow: React.FC<SupplementGroupRowProps> = ({
 
   return (
     <TooltipProvider>
-    <div className={cn(
-      "rounded-xl border overflow-hidden transition-all bg-card/50",
-      hasOverlapWarning ? "border-destructive/30" : "border-border/30"
-    )}>
+    <div className="rounded-xl border border-border/30 overflow-hidden transition-all bg-card/50">
       {/* Main Row (Base Name) */}
       <div
         className={cn(
