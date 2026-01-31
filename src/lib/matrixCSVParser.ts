@@ -224,7 +224,10 @@ function csvRowToRelevanceMatrix(row: Record<string, string>): RelevanceMatrix {
  * Parse CSV content to array of rows
  */
 function parseCSVContent(content: string): Record<string, string>[] {
-  const lines = content.split('\n').filter(line => line.trim());
+  // Remove BOM if present (UTF-8: EF BB BF, encoded as \ufeff)
+  const cleanedContent = content.replace(/^\ufeff/, '');
+  
+  const lines = cleanedContent.split('\n').filter(line => line.trim());
   if (lines.length < 2) return [];
   
   // First line is header/comment, second is column names
