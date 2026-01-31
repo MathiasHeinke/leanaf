@@ -5308,6 +5308,8 @@ export type Database = {
         Row: {
           activity_level: string | null
           age: number | null
+          alcohol_drinks_per_week: number | null
+          alcohol_frequency: string | null
           avatar_preset_id: string | null
           avatar_type: string | null
           bmr: number | null
@@ -5320,6 +5322,7 @@ export type Database = {
           current_bmi: number | null
           current_period_end: string | null
           daily_calorie_target: number | null
+          disclaimer_accepted_at: string | null
           display_name: string | null
           email: string | null
           fasting_protocol: string | null
@@ -5334,6 +5337,7 @@ export type Database = {
           hide_premium_features: boolean | null
           id: string
           last_name: string | null
+          lifestyle_screening_completed: boolean | null
           macro_strategy: string | null
           medical_risk_level: string | null
           medical_screening_completed: boolean | null
@@ -5347,11 +5351,16 @@ export type Database = {
           protein_target_g: number | null
           protocol_mode: string | null
           rapamycin_day: string | null
+          smoking_amount: number | null
+          smoking_quit_date: string | null
+          smoking_status: string | null
           start_bmi: number | null
           start_weight: number | null
           steps_goal: number | null
           subscription_id: string | null
           subscription_status: string | null
+          substance_details: string | null
+          substance_use: string | null
           target_bmi: number | null
           target_body_fat_percentage: number | null
           target_date: string | null
@@ -5361,6 +5370,7 @@ export type Database = {
           track_senolytics: boolean | null
           updated_at: string
           user_id: string
+          vaping_status: string | null
           weekly_training_sessions: number | null
           weekly_weight_loss_target: number | null
           weight: number | null
@@ -5368,6 +5378,8 @@ export type Database = {
         Insert: {
           activity_level?: string | null
           age?: number | null
+          alcohol_drinks_per_week?: number | null
+          alcohol_frequency?: string | null
           avatar_preset_id?: string | null
           avatar_type?: string | null
           bmr?: number | null
@@ -5380,6 +5392,7 @@ export type Database = {
           current_bmi?: number | null
           current_period_end?: string | null
           daily_calorie_target?: number | null
+          disclaimer_accepted_at?: string | null
           display_name?: string | null
           email?: string | null
           fasting_protocol?: string | null
@@ -5394,6 +5407,7 @@ export type Database = {
           hide_premium_features?: boolean | null
           id?: string
           last_name?: string | null
+          lifestyle_screening_completed?: boolean | null
           macro_strategy?: string | null
           medical_risk_level?: string | null
           medical_screening_completed?: boolean | null
@@ -5407,11 +5421,16 @@ export type Database = {
           protein_target_g?: number | null
           protocol_mode?: string | null
           rapamycin_day?: string | null
+          smoking_amount?: number | null
+          smoking_quit_date?: string | null
+          smoking_status?: string | null
           start_bmi?: number | null
           start_weight?: number | null
           steps_goal?: number | null
           subscription_id?: string | null
           subscription_status?: string | null
+          substance_details?: string | null
+          substance_use?: string | null
           target_bmi?: number | null
           target_body_fat_percentage?: number | null
           target_date?: string | null
@@ -5421,6 +5440,7 @@ export type Database = {
           track_senolytics?: boolean | null
           updated_at?: string
           user_id: string
+          vaping_status?: string | null
           weekly_training_sessions?: number | null
           weekly_weight_loss_target?: number | null
           weight?: number | null
@@ -5428,6 +5448,8 @@ export type Database = {
         Update: {
           activity_level?: string | null
           age?: number | null
+          alcohol_drinks_per_week?: number | null
+          alcohol_frequency?: string | null
           avatar_preset_id?: string | null
           avatar_type?: string | null
           bmr?: number | null
@@ -5440,6 +5462,7 @@ export type Database = {
           current_bmi?: number | null
           current_period_end?: string | null
           daily_calorie_target?: number | null
+          disclaimer_accepted_at?: string | null
           display_name?: string | null
           email?: string | null
           fasting_protocol?: string | null
@@ -5454,6 +5477,7 @@ export type Database = {
           hide_premium_features?: boolean | null
           id?: string
           last_name?: string | null
+          lifestyle_screening_completed?: boolean | null
           macro_strategy?: string | null
           medical_risk_level?: string | null
           medical_screening_completed?: boolean | null
@@ -5467,11 +5491,16 @@ export type Database = {
           protein_target_g?: number | null
           protocol_mode?: string | null
           rapamycin_day?: string | null
+          smoking_amount?: number | null
+          smoking_quit_date?: string | null
+          smoking_status?: string | null
           start_bmi?: number | null
           start_weight?: number | null
           steps_goal?: number | null
           subscription_id?: string | null
           subscription_status?: string | null
+          substance_details?: string | null
+          substance_use?: string | null
           target_bmi?: number | null
           target_body_fat_percentage?: number | null
           target_date?: string | null
@@ -5481,6 +5510,7 @@ export type Database = {
           track_senolytics?: boolean | null
           updated_at?: string
           user_id?: string
+          vaping_status?: string | null
           weekly_training_sessions?: number | null
           weekly_weight_loss_target?: number | null
           weight?: number | null

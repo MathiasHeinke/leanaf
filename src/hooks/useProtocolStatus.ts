@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 export interface Phase0Checklist {
+  profile_complete: { completed: boolean; basics_done: boolean; lifestyle_done: boolean; disclaimer_accepted: boolean; validated_at: string | null };
   toxin_free: { completed: boolean; confirmed_at: string | null };
   sleep_score: { completed: boolean; avg_hours: number | null; validated_at: string | null };
   bio_sanierung: { completed: boolean; confirmed_at: string | null };
@@ -35,6 +36,7 @@ export interface ProtocolStatus {
 }
 
 const DEFAULT_CHECKLIST: Phase0Checklist = {
+  profile_complete: { completed: false, basics_done: false, lifestyle_done: false, disclaimer_accepted: false, validated_at: null },
   toxin_free: { completed: false, confirmed_at: null },
   sleep_score: { completed: false, avg_hours: null, validated_at: null },
   bio_sanierung: { completed: false, confirmed_at: null },

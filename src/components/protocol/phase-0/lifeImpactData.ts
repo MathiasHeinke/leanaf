@@ -262,6 +262,29 @@ export const LIFE_IMPACT_DATA: Record<string, ExtendedChecklistData> = {
     ],
     aresQuote: 'Wer nicht misst, weiß nichts. Und wer nichts weiß, kann nichts ändern.',
   },
+
+  profile_complete: {
+    key: 'profile_complete',
+    impact: {
+      years: 0,
+      label: 'Fundament',
+      color: 'success',
+    },
+    whyTitle: 'Dein Ausgangspunkt',
+    whyContent: [
+      'Ohne vollständiges Profil keine personalisierten Empfehlungen.',
+      'Basisdaten (Gewicht, Größe, Alter) sind die Grundlage für alle Berechnungen.',
+      'Lifestyle-Daten ermöglichen präzise Toxin-Analyse und Risikobewertung.',
+      'Der Disclaimer schützt dich und uns rechtlich.',
+      'ARES braucht diese Daten um dir optimal zu helfen.',
+    ],
+    subItems: [
+      { label: 'Basisdaten erfasst', explanation: 'Gewicht, Größe, Alter, Geschlecht, Aktivität' },
+      { label: 'Lifestyle-Screening abgeschlossen', explanation: 'Rauchen, Alkohol, Substanzen – ehrlich für dich selbst' },
+      { label: 'Disclaimer akzeptiert', explanation: 'Rechtliche Verantwortung verstanden und bestätigt' },
+    ],
+    aresQuote: 'Ohne Daten bin ich blind. Gib mir die Infos – dann zeig ich dir den Weg.',
+  },
 };
 
 // Intro quotes for the Phase 0 header

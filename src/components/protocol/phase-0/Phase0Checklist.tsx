@@ -15,6 +15,7 @@ import {
   TrendingDown,
   TestTube,
   Activity,
+  User,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Phase0ChecklistItem } from './Phase0ChecklistItem';
@@ -29,6 +30,13 @@ interface CheckItem {
 }
 
 const CHECKLIST_ITEMS: CheckItem[] = [
+  {
+    key: 'profile_complete',
+    title: 'Profil vollständig',
+    description: 'Basisdaten + Lifestyle + Disclaimer ausgefüllt',
+    icon: User,
+    autoValidate: true
+  },
   {
     key: 'toxin_free',
     title: 'Toxin-Frei + Sauna',
@@ -113,6 +121,32 @@ export function Phase0Checklist() {
       setValidating(true);
       
       try {
+        // 0. Validate Profile Completion
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('weight, height, age, gender, activity_level, smoking_status, alcohol_frequency, disclaimer_accepted_at, lifestyle_screening_completed')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (profileData) {
+          const basicsComplete = !!(profileData.weight && profileData.height && 
+                                   profileData.age && profileData.gender && profileData.activity_level);
+          const lifestyleComplete = !!profileData.lifestyle_screening_completed;
+          const disclaimerAccepted = !!profileData.disclaimer_accepted_at;
+          
+          const profileComplete = basicsComplete && lifestyleComplete && disclaimerAccepted;
+          
+          if (profileComplete && !status.phase_0_checklist.profile_complete?.completed) {
+            await updatePhase0Check('profile_complete', {
+              completed: true,
+              basics_done: basicsComplete,
+              lifestyle_done: lifestyleComplete,
+              disclaimer_accepted: disclaimerAccepted,
+              validated_at: new Date().toISOString()
+            });
+          }
+        }
+
         // 1. Validate Sleep (last 14 days avg)
         const { data: sleepData } = await (supabase as any)
           .from('sleep_tracking')
