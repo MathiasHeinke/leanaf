@@ -304,15 +304,20 @@ export function ProductSubmissionsReview() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="text-primary hover:text-primary hover:bg-primary/10"
+                                  className={cn(
+                                    "hover:bg-primary/10",
+                                    sub.is_enriched 
+                                      ? "text-green-500 hover:text-green-600" 
+                                      : "text-primary hover:text-primary"
+                                  )}
                                   onClick={() => handleEnrich(sub)}
-                                  disabled={enrichingId === sub.id || sub.is_enriched}
-                                  title={sub.is_enriched ? 'Bereits angereichert' : 'Anreichern'}
+                                  disabled={enrichingId === sub.id}
+                                  title={sub.is_enriched ? 'Erneut anreichern' : 'Anreichern'}
                                 >
                                   {enrichingId === sub.id ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
-                                    <Sparkles className={cn('w-4 h-4', sub.is_enriched && 'text-muted-foreground')} />
+                                    <Sparkles className="w-4 h-4" />
                                   )}
                                 </Button>
                                 <Button
