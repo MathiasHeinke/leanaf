@@ -36,7 +36,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -56,6 +58,7 @@ export function ProductSubmissionsReview() {
     statusFilter,
     setStatusFilter,
     counts,
+    enrichSubmission,
     approveSubmission,
     rejectSubmission,
     deleteSubmission,
@@ -66,6 +69,21 @@ export function ProductSubmissionsReview() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [enrichingId, setEnrichingId] = useState<string | null>(null);
+
+  const handleEnrich = async (submission: ProductSubmission) => {
+    setEnrichingId(submission.id);
+    const enrichedData = await enrichSubmission(submission.id);
+    setEnrichingId(null);
+    if (enrichedData && selectedSubmission?.id === submission.id) {
+      // Update selected submission with enriched data
+      setSelectedSubmission({
+        ...selectedSubmission,
+        extracted_data: enrichedData,
+        is_enriched: true,
+      });
+    }
+  };
 
   const handleApprove = async (submission: ProductSubmission) => {
     setProcessingId(submission.id);
@@ -235,6 +253,21 @@ export function ProductSubmissionsReview() {
                             </Button>
                             {sub.status === 'pending' && (
                               <>
+                                {/* Enrich button */}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-primary hover:text-primary hover:bg-primary/10"
+                                  onClick={() => handleEnrich(sub)}
+                                  disabled={enrichingId === sub.id || sub.is_enriched}
+                                  title={sub.is_enriched ? 'Bereits angereichert' : 'Anreichern'}
+                                >
+                                  {enrichingId === sub.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Sparkles className={cn('w-4 h-4', sub.is_enriched && 'text-muted-foreground')} />
+                                  )}
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -361,6 +394,73 @@ export function ProductSubmissionsReview() {
                 </div>
               )}
 
+              {/* Big8 Quality Scores */}
+              {selectedSubmission.extracted_data?.impact_score_big8 != null && (
+                <div className="p-4 border border-primary/30 bg-primary/5 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-primary" />
+                      <span className="font-medium text-sm">Big8 Quality Score</span>
+                    </div>
+                    <Badge variant="default" className="text-lg px-3 py-1">
+                      {selectedSubmission.extracted_data.impact_score_big8.toFixed(1)}/10
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 text-xs">
+                    {[
+                      { label: 'Bioverfügbarkeit', value: selectedSubmission.extracted_data.quality_bioavailability },
+                      { label: 'Dosierung', value: selectedSubmission.extracted_data.quality_dosage },
+                      { label: 'Form', value: selectedSubmission.extracted_data.quality_form },
+                      { label: 'Reinheit', value: selectedSubmission.extracted_data.quality_purity },
+                      { label: 'Forschung', value: selectedSubmission.extracted_data.quality_research },
+                      { label: 'Synergie', value: selectedSubmission.extracted_data.quality_synergy },
+                      { label: 'Transparenz', value: selectedSubmission.extracted_data.quality_transparency },
+                      { label: 'Preis-Leistung', value: selectedSubmission.extracted_data.quality_value },
+                    ].map((score, i) => (
+                      <div key={i} className="text-center p-2 bg-background/50 rounded">
+                        <div className="text-muted-foreground truncate">{score.label}</div>
+                        <div className={cn(
+                          "font-bold",
+                          score.value && score.value >= 8 && "text-green-600",
+                          score.value && score.value >= 6 && score.value < 8 && "text-yellow-600",
+                          score.value && score.value < 6 && "text-red-600"
+                        )}>
+                          {score.value?.toFixed(1) || '-'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Enrichment CTA - Show if not yet enriched */}
+              {selectedSubmission.status === 'pending' && !selectedSubmission.extracted_data?.impact_score_big8 && (
+                <div className="p-4 border border-dashed border-muted-foreground/30 rounded-lg text-center">
+                  <Sparkles className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Produkt noch nicht angereichert. Klicke um Big8 Scores zu berechnen.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleEnrich(selectedSubmission)}
+                    disabled={enrichingId === selectedSubmission.id}
+                    className="gap-2"
+                  >
+                    {enrichingId === selectedSubmission.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Anreichern...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Daten anreichern
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+
               {/* Matched Supplement */}
               {selectedSubmission.matched_supplement_name && (
                 <div className="p-4 border border-border rounded-lg">
@@ -394,12 +494,32 @@ export function ProductSubmissionsReview() {
               <>
                 <Button
                   variant="outline"
-                  className="text-red-600 border-red-500/30 hover:bg-red-500/10"
+                  className="text-destructive border-destructive/30 hover:bg-destructive/10"
                   onClick={() => setShowRejectDialog(true)}
                 >
                   <X className="w-4 h-4 mr-2" />
                   Ablehnen
                 </Button>
+                {!selectedSubmission.extracted_data?.impact_score_big8 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => handleEnrich(selectedSubmission)}
+                    disabled={enrichingId === selectedSubmission.id}
+                    className="gap-2"
+                  >
+                    {enrichingId === selectedSubmission.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Anreichern...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Anreichern
+                      </>
+                    )}
+                  </Button>
+                )}
                 <Button
                   className="bg-green-600 hover:bg-green-700"
                   onClick={() => handleApprove(selectedSubmission)}
