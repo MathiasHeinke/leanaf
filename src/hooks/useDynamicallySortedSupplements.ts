@@ -7,7 +7,8 @@
 import { useMemo } from 'react';
 import { useSupplementLibrary } from './useSupplementLibrary';
 import { useUserRelevanceContext } from './useUserRelevanceContext';
-import { calculateRelevanceScore } from '@/lib/calculateRelevanceScore';
+import { calculateRelevanceScore, calculateComboScore, getDynamicTier } from '@/lib/calculateRelevanceScore';
+import type { IngredientScoreData } from '@/lib/calculateRelevanceScore';
 import { extractBaseName } from '@/lib/supplementDeduplication';
 import type { RelevanceScoreResult, SupplementMarkers, DynamicTier } from '@/types/relevanceMatrix';
 import type { SupplementLibraryItem } from '@/types/supplementLibrary';
@@ -174,6 +175,48 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
 
     // 1. Calculate scores for all items
     const scoredItems: ScoredSupplementItem[] = library.map((item) => {
+      // =======================================================
+      // COMBO PRODUCTS: Check if this is a multi-ingredient product
+      // =======================================================
+      if (item.ingredient_ids?.length) {
+        // Look up ingredient data from the library
+        const ingredientData: IngredientScoreData[] = item.ingredient_ids
+          .map(name => {
+            const found = library.find(l => l.name === name);
+            if (found) {
+              return {
+                name: found.name,
+                impactScore: found.impact_score ?? 5.0,
+                relevanceMatrix: found.relevance_matrix ?? null,
+              };
+            }
+            return null;
+          })
+          .filter((d): d is IngredientScoreData => d !== null);
+        
+        // If we found at least one ingredient, calculate combo score
+        if (ingredientData.length > 0) {
+          const comboResult = calculateComboScore(ingredientData, context);
+          
+          return {
+            ...item,
+            scoreResult: {
+              score: comboResult.score,
+              baseScore: item.impact_score ?? 5.0,
+              dynamicTier: getDynamicTier(comboResult.score),
+              reasons: comboResult.breakdown,
+              warnings: [],
+              isPersonalized: true,
+              isLimitedByMissingData: false,
+              dataConfidenceCap: 10.0,
+            },
+          };
+        }
+      }
+      
+      // =======================================================
+      // SINGLE INGREDIENTS: Standard calculation
+      // =======================================================
       // Detect markers via name/category patterns
       const markers: SupplementMarkers = {
         isNaturalTestoBooster: isNaturalTestoBooster(item.name, item.category),

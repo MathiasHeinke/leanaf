@@ -505,3 +505,97 @@ export function getScoreTierConfig(score: number): {
       };
   }
 }
+
+// =====================================================
+// Combo Score Calculation for Multi-Ingredient Products
+// =====================================================
+
+/**
+ * Data structure for ingredient scoring
+ */
+export interface IngredientScoreData {
+  name: string;
+  impactScore: number;
+  relevanceMatrix: RelevanceMatrix | null;
+}
+
+/**
+ * Result from combo score calculation
+ */
+export interface ComboScoreResult {
+  score: number;
+  breakdown: string[];
+  ingredientCount: number;
+  highQualityCount: number;
+}
+
+/**
+ * Calculate aggregated score for multi-ingredient products
+ * 
+ * Formula:
+ * 1. Get personalized score for each ingredient
+ * 2. Use TOP 3 scores (avoid dilution by low-value fillers)
+ * 3. Weighted average: 50% top + 30% second + 20% third
+ * 4. Add synergy bonus: +0.5 for 3+ high-quality ingredients (≥7.0)
+ * 
+ * @param ingredientData - Array of ingredient data (name, impactScore, matrix)
+ * @param context - User's current context for personalization
+ * @returns ComboScoreResult with aggregated score and breakdown
+ */
+export function calculateComboScore(
+  ingredientData: IngredientScoreData[],
+  context: UserRelevanceContext | null
+): ComboScoreResult {
+  if (!ingredientData.length) {
+    return { 
+      score: 5.0, 
+      breakdown: ['Keine Inhaltsstoffe hinterlegt'],
+      ingredientCount: 0,
+      highQualityCount: 0,
+    };
+  }
+
+  // Calculate personalized score for each ingredient
+  const scoredIngredients = ingredientData.map(ing => ({
+    name: ing.name,
+    score: calculateRelevanceScore(
+      ing.impactScore,
+      ing.relevanceMatrix,
+      context
+    ).score,
+  }));
+
+  // Sort by score descending
+  scoredIngredients.sort((a, b) => b.score - a.score);
+
+  // Take top 3 for weighted average (prevents dilution by fillers)
+  const top3 = scoredIngredients.slice(0, 3);
+  const weights = [0.5, 0.3, 0.2];
+  
+  let weightedSum = 0;
+  let totalWeight = 0;
+  const breakdown: string[] = [];
+
+  top3.forEach((ing, i) => {
+    const weight = weights[i] || 0.1;
+    weightedSum += ing.score * weight;
+    totalWeight += weight;
+    breakdown.push(`${ing.name}: ${ing.score.toFixed(1)} (×${(weight * 100).toFixed(0)}%)`);
+  });
+
+  let baseScore = totalWeight > 0 ? weightedSum / totalWeight : 5.0;
+
+  // Synergy bonus: 3+ ingredients with score ≥7.0
+  const highQualityCount = scoredIngredients.filter(i => i.score >= 7.0).length;
+  if (highQualityCount >= 3) {
+    baseScore += 0.5;
+    breakdown.push(`+0.5 Synergie-Bonus (${highQualityCount} hochwertige Inhaltsstoffe)`);
+  }
+
+  return {
+    score: Math.min(10, Math.max(0, baseScore)),
+    breakdown,
+    ingredientCount: ingredientData.length,
+    highQualityCount,
+  };
+}

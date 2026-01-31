@@ -205,6 +205,8 @@ export interface SupplementLibraryItem {
   warnung?: string | null;
   // ARES Matrix-Scoring (personalized relevance)
   relevance_matrix?: RelevanceMatrix | null;
+  // Combo products: array of ingredient names that compose this product
+  ingredient_ids?: string[] | null;
 }
 
 // Supplement Brand Interface
