@@ -2,7 +2,7 @@
  * Smart Scheduling Logic for Supplement Cycling
  * Handles daily, weekly, cycle-based, and training-day schedules
  */
-import { differenceInDays, getDay } from 'date-fns';
+import { differenceInDays, getDay, addDays } from 'date-fns';
 
 export type ScheduleType = 'daily' | 'weekly' | 'cycle' | 'training_days';
 
@@ -124,4 +124,130 @@ export function getDaysRemainingInPhase(
     : cycleLength - dayInCycle;
 
   return { isOnPhase, daysRemaining };
+}
+
+/**
+ * Extended Cycle Schedule interface for advanced cycling management
+ */
+export interface CycleScheduleExtended {
+  type: 'cycle';
+  cycle_on_days: number;
+  cycle_off_days: number;
+  start_date: string;           // ISO Date - when cycling began
+  is_on_cycle?: boolean;        // Current phase (true = on, false = off)
+  current_cycle_start?: string; // When current phase began
+  total_cycles_completed?: number;
+}
+
+/**
+ * Complete cycle status for UI display
+ */
+export interface CycleStatus {
+  isOnCycle: boolean;
+  currentDay: number;        // Day 1-N in current phase
+  totalDays: number;         // Total days in current phase (on or off)
+  daysRemaining: number;
+  progressPercent: number;   // 0-100
+  nextPhaseDate: Date;
+  cycleNumber: number;
+  isTransitionDay: boolean;  // Last day of phase
+  compliancePercent: number; // How often taken (0-100)
+  phaseLabel: string;        // "Tag 5/30" or "Pause: 3d"
+}
+
+/**
+ * Calculate detailed cycle status for a supplement
+ * Supports both legacy schedule format and extended format
+ */
+export function getCycleStatus(
+  schedule: CycleScheduleExtended | SupplementSchedule | null | undefined,
+  intakeCountInCurrentPhase?: number,
+  targetDate: Date = new Date()
+): CycleStatus | null {
+  if (!schedule || schedule.type !== 'cycle') return null;
+  if (!schedule.cycle_on_days || !schedule.cycle_off_days || !schedule.start_date) return null;
+
+  const extSchedule = schedule as CycleScheduleExtended;
+  
+  // Determine if we have extended schedule data or need to calculate
+  const hasExtendedData = extSchedule.current_cycle_start !== undefined && extSchedule.is_on_cycle !== undefined;
+  
+  let isOnCycle: boolean;
+  let currentDay: number;
+  let totalDays: number;
+  let phaseStartDate: Date;
+  let totalCyclesCompleted: number;
+  
+  if (hasExtendedData) {
+    // Use extended schedule data directly
+    isOnCycle = extSchedule.is_on_cycle!;
+    phaseStartDate = new Date(extSchedule.current_cycle_start!);
+    totalDays = isOnCycle ? schedule.cycle_on_days : schedule.cycle_off_days;
+    const daysSincePhaseStart = differenceInDays(targetDate, phaseStartDate);
+    currentDay = Math.max(1, Math.min(daysSincePhaseStart + 1, totalDays));
+    totalCyclesCompleted = extSchedule.total_cycles_completed || 0;
+  } else {
+    // Calculate from start_date (legacy mode)
+    const daysSinceStart = differenceInDays(targetDate, new Date(schedule.start_date));
+    const cycleLength = schedule.cycle_on_days + schedule.cycle_off_days;
+    const dayInCycle = ((daysSinceStart % cycleLength) + cycleLength) % cycleLength;
+    
+    isOnCycle = dayInCycle < schedule.cycle_on_days;
+    totalDays = isOnCycle ? schedule.cycle_on_days : schedule.cycle_off_days;
+    
+    // Calculate current day within phase
+    if (isOnCycle) {
+      currentDay = dayInCycle + 1;
+    } else {
+      currentDay = dayInCycle - schedule.cycle_on_days + 1;
+    }
+    
+    // Calculate cycles completed
+    totalCyclesCompleted = Math.floor(daysSinceStart / cycleLength);
+    
+    // Calculate phase start for nextPhaseDate
+    const phaseStartDayInCycle = isOnCycle ? 0 : schedule.cycle_on_days;
+    const daysFromCycleStart = dayInCycle - phaseStartDayInCycle;
+    phaseStartDate = addDays(targetDate, -daysFromCycleStart);
+  }
+  
+  const daysRemaining = Math.max(0, totalDays - currentDay);
+  const progressPercent = Math.round((currentDay / totalDays) * 100);
+  const nextPhaseDate = addDays(phaseStartDate, totalDays);
+  const isTransitionDay = daysRemaining === 0;
+  
+  // Calculate compliance (only during on-cycle)
+  let compliancePercent = 100;
+  if (isOnCycle && intakeCountInCurrentPhase !== undefined && currentDay > 0) {
+    compliancePercent = Math.min(100, Math.round((intakeCountInCurrentPhase / currentDay) * 100));
+  }
+  
+  // Generate phase label
+  const phaseLabel = isOnCycle 
+    ? `Tag ${currentDay}/${totalDays}`
+    : `Pause: ${daysRemaining}d`;
+
+  return {
+    isOnCycle,
+    currentDay,
+    totalDays,
+    daysRemaining,
+    progressPercent,
+    nextPhaseDate,
+    cycleNumber: totalCyclesCompleted + 1,
+    isTransitionDay,
+    compliancePercent,
+    phaseLabel,
+  };
+}
+
+/**
+ * Check if a cycling supplement should be taken today
+ */
+export function isCycleActiveToday(
+  schedule: CycleScheduleExtended | SupplementSchedule | null | undefined,
+  targetDate: Date = new Date()
+): boolean {
+  const status = getCycleStatus(schedule, undefined, targetDate);
+  return status ? status.isOnCycle : true; // Default to active if no cycle
 }

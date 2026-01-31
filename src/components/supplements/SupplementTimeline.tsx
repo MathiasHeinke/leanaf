@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
-import { Dumbbell, Sparkles, Zap, Check } from 'lucide-react';
+import { Dumbbell, Sparkles, Zap, Check, PauseCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ProtocolBundleCard } from './ProtocolBundleCard';
+import { getCycleStatusForStackItem, isItemOffCycle } from '@/hooks/useCyclingStatus';
+import { CyclingStatusBadge } from './CyclingStatusBadge';
 import {
   TIMELINE_SLOTS,
   type UserStackItem,
@@ -86,11 +88,39 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
     return new Set(todayIntakes.map(i => i.user_supplement_id));
   }, [todayIntakes]);
 
-  // Count total supplements
-  const totalCount = useMemo(
-    () => Object.values(groupedByTiming).reduce((sum, items) => sum + (items?.length || 0), 0),
-    [groupedByTiming]
+  // Separate off-cycle supplements from the main timeline
+  const { activeSupplements, offCycleSupplements } = useMemo(() => {
+    const active: Record<PreferredTiming, UserStackItem[]> = {
+      morning: [],
+      noon: [],
+      afternoon: [],
+      evening: [],
+      pre_workout: [],
+      post_workout: [],
+    };
+    const offCycle: UserStackItem[] = [];
+    
+    Object.entries(groupedByTiming).forEach(([timing, supplements]) => {
+      supplements?.forEach(supplement => {
+        if (isItemOffCycle(supplement)) {
+          offCycle.push(supplement);
+        } else {
+          active[timing as PreferredTiming].push(supplement);
+        }
+      });
+    });
+    
+    return { activeSupplements: active, offCycleSupplements: offCycle };
+  }, [groupedByTiming]);
+
+
+  // Count total active supplements (excluding off-cycle)
+  const totalActiveCount = useMemo(
+    () => Object.values(activeSupplements).reduce((sum, items) => sum + (items?.length || 0), 0),
+    [activeSupplements]
   );
+  
+  const totalCount = totalActiveCount + offCycleSupplements.length;
 
   // Handle stack completion - now logs to DB via parent
   const handleCompleteStack = async (timing: PreferredTiming) => {
@@ -105,9 +135,9 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
     onCompleteStack?.(timing, supplements);
   };
 
-  // Filter slots that have supplements
+  // Filter slots that have active supplements (not off-cycle)
   const activeSlots = TIMELINE_SLOTS.filter(
-    (slot) => (groupedByTiming[slot.id]?.length || 0) > 0
+    (slot) => (activeSupplements[slot.id]?.length || 0) > 0
   );
 
   // Check if all stacks are completed
@@ -146,8 +176,11 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
       {/* Summary Header */}
       <div className="flex items-center justify-between px-1">
         <div className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{totalCount}</span>
-          {' '}Supplements heute
+          <span className="font-medium text-foreground">{totalActiveCount}</span>
+          {' '}aktiv heute
+          {offCycleSupplements.length > 0 && (
+            <span className="text-xs opacity-70"> · {offCycleSupplements.length} pausiert</span>
+          )}
         </div>
         <Badge variant="secondary" className="text-xs">
           {completedStacks.size}/{activeSlots.length} erledigt
@@ -157,7 +190,7 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
       {/* Protocol Bundle Cards */}
       <div className="space-y-4">
         {activeSlots.map((slot) => {
-          const supplements = groupedByTiming[slot.id] || [];
+          const supplements = activeSupplements[slot.id] || [];
           const isCompleted = completedStacks.has(slot.id);
 
           // Skip workout-related slots here (they're shown separately below)
@@ -181,20 +214,20 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
       </div>
 
       {/* Dynamic timings (pre/post workout) if any */}
-      {((groupedByTiming.pre_workout?.length || 0) > 0 ||
-        (groupedByTiming.post_workout?.length || 0) > 0) && (
+      {((activeSupplements.pre_workout?.length || 0) > 0 ||
+        (activeSupplements.post_workout?.length || 0) > 0) && (
         <div className="mt-6 pt-4 border-t border-border/50">
           <p className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2 px-1">
             <Dumbbell className="h-4 w-4" />
             Training-gebunden
           </p>
           <div className="space-y-4">
-            {(groupedByTiming.pre_workout?.length || 0) > 0 && (
+            {(activeSupplements.pre_workout?.length || 0) > 0 && (
               <ProtocolBundleCard
                 title={TIMING_TITLES.pre_workout}
                 timing="pre_workout"
                 timeRange="30-60 min vor Training"
-                supplements={groupedByTiming.pre_workout || []}
+                supplements={activeSupplements.pre_workout || []}
                 takenIds={takenIds}
                 onCompleteStack={() => handleCompleteStack('pre_workout')}
                 onSupplementClick={onSupplementClick}
@@ -202,12 +235,12 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
                 isCompleted={completedStacks.has('pre_workout')}
               />
             )}
-            {(groupedByTiming.post_workout?.length || 0) > 0 && (
+            {(activeSupplements.post_workout?.length || 0) > 0 && (
               <ProtocolBundleCard
                 title={TIMING_TITLES.post_workout}
                 timing="post_workout"
                 timeRange="Nach dem Training"
-                supplements={groupedByTiming.post_workout || []}
+                supplements={activeSupplements.post_workout || []}
                 takenIds={takenIds}
                 onCompleteStack={() => handleCompleteStack('post_workout')}
                 onSupplementClick={onSupplementClick}
@@ -216,6 +249,42 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
               />
             )}
           </div>
+        </div>
+      )}
+
+      {/* Off-Cycle Section */}
+      {offCycleSupplements.length > 0 && (
+        <div className="mt-6 pt-4 border-t border-border/50">
+          <div className="flex items-center gap-2 px-1 mb-3">
+            <PauseCircle className="h-4 w-4 text-muted-foreground" />
+            <p className="text-sm font-medium text-muted-foreground">
+              Pausiert (Off-Cycle)
+            </p>
+            <Badge variant="outline" className="text-xs">
+              {offCycleSupplements.length}
+            </Badge>
+          </div>
+          <div className="flex flex-wrap gap-2 px-1">
+            {offCycleSupplements.map((supplement) => {
+              const cycleStatus = getCycleStatusForStackItem(supplement);
+              return (
+                <div 
+                  key={supplement.id}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50 opacity-60"
+                >
+                  <span className="text-sm font-medium text-muted-foreground">
+                    {supplement.name}
+                  </span>
+                  {cycleStatus && (
+                    <CyclingStatusBadge status={cycleStatus} size="sm" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 px-1">
+            Diese Supplements sind derzeit in der Pause-Phase ihres Zyklus.
+          </p>
         </div>
       )}
 
