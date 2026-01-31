@@ -1,5 +1,5 @@
 // =====================================================
-// ARES Matrix-Scoring: Relevance Score Calculation Engine (Extended v3)
+// ARES Matrix-Scoring: Relevance Score Calculation Engine (Extended v4)
 // =====================================================
 
 import type { 
@@ -10,6 +10,19 @@ import type {
   DynamicTier,
 } from '@/types/relevanceMatrix';
 import { PEPTIDE_CLASS_LABELS } from '@/types/relevanceMatrix';
+
+// =====================================================
+// Quick Win 5: Modifier Caps (Fairness Constraints)
+// =====================================================
+const MAX_SINGLE_MODIFIER = 4.0;  // Kein einzelner Modifier > 4.0
+const MAX_TOTAL_BOOST = 12.0;     // Gesamt-Boost gecapped (verhindert Optimizer > Essential)
+
+/**
+ * Clamp a single modifier to MAX_SINGLE_MODIFIER
+ */
+function clampModifier(mod: number): number {
+  return Math.min(Math.max(mod, -MAX_SINGLE_MODIFIER), MAX_SINGLE_MODIFIER);
+}
 
 /**
  * Determine dynamic tier based on calculated score
@@ -103,71 +116,79 @@ export function calculateRelevanceScore(
   }
   
   let score = baseImpactScore;
+  let totalBoost = 0; // Track total boost for capping
   const reasons: string[] = [];
   const warnings: string[] = [];
+  
+  /**
+   * Apply a modifier with single-cap and track total boost
+   */
+  const applyModifier = (mod: number, reason: string): void => {
+    const clampedMod = clampModifier(mod);
+    const effectiveMod = Math.min(clampedMod, MAX_TOTAL_BOOST - totalBoost);
+    if (effectiveMod > 0) {
+      totalBoost += effectiveMod;
+    }
+    score += effectiveMod;
+    if (effectiveMod !== 0) {
+      reasons.push(`${reason}: ${effectiveMod > 0 ? '+' : ''}${effectiveMod.toFixed(1)}`);
+    }
+  };
   
   // 1. Phase Modifier
   const phaseKey = context.phase.toString();
   const phaseMod = matrix.phase_modifiers?.[phaseKey] || 0;
   if (phaseMod !== 0) {
-    score += phaseMod;
-    reasons.push(`Phase ${context.phase}: ${phaseMod > 0 ? '+' : ''}${phaseMod}`);
+    applyModifier(phaseMod, `Phase ${context.phase}`);
   }
   
   // 2. Context Modifiers (IMPORTANT: Trumping hierarchy!)
   // TRT trumps everything - check first
   if (context.isOnTRT && matrix.context_modifiers?.on_trt !== undefined) {
     const mod = matrix.context_modifiers.on_trt;
-    score += mod;
+    applyModifier(mod, 'TRT aktiv');
     if (mod < 0) {
       warnings.push('TRT deckt diesen Bereich hormonell ab');
     }
-    reasons.push(`TRT aktiv: ${mod > 0 ? '+' : ''}${mod}`);
   }
   // Enhanced without TRT (Reta/Peptides without hormone protection)
   else if (context.isEnhancedNoTRT && matrix.context_modifiers?.enhanced_no_trt !== undefined) {
     const mod = matrix.context_modifiers.enhanced_no_trt;
-    score += mod;
+    applyModifier(mod, 'Peptide ohne TRT');
     if (mod > 2) {
       warnings.push('Kritisch bei Peptiden ohne TRT-Schutz!');
     }
-    reasons.push(`Peptide ohne TRT: +${mod}`);
   }
   // True Natural (no peptides, no TRT)
   else if (context.isTrueNatural && matrix.context_modifiers?.true_natural !== undefined) {
     const mod = matrix.context_modifiers.true_natural;
-    score += mod;
-    reasons.push(`100% Natural: +${mod}`);
+    applyModifier(mod, '100% Natural');
   }
   
   // 3. GLP-1 Specific (ADDITIVE, not exclusive - can stack with TRT)
   if (context.isOnGLP1 && matrix.context_modifiers?.on_glp1 !== undefined) {
     const mod = matrix.context_modifiers.on_glp1;
-    score += mod;
-    reasons.push(`GLP-1 aktiv: +${mod}`);
+    applyModifier(mod, 'GLP-1 aktiv');
   }
   
   // 4. Goal Modifiers
   if (context.goal && matrix.goal_modifiers?.[context.goal] !== undefined) {
     const mod = matrix.goal_modifiers[context.goal];
-    score += mod;
     const goalLabel = getGoalLabel(context.goal);
-    reasons.push(`Ziel ${goalLabel}: ${mod > 0 ? '+' : ''}${mod}`);
+    applyModifier(mod, `Ziel ${goalLabel}`);
   }
   
   // 5. Calorie Status Modifiers
   if (context.isInDeficit && matrix.calorie_modifiers?.in_deficit !== undefined) {
     const mod = matrix.calorie_modifiers.in_deficit;
     if (mod !== 0) {
-      score += mod;
-      reasons.push(`Defizit aktiv: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, 'Defizit aktiv');
     }
   }
   if (context.isInSurplus && matrix.calorie_modifiers?.in_surplus !== undefined) {
     const mod = matrix.calorie_modifiers.in_surplus;
     if (mod !== 0) {
-      score += mod;
-      reasons.push(`Aufbauphase: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, 'Aufbauphase');
     }
   }
   
@@ -175,9 +196,8 @@ export function calculateRelevanceScore(
   for (const peptideClass of context.activePeptideClasses) {
     const mod = matrix.peptide_class_modifiers?.[peptideClass];
     if (mod !== undefined && mod !== 0) {
-      score += mod;
       const classLabel = PEPTIDE_CLASS_LABELS[peptideClass as keyof typeof PEPTIDE_CLASS_LABELS] || peptideClass;
-      reasons.push(`${classLabel} Protokoll: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, `${classLabel} Protokoll`);
     }
   }
   
@@ -185,20 +205,17 @@ export function calculateRelevanceScore(
   if (context.ageOver60 && matrix.demographic_modifiers?.age_over_60 !== undefined) {
     const mod = matrix.demographic_modifiers.age_over_60;
     if (mod !== 0) {
-      score += mod;
-      reasons.push(`Alter 60+: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, 'Alter 60+');
     }
   } else if (context.ageOver50 && matrix.demographic_modifiers?.age_over_50 !== undefined) {
     const mod = matrix.demographic_modifiers.age_over_50;
     if (mod !== 0) {
-      score += mod;
-      reasons.push(`Alter 50+: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, 'Alter 50+');
     }
   } else if (context.ageOver40 && matrix.demographic_modifiers?.age_over_40 !== undefined) {
     const mod = matrix.demographic_modifiers.age_over_40;
     if (mod !== 0) {
-      score += mod;
-      reasons.push(`Alter 40+: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, 'Alter 40+');
     }
   }
   
@@ -206,15 +223,13 @@ export function calculateRelevanceScore(
   if (context.isFemale && matrix.demographic_modifiers?.is_female !== undefined) {
     const mod = matrix.demographic_modifiers.is_female;
     if (mod !== 0) {
-      score += mod;
-      reasons.push(`Weiblich: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, 'Weiblich');
     }
   }
   if (context.isMale && matrix.demographic_modifiers?.is_male !== undefined) {
     const mod = matrix.demographic_modifiers.is_male;
     if (mod !== 0) {
-      score += mod;
-      reasons.push(`Männlich: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, 'Männlich');
     }
   }
   
@@ -222,9 +237,8 @@ export function calculateRelevanceScore(
   for (const flag of context.bloodworkFlags) {
     const mod = matrix.bloodwork_triggers?.[flag];
     if (mod !== undefined && mod !== 0) {
-      score += mod;
       const flagLabel = getBloodworkFlagLabel(flag);
-      reasons.push(`Blutwert ${flagLabel}: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, `Blutwert ${flagLabel}`);
     }
   }
   
@@ -233,8 +247,7 @@ export function calculateRelevanceScore(
     const normalizedName = peptide.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const mod = matrix.compound_synergies?.[normalizedName];
     if (mod !== undefined && mod !== 0) {
-      score += mod;
-      reasons.push(`${peptide} Synergie: ${mod > 0 ? '+' : ''}${mod}`);
+      applyModifier(mod, `${peptide} Synergie`);
     }
   }
   
