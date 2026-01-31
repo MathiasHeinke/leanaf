@@ -43,7 +43,7 @@ export function Phase2Overview() {
 
       {/* Phase 2 Tabs */}
       <Tabs defaultValue="mitochondrial">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="mitochondrial" className="flex items-center gap-1">
             <Flame className="w-4 h-4" />
             <span className="hidden sm:inline">Mito</span>

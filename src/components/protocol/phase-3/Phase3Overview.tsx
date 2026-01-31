@@ -59,7 +59,7 @@ export function Phase3Overview() {
 
       {/* Tabbed Navigation */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="overview" className="text-xs sm:text-sm">
             <TrendingUp className="w-4 h-4 mr-1 hidden sm:inline" />
             Übersicht
