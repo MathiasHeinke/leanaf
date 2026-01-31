@@ -124,8 +124,8 @@ export const SupplementGroupRow: React.FC<SupplementGroupRowProps> = ({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm truncate">{baseName}</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="font-medium text-sm">{baseName}</span>
             {getScoreBadge(topVariant)}
             {onInfoClick && (
               <button
@@ -163,12 +163,7 @@ export const SupplementGroupRow: React.FC<SupplementGroupRowProps> = ({
 
         {/* Toggle (only for single variants) */}
         {!hasMultipleVariants && (
-          <div className="flex items-center gap-2 shrink-0">
-            {hasActiveVariant && (
-              <span className="hidden sm:inline text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded whitespace-nowrap">
-                Im Stack
-              </span>
-            )}
+          <div className="flex items-center shrink-0">
             <Switch
               checked={hasActiveVariant}
               onCheckedChange={handleMainToggle}
