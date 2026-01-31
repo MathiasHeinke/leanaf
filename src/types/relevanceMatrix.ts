@@ -123,6 +123,11 @@ export interface UserRelevanceContext {
   
   // Nutritional context (for BCAA/EAA logic)
   dailyProteinPerKg?: number; // Estimated protein intake per kg bodyweight
+  
+  // Data Confidence (v2.0)
+  hasBloodworkData: boolean;      // bloodworkFlags.length > 0
+  hasBasicProfile: boolean;       // age, goal, weight available
+  profileCompleteness: 'full' | 'basic' | 'minimal';
 }
 
 /**
@@ -150,6 +155,12 @@ export interface RelevanceScoreResult {
   reasons: string[];          // Human-readable reasons for modifiers
   warnings: string[];         // Important warnings (e.g., "TRT makes this redundant")
   isPersonalized: boolean;    // Whether user context was applied
+  
+  // Data Confidence (v2.0)
+  isLimitedByMissingData: boolean;   // Score was capped due to missing data
+  dataConfidenceCap: number;         // The applied cap (7.5, 8.5, or 10.0)
+  potentialScore?: number;           // What score COULD be with bloodwork
+  upgradeTrigger?: string;           // "Mit Vitamin D Blutwert: Essential möglich"
 }
 
 /**
