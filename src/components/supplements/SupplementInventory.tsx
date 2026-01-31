@@ -206,6 +206,7 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
         <MissingBloodworkBanner 
           profileCompleteness={context.profileCompleteness}
           activeTier={activeTier}
+          missingProfileFields={context.missingProfileFields}
         />
       )}
 

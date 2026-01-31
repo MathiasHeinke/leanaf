@@ -32,7 +32,7 @@ export function useUserRelevanceContext(): {
       const { data, error } = await supabase
         .from('profiles')
         .select('protocol_mode, goal_type, age, gender, weight, target_weight')
-        .eq('id', user.id)
+        .eq('user_id', user.id)  // FIX: user_id statt id
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -190,6 +190,13 @@ export function useUserRelevanceContext(): {
     const hasBloodworkData = bloodworkFlags.length > 0;
     const hasBasicProfile = !!(profile?.age && (profile?.goal_type || dailyGoals?.goal_type) && profile?.weight);
     
+    // Track specifically what's missing for UI hints
+    const missingProfileFields: string[] = [];
+    if (!profile?.age) missingProfileFields.push('age');
+    if (!profile?.gender) missingProfileFields.push('gender');
+    if (!profile?.weight) missingProfileFields.push('weight');
+    if (!profile?.goal_type && !dailyGoals?.goal_type) missingProfileFields.push('goal');
+    
     const profileCompleteness: 'full' | 'basic' | 'minimal' = 
       hasBloodworkData ? 'full' :
       hasBasicProfile ? 'basic' :
@@ -218,6 +225,7 @@ export function useUserRelevanceContext(): {
       hasBloodworkData,
       hasBasicProfile,
       profileCompleteness,
+      missingProfileFields,
     };
   }, [user?.id, profile, protocolStatus, peptideProtocols, bloodwork, dailyGoals]);
   
