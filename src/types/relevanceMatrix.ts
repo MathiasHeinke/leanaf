@@ -1,6 +1,36 @@
 // =====================================================
-// ARES Matrix-Scoring: Relevance Matrix Types (Extended v2)
+// ARES Matrix-Scoring: Relevance Matrix Types (v3.0)
+// OTC + Rx + Peptide Support with Compound Metadata
 // =====================================================
+
+/**
+ * Compound class for categorizing OTC, Rx medications, and Peptides
+ */
+export type CompoundClass = 'otc' | 'rx' | 'peptide';
+
+/**
+ * Evidence level including new v3.0 levels
+ */
+export type MatrixEvidenceLevel = 'stark' | 'moderat' | 'anekdotisch' | 'animal_strong' | 'emerging';
+
+/**
+ * Compound-specific metadata for Rx medications and Peptides
+ * Stored in relevance_matrix.compound_metadata
+ */
+export interface CompoundMetadata {
+  compound_class: CompoundClass;
+  
+  // Rx-specific fields
+  rx_dosing_protocol?: string;      // weekly_cycling, daily_with_meals, weekly_injection
+  rx_monitoring_required?: string;  // lipids,glucose,CBC, testosterone,estradiol,hematocrit
+  
+  // Peptide-specific fields
+  peptide_route?: string;           // subcutaneous, oral, intranasal, topical
+  peptide_half_life?: string;       // 4h, 24h, minutes, hours
+  
+  // General notes (scientific insights, trial data)
+  notes?: string;                   // ITP data, STEP/SURMOUNT results
+}
 
 /**
  * Relevance Matrix stored in supplement_database.relevance_matrix
@@ -54,6 +84,9 @@ export interface RelevanceMatrix {
     critical_insight?: string;    // "Nur bei Low-T effektiv"
     validation_status?: 'validated' | 'pending' | 'disputed';
   };
+  
+  // v3.0: Compound-specific metadata (Rx + Peptide)
+  compound_metadata?: CompoundMetadata;
 }
 
 /**

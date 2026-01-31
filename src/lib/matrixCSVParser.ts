@@ -1,14 +1,14 @@
 // =====================================================
-// ARES Matrix CSV Parser: v2.3 FINAL (PHASE 1-4 COMPLETE)
-// NAD+ Age-Calibration, GLP-1 Lean Mass Protection, TRT Support
-// Goal Weighting (Fat Loss/Muscle Gain/Cognitive), Peptide Synergies
+// ARES Matrix CSV Parser: v3.0 FINAL
+// 110 Compounds: OTC (91) + Rx (6) + Peptide (13)
+// Full Compound Metadata: Rx Dosing, Monitoring, Peptide Routes
 // =====================================================
 
-import type { RelevanceMatrix } from '@/types/relevanceMatrix';
+import type { RelevanceMatrix, CompoundClass, CompoundMetadata } from '@/types/relevanceMatrix';
 import type { NecessityTier, EvidenceLevel } from '@/types/supplementLibrary';
 
 /**
- * Parsed entry from the Matrix CSV
+ * Parsed entry from the Matrix CSV v3.0
  */
 export interface ParsedMatrixCSVEntry {
   // Identity
@@ -21,7 +21,10 @@ export interface ParsedMatrixCSVEntry {
   evidence_level: EvidenceLevel;
   protocol_phase: number;
   
-  // Relevance Matrix
+  // v3.0: Compound classification
+  compound_class: CompoundClass;
+  
+  // Relevance Matrix (includes compound_metadata)
   relevance_matrix: RelevanceMatrix;
 }
 
@@ -61,12 +64,24 @@ function parseTier(value: string): NecessityTier {
 }
 
 /**
- * Parse evidence level from CSV value
+ * Parse compound class from CSV value (v3.0)
+ */
+function parseCompoundClass(value: string): CompoundClass {
+  const normalized = value.toLowerCase().trim();
+  if (normalized === 'rx') return 'rx';
+  if (normalized === 'peptide') return 'peptide';
+  return 'otc';
+}
+
+/**
+ * Parse evidence level from CSV value (v3.0 extended)
  */
 function parseEvidence(value: string): EvidenceLevel {
   const normalized = value.toLowerCase().trim();
   if (normalized === 'strong' || normalized === 'stark') return 'stark';
   if (normalized === 'anekdotisch' || normalized === 'anecdotal') return 'anekdotisch';
+  if (normalized === 'animal_strong') return 'stark'; // Map to stark for DB compatibility
+  if (normalized === 'emerging') return 'moderat'; // Map to moderat for DB compatibility
   return 'moderat';
 }
 
@@ -92,6 +107,37 @@ function buildModifierRecord(
   }
   
   return hasValues ? result : undefined;
+}
+
+/**
+ * Build compound metadata from v3.0 CSV fields
+ */
+function buildCompoundMetadata(row: Record<string, string>): CompoundMetadata | undefined {
+  const compoundClass = parseCompoundClass(row['compound_class'] || 'otc');
+  
+  // Only include metadata if there's relevant data
+  const rxDosing = row['rx_dosing_protocol']?.trim();
+  const rxMonitoring = row['rx_monitoring_required']?.trim();
+  const peptideRoute = row['peptide_route']?.trim();
+  const peptideHalfLife = row['peptide_half_life']?.trim();
+  const notes = row['notes']?.trim();
+  
+  // Skip if OTC with no special notes
+  if (compoundClass === 'otc' && !notes) {
+    return undefined;
+  }
+  
+  const metadata: CompoundMetadata = {
+    compound_class: compoundClass,
+  };
+  
+  if (rxDosing) metadata.rx_dosing_protocol = rxDosing;
+  if (rxMonitoring) metadata.rx_monitoring_required = rxMonitoring;
+  if (peptideRoute) metadata.peptide_route = peptideRoute;
+  if (peptideHalfLife) metadata.peptide_half_life = peptideHalfLife;
+  if (notes) metadata.notes = notes;
+  
+  return metadata;
 }
 
 /**
@@ -217,6 +263,12 @@ function csvRowToRelevanceMatrix(row: Record<string, string>): RelevanceMatrix {
     'ipamorelin': 'ipamorelin',
   });
   
+  // v3.0: Compound metadata (Rx + Peptide)
+  const compoundMetadata = buildCompoundMetadata(row);
+  if (compoundMetadata) {
+    matrix.compound_metadata = compoundMetadata;
+  }
+  
   return matrix;
 }
 
@@ -291,6 +343,7 @@ export function parseMatrixCSV(csvContent: string): MatrixCSVParseResult {
           necessity_tier: parseTier(row['necessity_tier'] || 'optimizer'),
           evidence_level: parseEvidence(row['evidence_level'] || 'moderate'),
           protocol_phase: parseNumeric(row['protocol_phase']) ?? 0,
+          compound_class: parseCompoundClass(row['compound_class'] || 'otc'),
           relevance_matrix: csvRowToRelevanceMatrix(row),
         };
         
