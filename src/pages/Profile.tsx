@@ -20,6 +20,8 @@ import { GoalConfigurator, type MuscleGoal } from '@/components/profile/GoalConf
 import { ProtocolModeSelector, type ProtocolMode } from '@/components/profile/ProtocolModeSelector';
 import { LongevitySettings, type FastingProtocol } from '@/components/profile/LongevitySettings';
 import { TrainingFrequencySelector } from '@/components/profile/TrainingFrequencySelector';
+import { LifestyleScreening, type LifestyleData, type SmokingStatus, type VapingStatus, type AlcoholFrequency, type SubstanceUse } from '@/components/profile/LifestyleScreening';
+import { HealthDisclaimer } from '@/components/profile/HealthDisclaimer';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/integrations/supabase/client';
@@ -116,6 +118,19 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [fluidGoalMl, setFluidGoalMl] = useState(2500);
   const [avatarPresetId, setAvatarPresetId] = useState('');
 
+  // NEW: Lifestyle Screening state
+  const [lifestyleData, setLifestyleData] = useState<LifestyleData>({
+    smokingStatus: null,
+    smokingAmount: null,
+    smokingQuitDate: null,
+    vapingStatus: null,
+    alcoholFrequency: null,
+    alcoholDrinksPerWeek: null,
+    substanceUse: null,
+    substanceDetails: null,
+  });
+  const [disclaimerAcceptedAt, setDisclaimerAcceptedAt] = useState<string | null>(null);
+  const [lifestyleScreeningCompleted, setLifestyleScreeningCompleted] = useState(false);
   // ============= Computed Values from Protocol States =============
   const computedTargetWeight = useMemo(() => {
     const currentW = parseFloat(weight) || 80;
@@ -287,6 +302,20 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         if (data.preferred_language) {
           setLanguage(data.preferred_language);
         }
+        
+        // NEW: Load lifestyle data
+        setLifestyleData({
+          smokingStatus: (data as any).smoking_status || null,
+          smokingAmount: (data as any).smoking_amount || null,
+          smokingQuitDate: (data as any).smoking_quit_date || null,
+          vapingStatus: (data as any).vaping_status || null,
+          alcoholFrequency: (data as any).alcohol_frequency || null,
+          alcoholDrinksPerWeek: (data as any).alcohol_drinks_per_week || null,
+          substanceUse: (data as any).substance_use || null,
+          substanceDetails: (data as any).substance_details || null,
+        });
+        setDisclaimerAcceptedAt((data as any).disclaimer_accepted_at || null);
+        setLifestyleScreeningCompleted((data as any).lifestyle_screening_completed || false);
         
         console.log('✅ Profile fields populated successfully');
       } else {
@@ -659,6 +688,17 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       fasting_protocol: fastingProtocol,
       track_dunedin_pace: trackDunedinPace,
       track_senolytics: trackSenolytics,
+      // NEW: Lifestyle fields
+      smoking_status: lifestyleData.smokingStatus,
+      smoking_amount: lifestyleData.smokingAmount,
+      smoking_quit_date: lifestyleData.smokingQuitDate,
+      vaping_status: lifestyleData.vapingStatus,
+      alcohol_frequency: lifestyleData.alcoholFrequency,
+      alcohol_drinks_per_week: lifestyleData.alcoholDrinksPerWeek,
+      substance_use: lifestyleData.substanceUse,
+      substance_details: lifestyleData.substanceDetails,
+      disclaimer_accepted_at: disclaimerAcceptedAt,
+      lifestyle_screening_completed: lifestyleScreeningCompleted,
     };
 
     if (profileExists) {
@@ -1011,7 +1051,34 @@ const Profile = ({ onClose }: ProfilePageProps) => {
           </Card>
         </div>
 
-        {/* ============= SECTION 3: ARES PROTOKOLL-MODUS ============= */}
+        {/* ============= SECTION 3: LIFESTYLE-SCREENING ============= */}
+        <LifestyleScreening
+          data={lifestyleData}
+          onChange={(data) => {
+            setLifestyleData(data);
+            // Mark as completed when all required fields are filled
+            if (data.smokingStatus && data.alcoholFrequency && data.substanceUse) {
+              setLifestyleScreeningCompleted(true);
+            }
+          }}
+          isComplete={lifestyleScreeningCompleted}
+        />
+
+        {/* ============= SECTION 4: HEALTH DISCLAIMER ============= */}
+        <HealthDisclaimer
+          isAccepted={!!disclaimerAcceptedAt}
+          acceptedAt={disclaimerAcceptedAt}
+          onAccept={() => {
+            const now = new Date().toISOString();
+            setDisclaimerAcceptedAt(now);
+            toast.success('Disclaimer akzeptiert');
+          }}
+        />
+
+        {/* ============= SECTION 5: MEDIZINISCHE INFORMATIONEN ============= */}
+        <MedicalScreening onScreeningComplete={refreshCompletion} />
+
+        {/* ============= SECTION 6: ARES PROTOKOLL-MODUS ============= */}
         <ProtocolModeSelector
           modes={protocolModes}
           onModesChange={setProtocolModes}
@@ -1247,9 +1314,6 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             </CardContent>
           </Card>
         </div>
-
-        {/* ============= SECTION 8: GESUNDHEIT ============= */}
-        <MedicalScreening onScreeningComplete={refreshCompletion} />
 
         {/* ============= SECTION 9: LONGEVITY (Phase 3+ only) ============= */}
         {currentPhase >= 3 && (
