@@ -12,7 +12,7 @@ import { PerplexityKnowledgePipeline } from './PerplexityKnowledgePipeline';
 import { RAGTestingSuite } from './RAGTestingSuite';
 import { AutomatedPipelineManager } from './AutomatedPipelineManager';
 import { EnhancedCoachTopicManager } from './EnhancedCoachTopicManager';
-import RAGPerformanceMonitor from './RAGPerformanceMonitor';
+
 
 interface EmbeddingStatus {
   total_knowledge_entries: number;
@@ -228,8 +228,6 @@ export const RAGEmbeddingManagerComponent: React.FC = () => {
         </CardHeader>
       </Card>
 
-      {/* RAG Performance Monitor */}
-      <RAGPerformanceMonitor />
 
       {/* Enhanced Coach Topic Manager */}
       <EnhancedCoachTopicManager />
