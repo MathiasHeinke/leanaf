@@ -1,13 +1,66 @@
 // =====================================================
-// ARES Matrix-Scoring: Relevance Score Calculation Engine (Extended v2)
+// ARES Matrix-Scoring: Relevance Score Calculation Engine (Extended v3)
 // =====================================================
 
 import type { 
   RelevanceMatrix, 
   UserRelevanceContext, 
-  RelevanceScoreResult 
+  RelevanceScoreResult,
+  SupplementMarkers,
+  DynamicTier,
 } from '@/types/relevanceMatrix';
 import { PEPTIDE_CLASS_LABELS } from '@/types/relevanceMatrix';
+
+/**
+ * Determine dynamic tier based on calculated score
+ * Essential (≥9.0) | Optimizer (6.0-8.9) | Niche (<6.0)
+ */
+export function getDynamicTier(score: number): DynamicTier {
+  if (score >= 9.0) return 'essential';
+  if (score >= 6.0) return 'optimizer';
+  return 'niche';
+}
+
+/**
+ * Dynamic tier configuration for UI
+ */
+export const DYNAMIC_TIER_CONFIG: Record<DynamicTier, {
+  label: string;
+  shortLabel: string;
+  icon: string;
+  bgClass: string;
+  borderClass: string;
+  textClass: string;
+  description: string;
+}> = {
+  essential: {
+    label: 'Essential (Must-Have)',
+    shortLabel: 'Essential',
+    icon: '🚨',
+    bgClass: 'bg-green-500/10',
+    borderClass: 'border-green-500/30',
+    textClass: 'text-green-600 dark:text-green-400',
+    description: 'Basierend auf deinem Profil unverzichtbar',
+  },
+  optimizer: {
+    label: 'Optimizer',
+    shortLabel: 'Optimizer',
+    icon: '🎯',
+    bgClass: 'bg-blue-500/10',
+    borderClass: 'border-blue-500/30',
+    textClass: 'text-blue-600 dark:text-blue-400',
+    description: 'Starke Empfehlungen für dein Ziel',
+  },
+  niche: {
+    label: 'Optional / Nische',
+    shortLabel: 'Nische',
+    icon: '💭',
+    bgClass: 'bg-muted/50',
+    borderClass: 'border-border',
+    textClass: 'text-muted-foreground',
+    description: 'Situativ oder für Spezialisten',
+  },
+};
 
 /**
  * Calculate personalized relevance score for a supplement
@@ -21,22 +74,28 @@ import { PEPTIDE_CLASS_LABELS } from '@/types/relevanceMatrix';
  * 6. Demographic modifiers (additive)
  * 7. Bloodwork triggers (additive)
  * 8. Compound synergies (additive)
+ * 9. Special category penalties (T-Booster, BCAA) - NEW
  * 
  * @param baseImpactScore - The static impact_score from supplement_database
  * @param matrix - The relevance_matrix JSONB from supplement_database
  * @param context - User's current context (phase, mode, peptides, bloodwork)
- * @returns RelevanceScoreResult with score, reasons, and warnings
+ * @param markers - Optional special category markers for targeted penalties
+ * @returns RelevanceScoreResult with score, dynamicTier, reasons, and warnings
  */
 export function calculateRelevanceScore(
   baseImpactScore: number,
   matrix: RelevanceMatrix | null | undefined,
-  context: UserRelevanceContext | null
+  context: UserRelevanceContext | null,
+  markers?: SupplementMarkers
 ): RelevanceScoreResult {
+  const baseTier = getDynamicTier(baseImpactScore);
+  
   // If no matrix or no context, return base score
   if (!matrix || !context) {
     return { 
       score: baseImpactScore, 
       baseScore: baseImpactScore,
+      dynamicTier: baseTier,
       reasons: [], 
       warnings: [],
       isPersonalized: false
@@ -179,12 +238,35 @@ export function calculateRelevanceScore(
     }
   }
   
+  // 10. Special Category Penalties (NEW - based on markers)
+  if (markers) {
+    // Natural T-Booster penalty when on GH Secretagogues or TRT
+    if (markers.isNaturalTestoBooster) {
+      const hasGHSecretagogue = context.activePeptideClasses.includes('gh_secretagogue');
+      const hasTesto = context.activePeptideClasses.includes('testo');
+      
+      if (hasGHSecretagogue || hasTesto) {
+        score -= 2.0;
+        reasons.push('GH/Peptid aktiv: -2.0 (Diminishing Returns)');
+        warnings.push('Natürliche T-Booster bei Peptid-Protokoll weniger effektiv');
+      }
+    }
+    
+    // BCAA penalty when high protein intake (>2g/kg)
+    if (markers.isBCAA && context.dailyProteinPerKg && context.dailyProteinPerKg > 2.0) {
+      score -= 1.5;
+      reasons.push(`Protein >2g/kg: -1.5 (Redundant)`);
+      warnings.push('BCAAs bei hoher Proteinzufuhr überflüssig - EAAs bevorzugen');
+    }
+  }
+  
   // Clamp score to 0-10
   const clampedScore = Math.max(0, Math.min(10, score));
   
   return { 
     score: clampedScore,
     baseScore: baseImpactScore,
+    dynamicTier: getDynamicTier(clampedScore),
     reasons,
     warnings,
     isPersonalized: reasons.length > 0

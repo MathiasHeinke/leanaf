@@ -1,18 +1,20 @@
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
-import { RefreshCw, Check, Info } from 'lucide-react';
+import { RefreshCw, Check, Info, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getScheduleLabel } from '@/lib/schedule-utils';
 import { getMetaCategory, META_CATEGORIES } from '@/lib/categoryMapping';
+import { DYNAMIC_TIER_CONFIG } from '@/lib/calculateRelevanceScore';
 import {
   EVIDENCE_LEVEL_CONFIG,
   TIMING_CONSTRAINT_LABELS,
   type SupplementLibraryItem,
   type EvidenceLevel,
 } from '@/types/supplementLibrary';
+import type { RelevanceScoreResult } from '@/types/relevanceMatrix';
 
 interface SupplementToggleRowProps {
-  item: SupplementLibraryItem;
+  item: SupplementLibraryItem & { scoreResult?: RelevanceScoreResult };
   isActive: boolean;
   onToggle: (id: string, active: boolean) => void;
   onInfoClick?: (item: SupplementLibraryItem) => void;
@@ -66,6 +68,27 @@ export const SupplementToggleRow: React.FC<SupplementToggleRowProps> = ({
     return `${item.default_dosage}${item.default_unit || ''}`;
   };
 
+  // Get dynamic score badge (if scoreResult available)
+  const getScoreBadge = () => {
+    if (!item.scoreResult) return null;
+    const { score, dynamicTier, isPersonalized } = item.scoreResult;
+    const tierConfig = DYNAMIC_TIER_CONFIG[dynamicTier];
+    
+    return (
+      <span 
+        className={cn(
+          "text-[10px] font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5",
+          tierConfig.bgClass,
+          tierConfig.textClass
+        )}
+        title={isPersonalized ? 'Personalisierter Score' : 'Basis-Score'}
+      >
+        {isPersonalized && <Sparkles className="h-2.5 w-2.5" />}
+        {score.toFixed(1)}
+      </span>
+    );
+  };
+
   return (
     <div
       className={cn(
@@ -89,6 +112,8 @@ export const SupplementToggleRow: React.FC<SupplementToggleRowProps> = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium text-sm truncate">{item.name}</span>
+          {/* Dynamic Score Badge */}
+          {getScoreBadge()}
           {/* Info Icon - Clickable */}
           {onInfoClick && (
             <button
