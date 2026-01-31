@@ -100,9 +100,9 @@ function isEAA(name: string): boolean {
 }
 
 /**
- * Helper: Group scored items by base name
+ * Helper: Group scored items by base name (tier will be assigned later based on topScore)
  */
-function groupByBaseNameWithScores(items: ScoredSupplementItem[], tier: DynamicTier): BaseNameGroup[] {
+function groupByBaseNameWithScores(items: ScoredSupplementItem[]): BaseNameGroup[] {
   const grouped = new Map<string, ScoredSupplementItem[]>();
   
   for (const item of items) {
@@ -118,12 +118,24 @@ function groupByBaseNameWithScores(items: ScoredSupplementItem[], tier: DynamicT
     // Sort variants by score (descending)
     variants.sort((a, b) => b.scoreResult.score - a.scoreResult.score);
     const topVariant = variants[0];
+    const topScore = topVariant.scoreResult.score;
+    
+    // Determine tier based on TOP score of the group
+    let dynamicTier: DynamicTier;
+    if (topScore >= 9.0) {
+      dynamicTier = 'essential';
+    } else if (topScore >= 6.0) {
+      dynamicTier = 'optimizer';
+    } else {
+      dynamicTier = 'niche';
+    }
+    
     result.push({
       baseName,
       variants,
-      topScore: topVariant.scoreResult.score,
+      topScore,
       topVariant,
-      dynamicTier: tier,
+      dynamicTier,
     });
   }
   
@@ -183,25 +195,33 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
     // 2. Sort by score (descending)
     scoredItems.sort((a, b) => b.scoreResult.score - a.scoreResult.score);
 
-    // 3. Group into dynamic tiers
-    for (const item of scoredItems) {
-      const tier = item.scoreResult.dynamicTier;
-      if (tier === 'essential') {
-        result.essentials.push(item);
-      } else if (tier === 'optimizer') {
-        result.optimizers.push(item);
+    // 3. FIRST: Group ALL items by base name (BEFORE tier assignment!)
+    const allGroups = groupByBaseNameWithScores(scoredItems);
+
+    // 4. THEN: Distribute groups into tiers based on their TOP score
+    for (const group of allGroups) {
+      // Also populate flat arrays for backwards compatibility
+      for (const item of group.variants) {
+        if (group.dynamicTier === 'essential') {
+          result.essentials.push(item);
+        } else if (group.dynamicTier === 'optimizer') {
+          result.optimizers.push(item);
+        } else {
+          result.niche.push(item);
+        }
+      }
+      
+      // Assign group to correct tier
+      if (group.dynamicTier === 'essential') {
+        result.essentialGroups.push(group);
+      } else if (group.dynamicTier === 'optimizer') {
+        result.optimizerGroups.push(group);
       } else {
-        result.niche.push(item);
+        result.nicheGroups.push(group);
       }
     }
 
-    // 4. Create base-name groups for each tier
-    result.essentialGroups = groupByBaseNameWithScores(result.essentials, 'essential');
-    result.optimizerGroups = groupByBaseNameWithScores(result.optimizers, 'optimizer');
-    result.nicheGroups = groupByBaseNameWithScores(result.niche, 'niche');
-    result.allGroups = groupByBaseNameWithScores(scoredItems, 'essential'); // tier not used for all
-
-    // 5. Update tier counts (now counting unique base names)
+    // 5. Update tier counts (counting unique base names per tier)
     result.tierCounts = {
       essential: { total: result.essentialGroups.length },
       optimizer: { total: result.optimizerGroups.length },
@@ -209,6 +229,7 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
     };
 
     result.all = scoredItems;
+    result.allGroups = allGroups;
     return result;
   }, [library, context, libraryLoading, contextLoading]);
 }
