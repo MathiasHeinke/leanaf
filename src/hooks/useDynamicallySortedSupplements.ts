@@ -1,12 +1,14 @@
 // =====================================================
 // ARES Dynamic Supplement Sorting Hook
 // Groups supplements by CALCULATED score tier, not static DB tier
+// Now also groups by BASE SUBSTANCE NAME for deduplication
 // =====================================================
 
 import { useMemo } from 'react';
 import { useSupplementLibrary } from './useSupplementLibrary';
 import { useUserRelevanceContext } from './useUserRelevanceContext';
 import { calculateRelevanceScore } from '@/lib/calculateRelevanceScore';
+import { extractBaseName } from '@/lib/supplementDeduplication';
 import type { RelevanceScoreResult, SupplementMarkers, DynamicTier } from '@/types/relevanceMatrix';
 import type { SupplementLibraryItem } from '@/types/supplementLibrary';
 
@@ -18,6 +20,17 @@ export interface ScoredSupplementItem extends SupplementLibraryItem {
 }
 
 /**
+ * Group of supplements sharing the same base substance name
+ */
+export interface BaseNameGroup {
+  baseName: string;
+  variants: ScoredSupplementItem[];
+  topScore: number;
+  topVariant: ScoredSupplementItem;
+  dynamicTier: DynamicTier;
+}
+
+/**
  * Grouped supplements by dynamic tier
  */
 export interface DynamicSupplementGroups {
@@ -25,6 +38,11 @@ export interface DynamicSupplementGroups {
   optimizers: ScoredSupplementItem[];
   niche: ScoredSupplementItem[];
   all: ScoredSupplementItem[];
+  // NEW: Grouped by base name within each tier
+  essentialGroups: BaseNameGroup[];
+  optimizerGroups: BaseNameGroup[];
+  nicheGroups: BaseNameGroup[];
+  allGroups: BaseNameGroup[];
   isLoading: boolean;
   tierCounts: Record<DynamicTier, { total: number; active?: number }>;
 }
@@ -82,6 +100,39 @@ function isEAA(name: string): boolean {
 }
 
 /**
+ * Helper: Group scored items by base name
+ */
+function groupByBaseNameWithScores(items: ScoredSupplementItem[], tier: DynamicTier): BaseNameGroup[] {
+  const grouped = new Map<string, ScoredSupplementItem[]>();
+  
+  for (const item of items) {
+    const baseName = extractBaseName(item.name);
+    if (!grouped.has(baseName)) {
+      grouped.set(baseName, []);
+    }
+    grouped.get(baseName)!.push(item);
+  }
+  
+  const result: BaseNameGroup[] = [];
+  for (const [baseName, variants] of grouped) {
+    // Sort variants by score (descending)
+    variants.sort((a, b) => b.scoreResult.score - a.scoreResult.score);
+    const topVariant = variants[0];
+    result.push({
+      baseName,
+      variants,
+      topScore: topVariant.scoreResult.score,
+      topVariant,
+      dynamicTier: tier,
+    });
+  }
+  
+  // Sort groups by top score (descending)
+  result.sort((a, b) => b.topScore - a.topScore);
+  return result;
+}
+
+/**
  * Hook for dynamically sorted and grouped supplements
  * Calculates personalized scores and groups by dynamic tier
  */
@@ -95,6 +146,10 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
       optimizers: [],
       niche: [],
       all: [],
+      essentialGroups: [],
+      optimizerGroups: [],
+      nicheGroups: [],
+      allGroups: [],
       isLoading: libraryLoading || contextLoading,
       tierCounts: {
         essential: { total: 0 },
@@ -140,11 +195,17 @@ export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
       }
     }
 
-    // 4. Update tier counts
+    // 4. Create base-name groups for each tier
+    result.essentialGroups = groupByBaseNameWithScores(result.essentials, 'essential');
+    result.optimizerGroups = groupByBaseNameWithScores(result.optimizers, 'optimizer');
+    result.nicheGroups = groupByBaseNameWithScores(result.niche, 'niche');
+    result.allGroups = groupByBaseNameWithScores(scoredItems, 'essential'); // tier not used for all
+
+    // 5. Update tier counts (now counting unique base names)
     result.tierCounts = {
-      essential: { total: result.essentials.length },
-      optimizer: { total: result.optimizers.length },
-      niche: { total: result.niche.length },
+      essential: { total: result.essentialGroups.length },
+      optimizer: { total: result.optimizerGroups.length },
+      niche: { total: result.nicheGroups.length },
     };
 
     result.all = scoredItems;
