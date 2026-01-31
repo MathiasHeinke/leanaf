@@ -1,135 +1,139 @@
 
-# Fix: Vollstaendiger JSON-Import mit allen Daten
+# Erweitere Import-Funktion auf 55 Felder
 
-## Das Problem
+## Aktuelle Situation
 
-Die hochgeladenen JSON-Dateien (`moleqlar-2.json`, `naturtreu-2.json`) enthalten **reichhaltige, bereits aufbereitete Daten** im Format eines Datenbank-Exports:
+Die Edge-Function `import-enriched-products` importiert nur 25 von 55 moeglichen Feldern. Es fehlen kritische Daten:
 
-```json
-{
-  "id": "uuid-hier",
-  "product_name": "Alpha-Ketoglutarat (Ca-AKG)",
-  "supplement_id": "uuid-aus-supplement_database",  // BEREITS VERLINKT!
-  "bioavailability": 8.0,
-  "potency": 10.0,
-  "reviews": 8.0,
-  "origin": 10.0,
-  "lab_tests": 10.0,
-  "purity": 10.0,
-  "value": 8.0,
-  "impact_score_big8": 9.0,
-  "amazon_asin": "B0B4K6SPYB",
-  "amazon_url": "https://www.amazon.de/dp/B0B4K6SPYB",
-  ...
-}
-```
+### Fehlende Quality-Score Felder (Hyper-Scoring Layer A)
+- quality_bioavailability
+- quality_dosage
+- quality_form  
+- quality_purity
+- quality_research
+- quality_synergy
+- quality_transparency
+- quality_value
 
-Die aktuelle Edge-Function `seed-manufacturer-products` erwartet aber ein **anderes Format** (manufacturer-style) und ignoriert:
-- Big8 Scores (bioavailability, potency, reviews, etc.)
-- Amazon-Daten (asin, url, image)
-- Bereits vorhandene supplement_id Verlinkungen
-- impact_score_big8
+### Fehlende Produkt-Details
+- category
+- country_of_origin
+- ingredients (JSON)
+- product_url
+- short_description
+- timing
+- serving_size
+- servings_per_container
+- dosage_per_serving
 
-## Die Loesung
-
-Neue Edge-Function `import-enriched-products` erstellen, die das Export-Format direkt importiert/upserted.
-
----
-
-## Schritt 1: Neue Edge-Function erstellen
-
-**Datei:** `supabase/functions/import-enriched-products/index.ts`
-
-Funktionalitaet:
-- Akzeptiert Array von Produkten im enriched-Format (wie die JSON-Dateien)
-- Matched Produkte ueber `brand_slug` + `product_name` (Upsert)
-- Importiert ALLE Felder direkt:
-  - Big8 Scores: `bioavailability`, `potency`, `reviews`, `origin`, `lab_tests`, `purity`, `value`
-  - `impact_score_big8`
-  - Amazon-Daten: `amazon_asin`, `amazon_url`, `amazon_image`, `amazon_name`
-  - `supplement_id` direkt aus JSON (keine Neuberechnung)
-  - `is_recommended`, `is_organic`, `quality_tags`, etc.
+### Fehlende Flags/Meta
+- is_deprecated
+- is_gluten_free
+- match_score
+- popularity_score
+- product_sku
+- allergens (Array)
 
 ---
 
-## Schritt 2: Utility-Funktion im Frontend
+## Loesung
 
-**Datei:** `src/utils/importEnrichedProducts.ts`
+Erweiterung der Edge-Function um ALLE 55 Spalten der `supplement_products` Tabelle.
+
+### Aenderungen an `import-enriched-products/index.ts`
 
 ```typescript
-export async function importEnrichedProductsFromFile(jsonData: any[]) {
-  const batchSize = 50;
-  // Gruppiere nach brand_slug
-  // Sende an Edge-Function in Batches
-  // Returniere Statistiken
-}
+const productData = {
+  // === BEREITS VORHANDEN (25 Felder) ===
+  brand_id, product_name, supplement_id,
+  pack_size, pack_unit, servings_per_pack, dose_per_serving, dose_unit,
+  price_eur, price_per_serving, form,
+  is_vegan, is_organic, is_verified, is_recommended, quality_tags,
+  bioavailability, potency, reviews, origin, lab_tests, purity, value,
+  impact_score_big8,
+  amazon_asin, amazon_url, amazon_image, amazon_name,
+  
+  // === NEU: Hyper-Scoring Quality (8 Felder) ===
+  quality_bioavailability: parseNumber(product.quality_bioavailability),
+  quality_dosage: parseNumber(product.quality_dosage),
+  quality_form: parseNumber(product.quality_form),
+  quality_purity: parseNumber(product.quality_purity),
+  quality_research: parseNumber(product.quality_research),
+  quality_synergy: parseNumber(product.quality_synergy),
+  quality_transparency: parseNumber(product.quality_transparency),
+  quality_value: parseNumber(product.quality_value),
+  
+  // === NEU: Produkt-Details (9 Felder) ===
+  category: sanitizeValue(product.category),
+  country_of_origin: sanitizeValue(product.country_of_origin),
+  ingredients: parseJson(product.ingredients),
+  product_url: sanitizeValue(product.product_url),
+  short_description: sanitizeValue(product.short_description),
+  timing: sanitizeValue(product.timing),
+  serving_size: sanitizeValue(product.serving_size),
+  servings_per_container: parseNumber(product.servings_per_container),
+  dosage_per_serving: sanitizeValue(product.dosage_per_serving),
+  
+  // === NEU: Flags und Meta (6 Felder) ===
+  is_deprecated: parseBoolean(product.is_deprecated),
+  is_gluten_free: parseBoolean(product.is_gluten_free),
+  match_score: parseNumber(product.match_score),
+  popularity_score: parseNumber(product.popularity_score),
+  product_sku: sanitizeValue(product.product_sku),
+  allergens: parseStringArray(product.allergens),
+};
 ```
-
----
-
-## Schritt 3: Re-Import der JSON-Daten
-
-Nach Deployment der neuen Edge-Function:
-1. `moleqlar-2.json` importieren (~84 Produkte)
-2. `naturtreu-2.json` importieren (~88 Produkte)
-
----
-
-## Erwartetes Ergebnis
-
-| Metrik | Vorher | Nachher |
-|--------|--------|---------|
-| Produkte mit Big8 Scores | 575 | 750 (100%) |
-| Produkte mit Amazon-Daten | 352 | ~450+ |
-| Produkte mit supplement_id | 572 | ~700+ |
-| Produkte mit impact_score_big8 | 750 | 750 (100%) |
 
 ---
 
 ## Technische Details
 
-### Interface fuer enriched Produkt:
+### Neue Helper-Funktionen
+
 ```typescript
-interface EnrichedProduct {
-  product_name: string;
-  brand_slug: string;
-  pack_size?: number;
-  pack_unit?: string;
-  servings_per_pack?: number;
-  dose_per_serving?: number;
-  dose_unit?: string;
-  price_eur?: number;
-  price_per_serving?: number;
-  form?: string;
-  is_vegan?: boolean | string;
-  is_organic?: boolean | string;
-  is_verified?: boolean | string;
-  is_recommended?: boolean | string;
-  quality_tags?: string;
-  supplement_name?: string;
-  
-  // Big8 Scores
-  bioavailability?: number;
-  potency?: number;
-  reviews?: number;
-  origin?: number | string;
-  lab_tests?: number;
-  purity?: number;
-  value?: number;
-  impact_score_big8?: number;
-  
-  // Amazon
-  amazon_asin?: string;
-  amazon_url?: string;
-  amazon_image?: string;
-  amazon_name?: string;
+// Parse JSON field (ingredients)
+function parseJson(val: unknown): Json | null {
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'object') return val as Json;
+  if (typeof val === 'string') {
+    try {
+      return JSON.parse(val);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Parse string array (allergens, quality_tags)
+function parseStringArray(val: unknown): string[] | null {
+  if (val === null || val === undefined) return null;
+  if (Array.isArray(val)) return val.map(String);
+  if (typeof val === 'string') {
+    // Handle "item1; item2; item3" format
+    return val.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+  }
+  return null;
 }
 ```
 
-### NaN-Handling:
-Die JSON-Dateien enthalten `NaN` als Werte (Python-Export). Diese werden beim Import zu `null` konvertiert.
+### quality_tags Anpassung
 
-### Matching-Logik:
-1. Brand-ID ueber `brand_slug` holen
-2. supplement_id ueber `supplement_name` matchen (falls vorhanden)
-3. Produkt ueber `brand_id` + `product_name` finden (Upsert)
+Aktuell wird `quality_tags` als String importiert, aber die DB erwartet `string[]`. Anpassung noetig:
+
+```typescript
+quality_tags: parseStringArray(product.quality_tags),
+```
+
+---
+
+## Ergebnis nach Implementierung
+
+| Metrik | Vorher | Nachher |
+|--------|--------|---------|
+| Importierte Felder | 25 | 55 (100%) |
+| Hyper-Scoring Data | Unvollstaendig | Komplett |
+| Produkt-URLs | Nicht importiert | Importiert |
+| Timing-Daten | Nicht importiert | Importiert |
+
+Nach dem Re-Import der JSON-Dateien werden alle 70 Felder deines Datensatzes korrekt in die Datenbank geschrieben (55 direkt, 15 via JOINs aus Brand/Supplement-Tabellen).
