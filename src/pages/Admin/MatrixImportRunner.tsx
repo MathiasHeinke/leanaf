@@ -194,7 +194,7 @@ export default function MatrixImportRunner() {
         <div>
           <h1 className="text-2xl font-bold">Matrix Import Runner</h1>
           <p className="text-muted-foreground mt-1">
-            Importiert die ARES Ingredient Relevance Matrix v2.1 in die Datenbank
+            [Legacy] Markdown-basierter Import (v2.1). Verwende den CSV Matrix v2.3 Import auf der Admin-Hauptseite für aktuelle Daten.
           </p>
         </div>
 
