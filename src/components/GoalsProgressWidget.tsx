@@ -75,7 +75,8 @@ export const GoalsProgressWidget = () => {
       const currentBodyFat = weightResult.data?.[0]?.body_fat_percentage || 0;
 
       const targetWeight = profile.target_weight || currentWeight;
-      const targetBodyFat = profile.target_body_fat_percentage || currentBodyFat;
+      // Only use targetBodyFat if explicitly set in profile (not fallback to current)
+      const targetBodyFat = profile.target_body_fat_percentage || 0;
       const height = profile.height || 170;
 
       const currentBMI = calculateBMI(currentWeight, height);
