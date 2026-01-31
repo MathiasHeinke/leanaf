@@ -119,18 +119,42 @@ Deno.serve(async (req) => {
       const { brand_slug, products: syncProducts } = brand_sync;
       console.log(`Brand sync mode: Processing ${syncProducts.length} products for brand ${brand_slug}`);
 
-      // 1. Get brand_id
-      const { data: brand, error: brandError } = await supabase
+      // 1. Get or create brand
+      let { data: brand } = await supabase
         .from("supplement_brands")
         .select("id")
         .eq("slug", brand_slug)
-        .single();
+        .maybeSingle();
 
-      if (brandError || !brand) {
-        return new Response(
-          JSON.stringify({ success: false, error: `Brand not found: ${brand_slug}` }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      // Auto-create brand if not found
+      if (!brand) {
+        console.log(`Brand not found, creating: ${brand_slug}`);
+        
+        // Extract brand name from first product or derive from slug
+        const firstProduct = syncProducts[0];
+        const brandName = firstProduct?.brand_name || 
+          brand_slug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+        
+        const { data: newBrand, error: createError } = await supabase
+          .from("supplement_brands")
+          .insert({
+            slug: brand_slug,
+            name: brandName,
+            country: firstProduct?.brand_country || null,
+            website: firstProduct?.brand_website || null,
+            price_tier: firstProduct?.brand_price_tier || "mid",
+          })
+          .select("id")
+          .single();
+
+        if (createError || !newBrand) {
+          return new Response(
+            JSON.stringify({ success: false, error: `Failed to create brand: ${brand_slug} - ${createError?.message}` }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        brand = newBrand;
+        console.log(`Created brand: ${brand_slug} with id ${brand.id}`);
       }
 
       // 2. Get all current product IDs for this brand
