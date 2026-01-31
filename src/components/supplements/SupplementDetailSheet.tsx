@@ -297,6 +297,12 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
           {/* Blutwert-Trigger Section */}
           <BloodworkTriggersSection matrix={item.relevance_matrix} />
 
+          {/* Demografische Relevanz Section (Phase 2) */}
+          <DemographicRelevanceSection matrix={item.relevance_matrix} />
+
+          {/* Compound Synergies Section (Phase 2) */}
+          <CompoundSynergiesSection matrix={item.relevance_matrix} />
+
           {/* Personalized ARES Score & Cost */}
           <Separator />
           <div className="grid grid-cols-2 gap-3">
@@ -362,6 +368,26 @@ const CONTEXT_LABELS: Record<string, string> = {
   enhanced_no_trt: 'Enhanced ohne TRT',
   on_trt: 'Bei TRT/HRT',
   on_glp1: 'Bei GLP-1 (Reta/Tirze/Sema)',
+};
+
+const DEMOGRAPHIC_LABELS: Record<string, string> = {
+  age_over_40: 'Alter 40+',
+  age_over_50: 'Alter 50+',
+  age_over_60: 'Alter 60+',
+  is_male: 'Männlich',
+  is_female: 'Weiblich',
+};
+
+const SYNERGY_LABELS: Record<string, string> = {
+  retatrutide: 'Retatrutide',
+  tirzepatide: 'Tirzepatide',
+  semaglutide: 'Semaglutide',
+  epitalon: 'Epitalon',
+  mots_c: 'MOTS-c',
+  bpc_157: 'BPC-157',
+  tb_500: 'TB-500',
+  cjc_1295: 'CJC-1295',
+  ipamorelin: 'Ipamorelin',
 };
 
 const BLOODWORK_LABELS: Record<string, string> = {
@@ -511,7 +537,153 @@ const BloodworkTriggersSection: React.FC<BloodworkTriggersSectionProps> = ({ mat
 };
 
 // =====================================================
-// Scientific Sources Section (for v2.1 evidence_notes)
+// Demographic Relevance Section (Phase 2: NAD+ Age-Calibration)
+// =====================================================
+
+interface DemographicRelevanceSectionProps {
+  matrix?: RelevanceMatrix | null;
+}
+
+const DemographicRelevanceSection: React.FC<DemographicRelevanceSectionProps> = ({ matrix }) => {
+  const demoModifiers = matrix?.demographic_modifiers;
+  
+  const relevantDemos = useMemo(() => {
+    if (!demoModifiers) return [];
+    
+    return Object.entries(DEMOGRAPHIC_LABELS)
+      .filter(([key]) => {
+        const value = demoModifiers[key as keyof typeof demoModifiers];
+        return value !== undefined && value !== 0;
+      })
+      .map(([key, label]) => ({
+        key,
+        label,
+        value: demoModifiers[key as keyof typeof demoModifiers] as number,
+      }))
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  }, [demoModifiers]);
+  
+  if (relevantDemos.length === 0) return null;
+  
+  return (
+    <>
+      <Separator />
+      <div>
+        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+          <Clock className="h-4 w-4 text-amber-500" />
+          Alters-basierte Relevanz
+        </h4>
+        <div className="space-y-1.5">
+          {relevantDemos.map(({ key, label, value }) => (
+            <div 
+              key={key}
+              className={cn(
+                "flex items-center justify-between p-2 rounded-lg text-xs",
+                value > 0 
+                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" 
+                  : "bg-muted/50 text-muted-foreground"
+              )}
+            >
+              <span>{label}</span>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs font-mono",
+                  value > 0 
+                    ? "border-amber-500/30 text-amber-600" 
+                    : "border-muted text-muted-foreground"
+                )}
+              >
+                {value > 0 ? '+' : ''}{value.toFixed(1)}
+              </Badge>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+          NAD+ sinkt mit dem Alter: -30% ab 40, -50% ab 50, -80% ab 60+
+        </p>
+      </div>
+    </>
+  );
+};
+
+// =====================================================
+// Compound Synergies Section (Phase 2: GLP-1/Peptide Synergies)
+// =====================================================
+
+interface CompoundSynergiesSectionProps {
+  matrix?: RelevanceMatrix | null;
+}
+
+const CompoundSynergiesSection: React.FC<CompoundSynergiesSectionProps> = ({ matrix }) => {
+  const synergies = matrix?.compound_synergies;
+  
+  const relevantSynergies = useMemo(() => {
+    if (!synergies) return [];
+    
+    return Object.entries(SYNERGY_LABELS)
+      .filter(([key]) => {
+        const value = synergies[key as keyof typeof synergies];
+        return value !== undefined && value !== 0;
+      })
+      .map(([key, label]) => ({
+        key,
+        label,
+        value: synergies[key as keyof typeof synergies] as number,
+      }))
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  }, [synergies]);
+  
+  if (relevantSynergies.length === 0) return null;
+  
+  return (
+    <>
+      <Separator />
+      <div>
+        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-cyan-500" />
+          Peptid-Synergien
+        </h4>
+        <div className="grid grid-cols-2 gap-1.5">
+          {relevantSynergies.map(({ key, label, value }) => (
+            <div 
+              key={key}
+              className={cn(
+                "flex items-center justify-between p-2 rounded-lg text-xs",
+                value >= 3.5 
+                  ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400" 
+                  : value >= 2.0
+                    ? "bg-cyan-500/10 text-cyan-700 dark:text-cyan-400"
+                    : "bg-muted/50 text-muted-foreground"
+              )}
+            >
+              <span className="truncate mr-1">{label}</span>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-xs font-mono shrink-0",
+                  value >= 3.5 
+                    ? "border-cyan-500/40 text-cyan-600" 
+                    : value >= 2.0
+                      ? "border-cyan-500/30 text-cyan-600"
+                      : "border-muted text-muted-foreground"
+                )}
+              >
+                {value > 0 ? '+' : ''}{value.toFixed(1)}
+              </Badge>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-1.5 italic">
+          GLP-1 Kontext: 25-40% des Gewichtsverlusts ist Lean Mass – Schutz kritisch
+        </p>
+      </div>
+    </>
+  );
+};
+
+// =====================================================
+// Scientific Sources Section (for v2.1+ evidence_notes)
 // =====================================================
 
 interface ScientificSourcesSectionProps {
