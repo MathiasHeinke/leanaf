@@ -379,16 +379,6 @@ export const MedicalScreening: React.FC<MedicalScreeningProps> = ({ onScreeningC
       </div>
 
 
-      {/* Disclaimer Card */}
-      <Alert>
-        <ShieldAlert className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Wichtiger Hinweis:</strong> Diese App ist ein Fitness-Tool und kein medizinisches Gerät. 
-          Die hier bereitgestellten Informationen ersetzen keinen Arztbesuch. Bei gesundheitlichen Problemen 
-          konsultieren Sie bitte immer einen qualifizierten Arzt.
-        </AlertDescription>
-      </Alert>
-
       <Card>
         <CardContent className="space-y-6 pt-5">
           {/* Initial Questions */}
