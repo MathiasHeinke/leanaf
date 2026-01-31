@@ -498,22 +498,22 @@ const History = ({ onClose, dailyGoal = { calories: 2000, protein: 150, carbs: 2
 
       {/* Tabs */}
       <Tabs defaultValue="table" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="table" className="flex items-center gap-2">
-            <Utensils className="h-4 w-4" />
-            Ernährung
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+          <TabsTrigger value="table" className="flex items-center gap-1 sm:gap-2">
+            <Utensils className="h-4 w-4 shrink-0" />
+            <span className="truncate">Ernährung</span>
           </TabsTrigger>
-          <TabsTrigger value="journal" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            Journal
+          <TabsTrigger value="journal" className="flex items-center gap-1 sm:gap-2">
+            <Brain className="h-4 w-4 shrink-0" />
+            <span className="truncate">Journal</span>
           </TabsTrigger>
-          <TabsTrigger value="quick-input" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            Quick Input
+          <TabsTrigger value="quick-input" className="flex items-center gap-1 sm:gap-2">
+            <Activity className="h-4 w-4 shrink-0" />
+            <span className="truncate">Quick Input</span>
           </TabsTrigger>
-          <TabsTrigger value="weight" className="flex items-center gap-2">
-            <Scale className="h-4 w-4" />
-            Gewicht
+          <TabsTrigger value="weight" className="flex items-center gap-1 sm:gap-2">
+            <Scale className="h-4 w-4 shrink-0" />
+            <span className="truncate">Gewicht</span>
           </TabsTrigger>
         </TabsList>
         

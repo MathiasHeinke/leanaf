@@ -102,7 +102,7 @@ export const AdvancedAnalyticsSection: React.FC = () => {
 
       {/* Analytics Tabs */}
       <Tabs defaultValue="health-score" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="health-score" className="flex items-center gap-2">
             <Heart className="h-4 w-4" />
             Health Score

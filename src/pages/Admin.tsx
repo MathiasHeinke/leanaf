@@ -147,18 +147,18 @@ export const AdminPage = () => {
         <Tabs defaultValue="production" className="w-full">
           {/* 🎛️ COMPACT TAB NAVIGATION - 4 tabs */}
           <div className="w-full mb-8">
-            <TabsList className="grid w-full grid-cols-3 h-auto bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm">
-              <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                <Monitor className="w-4 h-4" />
-                <span>Production</span>
+            <TabsList className="grid w-full grid-cols-3 bg-card border border-border dark:bg-card dark:border-border rounded-lg p-1 shadow-sm overflow-hidden">
+              <TabsTrigger value="production" className="flex flex-col items-center justify-center gap-1 h-auto min-h-[56px] px-1 sm:px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <Monitor className="w-4 h-4 shrink-0" />
+                <span className="truncate">Production</span>
               </TabsTrigger>
-              <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                <Activity className="w-4 h-4" />
-                <span>Performance</span>
+              <TabsTrigger value="performance" className="flex flex-col items-center justify-center gap-1 h-auto min-h-[56px] px-1 sm:px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <Activity className="w-4 h-4 shrink-0" />
+                <span className="truncate">Performance</span>
               </TabsTrigger>
-              <TabsTrigger value="system" className="flex flex-col items-center justify-center gap-1 h-16 px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
-                <Settings className="w-4 h-4" />
-                <span>System</span>
+              <TabsTrigger value="system" className="flex flex-col items-center justify-center gap-1 h-auto min-h-[56px] px-1 sm:px-2 rounded-md text-xs font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:bg-background dark:data-[state=active]:text-foreground data-[state=active]:shadow-sm">
+                <Settings className="w-4 h-4 shrink-0" />
+                <span className="truncate">System</span>
               </TabsTrigger>
             </TabsList>
           </div>
