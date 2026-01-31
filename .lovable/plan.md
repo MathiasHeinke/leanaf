@@ -1,158 +1,161 @@
 
 
-# Erweiterter CSV-Export mit allen Datenfeldern
+# Marken-Update mit JSON-Import: Naturtreu + MoleQlar
 
-## Problem
+## Uebersicht der JSON-Dateien
 
-Die aktuelle Export-Funktion in `src/utils/exportProductsCSV.ts` exportiert nur 25 von 54 verfuegbaren Produkt-Feldern. Wichtige Amazon-Daten und Qualitaetsmetriken fehlen.
+| Datei | Marke | Produkte im JSON | Produkte in DB |
+|-------|-------|------------------|----------------|
+| `naturtreu-2.json` | Naturtreu | ~89 (7389 Zeilen / 83 Zeilen pro Eintrag) | 92 |
+| `moleqlar-2.json` | MoleQlar | ~85 (7057 Zeilen / 83 Zeilen pro Eintrag) | 86 |
 
-## Fehlende Felder im aktuellen Export
+**Differenz:** Es gibt in der DB mehr Produkte als in den JSON-Dateien. Diese sollen zum Loeschen markiert werden.
 
-| Kategorie | Felder |
-|-----------|--------|
-| **Amazon-Daten** | `amazon_url`, `amazon_image`, `amazon_name`, `match_score` |
-| **Quality-Scores** | `quality_purity`, `quality_bioavailability`, `quality_dosage`, `quality_synergy`, `quality_research`, `quality_form`, `quality_value`, `quality_transparency` |
-| **Produkt-Metriken** | `bioavailability`, `potency`, `reviews`, `purity`, `value`, `lab_tests`, `impact_score_big8` |
-| **Sonstiges** | `short_description`, `origin`, `category`, `timing`, `is_gluten_free`, `country_of_origin`, `serving_size`, `servings_per_container`, `dosage_per_serving` |
+## Anforderungen
 
-## Loesung
+1. **Produkte updaten:** Alle Produkte in den JSON-Dateien per ID-Matching aktualisieren
+2. **Orphans flaggen:** Produkte in der DB, die NICHT in den JSONs vorkommen, zum Loeschen markieren
 
-Die Export-Funktion erweitern um **alle 54 Felder** zu inkludieren.
+## Technische Umsetzung
+
+### Phase 1: Datenbank-Spalte hinzufuegen
+
+Eine neue Spalte `is_deprecated` (boolean, default false) zur `supplement_products` Tabelle hinzufuegen.
+
+```sql
+ALTER TABLE supplement_products 
+ADD COLUMN is_deprecated BOOLEAN DEFAULT false;
+```
+
+### Phase 2: Edge Function erweitern
+
+Neuer Modus `brand_sync` in der `import-products-csv` Edge Function:
+
+```text
+Ablauf:
+1. Empfange: brand_slug + Array von Produkten (mit IDs)
+2. Update alle Produkte per ID mit allen Feldern
+3. Hole alle Produkt-IDs dieser Marke aus DB
+4. Vergleiche: DB-IDs minus JSON-IDs = Orphans
+5. Setze is_deprecated = true fuer alle Orphans
+6. Return: updated, deprecated, errors
+```
+
+### Phase 3: Admin-UI erweitern
+
+`ImportCSVRunner.tsx` um JSON-Upload erweitern:
+
+- Datei-Upload fuer JSON
+- Brand-Auswahl (Naturtreu/MoleQlar)
+- Button "Brand Sync starten"
+- Anzeige: Aktualisiert / Deprecated
+
+## Datenmapping (JSON zu DB)
+
+Die JSON-Dateien haben identische Felder wie die DB, mit folgenden Besonderheiten:
+
+| JSON-Feld | DB-Feld | Transformation |
+|-----------|---------|----------------|
+| `shop_url` | `product_url` | Direktes Mapping |
+| `is_vegan` = "Ja" | `is_vegan` = true | String zu Boolean |
+| `NaN` | NULL | NaN-Werte zu NULL |
+| `quality_tags` = "a; b; c" | `quality_tags` = ["a","b","c"] | String zu Array (;-getrennt) |
 
 ## Dateien die geaendert werden
 
 | Datei | Aenderung |
 |-------|-----------|
-| `src/utils/exportProductsCSV.ts` | Alle fehlenden Felder zu CSV_HEADERS und productToCSVRow hinzufuegen |
+| Migration (neu) | `is_deprecated` Spalte hinzufuegen |
+| `supabase/functions/import-products-csv/index.ts` | `brand_sync` Modus hinzufuegen |
+| `src/pages/admin/ImportCSVRunner.tsx` | JSON-Upload + Brand-Sync UI |
 
-## Neue CSV-Struktur (vollstaendig)
+## Implementierungsdetails
 
-### Produkt-Daten (54 Felder)
-
-```text
-id, brand_id, supplement_id, product_name, product_sku, pack_size, pack_unit,
-servings_per_pack, dose_per_serving, dose_unit, ingredients, price_eur,
-price_per_serving, form, is_vegan, is_organic, is_gluten_free, allergens,
-product_url, amazon_asin, amazon_url, amazon_image, amazon_name, match_score,
-is_verified, is_recommended, popularity_score, short_description,
-bioavailability, potency, reviews, origin, lab_tests, purity, value,
-impact_score_big8, category, serving_size, servings_per_container,
-dosage_per_serving, quality_purity, quality_bioavailability, quality_dosage,
-quality_synergy, quality_research, quality_form, quality_value,
-quality_transparency, timing, country_of_origin, quality_tags,
-created_at, updated_at
-```
-
-### Plus verknuepfte Daten
-
-- **Brand**: name, slug, country, website, price_tier, specialization, quality_certifications
-- **Supplement**: name, category, default_dosage, etc.
-
-## Implementierung
-
-### Schritt 1: CSV_HEADERS erweitern
+### Edge Function: brand_sync Modus
 
 ```typescript
-const CSV_HEADERS = [
-  // IDs
-  'id',
-  'brand_id',
-  'supplement_id',
+if (brand_sync && brand_sync.brand_slug && brand_sync.products) {
+  const { brand_slug, products } = brand_sync;
   
-  // Produkt-Basis
-  'product_name',
-  'product_sku',
-  'short_description',
-  'category',
+  // 1. Get brand_id
+  const { data: brand } = await supabase
+    .from("supplement_brands")
+    .select("id")
+    .eq("slug", brand_slug)
+    .single();
   
-  // Packung & Dosierung
-  'pack_size',
-  'pack_unit',
-  'servings_per_pack',
-  'serving_size',
-  'servings_per_container',
-  'dose_per_serving',
-  'dosage_per_serving',
-  'dose_unit',
-  'form',
-  'timing',
+  // 2. Get all current product IDs for this brand
+  const { data: existingProducts } = await supabase
+    .from("supplement_products")
+    .select("id")
+    .eq("brand_id", brand.id);
   
-  // Preis
-  'price_eur',
-  'price_per_serving',
+  const existingIds = new Set(existingProducts.map(p => p.id));
+  const jsonIds = new Set(products.map(p => p.id));
   
-  // Amazon-Daten (NEU)
-  'amazon_asin',
-  'amazon_url',
-  'amazon_image',
-  'amazon_name',
-  'match_score',
+  // 3. Update all products from JSON
+  for (const product of products) {
+    await supabase
+      .from("supplement_products")
+      .update({
+        product_name: product.product_name,
+        price_eur: product.price_eur,
+        product_url: product.shop_url, // shop_url -> product_url
+        bioavailability: product.bioavailability,
+        // ... alle weiteren Felder
+        is_deprecated: false, // Explizit auf false setzen
+      })
+      .eq("id", product.id);
+  }
   
-  // Shop & Links
-  'product_url',
+  // 4. Mark orphans as deprecated
+  const orphanIds = [...existingIds].filter(id => !jsonIds.has(id));
   
-  // Eigenschaften
-  'is_vegan',
-  'is_organic',
-  'is_gluten_free',
-  'allergens',
-  'origin',
-  'country_of_origin',
+  for (const orphanId of orphanIds) {
+    await supabase
+      .from("supplement_products")
+      .update({ is_deprecated: true })
+      .eq("id", orphanId);
+  }
   
-  // Quality-Scores (NEU - 8 Felder)
-  'quality_purity',
-  'quality_bioavailability',
-  'quality_dosage',
-  'quality_synergy',
-  'quality_research',
-  'quality_form',
-  'quality_value',
-  'quality_transparency',
-  
-  // Metriken (NEU)
-  'bioavailability',
-  'potency',
-  'purity',
-  'value',
-  'reviews',
-  'lab_tests',
-  'impact_score_big8',
-  'popularity_score',
-  
-  // Status
-  'is_verified',
-  'is_recommended',
-  'quality_tags',
-  'ingredients',
-  
-  // Timestamps
-  'created_at',
-  'updated_at',
-  
-  // Brand-Daten
-  'brand_name',
-  'brand_slug',
-  // ...
-];
+  return { updated: jsonIds.size, deprecated: orphanIds.length };
+}
 ```
 
-### Schritt 2: productToCSVRow anpassen
+### Admin UI Erweiterung
 
-Alle neuen Felder in der gleichen Reihenfolge hinzufuegen.
+```text
++--------------------------------------------------+
+| Brand Product Sync                               |
++--------------------------------------------------+
+| [Upload JSON]     [v Naturtreu ]  [Sync starten] |
+|                                                  |
+| Status: Bereit                                   |
+|                                                  |
+| +------------+  +------------+  +------------+   |
+| | Aktualisiert | | Deprecated | | Fehler     |   |
+| |     85       | |     4      | |    0       |   |
+| +------------+  +------------+  +------------+   |
++--------------------------------------------------+
+```
 
 ## Erwartetes Ergebnis
 
-| Vorher | Nachher |
-|--------|---------|
-| 25 Produkt-Felder | 54 Produkt-Felder |
-| Keine Amazon-URLs | Alle Amazon-Daten |
-| Keine Quality-Scores | 8 Quality-Scores |
-| ~45 Spalten total | ~70 Spalten total |
+Nach dem Sync fuer beide Marken:
 
-## Export-Datei
+| Marke | Vorher | Aktualisiert | Deprecated |
+|-------|--------|--------------|------------|
+| Naturtreu | 92 | ~89 | ~3 |
+| MoleQlar | 86 | ~85 | ~1 |
 
-- Dateiname: `ares_products_FULL_export_YYYY-MM-DD.csv`
-- Format: UTF-8 mit BOM fuer Excel
-- Trennzeichen: Komma
-- Arrays: Semikolon-getrennt in Anfuehrungszeichen
+Die deprecateten Produkte koennen dann manuell geprueft und geloescht werden.
+
+## Ablauf
+
+1. Migration ausfuehren: `is_deprecated` Spalte
+2. Edge Function deployen mit `brand_sync` Modus  
+3. Admin-UI aktualisieren mit JSON-Upload
+4. `naturtreu-2.json` hochladen und syncen
+5. `moleqlar-2.json` hochladen und syncen
+6. Deprecated-Produkte pruefen
 
