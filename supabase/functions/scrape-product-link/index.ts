@@ -24,7 +24,7 @@ const SUPPORTED_DOMAINS = [
   'esn.com', 'morenutrition.de', 'profuel.de', 'gymbeam.de', 'gymbeam.com',
   'bodylab24.de', 'body-attack.de', 'bulk.com', 'myprotein.de', 'myprotein.com',
   'fitmart.de', 'zecplus.de', 'rocka-nutrition.de', 'ironmaxx.de', 'prozis.com',
-  'foodspring.de', 'got7nutrition.de', 'peak-performance.de',
+  'foodspring.de', 'got7nutrition.de', 'peak-performance.de', 'ruehl24.de',
   // Vitaminversand & Shops
   'vitaminversand24.com', 'vitamin360.com', 'vitaworld24.de', 'medicom.de',
   'vit4ever.de', 'nutri-plus.de', 'fairvital.com', 'vitabay.de', 'biovea.com',
