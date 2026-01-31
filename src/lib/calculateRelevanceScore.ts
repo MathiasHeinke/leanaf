@@ -527,6 +527,9 @@ export interface ComboScoreResult {
   breakdown: string[];
   ingredientCount: number;
   highQualityCount: number;
+  // Stack overlap detection
+  overlappingIngredients: string[];  // Ingredients already in user's active stack
+  overlapPenalty: number;            // Penalty applied (negative value)
 }
 
 /**
@@ -542,17 +545,60 @@ export interface ComboScoreResult {
  * @param context - User's current context for personalization
  * @returns ComboScoreResult with aggregated score and breakdown
  */
+/**
+ * Calculate aggregated score for multi-ingredient products
+ * 
+ * Formula:
+ * 1. Get personalized score for each ingredient
+ * 2. Detect overlap with active user stack
+ * 3. Use TOP 3 scores (avoid dilution by low-value fillers)
+ * 4. Weighted average: 50% top + 30% second + 20% third
+ * 5. Apply overlap penalty: -1.5 per overlapping ingredient (max -4.5)
+ * 6. Add synergy bonus: +0.5 for 3+ high-quality ingredients (≥7.0)
+ * 
+ * @param ingredientData - Array of ingredient data (name, impactScore, matrix)
+ * @param context - User's current context for personalization
+ * @param activeStackNames - Set of ingredient names already in user's active stack
+ * @returns ComboScoreResult with aggregated score and breakdown
+ */
 export function calculateComboScore(
   ingredientData: IngredientScoreData[],
-  context: UserRelevanceContext | null
+  context: UserRelevanceContext | null,
+  activeStackNames?: Set<string>
 ): ComboScoreResult {
+  const OVERLAP_PENALTY_PER_INGREDIENT = -1.5;
+  const MAX_OVERLAP_PENALTY = -4.5;
+
   if (!ingredientData.length) {
     return { 
       score: 5.0, 
       breakdown: ['Keine Inhaltsstoffe hinterlegt'],
       ingredientCount: 0,
       highQualityCount: 0,
+      overlappingIngredients: [],
+      overlapPenalty: 0,
     };
+  }
+
+  // Detect overlapping ingredients with user's active stack
+  const overlappingIngredients: string[] = [];
+  if (activeStackNames && activeStackNames.size > 0) {
+    for (const ing of ingredientData) {
+      // Normalize for comparison (lowercase, common patterns)
+      const ingNorm = ing.name.toLowerCase();
+      for (const stackName of activeStackNames) {
+        const stackNorm = stackName.toLowerCase();
+        // Check if ingredient is in stack (fuzzy match: contains or starts with)
+        if (
+          ingNorm === stackNorm ||
+          ingNorm.includes(stackNorm) ||
+          stackNorm.includes(ingNorm)
+        ) {
+          overlappingIngredients.push(ing.name);
+          break;
+        }
+      }
+    }
   }
 
   // Calculate personalized score for each ingredient
@@ -592,10 +638,23 @@ export function calculateComboScore(
     breakdown.push(`+0.5 Synergie-Bonus (${highQualityCount} hochwertige Inhaltsstoffe)`);
   }
 
+  // Apply overlap penalty
+  let overlapPenalty = 0;
+  if (overlappingIngredients.length > 0) {
+    overlapPenalty = Math.max(
+      MAX_OVERLAP_PENALTY,
+      overlappingIngredients.length * OVERLAP_PENALTY_PER_INGREDIENT
+    );
+    baseScore += overlapPenalty;
+    breakdown.push(`${overlapPenalty.toFixed(1)} Redundanz (${overlappingIngredients.join(', ')} bereits im Stack)`);
+  }
+
   return {
     score: Math.min(10, Math.max(0, baseScore)),
     breakdown,
     ingredientCount: ingredientData.length,
     highQualityCount,
+    overlappingIngredients,
+    overlapPenalty,
   };
 }

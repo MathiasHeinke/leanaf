@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Switch } from '@/components/ui/switch';
-import { ChevronDown, ChevronRight, Info, Sparkles, Lock, Package } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
+import { ChevronDown, ChevronRight, Info, Sparkles, Lock, Package, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getMetaCategory, META_CATEGORIES } from '@/lib/categoryMapping';
 import { DYNAMIC_TIER_CONFIG } from '@/lib/calculateRelevanceScore';
@@ -41,19 +43,21 @@ export const SupplementGroupRow: React.FC<SupplementGroupRowProps> = ({
 
   // Get score badge for a variant
   const getScoreBadge = (item: ScoredSupplementItem, compact = false) => {
-    const { score, isPersonalized, isLimitedByMissingData } = item.scoreResult;
+    const { score, isPersonalized, isLimitedByMissingData, overlappingIngredients } = item.scoreResult;
+    const hasOverlap = overlappingIngredients && overlappingIngredients.length > 0;
     
     return (
       <span 
         className={cn(
           "font-semibold px-1.5 py-0.5 rounded flex items-center gap-0.5",
           compact ? "text-[9px]" : "text-[10px]",
-          tierConfig.bgClass,
-          tierConfig.textClass,
+          hasOverlap ? "bg-destructive/10 text-destructive" : tierConfig.bgClass,
+          hasOverlap ? "" : tierConfig.textClass,
           isLimitedByMissingData && "border border-dashed border-current/50 opacity-80"
         )}
       >
-        {isPersonalized && !isLimitedByMissingData && <Sparkles className="h-2.5 w-2.5" />}
+        {hasOverlap && <AlertTriangle className="h-2.5 w-2.5" />}
+        {isPersonalized && !isLimitedByMissingData && !hasOverlap && <Sparkles className="h-2.5 w-2.5" />}
         {isLimitedByMissingData && <Lock className="h-2.5 w-2.5" />}
         {score.toFixed(1)}
       </span>
@@ -82,8 +86,16 @@ export const SupplementGroupRow: React.FC<SupplementGroupRowProps> = ({
     return variant || name;
   };
 
+  // Check for overlapping ingredients in main variant
+  const mainOverlap = topVariant.scoreResult.overlappingIngredients;
+  const hasOverlapWarning = mainOverlap && mainOverlap.length > 0;
+
   return (
-    <div className="rounded-xl border overflow-hidden transition-all bg-card/50 border-border/30">
+    <TooltipProvider>
+    <div className={cn(
+      "rounded-xl border overflow-hidden transition-all bg-card/50",
+      hasOverlapWarning ? "border-destructive/30" : "border-border/30"
+    )}>
       {/* Main Row (Base Name) */}
       <div
         className={cn(
@@ -159,6 +171,32 @@ export const SupplementGroupRow: React.FC<SupplementGroupRowProps> = ({
               </span>
             )}
           </div>
+
+          {/* Overlap Warning Badges */}
+          {hasOverlapWarning && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {mainOverlap.slice(0, 3).map(name => (
+                <Tooltip key={name}>
+                  <TooltipTrigger asChild>
+                    <Badge 
+                      variant="outline" 
+                      className="text-[9px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/30"
+                    >
+                      ⚠️ {name}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    {name} ist bereits in deinem Stack aktiv
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+              {mainOverlap.length > 3 && (
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                  +{mainOverlap.length - 3} weitere
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Toggle (only for single variants) */}
@@ -231,6 +269,7 @@ export const SupplementGroupRow: React.FC<SupplementGroupRowProps> = ({
         </div>
       )}
     </div>
+    </TooltipProvider>
   );
 };
 
