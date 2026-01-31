@@ -31,6 +31,7 @@ import { AdminPage } from "./pages/Admin";
 import { PersonaEditor } from "./pages/Admin/PersonaEditor";
 import ConversationAnalytics from "./pages/Admin/ConversationAnalytics";
 import MatrixImportRunner from "./pages/Admin/MatrixImportRunner";
+import ProductSubmissionsPage from "./pages/Admin/ProductSubmissionsPage";
 import AdminSeedPage from "./pages/AdminSeedPage";
 import AdminImportCSVPage from "./pages/AdminImportCSVPage";
 import ImportCSVRunner from "./pages/admin/ImportCSVRunner";
@@ -102,6 +103,7 @@ const App = () => (
                       <Route path="/admin/personas" element={<PersonaEditor />} />
                       <Route path="/admin/conversation-analytics" element={<ConversationAnalytics />} />
                       <Route path="/admin/matrix-runner" element={<MatrixImportRunner />} />
+                      <Route path="/admin/product-submissions" element={<ProductSubmissionsPage />} />
                       <Route path="/admin/seed-supplements" element={<AdminSeedPage />} />
                       <Route path="/admin/import-csv" element={<AdminImportCSVPage />} />
                       <Route path="/admin/csv-runner" element={<ImportCSVRunner />} />
