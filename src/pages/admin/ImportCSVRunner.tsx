@@ -165,14 +165,21 @@ export default function ImportCSVRunner() {
     setSyncResult(null);
 
     try {
-      const fileContent = await jsonFile.text();
-      setSyncProgress("Parse JSON...");
+      let fileContent = await jsonFile.text();
+      setSyncProgress("Parse JSON (repariere NaN-Werte)...");
+      
+      // Fix invalid JSON: Replace NaN with null (NaN is not valid JSON)
+      // Match NaN that is a value (after : or , or [ and before , or ] or })
+      fileContent = fileContent.replace(/:\s*NaN\s*([,}\]])/g, ': null$1');
+      fileContent = fileContent.replace(/,\s*NaN\s*([,\]])/g, ', null$1');
+      fileContent = fileContent.replace(/\[\s*NaN\s*([,\]])/g, '[null$1');
       
       let products;
       try {
         products = JSON.parse(fileContent);
-      } catch (parseErr) {
-        throw new Error("Ungültiges JSON-Format");
+      } catch (parseErr: any) {
+        console.error("JSON parse error:", parseErr);
+        throw new Error(`Ungültiges JSON-Format: ${parseErr.message}`);
       }
 
       if (!Array.isArray(products)) {
