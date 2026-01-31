@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Dumbbell, Sparkles, Zap, Check, PauseCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ProtocolBundleCard } from './ProtocolBundleCard';
 import { getCycleStatusForStackItem, isItemOffCycle } from '@/hooks/useCyclingStatus';
 import { CyclingStatusBadge } from './CyclingStatusBadge';
+import { CycleDetailSheet } from './CycleDetailSheet';
 import {
   TIMELINE_SLOTS,
   type UserStackItem,
@@ -56,6 +57,9 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
   onRefetch,
   isActivating,
 }) => {
+  // State for cycle detail sheet
+  const [selectedCyclingSupplement, setSelectedCyclingSupplement] = useState<UserStackItem | null>(null);
+
   // Derive completed stacks from database intake logs (NOT local state)
   const completedStacks = useMemo(() => {
     const completed = new Set<PreferredTiming>();
@@ -268,9 +272,10 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
             {offCycleSupplements.map((supplement) => {
               const cycleStatus = getCycleStatusForStackItem(supplement);
               return (
-                <div 
+                <button 
                   key={supplement.id}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50 opacity-60"
+                  onClick={() => setSelectedCyclingSupplement(supplement)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50 opacity-60 hover:opacity-80 hover:bg-muted/50 transition-all cursor-pointer"
                 >
                   <span className="text-sm font-medium text-muted-foreground">
                     {supplement.name}
@@ -278,15 +283,24 @@ export const SupplementTimeline: React.FC<SupplementTimelineProps> = ({
                   {cycleStatus && (
                     <CyclingStatusBadge status={cycleStatus} size="sm" />
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
           <p className="text-xs text-muted-foreground mt-2 px-1">
-            Diese Supplements sind derzeit in der Pause-Phase ihres Zyklus.
+            Tippe auf ein Supplement für Cycle-Details.
           </p>
         </div>
       )}
+
+      {/* Cycle Detail Sheet */}
+      <CycleDetailSheet
+        userSupplementId={selectedCyclingSupplement?.id}
+        supplementName={selectedCyclingSupplement?.name || ''}
+        isOpen={!!selectedCyclingSupplement}
+        onClose={() => setSelectedCyclingSupplement(null)}
+        onUpdate={onRefetch}
+      />
 
       {/* All Done Celebration */}
       {allCompleted && (
