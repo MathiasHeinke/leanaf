@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets } from 'lucide-react';
+import { Clock, Beaker, AlertTriangle, Check, RefreshCw, Sparkles, Shield, Zap, FlaskConical, Target, Droplets, BookOpen } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -288,6 +288,9 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
             </>
           )}
 
+          {/* Scientific Sources & Critical Insights */}
+          <ScientificSourcesSection matrix={item.relevance_matrix} />
+
           {/* Kontext-Relevanz Section */}
           <ContextRelevanceSection matrix={item.relevance_matrix} />
 
@@ -501,6 +504,90 @@ const BloodworkTriggersSection: React.FC<BloodworkTriggersSectionProps> = ({ mat
               </Badge>
             </div>
           ))}
+        </div>
+      </div>
+    </>
+  );
+};
+
+// =====================================================
+// Scientific Sources Section (for v2.1 evidence_notes)
+// =====================================================
+
+interface ScientificSourcesSectionProps {
+  matrix?: RelevanceMatrix | null;
+}
+
+const VALIDATION_STATUS_CONFIG = {
+  validated: {
+    label: 'Validiert',
+    className: 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30',
+    icon: '✓',
+  },
+  pending: {
+    label: 'Ausstehend',
+    className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+    icon: '⏳',
+  },
+  disputed: {
+    label: 'Umstritten',
+    className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
+    icon: '⚠',
+  },
+};
+
+const ScientificSourcesSection: React.FC<ScientificSourcesSectionProps> = ({ matrix }) => {
+  const notes = matrix?.evidence_notes;
+  
+  // Don't render if no evidence notes exist
+  if (!notes?.critical_insight && !notes?.sources?.length && !notes?.validation_status) {
+    return null;
+  }
+  
+  const statusConfig = notes?.validation_status 
+    ? VALIDATION_STATUS_CONFIG[notes.validation_status] 
+    : null;
+  
+  return (
+    <>
+      <Separator />
+      <div>
+        <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-indigo-500" />
+          Wissenschaftliche Einordnung
+        </h4>
+        
+        <div className="space-y-2">
+          {/* Validation Status Badge */}
+          {statusConfig && (
+            <Badge variant="outline" className={cn("text-xs", statusConfig.className)}>
+              {statusConfig.icon} {statusConfig.label}
+            </Badge>
+          )}
+          
+          {/* Critical Insight */}
+          {notes?.critical_insight && (
+            <div className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+              <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed italic">
+                💡 {notes.critical_insight}
+              </p>
+            </div>
+          )}
+          
+          {/* Sources */}
+          {notes?.sources && notes.sources.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {notes.sources.map((source, idx) => (
+                <Badge 
+                  key={idx} 
+                  variant="outline" 
+                  className="text-[10px] bg-muted/50 font-mono"
+                >
+                  📚 {source}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>

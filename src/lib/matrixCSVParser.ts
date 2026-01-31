@@ -1,5 +1,5 @@
 // =====================================================
-// ARES Matrix CSV Parser: v2.0 Format
+// ARES Matrix CSV Parser: v2.1 VALIDATED Format
 // =====================================================
 
 import type { RelevanceMatrix } from '@/types/relevanceMatrix';
