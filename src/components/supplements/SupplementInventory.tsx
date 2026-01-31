@@ -41,7 +41,7 @@ export const SupplementInventory: React.FC<SupplementInventoryProps> = ({
   const [activeTier, setActiveTier] = useState<DynamicTier>('essential');
   const [activeMetaCategory, setActiveMetaCategory] = useState<MetaCategoryKey | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [detailItem, setDetailItem] = useState<SupplementLibraryItem | null>(null);
+  const [detailItem, setDetailItem] = useState<ScoredSupplementItem | null>(null);
 
   // Use dynamic scoring hook - now with grouped output
   const { 

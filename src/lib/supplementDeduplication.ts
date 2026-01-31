@@ -19,6 +19,9 @@ const BASE_PATTERNS: Array<{ pattern: RegExp; baseName: string }> = [
   { pattern: /^boron|^bor$/i, baseName: 'Bor' },
   { pattern: /^elektrolyt/i, baseName: 'Elektrolyte' },
   
+  // Multi-Vitamins (must be BEFORE individual vitamins to match first)
+  { pattern: /^(multi-?vitamin|a-z\s*(komplex)?|multivit)/i, baseName: 'Multivitamin' },
+  
   // Vitamins
   { pattern: /^vitamin\s*d|^d3\b/i, baseName: 'Vitamin D' },
   { pattern: /^vitamin\s*k/i, baseName: 'Vitamin K' },

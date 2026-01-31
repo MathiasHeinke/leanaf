@@ -16,10 +16,12 @@ import {
   type SupplementLibraryItem,
   type EvidenceLevel,
 } from '@/types/supplementLibrary';
-import type { RelevanceMatrix } from '@/types/relevanceMatrix';
+import type { RelevanceMatrix, RelevanceScoreResult } from '@/types/relevanceMatrix';
+import type { ScoredSupplementItem } from '@/hooks/useDynamicallySortedSupplements';
 
 interface SupplementDetailSheetProps {
-  item: SupplementLibraryItem | null;
+  /** Either a pre-scored item (with scoreResult) or a raw SupplementLibraryItem */
+  item: ScoredSupplementItem | SupplementLibraryItem | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -32,15 +34,25 @@ export const SupplementDetailSheet: React.FC<SupplementDetailSheetProps> = ({
   // Get user relevance context for personalized scoring - MUST be before early return
   const { context: userContext } = useUserRelevanceContext();
   
-  // Calculate personalized relevance score
-  const scoreResult = useMemo(() => {
+  // Check if item already has a pre-calculated scoreResult (ScoredSupplementItem)
+  const hasPreCalculatedScore = item && 'scoreResult' in item && item.scoreResult;
+  
+  // Calculate personalized relevance score - use pre-calculated if available
+  const scoreResult = useMemo((): RelevanceScoreResult | null => {
     if (!item) return null;
+    
+    // If the item already has a scoreResult (from useDynamicallySortedSupplements), use it
+    if (hasPreCalculatedScore) {
+      return (item as ScoredSupplementItem).scoreResult;
+    }
+    
+    // Fallback: calculate on the fly (for raw SupplementLibraryItem)
     return calculateRelevanceScore(
       item.impact_score ?? 5.0,
       item.relevance_matrix,
       userContext
     );
-  }, [item?.impact_score, item?.relevance_matrix, userContext]);
+  }, [item, hasPreCalculatedScore, userContext]);
   
   const personalizedTierConfig = useMemo(() => {
     if (!scoreResult) return null;

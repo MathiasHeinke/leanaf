@@ -11,7 +11,7 @@ interface SupplementGroupRowProps {
   group: BaseNameGroup;
   activeVariantIds: Set<string>;
   onToggle: (item: ScoredSupplementItem, active: boolean) => void;
-  onInfoClick?: (item: SupplementLibraryItem) => void;
+  onInfoClick?: (item: ScoredSupplementItem) => void;
   isLoading?: boolean;
 }
 
