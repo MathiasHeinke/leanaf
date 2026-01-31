@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Check, 
   X, 
@@ -38,7 +39,15 @@ import {
   XCircle,
   AlertCircle,
   Sparkles,
-  Zap
+  Zap,
+  Beaker,
+  Building2,
+  Pill,
+  Info,
+  FlaskConical,
+  Shield,
+  Timer,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -50,6 +59,40 @@ const statusConfig = {
   rejected: { label: 'Abgelehnt', icon: XCircle, color: 'bg-red-500/10 text-red-600 border-red-500/30' },
   failed: { label: 'Fehlgeschlagen', icon: AlertCircle, color: 'bg-muted text-muted-foreground border-border' },
 };
+
+// Score color helper
+function getScoreColor(score: number | null | undefined): string {
+  if (!score) return 'text-muted-foreground';
+  if (score >= 8) return 'text-green-600';
+  if (score >= 6) return 'text-yellow-600';
+  return 'text-red-600';
+}
+
+// Data row component
+function DataRow({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: any }) {
+  return (
+    <div className="flex items-start gap-2 py-1.5 border-b border-border/50 last:border-0">
+      {Icon && <Icon className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />}
+      <span className="text-sm text-muted-foreground min-w-[100px]">{label}:</span>
+      <span className="text-sm font-medium">{value || '-'}</span>
+    </div>
+  );
+}
+
+// Score badge component
+function ScoreBadge({ label, score, explanation }: { label: string; score: number | null | undefined; explanation?: string }) {
+  return (
+    <div className="flex flex-col items-center p-2 bg-background/50 rounded-lg border border-border/50">
+      <span className="text-[10px] text-muted-foreground uppercase tracking-wide truncate w-full text-center">{label}</span>
+      <span className={cn("text-lg font-bold", getScoreColor(score))}>
+        {score?.toFixed(1) || '-'}
+      </span>
+      {explanation && (
+        <span className="text-[9px] text-muted-foreground text-center truncate w-full">{explanation}</span>
+      )}
+    </div>
+  );
+}
 
 export function ProductSubmissionsReview() {
   const {
@@ -76,7 +119,6 @@ export function ProductSubmissionsReview() {
     const enrichedData = await enrichSubmission(submission.id);
     setEnrichingId(null);
     if (enrichedData && selectedSubmission?.id === submission.id) {
-      // Update selected submission with enriched data
       setSelectedSubmission({
         ...selectedSubmission,
         extracted_data: enrichedData,
@@ -115,6 +157,12 @@ export function ProductSubmissionsReview() {
     { value: 'approved', label: 'Genehmigt', count: counts.approved },
     { value: 'rejected', label: 'Abgelehnt', count: counts.rejected },
   ];
+
+  const data = selectedSubmission?.extracted_data || {};
+  const filledFieldsCount = Object.entries(data)
+    .filter(([_, v]) => v !== null && v !== undefined && v !== '' && 
+      (Array.isArray(v) ? v.length > 0 : true))
+    .length;
 
   return (
     <div className="space-y-6">
@@ -253,7 +301,6 @@ export function ProductSubmissionsReview() {
                             </Button>
                             {sub.status === 'pending' && (
                               <>
-                                {/* Enrich button */}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -319,177 +366,367 @@ export function ProductSubmissionsReview() {
         </CardContent>
       </Card>
 
-      {/* Detail Dialog */}
+      {/* Detail Dialog with Tabs */}
       <Dialog open={!!selectedSubmission && !showRejectDialog} onOpenChange={() => setSelectedSubmission(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Produkt-Details</DialogTitle>
-            <DialogDescription>
-              Eingereicht am {selectedSubmission && format(new Date(selectedSubmission.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              {data.product_name || 'Produkt-Details'}
+            </DialogTitle>
+            <DialogDescription className="flex items-center gap-4">
+              <span>Eingereicht am {selectedSubmission && format(new Date(selectedSubmission.created_at), 'dd.MM.yyyy HH:mm', { locale: de })}</span>
+              {data.enrichment_version && (
+                <Badge variant="outline" className="text-xs">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  v{data.enrichment_version} • {filledFieldsCount} Felder
+                </Badge>
+              )}
             </DialogDescription>
           </DialogHeader>
 
           {selectedSubmission && (
-            <div className="space-y-4">
-              {/* Source URL */}
-              <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">Quelle:</span>
-                <a 
-                  href={selectedSubmission.source_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1 truncate"
-                >
-                  {selectedSubmission.source_domain}
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
+            <Tabs defaultValue="basis" className="w-full">
+              <TabsList className="grid w-full grid-cols-4 mb-4">
+                <TabsTrigger value="basis" className="gap-1.5 text-xs">
+                  <Info className="w-3.5 h-3.5" />
+                  Basis
+                </TabsTrigger>
+                <TabsTrigger value="qualitaet" className="gap-1.5 text-xs">
+                  <Shield className="w-3.5 h-3.5" />
+                  Qualität
+                </TabsTrigger>
+                <TabsTrigger value="wirkstoff" className="gap-1.5 text-xs">
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  Wirkstoff
+                </TabsTrigger>
+                <TabsTrigger value="marke" className="gap-1.5 text-xs">
+                  <Building2 className="w-3.5 h-3.5" />
+                  Marke
+                </TabsTrigger>
+              </TabsList>
 
-              {/* Extracted Data */}
-              {selectedSubmission.extracted_data && (
-                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Produkt</div>
-                    <div className="font-medium">{selectedSubmission.extracted_data.product_name}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Marke</div>
-                    <div>{selectedSubmission.extracted_data.brand_name || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Preis</div>
-                    <div>{selectedSubmission.extracted_data.price_eur ? `€${selectedSubmission.extracted_data.price_eur.toFixed(2)}` : '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Packung</div>
-                    <div>
-                      {selectedSubmission.extracted_data.pack_size} {selectedSubmission.extracted_data.pack_unit}
-                      {selectedSubmission.extracted_data.servings_per_pack && ` (${selectedSubmission.extracted_data.servings_per_pack} Portionen)`}
+              {/* === TAB: BASIS === */}
+              <TabsContent value="basis" className="space-y-4">
+                {/* Source URL */}
+                <div className="flex items-center gap-2 text-sm p-3 bg-muted/30 rounded-lg">
+                  <span className="text-muted-foreground">Quelle:</span>
+                  <a 
+                    href={selectedSubmission.source_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline flex items-center gap-1 truncate"
+                  >
+                    {selectedSubmission.source_domain}
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+
+                {/* Basic Product Info */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/20 rounded-lg border border-border/50">
+                  <DataRow label="Produkt" value={data.product_name} icon={Package} />
+                  <DataRow label="Marke" value={data.brand_name} icon={Building2} />
+                  <DataRow label="Preis" value={data.price_eur ? `€${data.price_eur.toFixed(2)}` : null} />
+                  <DataRow label="Preis/Portion" value={data.price_per_serving ? `€${data.price_per_serving.toFixed(2)}` : null} />
+                  <DataRow label="Packung" value={`${data.pack_size || '?'} ${data.pack_unit || ''}`} />
+                  <DataRow label="Portionen" value={data.servings_per_pack} />
+                  <DataRow label="Dosis/Portion" value={`${data.dose_per_serving || '?'} ${data.dose_unit || ''}`} icon={Pill} />
+                  <DataRow label="Portionsgröße" value={data.serving_size} />
+                  <DataRow label="Form" value={data.form} icon={Beaker} />
+                  <DataRow label="Kategorie" value={data.category} />
+                  <DataRow label="Timing" value={data.timing} icon={Timer} />
+                </div>
+
+                {/* Flags */}
+                <div className="flex flex-wrap gap-2">
+                  {data.is_vegan && <Badge variant="secondary">🌱 Vegan</Badge>}
+                  {data.is_organic && <Badge variant="secondary">🌿 Bio</Badge>}
+                  {data.is_gluten_free && <Badge variant="secondary">🌾 Glutenfrei</Badge>}
+                </div>
+
+                {/* Allergens */}
+                {data.allergens?.length > 0 && (
+                  <div className="p-3 border border-yellow-500/30 bg-yellow-500/5 rounded-lg">
+                    <span className="text-xs text-yellow-600 font-medium">⚠️ Allergene:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {data.allergens.map((a: string, i: number) => (
+                        <Badge key={i} variant="outline" className="text-yellow-600 border-yellow-500/30">{a}</Badge>
+                      ))}
                     </div>
                   </div>
+                )}
+
+                {/* Quality Tags */}
+                {data.quality_tags?.length > 0 && (
                   <div>
-                    <div className="text-xs text-muted-foreground mb-1">Dosis/Portion</div>
-                    <div>
-                      {selectedSubmission.extracted_data.dose_per_serving} {selectedSubmission.extracted_data.dose_unit}
+                    <span className="text-xs text-muted-foreground">Qualitäts-Tags:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {data.quality_tags.map((tag: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                      ))}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Preis/Portion</div>
-                    <div>
-                      {selectedSubmission.extracted_data.price_per_serving 
-                        ? `€${selectedSubmission.extracted_data.price_per_serving.toFixed(2)}` 
-                        : '-'}
+                )}
+
+                {/* Short Description */}
+                {data.short_description && (
+                  <div className="p-3 bg-muted/20 rounded-lg text-sm">
+                    <span className="text-muted-foreground">Beschreibung: </span>
+                    {data.short_description}
+                  </div>
+                )}
+
+                {/* Amazon Image */}
+                {data.amazon_image && (
+                  <div className="text-center">
+                    <img 
+                      src={data.amazon_image} 
+                      alt="Produktbild" 
+                      className="max-h-40 mx-auto rounded-lg object-contain"
+                    />
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* === TAB: QUALITÄT === */}
+              <TabsContent value="qualitaet" className="space-y-4">
+                {/* Big8 Impact Score */}
+                {data.impact_score_big8 != null && (
+                  <div className="p-4 border border-primary/30 bg-primary/5 rounded-lg">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-primary" />
+                        <span className="font-semibold">Big8 Quality Score</span>
+                      </div>
+                      <div className={cn(
+                        "text-3xl font-bold",
+                        getScoreColor(data.impact_score_big8)
+                      )}>
+                        {data.impact_score_big8.toFixed(1)}<span className="text-lg text-muted-foreground">/10</span>
+                      </div>
+                    </div>
+                    
+                    {/* Score Grid */}
+                    <div className="grid grid-cols-4 gap-2">
+                      <ScoreBadge label="Bioverfügbarkeit" score={data.quality_bioavailability} explanation={data.form || undefined} />
+                      <ScoreBadge label="Dosierung" score={data.quality_dosage} />
+                      <ScoreBadge label="Form" score={data.quality_form} />
+                      <ScoreBadge label="Reinheit" score={data.quality_purity} />
+                      <ScoreBadge label="Forschung" score={data.quality_research} explanation={data.evidence_level || undefined} />
+                      <ScoreBadge label="Synergie" score={data.quality_synergy} />
+                      <ScoreBadge label="Transparenz" score={data.quality_transparency} />
+                      <ScoreBadge label="Preis-Leistung" score={data.quality_value} />
                     </div>
                   </div>
-                  {selectedSubmission.extracted_data.quality_tags && selectedSubmission.extracted_data.quality_tags.length > 0 && (
-                    <div className="col-span-2">
-                      <div className="text-xs text-muted-foreground mb-1">Qualitäts-Tags</div>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedSubmission.extracted_data.quality_tags.map((tag, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">{tag}</Badge>
+                )}
+
+                {/* Legacy Quality Metrics */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/20 rounded-lg">
+                  <DataRow label="Bioverfügbarkeit (Legacy)" value={data.bioavailability?.toFixed(1)} />
+                  <DataRow label="Potenz" value={data.potency?.toFixed(1)} />
+                  <DataRow label="Reinheit" value={data.purity?.toFixed(1)} />
+                  <DataRow label="Preis-Leistung" value={data.value?.toFixed(1)} />
+                  <DataRow label="Herkunft" value={data.origin} />
+                  <DataRow label="Labortests" value={data.lab_tests} />
+                </div>
+
+                {/* Enrichment CTA */}
+                {selectedSubmission.status === 'pending' && !data.impact_score_big8 && (
+                  <div className="p-6 border border-dashed border-muted-foreground/30 rounded-lg text-center">
+                    <Sparkles className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Produkt noch nicht angereichert. Starte das 4-Stufen Deep Enrichment!
+                    </p>
+                    <Button
+                      variant="default"
+                      onClick={() => handleEnrich(selectedSubmission)}
+                      disabled={enrichingId === selectedSubmission.id}
+                      className="gap-2"
+                    >
+                      {enrichingId === selectedSubmission.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Anreichern...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Deep Enrichment starten
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* === TAB: WIRKSTOFF === */}
+              <TabsContent value="wirkstoff" className="space-y-4">
+                {/* Matched Supplement */}
+                {selectedSubmission.matched_supplement_name && (
+                  <div className="p-4 border border-primary/30 bg-primary/5 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <FlaskConical className="w-4 h-4 text-primary" />
+                        <span className="font-medium">Zugeordneter Wirkstoff</span>
+                      </div>
+                      {selectedSubmission.match_confidence && (
+                        <Badge variant="outline">
+                          {Math.round(selectedSubmission.match_confidence * 100)}% Match
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-lg font-semibold">{selectedSubmission.matched_supplement_name}</div>
+                  </div>
+                )}
+
+                {/* Clinical Dosage */}
+                {(data.clinical_dosage_min || data.clinical_dosage_max) && (
+                  <div className="p-3 bg-muted/20 rounded-lg">
+                    <span className="text-xs text-muted-foreground">Klinische Dosis:</span>
+                    <div className="font-medium">
+                      {data.clinical_dosage_min}-{data.clinical_dosage_max} {data.clinical_dosage_unit}
+                    </div>
+                  </div>
+                )}
+
+                {/* Synergies */}
+                {data.synergies?.length > 0 && (
+                  <div className="p-4 border border-green-500/30 bg-green-500/5 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="w-4 h-4 text-green-600" />
+                      <span className="font-medium text-green-700">Synergien ({data.synergies.length})</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {data.synergies.map((s: string, i: number) => (
+                        <Badge key={i} variant="outline" className="text-green-600 border-green-500/30">{s}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Blockers */}
+                {data.blockers?.length > 0 && (
+                  <div className="p-4 border border-red-500/30 bg-red-500/5 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <X className="w-4 h-4 text-red-600" />
+                      <span className="font-medium text-red-700">Blocker ({data.blockers.length})</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {data.blockers.map((b: string, i: number) => (
+                        <Badge key={i} variant="outline" className="text-red-600 border-red-500/30">{b}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Info */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/20 rounded-lg">
+                  <DataRow label="Evidence Level" value={data.evidence_level} />
+                  <DataRow label="Necessity Tier" value={data.necessity_tier} />
+                  <DataRow label="Timing Constraint" value={data.timing_constraint} />
+                  <DataRow label="Cycling Protocol" value={data.cycling_protocol} />
+                </div>
+
+                {/* Hallmarks */}
+                {data.hallmarks_addressed?.length > 0 && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Hallmarks adressiert:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {data.hallmarks_addressed.map((h: string, i: number) => (
+                        <Badge key={i} variant="secondary" className="text-xs">{h}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ingredients */}
+                {data.ingredients?.length > 0 && (
+                  <div>
+                    <span className="text-xs text-muted-foreground">Aktive Inhaltsstoffe:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {data.ingredients.slice(0, 10).map((ing: string, i: number) => (
+                        <Badge key={i} variant="outline" className="text-xs">{ing}</Badge>
+                      ))}
+                      {data.ingredients.length > 10 && (
+                        <Badge variant="outline" className="text-xs">+{data.ingredients.length - 10} mehr</Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* === TAB: MARKE === */}
+              <TabsContent value="marke" className="space-y-4">
+                <div className="p-4 border border-border rounded-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Building2 className="w-5 h-5 text-muted-foreground" />
+                    <span className="font-semibold text-lg">{data.brand_name || 'Unbekannte Marke'}</span>
+                    {data.brand_is_new && (
+                      <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-600">
+                        NEU
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <DataRow label="Brand ID" value={data.brand_id || 'Nicht zugeordnet'} />
+                    <DataRow label="Land" value={data.brand_country} />
+                    <DataRow label="Price Tier" value={
+                      data.brand_price_tier && (
+                        <Badge variant="outline" className={cn(
+                          data.brand_price_tier === 'premium' && 'border-primary text-primary',
+                          data.brand_price_tier === 'mid' && 'border-yellow-500 text-yellow-600',
+                          data.brand_price_tier === 'budget' && 'border-muted-foreground'
+                        )}>
+                          {data.brand_price_tier}
+                        </Badge>
+                      )
+                    } />
+                    <DataRow label="Status" value={data.brand_is_new ? 'Wird erstellt' : 'Existiert'} />
+                  </div>
+
+                  {/* Certifications */}
+                  {data.brand_certifications?.length > 0 && (
+                    <div className="mt-4">
+                      <span className="text-xs text-muted-foreground">Zertifizierungen:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {data.brand_certifications.map((cert: string, i: number) => (
+                          <Badge key={i} variant="secondary">{cert}</Badge>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
-              )}
 
-              {/* Big8 Quality Scores */}
-              {selectedSubmission.extracted_data?.impact_score_big8 != null && (
-                <div className="p-4 border border-primary/30 bg-primary/5 rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-primary" />
-                      <span className="font-medium text-sm">Big8 Quality Score</span>
-                    </div>
-                    <Badge variant="default" className="text-lg px-3 py-1">
-                      {selectedSubmission.extracted_data.impact_score_big8.toFixed(1)}/10
-                    </Badge>
+                {data.brand_is_new && (
+                  <div className="p-4 border border-dashed border-yellow-500/50 bg-yellow-500/5 rounded-lg text-center">
+                    <Building2 className="w-8 h-8 mx-auto mb-2 text-yellow-600" />
+                    <p className="text-sm text-yellow-700">
+                      Diese Marke existiert noch nicht in der Datenbank und wird bei Genehmigung automatisch erstellt.
+                    </p>
                   </div>
-                  <div className="grid grid-cols-4 gap-2 text-xs">
-                    {[
-                      { label: 'Bioverfügbarkeit', value: selectedSubmission.extracted_data.quality_bioavailability },
-                      { label: 'Dosierung', value: selectedSubmission.extracted_data.quality_dosage },
-                      { label: 'Form', value: selectedSubmission.extracted_data.quality_form },
-                      { label: 'Reinheit', value: selectedSubmission.extracted_data.quality_purity },
-                      { label: 'Forschung', value: selectedSubmission.extracted_data.quality_research },
-                      { label: 'Synergie', value: selectedSubmission.extracted_data.quality_synergy },
-                      { label: 'Transparenz', value: selectedSubmission.extracted_data.quality_transparency },
-                      { label: 'Preis-Leistung', value: selectedSubmission.extracted_data.quality_value },
-                    ].map((score, i) => (
-                      <div key={i} className="text-center p-2 bg-background/50 rounded">
-                        <div className="text-muted-foreground truncate">{score.label}</div>
-                        <div className={cn(
-                          "font-bold",
-                          score.value && score.value >= 8 && "text-green-600",
-                          score.value && score.value >= 6 && score.value < 8 && "text-yellow-600",
-                          score.value && score.value < 6 && "text-red-600"
-                        )}>
-                          {score.value?.toFixed(1) || '-'}
-                        </div>
-                      </div>
-                    ))}
+                )}
+
+                {/* Meta Info */}
+                <div className="p-3 bg-muted/20 rounded-lg text-xs text-muted-foreground">
+                  <div className="flex justify-between">
+                    <span>Enrichment Version:</span>
+                    <span>{data.enrichment_version || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Angereichert am:</span>
+                    <span>{data.enriched_at ? format(new Date(data.enriched_at), 'dd.MM.yy HH:mm') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Source:</span>
+                    <span>{data.enrichment_source || '-'}</span>
                   </div>
                 </div>
-              )}
-
-              {/* Enrichment CTA - Show if not yet enriched */}
-              {selectedSubmission.status === 'pending' && !selectedSubmission.extracted_data?.impact_score_big8 && (
-                <div className="p-4 border border-dashed border-muted-foreground/30 rounded-lg text-center">
-                  <Sparkles className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Produkt noch nicht angereichert. Klicke um Big8 Scores zu berechnen.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleEnrich(selectedSubmission)}
-                    disabled={enrichingId === selectedSubmission.id}
-                    className="gap-2"
-                  >
-                    {enrichingId === selectedSubmission.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Anreichern...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4" />
-                        Daten anreichern
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-
-              {/* Matched Supplement */}
-              {selectedSubmission.matched_supplement_name && (
-                <div className="p-4 border border-border rounded-lg">
-                  <div className="text-xs text-muted-foreground mb-1">Zugeordnetes Supplement</div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{selectedSubmission.matched_supplement_name}</span>
-                    {selectedSubmission.match_confidence && (
-                      <Badge variant="outline">
-                        {Math.round(selectedSubmission.match_confidence * 100)}% Konfidenz
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Amazon Image Preview */}
-              {selectedSubmission.extracted_data?.amazon_image && (
-                <div className="text-center">
-                  <img 
-                    src={selectedSubmission.extracted_data.amazon_image} 
-                    alt="Produktbild" 
-                    className="max-h-48 mx-auto rounded-lg object-contain"
-                  />
-                </div>
-              )}
-            </div>
+              </TabsContent>
+            </Tabs>
           )}
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col sm:flex-row gap-2 mt-4">
             {selectedSubmission?.status === 'pending' && (
               <>
                 <Button
@@ -500,7 +737,7 @@ export function ProductSubmissionsReview() {
                   <X className="w-4 h-4 mr-2" />
                   Ablehnen
                 </Button>
-                {!selectedSubmission.extracted_data?.impact_score_big8 && (
+                {!data.impact_score_big8 && (
                   <Button
                     variant="outline"
                     onClick={() => handleEnrich(selectedSubmission)}
@@ -530,7 +767,7 @@ export function ProductSubmissionsReview() {
                   ) : (
                     <Check className="w-4 h-4 mr-2" />
                   )}
-                  Genehmigen
+                  Genehmigen & Speichern
                 </Button>
               </>
             )}

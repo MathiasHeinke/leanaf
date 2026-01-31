@@ -2,40 +2,95 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// Extended interface for enriched product data (54+ fields)
+export interface ExtendedEnrichedData {
+  // === PRODUCT (20+ fields) ===
+  product_name?: string;
+  brand_name?: string;
+  form?: string;
+  category?: string;
+  pack_size?: number;
+  pack_unit?: string;
+  servings_per_pack?: number;
+  dose_per_serving?: number;
+  dose_unit?: string;
+  dosage_per_serving?: string;
+  serving_size?: string;
+  price_eur?: number;
+  price_per_serving?: number;
+  is_vegan?: boolean;
+  is_organic?: boolean;
+  is_gluten_free?: boolean;
+  allergens?: string[];
+  quality_tags?: string[];
+  timing?: string;
+  short_description?: string;
+  description?: string;
+  ingredients?: string[];
+  
+  // === AMAZON (5 fields) ===
+  amazon_asin?: string;
+  amazon_url?: string;
+  amazon_image?: string;
+  amazon_name?: string;
+  amazon_match_score?: number;
+  
+  // === BIG8 QUALITY SCORES (8 fields) ===
+  quality_bioavailability?: number;
+  quality_dosage?: number;
+  quality_form?: number;
+  quality_purity?: number;
+  quality_research?: number;
+  quality_synergy?: number;
+  quality_transparency?: number;
+  quality_value?: number;
+  
+  // === LEGACY QUALITY (7 fields) ===
+  bioavailability?: number;
+  potency?: number;
+  reviews?: number;
+  origin?: string;
+  lab_tests?: string;
+  purity?: number;
+  value?: number;
+  
+  // === SCORES (3 fields) ===
+  impact_score_big8?: number;
+  popularity_score?: number;
+  match_score?: number;
+  
+  // === INGREDIENT DATA (from supplement_database) ===
+  synergies?: string[];
+  blockers?: string[];
+  timing_constraint?: string;
+  cycling_protocol?: string;
+  evidence_level?: string;
+  necessity_tier?: string;
+  hallmarks_addressed?: string[];
+  clinical_dosage_min?: number;
+  clinical_dosage_max?: number;
+  clinical_dosage_unit?: string;
+  
+  // === BRAND DATA (from supplement_brands) ===
+  brand_id?: string;
+  brand_country?: string;
+  brand_price_tier?: string;
+  brand_certifications?: string[];
+  brand_is_new?: boolean;
+  
+  // === META ===
+  enrichment_version?: string;
+  enriched_at?: string;
+  enrichment_source?: 'ai' | 'rules' | 'hybrid';
+}
+
 export interface ProductSubmission {
   id: string;
   user_id: string;
   source_url: string;
   source_domain: string;
   status: 'pending' | 'approved' | 'rejected' | 'failed';
-  extracted_data: {
-    product_name?: string;
-    brand_name?: string;
-    price_eur?: number;
-    pack_size?: number;
-    pack_unit?: string;
-    dose_per_serving?: number;
-    dose_unit?: string;
-    servings_per_pack?: number;
-    price_per_serving?: number;
-    amazon_asin?: string;
-    amazon_image?: string;
-    is_vegan?: boolean;
-    is_organic?: boolean;
-    quality_tags?: string[];
-    ingredients?: string[];
-    description?: string;
-    // Big8 Quality Scores
-    quality_bioavailability?: number;
-    quality_dosage?: number;
-    quality_form?: number;
-    quality_purity?: number;
-    quality_research?: number;
-    quality_synergy?: number;
-    quality_transparency?: number;
-    quality_value?: number;
-    impact_score_big8?: number;
-  } | null;
+  extracted_data: ExtendedEnrichedData | null;
   matched_supplement_id: string | null;
   matched_supplement_name: string | null;
   match_confidence: number | null;
