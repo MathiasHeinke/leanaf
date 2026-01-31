@@ -6465,6 +6465,7 @@ export type Database = {
           amazon_name: string | null
           amazon_url: string | null
           bioavailability: number | null
+          blockers: string[] | null
           brand_id: string | null
           category: string | null
           country_of_origin: string | null
@@ -6510,6 +6511,7 @@ export type Database = {
           servings_per_pack: number | null
           short_description: string | null
           supplement_id: string | null
+          synergies: string[] | null
           timing: string | null
           updated_at: string | null
           value: number | null
@@ -6521,6 +6523,7 @@ export type Database = {
           amazon_name?: string | null
           amazon_url?: string | null
           bioavailability?: number | null
+          blockers?: string[] | null
           brand_id?: string | null
           category?: string | null
           country_of_origin?: string | null
@@ -6566,6 +6569,7 @@ export type Database = {
           servings_per_pack?: number | null
           short_description?: string | null
           supplement_id?: string | null
+          synergies?: string[] | null
           timing?: string | null
           updated_at?: string | null
           value?: number | null
@@ -6577,6 +6581,7 @@ export type Database = {
           amazon_name?: string | null
           amazon_url?: string | null
           bioavailability?: number | null
+          blockers?: string[] | null
           brand_id?: string | null
           category?: string | null
           country_of_origin?: string | null
@@ -6622,6 +6627,7 @@ export type Database = {
           servings_per_pack?: number | null
           short_description?: string | null
           supplement_id?: string | null
+          synergies?: string[] | null
           timing?: string | null
           updated_at?: string | null
           value?: number | null
