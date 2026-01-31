@@ -193,6 +193,24 @@ export async function exportSupplementMatrixCSV(): Promise<{
     // Build CSV content
     const rows: string[] = [];
     
+    // Documentation legend for external users
+    const legendRow = [
+      '# ARES Matrix Export',
+      'Legende: phase_X = Phasen-Boost (0-3)',
+      'ctx_* = Kontext (Natural/Enhanced/TRT/GLP-1)',
+      'goal_* = Ziel-Modifier',
+      'cal_* = Kalorien-Status',
+      'demo_* = Demografie',
+      'pep_* = Peptid-Klassen',
+      'bw_* = Blutwert-Trigger',
+      'syn_* = Substanz-Synergien',
+      'Positive Werte = Score-Boost',
+      'Negative Werte = Penalty',
+      'MAX_SINGLE_MODIFIER = 4.0',
+      'MAX_TOTAL_BOOST = 12.0'
+    ].join(' | ');
+    rows.push(legendRow);
+    
     // Header row
     rows.push(CSV_HEADERS.map(h => escapeCSV(h)).join(','));
     

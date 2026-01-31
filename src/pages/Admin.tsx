@@ -217,7 +217,7 @@ export const AdminPage = () => {
                     Relevance Matrix Export
                   </CardTitle>
                   <CardDescription>
-                    Alle 111 Wirkstoffe mit ~55 Gewichtungs-Modifikatoren als CSV
+                    ~100 bereinigte Wirkstoffe mit 55 Scoring-Modifikatoren. Duplikate entfernt, Sprache normalisiert.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
