@@ -1,111 +1,54 @@
 
 
-# Phase 4-5: CycleDetailSheet + Auto-Cycle-Updater
+# ARES Cycling Management System - Implementation Complete ✅
 
-## Aktueller Stand
+## Completed Phases
 
-**Bereits implementiert:**
-- `schedule-utils.ts` mit `getCycleStatus()` + `CycleScheduleExtended` Interface
-- `useCyclingStatus.ts` Hook mit Compliance-Berechnung
-- `CyclingStatusBadge.tsx` mit 4 Zuständen (Normal/On/Off/Transition)
-- `SupplementTimeline.tsx` mit Off-Cycle Sektion
-- `ExpandableSupplementChip.tsx` mit Cycling-Status-Integration + Dimming
-- DB-Schema: `default_cycle_on_days`, `default_cycle_off_days`, `cycling_reason`
+### Phase 1-3 (Previously Completed)
+- ✅ Database schema: `default_cycle_on_days`, `default_cycle_off_days`, `cycling_reason`
+- ✅ `schedule-utils.ts` with `getCycleStatus()` + `CycleScheduleExtended` Interface
+- ✅ `useCyclingStatus.ts` Hook with Compliance calculation
+- ✅ `CyclingStatusBadge.tsx` with 4 states (Normal/On/Off/Transition)
+- ✅ `ExpandableSupplementChip.tsx` with Cycling-Status-Integration + Dimming
+- ✅ `SupplementTimeline.tsx` with Off-Cycle Section
 
-**Fehlend:**
-- `CycleDetailSheet.tsx` - Layer 2 Sheet für Protokoll-Verwaltung
-- `auto-cycle-updater` Edge Function - Automatischer Phase-Wechsel
-
----
-
-## Task 1: CycleDetailSheet.tsx (Layer 2)
-
-Neues Bottom-Sheet bei Klick auf Cycling-Supplement mit:
-
-```text
-+-----------------------------------------------------------+
-|  BPC-157 (250mcg)                                    [X]  |
-+-----------------------------------------------------------+
-|                                                           |
-|  AKTUELLER CYCLE                                          |
-|  ================                                         |
-|                                                           |
-|  Status:        [ON-CYCLE Badge]                          |
-|  Fortschritt:   [====]======] Tag 18 von 28               |
-|  Verbleibend:   10 Tage                                   |
-|  Compliance:    96%                                       |
-|                                                           |
-|  ---------------------------------------------------      |
-|                                                           |
-|  PROTOKOLL                                                |
-|                                                           |
-|  Cycle-Typ:     28 Tage On / 14 Tage Off                  |
-|  Grund:         Rezeptor-Desensibilisierung               |
-|  Start:         15.01.2026                                |
-|  Cycle #:       3                                         |
-|                                                           |
-|  ---------------------------------------------------      |
-|                                                           |
-|  [Cycle pausieren]       [Cycle zurücksetzen]             |
-|                                                           |
-+-----------------------------------------------------------+
-```
-
-**Props:**
-
-| Prop | Typ | Beschreibung |
-|------|-----|--------------|
-| `userSupplementId` | `string` | ID des User-Supplements |
-| `isOpen` | `boolean` | Sheet sichtbar |
-| `onClose` | `() => void` | Schließen-Handler |
-| `onUpdate` | `(schedule) => Promise<void>` | Schedule-Update-Handler |
-
-**Features:**
-- Progress-Bar mit Framer Motion
-- Compliance-Prozent (aus Intake-Logs berechnet)
-- Cycle-Nummer anzeigen
-- Pause-Button: Setzt `is_on_cycle = false` sofort
-- Reset-Button: Setzt `current_cycle_start = heute`
-- Zeigt `cycling_reason` aus supplement_database
+### Phase 4-5 (Just Completed)
+- ✅ `CycleDetailSheet.tsx` - Layer 2 Bottom Sheet for cycle management
+  - Progress bar with Framer Motion
+  - Compliance % display
+  - Cycle number tracking
+  - Pause/Resume/Reset buttons
+  - Shows `cycling_reason` from supplement_database
+- ✅ `auto-cycle-updater` Edge Function - Automatic phase switching
+  - Deployed and tested successfully
+  - Ready for pg_cron scheduling
+  - `verify_jwt = false` in config.toml
+- ✅ Integration in SupplementTimeline.tsx
+  - Off-cycle supplements now clickable
+  - Opens CycleDetailSheet on tap
 
 ---
 
-## Task 2: auto-cycle-updater Edge Function
+## Remaining Setup (Manual)
 
-Supabase Edge Function für automatischen Phase-Wechsel:
+### pg_cron Setup for Automatic Cycle Updates
 
-**Datei:** `supabase/functions/auto-cycle-updater/index.ts`
-
-**Logik:**
-
-```typescript
-// 1. Fetch alle user_supplements mit schedule.type = 'cycle'
-// 2. Für jedes Supplement:
-//    - Berechne Tage seit current_cycle_start
-//    - Prüfe ob Phase abgelaufen (days >= cycle_on_days oder cycle_off_days)
-// 3. Wenn abgelaufen:
-//    - Toggle is_on_cycle
-//    - Reset current_cycle_start = heute
-//    - Wenn Off->On: total_cycles_completed++
-// 4. Speichere alle Updates
-```
-
-**CORS + Auth:**
-- `verify_jwt = false` in config.toml
-- Service-Role-Key für Cron-Aufruf
-- Manuelle User-Auth-Prüfung wo nötig
-
-**Cron-Setup (pg_cron):**
+To enable automatic cycle switching at midnight, run this SQL in Supabase:
 
 ```sql
+-- Enable required extensions if not already enabled
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net;
+
+-- Schedule the auto-cycle-updater to run daily at 00:05
 SELECT cron.schedule(
   'auto-cycle-updater-daily',
-  '5 0 * * *',  -- Täglich um 00:05
+  '5 0 * * *',  -- Daily at 00:05
   $$
     SELECT net.http_post(
       url := 'https://gzczjscctgyxjyodhnhk.supabase.co/functions/v1/auto-cycle-updater',
       headers := jsonb_build_object(
-        'Authorization', 'Bearer SERVICE_ROLE_KEY',
+        'Authorization', 'Bearer ' || current_setting('supabase.service_role_key'),
         'Content-Type', 'application/json'
       )
     );
@@ -115,76 +58,26 @@ SELECT cron.schedule(
 
 ---
 
-## Task 3: Integration in UI
+## Files Created/Modified
 
-**Wo wird CycleDetailSheet geöffnet?**
-
-1. **SupplementTimeline.tsx** - Klick auf Off-Cycle Supplement
-2. **ExpandableSupplementChip.tsx** - Optionaler "Cycle Details" Button im Expanded-State
-3. **CyclingStatusBadge.tsx** - Tap auf Badge öffnet Sheet
-
-**Implementierung:**
-
-```typescript
-// In SupplementTimeline.tsx - Off-Cycle Section
-<div 
-  onClick={() => setSelectedCyclingSupp(supplement)}
-  className="cursor-pointer"
->
-  ...
-</div>
-
-<CycleDetailSheet
-  userSupplementId={selectedCyclingSupp?.id}
-  isOpen={!!selectedCyclingSupp}
-  onClose={() => setSelectedCyclingSupp(null)}
-  onUpdate={handleCycleUpdate}
-/>
-```
+| File | Status |
+|------|--------|
+| `src/components/supplements/CycleDetailSheet.tsx` | ✅ Created |
+| `supabase/functions/auto-cycle-updater/index.ts` | ✅ Created & Deployed |
+| `supabase/config.toml` | ✅ Updated |
+| `src/components/supplements/SupplementTimeline.tsx` | ✅ Updated |
+| `src/lib/schedule-utils.ts` | ✅ Previously updated |
+| `src/hooks/useCyclingStatus.ts` | ✅ Previously created |
+| `src/components/supplements/CyclingStatusBadge.tsx` | ✅ Previously created |
 
 ---
 
-## Neue/Betroffene Dateien
+## User Experience Summary
 
-| Datei | Aktion | Priorität |
-|-------|--------|-----------|
-| `src/components/supplements/CycleDetailSheet.tsx` | NEU | 1 |
-| `src/components/supplements/SupplementTimeline.tsx` | Integration Sheet | 2 |
-| `supabase/functions/auto-cycle-updater/index.ts` | NEU | 3 |
-| `supabase/config.toml` | Function config | 3 |
+1. **Timeline**: Off-cycle supplements shown in separate "Pausiert" section
+2. **Tap to Details**: Clicking any off-cycle supplement opens CycleDetailSheet
+3. **Progress Tracking**: See day X/Y, compliance %, and remaining days
+4. **Manual Control**: Pause, resume, or reset cycles with one tap
+5. **Automatic Updates**: Cycles switch phases at midnight (requires pg_cron setup)
 
----
-
-## Edge Function Details
-
-**Response-Format:**
-
-```json
-{
-  "success": true,
-  "processed": 15,
-  "transitioned": 3,
-  "transitions": [
-    { "id": "...", "name": "BPC-157", "from": "on", "to": "off" },
-    { "id": "...", "name": "NMN", "from": "off", "to": "on", "cycle": 4 }
-  ]
-}
-```
-
-**Sicherheit:**
-- Nur per Service-Role-Key aufrufbar (kein Public Access)
-- Alle Supplements aller User werden verarbeitet (batch)
-- Idempotent: Mehrfachaufruf am gleichen Tag ändert nichts
-
----
-
-## Geschätzter Aufwand
-
-| Task | Zeit |
-|------|------|
-| CycleDetailSheet.tsx | 45 min |
-| Integration SupplementTimeline | 15 min |
-| Edge Function auto-cycle-updater | 30 min |
-| Cron-Setup | 10 min |
-| **Gesamt** | ~1.5h |
-
+**"Oma-freundlich": Grün = nehmen, Grau = Pause, Tap = Details. Fertig. 💚**
