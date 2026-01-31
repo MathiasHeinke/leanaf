@@ -1,83 +1,167 @@
 
-# Fix: Multivitamin-Gruppierung & Detail-Sheet Score
+# Redundanz-Erkennung für Kombi-Produkte
 
-## Identifizierte Probleme
+## Das Problem
 
-### Problem 1: A-Z und Multivitamin werden nicht gruppiert
-Die `extractBaseName()` Funktion erkennt "A-Z" nicht als Multivitamin-Variante.
+Ein User hat bereits **Zink** und **Magnesium** einzeln im Stack. Das **Multivitamin** wird mit Score 9.5 bewertet und enthält beide. Ohne Warnung würde der User doppelt supplementieren.
 
-**Datenbank:**
-| Name | impact_score | ingredient_ids |
-|------|--------------|----------------|
-| Multivitamin | 5.0 | [Vitamin A, B, C, D, E, Zink, Magnesium] |
-| A-Z Komplex | 7.0 | [Vitamin A, B, C, D, E, K, Zink, Magnesium, Selen] |
+## Lösung: 3-Schichten-System
 
-Diese beiden sollten unter "Multivitamin" gruppiert werden.
-
-### Problem 2: Detail-Sheet zeigt falschen Score
-- **Liste**: Zeigt korrekt 9.5 (via `calculateComboScore` im Hook)
-- **Detail-Sheet**: Zeigt statischen `impact_score` (5.0 / 7.0) weil es die Combo-Logik nicht nutzt
-
-Das Detail-Sheet ruft nur `calculateRelevanceScore()` auf, aber nicht die spezielle `calculateComboScore()` Funktion für Multi-Ingredient-Produkte.
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 1: SCORING                                           │
+│  calculateComboScore() bekommt aktive Stack-IDs            │
+│  Penalty: -1.5 pro bereits aktivem Inhaltsstoff            │
+│  Ergebnis: Score sinkt von 9.5 → ~7.0 bei 2 Overlaps       │
+├─────────────────────────────────────────────────────────────┤
+│  Layer 2: DATA                                              │
+│  ComboScoreResult wird um "overlappingIngredients" erweitert│
+│  z.B. ["Zink", "Magnesium"] für UI-Konsumption             │
+├─────────────────────────────────────────────────────────────┤
+│  Layer 3: VISUAL                                            │
+│  Ingredient-Tags im DetailSheet + GroupRow mit Farb-Coding │
+│  🟢 Grün = Nicht im Stack (Mehrwert)                        │
+│  🔴 Rot = Bereits im Stack (Redundanz)                      │
+│  Tooltip: "Bereits aktiv in deinem Stack"                   │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Lösung
+## Technische Umsetzung
 
-### Phase 1: Gruppierungs-Pattern erweitern
+### Phase 1: Scoring-Engine erweitern
 
-**Datei:** `src/lib/supplementDeduplication.ts`
+**Datei:** `src/lib/calculateRelevanceScore.ts`
 
-Neues Pattern hinzufügen:
+Die `calculateComboScore()` Funktion bekommt einen neuen Parameter:
+
 ```typescript
-// Multi-Vitamins
-{ pattern: /^(multi-?vitamin|a-z\s*(komplex)?|multivit)/i, baseName: 'Multivitamin' },
+export function calculateComboScore(
+  ingredientData: IngredientScoreData[],
+  context: UserRelevanceContext | null,
+  activeStackNames?: Set<string>  // NEU: Names der aktiven Wirkstoffe im Stack
+): ComboScoreResult
 ```
 
-Dies gruppiert automatisch:
-- Multivitamin
-- A-Z Komplex
-- A-Z (falls vorhanden)
-- Multivit...
+**Neue Logik:**
+- Prüfe jeden Ingredient gegen `activeStackNames`
+- Penalty: `-1.5` pro überlappenden Wirkstoff (maximal -4.5)
+- Speichere Liste der Überlappungen im Result
 
-### Phase 2: Detail-Sheet Combo-Score Integration
+**Erweitertes Result-Interface:**
+```typescript
+export interface ComboScoreResult {
+  score: number;
+  breakdown: string[];
+  ingredientCount: number;
+  highQualityCount: number;
+  // NEU:
+  overlappingIngredients: string[];  // ["Zink", "Magnesium"]
+  overlapPenalty: number;            // -3.0
+}
+```
+
+### Phase 2: Hook-Integration
+
+**Datei:** `src/hooks/useDynamicallySortedSupplements.ts`
+
+Der Hook holt sich zusätzlich den User-Stack:
+
+```typescript
+export function useDynamicallySortedSupplements(): DynamicSupplementGroups {
+  const { data: library = [] } = useSupplementLibrary();
+  const { data: userStack = [] } = useUserStack();  // NEU
+  const { context } = useUserRelevanceContext();
+
+  // Extrahiere aktive Supplement-Namen aus dem Stack
+  const activeStackNames = useMemo(() => {
+    return new Set(
+      userStack
+        .filter(s => s.is_active && s.supplement?.name)
+        .map(s => s.supplement!.name)
+    );
+  }, [userStack]);
+
+  // Übergebe an calculateComboScore
+  const comboResult = calculateComboScore(ingredientData, context, activeStackNames);
+}
+```
+
+### Phase 3: ScoreResult Type erweitern
+
+**Datei:** `src/types/relevanceMatrix.ts`
+
+```typescript
+export interface RelevanceScoreResult {
+  // ... bestehende Felder ...
+  
+  // NEU: Für Combo-Produkte
+  overlappingIngredients?: string[];  // Ingredients bereits im Stack
+  overlapPenalty?: number;            // Angewandter Abzug
+}
+```
+
+### Phase 4: Visual Indicator in UI
+
+**Datei:** `src/components/supplements/SupplementGroupRow.tsx`
+
+Für Combo-Produkte (mit `ingredient_ids`) Overlap-Badges anzeigen:
+
+```typescript
+// Unter dem Score-Badge für Combos
+{variant.ingredient_ids?.length > 0 && variant.scoreResult.overlappingIngredients?.length > 0 && (
+  <div className="flex gap-1 flex-wrap mt-1">
+    {variant.scoreResult.overlappingIngredients.map(name => (
+      <Tooltip key={name}>
+        <TooltipTrigger asChild>
+          <Badge variant="destructive" className="text-[9px] px-1.5 py-0">
+            ⚠️ {name}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          {name} ist bereits in deinem Stack aktiv
+        </TooltipContent>
+      </Tooltip>
+    ))}
+  </div>
+)}
+```
 
 **Datei:** `src/components/supplements/SupplementDetailSheet.tsx`
 
-Das `scoreResult` muss prüfen, ob das Item `ingredient_ids` hat und entsprechend `calculateComboScore()` nutzen:
+Dedizierte Sektion für Inhaltsstoff-Breakdown bei Combos:
 
 ```typescript
-const scoreResult = useMemo(() => {
-  if (!item) return null;
-  
-  // Prüfe auf Kombinations-Produkt
-  if (item.ingredient_ids?.length) {
-    // Hole Ingredient-Daten aus Context oder Props
-    const comboResult = calculateComboScore(ingredientData, userContext);
-    return {
-      score: comboResult.score,
-      baseScore: item.impact_score ?? 5.0,
-      dynamicTier: getDynamicTier(comboResult.score),
-      reasons: comboResult.breakdown,
-      warnings: [],
-      isPersonalized: true,
-      isLimitedByMissingData: false,
-      dataConfidenceCap: 10.0,
-    };
-  }
-  
-  // Standard für Einzel-Wirkstoffe
-  return calculateRelevanceScore(
-    item.impact_score ?? 5.0,
-    item.relevance_matrix,
-    userContext
-  );
-}, [item, userContext]);
+{/* Ingredient Breakdown für Combo-Produkte */}
+{item.ingredient_ids?.length > 0 && (
+  <div className="space-y-2">
+    <h4 className="text-sm font-medium">Enthaltene Wirkstoffe</h4>
+    <div className="flex flex-wrap gap-1.5">
+      {item.ingredient_ids.map(name => {
+        const isOverlapping = scoreResult?.overlappingIngredients?.includes(name);
+        return (
+          <Badge 
+            key={name}
+            variant={isOverlapping ? "destructive" : "secondary"}
+            className="text-xs"
+          >
+            {isOverlapping && "⚠️ "}
+            {name}
+            {isOverlapping && " (bereits aktiv)"}
+          </Badge>
+        );
+      })}
+    </div>
+    {scoreResult?.overlapPenalty && scoreResult.overlapPenalty < 0 && (
+      <p className="text-xs text-muted-foreground">
+        Score-Abzug: {scoreResult.overlapPenalty.toFixed(1)} 
+        (Wirkstoffe bereits in deinem Stack)
+      </p>
+    )}
+  </div>
+)}
 ```
-
-**Problem:** Das Detail-Sheet hat keinen Zugriff auf die Library-Daten für die Ingredient-Lookups.
-
-**Lösung:** Den `ScoredSupplementItem` Type (der bereits den `scoreResult` enthält) an das Sheet übergeben, anstatt nur `SupplementLibraryItem`.
 
 ---
 
@@ -85,10 +169,32 @@ const scoreResult = useMemo(() => {
 
 | Datei | Änderung |
 |-------|----------|
-| `src/lib/supplementDeduplication.ts` | Pattern für A-Z/Multivitamin hinzufügen |
-| `src/components/supplements/SupplementDetailSheet.tsx` | Props erweitern um optionalen vorkalkuierten `scoreResult` |
-| `src/components/supplements/SupplementInventory.tsx` | `ScoredSupplementItem` an Detail-Sheet übergeben |
-| `src/components/supplements/SupplementGroupRow.tsx` | Info-Click mit vollständigem ScoredItem |
+| `src/lib/calculateRelevanceScore.ts` | `calculateComboScore()` mit Stack-Awareness + Penalty-Logik |
+| `src/types/relevanceMatrix.ts` | `ComboScoreResult` + `RelevanceScoreResult` erweitern |
+| `src/hooks/useDynamicallySortedSupplements.ts` | User-Stack laden + an Scoring übergeben |
+| `src/components/supplements/SupplementGroupRow.tsx` | Overlap-Badges mit Tooltip |
+| `src/components/supplements/SupplementDetailSheet.tsx` | Ingredient-Breakdown Sektion |
+
+---
+
+## Scoring-Beispiel
+
+**User-Stack:** Zink, Magnesium, Vitamin D
+
+**Multivitamin bewerten (ingredient_ids: [Zink, Magnesium, Vitamin A, Vitamin C, Vitamin E])**
+
+| Ingredient | Im Stack? | Score | Gewicht |
+|------------|-----------|-------|---------|
+| Zink | ✅ Ja | 8.5 | 0% (ignoriert) |
+| Magnesium | ✅ Ja | 9.0 | 0% (ignoriert) |
+| Vitamin A | ❌ Nein | 7.0 | 50% |
+| Vitamin C | ❌ Nein | 6.5 | 30% |
+| Vitamin E | ❌ Nein | 6.0 | 20% |
+
+**Berechnung:**
+- Basis: (7.0×0.5) + (6.5×0.3) + (6.0×0.2) = 6.65
+- Overlap Penalty: -3.0 (2 × -1.5)
+- **Finaler Score: 6.65 - 3.0 = 3.65** (stark reduziert wegen Redundanz)
 
 ---
 
@@ -96,6 +202,6 @@ const scoreResult = useMemo(() => {
 
 | Vorher | Nachher |
 |--------|---------|
-| A-Z und Multivitamin als separate Gruppen | Gruppiert unter "Multivitamin" mit 2 Varianten |
-| Detail-Sheet: Score 5.0 / 7.0 | Detail-Sheet: Score 9.5 (konsistent mit Liste) |
-| Verwirrende Diskrepanz zwischen Liste und Details | Volle Transparenz - gleicher Score überall |
+| Multivitamin: Score 9.5 "Essential" | Multivitamin: Score 6.5 "Optimizer" (wenn Zink+Mg aktiv) |
+| Keine Warnung vor Doppeldosierung | Rote Badges: "⚠️ Zink", "⚠️ Magnesium" |
+| User nimmt unbewusst zu viel | Tooltip: "Bereits in deinem Stack aktiv" |
