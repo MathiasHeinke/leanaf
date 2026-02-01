@@ -74,6 +74,8 @@ const Profile = ({ onClose }: ProfilePageProps) => {
   const [weightDelta, setWeightDelta] = useState(0);
   const [muscleGoal, setMuscleGoal] = useState<MuscleGoal>('maintain');
   const [protocolTempo, setProtocolTempo] = useState<ProtocolTempo>('standard');
+  const [targetBodyFat, setTargetBodyFat] = useState<number | undefined>(undefined);
+  const [currentBodyFat, setCurrentBodyFat] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [autoSaving, setAutoSaving] = useState(false);
@@ -296,6 +298,10 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         setCoachPersonality(data.coach_personality || 'motivierend');
         setMuscleMaintenancePriority(data.muscle_maintenance_priority || false);
         setMacroStrategy(data.macro_strategy || 'warrior');
+        // Load target body fat
+        if (data.target_body_fat_percentage) {
+          setTargetBodyFat(data.target_body_fat_percentage);
+        }
         setProfileAvatarUrl(data.profile_avatar_url || '');
         setAvatarType((data.avatar_type as 'preset' | 'uploaded') || 'preset');
         setAvatarPresetId(data.avatar_preset_id || '');
@@ -376,7 +382,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
     try {
       const { data, error } = await supabase
         .from('weight_history')
-        .select('weight, date')
+        .select('weight, date, body_fat_percentage')
         .eq('user_id', user?.id)
         .order('date', { ascending: false })
         .limit(1)
@@ -387,8 +393,14 @@ const Profile = ({ onClose }: ProfilePageProps) => {
         return;
       }
 
-      if (data && data.weight) {
-        setWeight(data.weight.toString());
+      if (data) {
+        if (data.weight) {
+          setWeight(data.weight.toString());
+        }
+        // Load latest body fat percentage
+        if (data.body_fat_percentage) {
+          setCurrentBodyFat(data.body_fat_percentage);
+        }
       }
     } catch (error: any) {
       console.error('Error loading current weight:', error);
@@ -661,7 +673,7 @@ const Profile = ({ onClose }: ProfilePageProps) => {
       target_weight: computedTargetWeight,
       target_date: targetDateStr,
       goal_type: 'weight',
-      target_body_fat_percentage: null,
+      target_body_fat_percentage: targetBodyFat || null,
       preferred_language: language,
       coach_personality: coachPersonality,
       muscle_maintenance_priority: muscleGoal === 'maintain',
@@ -1105,6 +1117,9 @@ const Profile = ({ onClose }: ProfilePageProps) => {
             setProtocolTempo={setProtocolTempo}
             tdee={tdee || 2000}
             protocolModes={protocolModes}
+            currentBodyFat={currentBodyFat}
+            targetBodyFat={targetBodyFat}
+            setTargetBodyFat={setTargetBodyFat}
           />
         </div>
 

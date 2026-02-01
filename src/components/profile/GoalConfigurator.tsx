@@ -5,7 +5,7 @@ import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
-import { Target, TrendingDown, TrendingUp, Minus, Calendar, Flame, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Target, TrendingDown, TrendingUp, Minus, Calendar, Flame, Clock, CheckCircle, AlertTriangle, Percent } from 'lucide-react';
 import { calculateRealismScore, getRealismLabel, getRealismVariant } from '@/utils/realismCalculator';
 import { 
   getProtocolAdjustments, 
@@ -31,6 +31,9 @@ interface GoalConfiguratorProps {
   setProtocolTempo: (tempo: ProtocolTempo) => void;
   tdee?: number;
   protocolModes?: ProtocolMode[];
+  currentBodyFat?: number;
+  targetBodyFat?: number;
+  setTargetBodyFat?: (bf: number | undefined) => void;
 }
 
 // ============= Constants =============
@@ -53,6 +56,9 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
   setProtocolTempo,
   tdee = 2000,
   protocolModes = ['natural'],
+  currentBodyFat,
+  targetBodyFat,
+  setTargetBodyFat,
 }) => {
   // Protocol-aware adjustments
   const protocolAdjustments = useMemo(() => {
@@ -85,18 +91,53 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
     return { weeklyChange, dailyCalorieChange };
   }, [weightDelta, protocolTempo]);
 
-  // Realism score
+  // Realism score - now including body fat targets
   const realismScore = useMemo(() => {
-    if (weightDelta === 0) return 100;
+    if (weightDelta === 0 && !targetBodyFat) return 100;
     return calculateRealismScore({
       currentWeight,
       targetWeight,
+      currentBodyFat,
+      targetBodyFat,
       targetDate,
       protocolTempo,
     });
-  }, [currentWeight, targetWeight, targetDate, protocolTempo, weightDelta]);
+  }, [currentWeight, targetWeight, currentBodyFat, targetBodyFat, targetDate, protocolTempo, weightDelta]);
 
-  // Direction icon
+  // KFA realism check
+  const kfaRealism = useMemo(() => {
+    if (!targetBodyFat || !currentBodyFat) return null;
+    
+    const kfaDelta = currentBodyFat - targetBodyFat;
+    const weeksToTarget = TEMPO_CONFIG[protocolTempo].months * 4.33;
+    const monthlyRate = Math.abs(kfaDelta) / (weeksToTarget / 4.33);
+    
+    // Maximum realistic fat loss is ~1-1.5% per month
+    const maxRealisticMonthlyRate = 1.5;
+    
+    // Minimum body fat thresholds (health limits)
+    const minSafeBF = 6; // For males (would be ~12 for females)
+    
+    let status: 'realistic' | 'ambitious' | 'unrealistic' = 'realistic';
+    let message = '';
+    
+    if (targetBodyFat < minSafeBF) {
+      status = 'unrealistic';
+      message = `Unter ${minSafeBF}% KFA ist gesundheitlich kritisch`;
+    } else if (monthlyRate > 2.0) {
+      status = 'unrealistic';
+      message = `${monthlyRate.toFixed(1)}%/Monat ist unrealistisch (max ~1.5%)`;
+    } else if (monthlyRate > maxRealisticMonthlyRate) {
+      status = 'ambitious';
+      message = `${monthlyRate.toFixed(1)}%/Monat ist sehr ambitioniert`;
+    } else if (kfaDelta > 0) {
+      message = `${monthlyRate.toFixed(1)}%/Monat - realistisch erreichbar`;
+    } else {
+      message = 'KFA-Aufbau geplant';
+    }
+    
+    return { status, message, kfaDelta, monthlyRate };
+  }, [currentBodyFat, targetBodyFat, protocolTempo]);
   const DirectionIcon = weightDelta < 0 ? TrendingDown : weightDelta > 0 ? TrendingUp : Minus;
   const directionColor = weightDelta < 0 ? 'text-green-500' : weightDelta > 0 ? 'text-blue-500' : 'text-muted-foreground';
 
@@ -140,6 +181,82 @@ export const GoalConfigurator: React.FC<GoalConfiguratorProps> = ({
             </span>
           </div>
         </div>
+
+        {/* 1b. Target Body Fat Slider */}
+        {setTargetBodyFat && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium flex items-center gap-2">
+                <Percent className="h-4 w-4" />
+                Wunsch-KFA
+              </span>
+              <div className="flex items-center gap-2">
+                {targetBodyFat ? (
+                  <span className="font-bold text-primary">{targetBodyFat}%</span>
+                ) : (
+                  <span className="text-muted-foreground text-sm">Nicht gesetzt</span>
+                )}
+              </div>
+            </div>
+            
+            <Slider
+              value={[targetBodyFat ?? (currentBodyFat ?? 20)]}
+              onValueChange={(v) => setTargetBodyFat(v[0])}
+              min={6}
+              max={35}
+              step={0.5}
+              className="w-full"
+            />
+            
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>6% (Wettkampf)</span>
+              <span>15% (Fit)</span>
+              <span>35%</span>
+            </div>
+            
+            {/* KFA transformation display */}
+            {currentBodyFat && targetBodyFat && (
+              <div className="flex items-center justify-center gap-3 py-2 px-4 bg-muted/50 rounded-lg">
+                <span className="text-lg font-bold">{currentBodyFat.toFixed(1)}%</span>
+                <span className="text-muted-foreground">→</span>
+                <span className={cn(
+                  "text-lg font-bold",
+                  targetBodyFat < currentBodyFat ? "text-green-500" : "text-blue-500"
+                )}>
+                  {targetBodyFat.toFixed(1)}%
+                </span>
+                <span className={cn(
+                  "text-sm",
+                  targetBodyFat < currentBodyFat ? "text-green-500" : "text-blue-500"
+                )}>
+                  ({targetBodyFat < currentBodyFat ? '' : '+'}{(targetBodyFat - currentBodyFat).toFixed(1)}%)
+                </span>
+              </div>
+            )}
+            
+            {/* KFA Realism Warning */}
+            {kfaRealism && (
+              <div className={cn(
+                "flex items-center gap-2 text-xs p-2 rounded-lg",
+                kfaRealism.status === 'realistic' && "bg-green-500/10 text-green-600 dark:text-green-400",
+                kfaRealism.status === 'ambitious' && "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                kfaRealism.status === 'unrealistic' && "bg-red-500/10 text-red-600 dark:text-red-400"
+              )}>
+                {kfaRealism.status === 'unrealistic' && <AlertTriangle className="h-3 w-3" />}
+                {kfaRealism.status === 'ambitious' && <AlertTriangle className="h-3 w-3" />}
+                {kfaRealism.status === 'realistic' && <CheckCircle className="h-3 w-3" />}
+                <span>{kfaRealism.message}</span>
+              </div>
+            )}
+            
+            {/* Missing current KFA hint */}
+            {!currentBodyFat && (
+              <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded-lg">
+                💡 Für eine genaue Prüfung, tracke deinen aktuellen KFA bei einer Gewichtsmessung
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 2. Muscle Goal Toggle */}
         <div className="space-y-3">
